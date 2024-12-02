@@ -9,3 +9,20 @@ services:
       POSTGRES_DB: mmr_project
     ports:
       - "5432:5432"
+  app:
+    depends_on:
+      - db
+    build:
+      context: .
+      dockerfile: ./Dockerfile.dev
+    volumes:
+      - .:/usr/src/app
+    environment:
+      - DB_HOST=db
+      - ATLAS_VAR_db_host=db
+    ports:
+      - "8080:8080"
+    command: bash -c "
+        atlas migrate apply --env gorm --revisions-schema public --allow-dirty --var db_host="db" &&
+        wgo run main.go
+      " 
