@@ -52,6 +52,7 @@ func NewRouter() *gin.Engine {
 		{
 			calculation := new(controllers.CalculationController)
 			calc.POST("", calculation.SubmitMMRCalculation)
+			calc.POST("/batch", calculation.SubmitMMRCalculationsBatch)
 		}
 	}
 

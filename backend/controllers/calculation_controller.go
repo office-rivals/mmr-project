@@ -34,9 +34,66 @@ func (m CalculationController) SubmitMMRCalculation(c *gin.Context) {
 
 	ensurePlayers(c, req)
 
+	team1, team2 := m.calculateMatch(c, req, nil)
+	response := m.GenerateResponse(req, team1, team2)
+
+	// Respond with the updated team data
+	c.JSON(http.StatusOK, response)
+}
+
+// SubmitMMRCalculationsBatch godoc
+//
+//	@Summary		Submit multiple MMR calculation requests
+//	@Description	Submit multiple MMR calculation requests
+//	@Tags 			Calculation
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		[]view.MMRCalculationRequest	true	"MMR Calculation Requests"
+//	@Success		200		{object}	[]view.MMRCalculationResponse	"MMR calculation results"
+//	@Router			/v1/mmr-calculation/batch [post]
+func (m CalculationController) SubmitMMRCalculationsBatch(c *gin.Context) {
+	var req []view.MMRCalculationRequest
+	err := c.ShouldBindJSON(&req)
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	responses := make([]view.MMRCalculationResponse, len(req))
+	playerMap := make(PlayerMMRResultMap)
+	for i, r := range req {
+		team1, team2 := m.calculateMatch(c, r, playerMap)
+		response := m.GenerateResponse(r, team1, team2)
+		responses[i] = response
+		for _, player := range team1.Players {
+			playerMap[player.Id] = player.Player
+		}
+		for _, player := range team2.Players {
+			playerMap[player.Id] = player.Player
+		}
+	}
+
+	// Respond with the updated team data
+	c.JSON(http.StatusOK, responses)
+}
+
+func (m CalculationController) GenerateResponse(r view.MMRCalculationRequest, team1 mmr.TeamV2, team2 mmr.TeamV2) view.MMRCalculationResponse {
+	response := view.MMRCalculationResponse{
+		Team1: m.createTeamResult(*r.Team1.Score, team1),
+		Team2: m.createTeamResult(*r.Team2.Score, team2),
+	}
+	return response
+}
+
+type PlayerMMRResultMap map[int64]types.Rating
+
+func (m CalculationController) calculateMatch(c *gin.Context, req view.MMRCalculationRequest, playerMap PlayerMMRResultMap) (mmr.TeamV2, mmr.TeamV2) {
+	ensurePlayers(c, req)
+
 	// Create players for Team 1
-	player1 := m.createPlayer(req.Team1.Players[0])
-	player2 := m.createPlayer(req.Team1.Players[1])
+	player1 := m.createPlayer(req.Team1.Players[0], playerMap)
+	player2 := m.createPlayer(req.Team1.Players[1], playerMap)
 
 	team1 := mmr.TeamV2{
 		Players: []mmr.PlayerV2{player1, player2},
@@ -44,8 +101,8 @@ func (m CalculationController) SubmitMMRCalculation(c *gin.Context) {
 	}
 
 	// Create players for Team 2
-	player3 := m.createPlayer(req.Team2.Players[0])
-	player4 := m.createPlayer(req.Team2.Players[1])
+	player3 := m.createPlayer(req.Team2.Players[0], playerMap)
+	player4 := m.createPlayer(req.Team2.Players[1], playerMap)
 
 	team2 := mmr.TeamV2{
 		Players: []mmr.PlayerV2{player3, player4},
@@ -53,16 +110,7 @@ func (m CalculationController) SubmitMMRCalculation(c *gin.Context) {
 	}
 
 	// Calculate new MMR
-	team1, team2 = mmr.CalculateNewMMRV2(&team1, &team2)
-
-	// Prepare response
-	response := view.MMRCalculationResponse{
-		Team1: m.createTeamResult(*req.Team1.Score, team1),
-		Team2: m.createTeamResult(*req.Team2.Score, team2),
-	}
-
-	// Respond with the updated team data
-	c.JSON(http.StatusOK, response)
+	return mmr.CalculateNewMMRV2(&team1, &team2)
 }
 
 // Checks if the player IDs from both teams are unique and that there are exactly 4 unique players.
@@ -98,7 +146,14 @@ func ensurePlayers(c *gin.Context, req view.MMRCalculationRequest) {
 }
 
 // Creates a player instance from the given MMRCalculationPlayerRating
-func (m CalculationController) createPlayer(playerRating view.MMRCalculationPlayerRating) mmr.PlayerV2 {
+func (m CalculationController) createPlayer(playerRating view.MMRCalculationPlayerRating, playerMap PlayerMMRResultMap) mmr.PlayerV2 {
+	if player, exists := playerMap[playerRating.Id]; exists {
+		return mmr.PlayerV2{
+			Id:     playerRating.Id,
+			Player: player,
+		}
+	}
+
 	var internalRating types.Rating
 
 	// Check if Mu and Sigma are provided; use defaults if they are nil
