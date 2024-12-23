@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - "backend-dotnet/**/*"
+      - ".github/workflows/deploy-backend.yml"
 
 concurrency:
   group: deploy-group # optional: ensure only one action runs at a time
