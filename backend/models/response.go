@@ -6,7 +6,7 @@ type MMRCalculationResponse struct {
 }
 
 type MMRTeamResult struct {
-	Score   int               `json:"score" binding:"required"`
+	Score   *int              `json:"score" binding:"required"`
 	Players []PlayerMMRResult `json:"players" binding:"required"`
 }
 

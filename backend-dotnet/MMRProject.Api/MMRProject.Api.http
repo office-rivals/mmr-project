@@ -1,0 +1,6 @@
+@MMRProject.Api_HostAddress = http://localhost:5078
+
+GET {{MMRProject.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
