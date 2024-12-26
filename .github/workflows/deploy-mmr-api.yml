@@ -1,0 +1,30 @@
+name: Deploy mmr api
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**/*"
+      - ".github/workflows/deploy-mmr-api.yml"
+
+concurrency:
+  group: deploy-group # optional: ensure only one action runs at a time
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build and deploy Container App
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          appSourcePath: ${{ github.workspace }}/backend
+          acrName: ${{ secrets.ACR_NAME }}
+          containerAppName: ${{ secrets.MMR_API_CONTAINER_APP_NAME }}
+          resourceGroup: ${{ secrets.RESOURCE_GROUP }}

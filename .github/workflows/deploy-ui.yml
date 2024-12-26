@@ -1,0 +1,33 @@
+name: Deploy ui
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**/*"
+      - ".github/workflows/deploy-ui.yml"
+
+concurrency:
+  group: deploy-group # optional: ensure only one action runs at a time
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build and deploy Container App
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}/frontend
+          acrName: ${{ secrets.ACR_NAME }}
+          containerAppName: ${{ secrets.UI_CONTAINER_APP_NAME }}
+          resourceGroup: ${{ secrets.RESOURCE_GROUP }}
+          buildArguments: |
+            "PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}" "PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"
+          targetPort: 3000
