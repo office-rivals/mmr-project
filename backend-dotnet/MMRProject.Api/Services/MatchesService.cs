@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities;
 using MMRProject.Api.DTOs;
+using MMRProject.Api.Extensions;
 using MMRProject.Api.MMRCalculationApi;
 using MMRProject.Api.MMRCalculationApi.Models;
 
@@ -91,6 +92,157 @@ public class MatchesService(
             request.Team2.Member2, request.Team1.Score, request.Team2.Score);
 
         await CalculateMMR(seasonId, match);
+    }
+
+    private async Task CalculateMMROfBatch(long seasonId, List<Match> matches)
+    {
+        var userIds = UserIdsForMatches(matches);
+        var playerRatings = await PlayerRatingsForUsersAsync(userIds, seasonId);
+
+        var mmrCalculationRequests = CalculationRequestsForMatches(matches, playerRatings);
+
+        if (mmrCalculationRequests.Count == 0)
+        {
+            logger.LogInformation("No MMR calculation requests found for batch of matches");
+            return;
+        }
+
+        List<MMRCalculationResponse> mmrCalculationResponses;
+        try
+        {
+            mmrCalculationResponses = await mmrCalculationApiClient.CalculateMMRBatchAsync(mmrCalculationRequests);
+        }
+        catch (Exception e)
+        {
+            logger.LogCritical(e, "Failed to calculate MMR for batch of matches");
+            // TODO: Handle this better
+            throw;
+        }
+
+        if (mmrCalculationResponses.Count != mmrCalculationRequests.Count)
+        {
+            logger.LogCritical("Failed to calculate MMR for all matches in batch");
+            return;
+        }
+
+        // TODO: Maybe through services?
+        for (var i = 0; i < mmrCalculationResponses.Count; i++)
+        {
+            var mmrCalculationResponse = mmrCalculationResponses[i];
+            var match = matches[i];
+
+            var playerResults = mmrCalculationResponse.Team1.Players
+                .Concat(mmrCalculationResponse.Team2.Players)
+                .ToDictionary(x => x.Id);
+
+            var playerHistories = new List<PlayerHistory>();
+            foreach (var playerResult in playerResults.Values)
+            {
+                var playerHistory = new PlayerHistory
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    UserId = playerResult.Id,
+                    MatchId = match.Id,
+                    Mmr = playerResult.MMR,
+                    Mu = playerResult.Mu,
+                    Sigma = playerResult.Sigma
+                };
+                
+                playerHistories.Add(playerHistory);
+                playerRatings[playerResult.Id] = (playerHistory, playerRatings[playerResult.Id].Rating);
+            }
+
+            await dbContext.PlayerHistories.AddRangeAsync(playerHistories);
+
+            if (!playerRatings.TryGetValue(match.TeamOne!.UserOneId!.Value, out var teamOnePlayerOne) ||
+                !playerRatings.TryGetValue(match.TeamOne.UserTwoId!.Value, out var teamOnePlayerTwo) ||
+                !playerRatings.TryGetValue(match.TeamTwo!.UserOneId!.Value, out var teamTwoPlayerOne) ||
+                !playerRatings.TryGetValue(match.TeamTwo.UserTwoId!.Value, out var teamTwoPlayerTwo))
+            {
+                logger.LogCritical("Failed to find all player ratings for match {MatchId}", match.Id);
+                return;
+            }
+
+            await dbContext.MmrCalculations.AddAsync(new MmrCalculation
+            {
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                MatchId = match.Id,
+                TeamOnePlayerOneMmrDelta = MMRDeltaForPlayer(teamOnePlayerOne.Rating.Id,
+                    teamOnePlayerOne.History, playerResults),
+                TeamOnePlayerTwoMmrDelta = MMRDeltaForPlayer(teamOnePlayerTwo.Rating.Id,
+                    teamOnePlayerTwo.History, playerResults),
+                TeamTwoPlayerOneMmrDelta = MMRDeltaForPlayer(teamTwoPlayerOne.Rating.Id,
+                    teamTwoPlayerOne.History, playerResults),
+                TeamTwoPlayerTwoMmrDelta = MMRDeltaForPlayer(teamTwoPlayerTwo.Rating.Id,
+                    teamTwoPlayerTwo.History, playerResults)
+            });
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static List<long> UserIdsForMatches(IEnumerable<Match> matches)
+    {
+        HashSet<long> setOfUserIds = [];
+
+        foreach (var match in matches)
+        {
+            setOfUserIds.Add(match.TeamOne!.UserOneId!.Value);
+            setOfUserIds.Add(match.TeamOne.UserTwoId!.Value);
+            setOfUserIds.Add(match.TeamTwo!.UserOneId!.Value);
+            setOfUserIds.Add(match.TeamTwo.UserTwoId!.Value);
+        }
+
+        return setOfUserIds.ToList();
+    }
+
+    private List<MMRCalculationRequest> CalculationRequestsForMatches(List<Match> matches,
+        Dictionary<long, (PlayerHistory History, MMRCalculationPlayerRating Rating)> playerRatings)
+    {
+        var mmrCalculationRequests = matches.Select(match =>
+            {
+                if (!playerRatings.TryGetValue(match.TeamOne!.UserOneId!.Value, out var teamOnePlayerOne) ||
+                    !playerRatings.TryGetValue(match.TeamOne.UserTwoId!.Value, out var teamOnePlayerTwo) ||
+                    !playerRatings.TryGetValue(match.TeamTwo!.UserOneId!.Value, out var teamTwoPlayerOne) ||
+                    !playerRatings.TryGetValue(match.TeamTwo.UserTwoId!.Value, out var teamTwoPlayerTwo))
+                {
+                    return null;
+                }
+
+                return new MMRCalculationRequest
+                {
+                    Team1 = new MMRCalculationTeam
+                    {
+                        Score = (int)match.TeamOne!.Score!, // TODO: Fix this
+                        Players =
+                        [
+                            teamOnePlayerOne.Rating,
+                            teamOnePlayerTwo.Rating
+                        ]
+                    },
+                    Team2 = new MMRCalculationTeam
+                    {
+                        Score = (int)match.TeamTwo!.Score!,
+                        Players =
+                        [
+                            teamTwoPlayerOne.Rating,
+                            teamTwoPlayerTwo.Rating
+                        ]
+                    }
+                };
+            })
+            .WhereNotNull()
+            .ToList();
+
+        if (mmrCalculationRequests.Count != matches.Count)
+        {
+            logger.LogCritical("Failed to find all player ratings for matches");
+            return [];
+        }
+
+        return mmrCalculationRequests;
     }
 
     private async Task CalculateMMR(long seasonId, Match match)
@@ -198,6 +350,20 @@ public class MatchesService(
         });
     }
 
+    private async Task<Dictionary<long, (PlayerHistory History, MMRCalculationPlayerRating Rating)>>
+        PlayerRatingsForUsersAsync(List<long> userIds, long seasonId)
+    {
+        var playerHistories = await userService.LatestPlayerHistoriesAsync(userIds, seasonId);
+
+        return playerHistories.Select(playerHistory => (playerHistory,
+            new MMRCalculationPlayerRating
+            {
+                Id = playerHistory.UserId!.Value,
+                Mu = playerHistory.Mu,
+                Sigma = playerHistory.Sigma
+            })).ToDictionary(x => x.Item2.Id);
+    }
+
     private async Task<bool> CheckExistingMatch(long playerOneId, long playerTwoId, long playerThreeId,
         long playerFourId, int teamOneScore, int teamTwoScore)
     {
@@ -282,10 +448,11 @@ public class MatchesService(
         }
 
         var matches = await matchesQuery.ToListAsync();
+        var batchedMatches = matches.Chunk(200);
 
-        foreach (var match in matches)
+        foreach (var batch in batchedMatches)
         {
-            await CalculateMMR(seasonId, match);
+            await CalculateMMROfBatch(seasonId, batch.ToList());
         }
     }
 

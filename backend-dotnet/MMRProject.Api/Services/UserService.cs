@@ -13,6 +13,7 @@ public interface IUserService
     Task<User?> GetCurrentAuthenticatedUserAsync();
     Task<User> ClaimUserForCurrentAuthenticatedUserAsync(long userId);
     Task<PlayerHistory?> LatestPlayerHistoryAsync(long userId, long seasonId);
+    Task<List<PlayerHistory>> LatestPlayerHistoriesAsync(List<long> userIds, long seasonId);
 }
 
 public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IUserContextResolver userContextResolver)
@@ -91,5 +92,13 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
         return await dbContext.PlayerHistories.Where(x => x.UserId == userId && x.Match!.SeasonId == seasonId)
             .OrderByDescending(x => x.MatchId)
             .FirstOrDefaultAsync();
+    }
+    
+    public async Task<List<PlayerHistory>> LatestPlayerHistoriesAsync(List<long> userIds, long seasonId)
+    {
+        return await dbContext.PlayerHistories.Where(x => userIds.Contains(x.User!.Id) && x.Match!.SeasonId == seasonId)
+            .GroupBy(x => x.UserId)
+            .Select(x => x.OrderByDescending(y => y.MatchId).First())
+            .ToListAsync();
     }
 }
