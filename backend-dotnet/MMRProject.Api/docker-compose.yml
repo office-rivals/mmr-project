@@ -1,0 +1,6 @@
+﻿services:
+  mmrproject.api:
+    image: mmrproject.api
+    build:
+      context: .
+      dockerfile: Dockerfile

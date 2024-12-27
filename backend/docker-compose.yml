@@ -1,8 +1,6 @@
-version: '3.1'
-
 services:
   db:
-    image: postgres
+    image: postgres:16
     restart: always
     environment:
       POSTGRES_PASSWORD: this_is_a_hard_password1337

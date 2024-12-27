@@ -6,7 +6,7 @@ type MMRCalculationRequest struct {
 }
 
 type MMRCalculationTeam struct {
-	Score   int                         `json:"score" binding:"required"`
+	Score   *int                         `json:"score" binding:"required"`
 	Players []MMRCalculationPlayerRating `json:"players" binding:"required"`
 }
 
