@@ -88,7 +88,6 @@ public class StatisticsService(ApiDbContext dbContext, IUserService userService)
             .ToListAsync();
 
         return leaderboardEntries
-            .Where(x => x.Wins + x.Loses > 0)
             .Select(x => new LeaderboardEntry
             {
                 UserId = x.UserId,
