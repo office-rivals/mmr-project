@@ -8,10 +8,12 @@ on:
     branches: ["main"]
     paths:
       - "backend-dotnet/**/*"
+      - ".github/workflows/test-api.yml"
   pull_request:
     branches: ["main"]
     paths:
       - "backend-dotnet/**/*"
+      - ".github/workflows/test-api.yml"
 
 jobs:
   build:
