@@ -6,7 +6,6 @@ import (
 )
 
 import (
-	database "mmr/backend/db"
 	server "mmr/backend/server"
 )
 
@@ -14,6 +13,6 @@ import (
 
 func main() {
 	config.LoadEnv()
-	database.Init()
+	//database.Init()
 	server.Init()
 }

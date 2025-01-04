@@ -7,13 +7,13 @@ import (
 )
 
 type Config struct {
-	DBHost      string `env:"DB_HOST,required"`
-	DBUser      string `env:"DB_USER,required"`
-	DBPassword  string `env:"DB_PASSWORD,required"`
-	DBName      string `env:"DB_NAME,required"`
-	DBPort      int    `env:"DB_PORT" envDefault:"5432"`
-	DBSSLMode   string `env:"DB_SSLMODE" envDefault:"disable"`
-	JWTSecret   string `env:"JWT_SECRET,required"`
+	//DBHost      string `env:"DB_HOST,required"`
+	//DBUser      string `env:"DB_USER,required"`
+	//DBPassword  string `env:"DB_PASSWORD,required"`
+	//DBName      string `env:"DB_NAME,required"`
+	//DBPort      int    `env:"DB_PORT" envDefault:"5432"`
+	//DBSSLMode   string `env:"DB_SSLMODE" envDefault:"disable"`
+	//JWTSecret   string `env:"JWT_SECRET,required"`
 	AdminSecret string `env:"ADMIN_SECRET,required"`
 }
 

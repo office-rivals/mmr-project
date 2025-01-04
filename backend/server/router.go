@@ -17,37 +17,37 @@ func NewRouter() *gin.Engine {
 
 	v1 := router.Group("/api/v1")
 	{
-		mg := v1.Group("/mmr", middleware.RequireAuth)
-		{
-			match := new(controllers.MatchController)
-			mg.GET("/matches", match.GetMatches)
-		}
-		p := v1.Group("/profile", middleware.RequireAuth)
-		{
-			profile := new(controllers.ProfileController)
-			p.GET("", profile.GetProfile)
-			p.POST("/claim", profile.ClaimUser)
-		}
-		s := v1.Group("/stats", middleware.RequireAuth)
-		{
-			stats := new(controllers.StatsController)
-			s.GET("/leaderboard", stats.GetLeaderboard)
-			s.GET("/player-history", stats.GetPlayerHistory)
-			s.GET("/time-distribution", stats.GetTimeStatistics)
-		}
-		u := v1.Group("/users")
-		{
-			users := new(controllers.UsersController)
-			u.GET("", users.ListUsers)
-			u.POST("", users.CreateUser)
-			u.GET("/search", users.SearchUsers)
-			u.GET("/:id", users.GetUser)
-		}
-		a := v1.Group("/admin", middleware.RequireAdminAuth)
-		{
-			admin := new(controllers.AdminController)
-			a.POST("/recalculate", admin.RecalculateMatches)
-		}
+		//mg := v1.Group("/mmr", middleware.RequireAuth)
+		//{
+		//	match := new(controllers.MatchController)
+		//	mg.GET("/matches", match.GetMatches)
+		//}
+		//p := v1.Group("/profile", middleware.RequireAuth)
+		//{
+		//	profile := new(controllers.ProfileController)
+		//	p.GET("", profile.GetProfile)
+		//	p.POST("/claim", profile.ClaimUser)
+		//}
+		//s := v1.Group("/stats", middleware.RequireAuth)
+		//{
+		//	stats := new(controllers.StatsController)
+		//	s.GET("/leaderboard", stats.GetLeaderboard)
+		//	s.GET("/player-history", stats.GetPlayerHistory)
+		//	s.GET("/time-distribution", stats.GetTimeStatistics)
+		//}
+		//u := v1.Group("/users")
+		//{
+		//	users := new(controllers.UsersController)
+		//	u.GET("", users.ListUsers)
+		//	u.POST("", users.CreateUser)
+		//	u.GET("/search", users.SearchUsers)
+		//	u.GET("/:id", users.GetUser)
+		//}
+		//a := v1.Group("/admin", middleware.RequireAdminAuth)
+		//{
+		//	admin := new(controllers.AdminController)
+		//	a.POST("/recalculate", admin.RecalculateMatches)
+		//}
 		calc := v1.Group("/mmr-calculation", middleware.RequireAdminAuth)
 		{
 			calculation := new(controllers.CalculationController)
@@ -56,15 +56,15 @@ func NewRouter() *gin.Engine {
 		}
 	}
 
-	v2 := router.Group("/api/v2")
-	{
-		mg := v2.Group("/mmr", middleware.RequireAuth)
-		{
-			match := new(controllers.MatchController)
-			mg.GET("/matches", match.GetMatchesV2)
-			mg.POST("/matches", match.SubmitMatchV2)
-		}
-	}
+	//v2 := router.Group("/api/v2")
+	//{
+	//	mg := v2.Group("/mmr", middleware.RequireAuth)
+	//	{
+	//		match := new(controllers.MatchController)
+	//		mg.GET("/matches", match.GetMatchesV2)
+	//		mg.POST("/matches", match.SubmitMatchV2)
+	//	}
+	//}
 
 	router.GET("/swagger", func(ctx *gin.Context) {
 		ctx.Redirect(http.StatusPermanentRedirect, "/swagger/index.html")
