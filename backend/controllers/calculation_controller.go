@@ -2,13 +2,11 @@ package controllers
 
 import (
 	"fmt"
-	"github.com/intinig/go-openskill/ptr"
 	"mmr/backend/mmr"
 	view "mmr/backend/models"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/intinig/go-openskill/rating"
 	"github.com/intinig/go-openskill/types"
 )
 
@@ -159,17 +157,9 @@ func (m CalculationController) createPlayer(playerRating view.MMRCalculationPlay
 
 	// Check if Mu and Sigma are provided; use defaults if they are nil
 	if playerRating.Mu != nil && playerRating.Sigma != nil {
-		// Create Rating with provided Mu and Sigma
-		internalRating = rating.NewWithOptions(
-			&types.OpenSkillOptions{
-				Mu:    playerRating.Mu,
-				Sigma: playerRating.Sigma,
-			},
-		)
+		internalRating = mmr.RatingForPlayer(playerRating)
 	} else {
-		// Use the New function to get a Rating with default options
-		// TODO: Allow multiple options via "algorithm" field in the request
-		internalRating = rating.NewWithOptions(&types.OpenSkillOptions{Sigma: ptr.Float64(5)})
+		internalRating = mmr.NewDefaultRating()
 	}
 
 	return mmr.PlayerV2{
