@@ -87,18 +87,18 @@ func TestSubmitMMRCalculationNewPlayers(t *testing.T) {
 	assert.Equal(t, 2, len(response.Team2.Players))
 
 	// Check Mu and Sigma values for Team 1
-	assert.Equal(t, 23.035814496704035, response.Team1.Players[0].Mu)
-	assert.Equal(t, 8.17755635771097, response.Team1.Players[0].Sigma)
+	assert.Equal(t, 23.923062762073393, response.Team1.Players[0].Mu)
+	assert.Equal(t, 4.928838065802311, response.Team1.Players[0].Sigma)
 
-	assert.Equal(t, 23.035814496704035, response.Team1.Players[1].Mu)
-	assert.Equal(t, 8.17755635771097, response.Team1.Players[1].Sigma)
+	assert.Equal(t, 23.923062762073393, response.Team1.Players[1].Mu)
+	assert.Equal(t, 4.928838065802311, response.Team1.Players[1].Sigma)
 
 	// Check Mu and Sigma values for Team 2
-	assert.Equal(t, 26.964185503295965, response.Team2.Players[0].Mu)
-	assert.Equal(t, 8.17755635771097, response.Team2.Players[0].Sigma)
+	assert.Equal(t, 26.076937237926607, response.Team2.Players[0].Mu)
+	assert.Equal(t, 4.928838065802311, response.Team2.Players[0].Sigma)
 
-	assert.Equal(t, 26.964185503295965, response.Team2.Players[1].Mu)
-	assert.Equal(t, 8.17755635771097, response.Team2.Players[1].Sigma)
+	assert.Equal(t, 26.076937237926607, response.Team2.Players[1].Mu)
+	assert.Equal(t, 4.928838065802311, response.Team2.Players[1].Sigma)
 }
 
 // TestSubmitMMRCalculationWithRealMuAndSigma tests the MMR calculation with real Mu and Sigma values
@@ -230,18 +230,18 @@ func TestSubmitMMRCalculationsBatchUseUpdatedPlayerData(t *testing.T) {
 	assert.Equal(t, 2, len(response[0].Team2.Players))
 
 	// Check Mu and Sigma values for Team 1
-	assert.Equal(t, 23.035814496704035, response[0].Team1.Players[0].Mu)
-	assert.Equal(t, 8.17755635771097, response[0].Team1.Players[0].Sigma)
+	assert.Equal(t, 23.923062762073393, response[0].Team1.Players[0].Mu)
+	assert.Equal(t, 4.928838065802311, response[0].Team1.Players[0].Sigma)
 
-	assert.Equal(t, 23.035814496704035, response[0].Team1.Players[1].Mu)
-	assert.Equal(t, 8.17755635771097, response[0].Team1.Players[1].Sigma)
+	assert.Equal(t, 23.923062762073393, response[0].Team1.Players[1].Mu)
+	assert.Equal(t, 4.928838065802311, response[0].Team1.Players[1].Sigma)
 
 	// Check Mu and Sigma values for Team 2
-	assert.Equal(t, 26.964185503295965, response[0].Team2.Players[0].Mu)
-	assert.Equal(t, 8.17755635771097, response[0].Team2.Players[0].Sigma)
+	assert.Equal(t, 26.076937237926607, response[0].Team2.Players[0].Mu)
+	assert.Equal(t, 4.928838065802311, response[0].Team2.Players[0].Sigma)
 
-	assert.Equal(t, 26.964185503295965, response[0].Team2.Players[1].Mu)
-	assert.Equal(t, 8.17755635771097, response[0].Team2.Players[1].Sigma)
+	assert.Equal(t, 26.076937237926607, response[0].Team2.Players[1].Mu)
+	assert.Equal(t, 4.928838065802311, response[0].Team2.Players[1].Sigma)
 
 	// Check the second response
 	assert.Equal(t, 100, *response[1].Team1.Score)
@@ -250,18 +250,18 @@ func TestSubmitMMRCalculationsBatchUseUpdatedPlayerData(t *testing.T) {
 	assert.Equal(t, 2, len(response[1].Team2.Players))
 
 	// Check Mu and Sigma values for Team 1
-	assert.Equal(t, 21.22821062460186, response[1].Team1.Players[0].Mu)
-	assert.Equal(t, 8.028089596931006, response[1].Team1.Players[0].Sigma)
+	assert.Equal(t, 22.91752024126155, response[1].Team1.Players[0].Mu)
+	assert.Equal(t, 4.860184786338031, response[1].Team1.Players[0].Sigma)
 
-	assert.Equal(t, 25.15658163119379, response[1].Team1.Players[1].Mu)
-	assert.Equal(t, 8.028089596931006, response[1].Team1.Players[1].Sigma)
+	assert.Equal(t, 25.071394717114764, response[1].Team1.Players[1].Mu)
+	assert.Equal(t, 4.860184786338031, response[1].Team1.Players[1].Sigma)
 
 	// Check Mu and Sigma values for Team 2
-	assert.Equal(t, 28.77178937539814, response[1].Team2.Players[0].Mu)
-	assert.Equal(t, 8.026645815600702, response[1].Team2.Players[0].Sigma)
+	assert.Equal(t, 27.08247975873845, response[1].Team2.Players[0].Mu)
+	assert.Equal(t, 4.859683867958447, response[1].Team2.Players[0].Sigma)
 
-	assert.InEpsilon(t, 26.877127097952258, response[1].Team2.Players[1].Mu, 0.000000000000001)
-	assert.Equal(t, 8.173575444274817, response[1].Team2.Players[1].Sigma)
+	assert.InEpsilon(t, 26.034787917175375, response[1].Team2.Players[1].Mu, 0.000000000000001)
+	assert.Equal(t, 4.9277920840021645, response[1].Team2.Players[1].Sigma)
 }
 
 // TestSubmitMMRCalculationsBatchIgnoreLaterPlayerMuAndSigma tests that MMR calculations ignore later player Mu and Sigma values
@@ -332,18 +332,18 @@ func TestSubmitMMRCalculationsBatchIgnoreLaterPlayerMuAndSigma(t *testing.T) {
 	assert.Equal(t, 2, len(response[0].Team2.Players))
 
 	// Check Mu and Sigma values for Team 1
-	assert.Equal(t, 21.22821062460186, response[0].Team1.Players[0].Mu)
-	assert.Equal(t, 8.028089596931006, response[0].Team1.Players[0].Sigma)
+	assert.Equal(t, 21.089518767858735, response[0].Team1.Players[0].Mu)
+	assert.Equal(t, 7.987856132049211, response[0].Team1.Players[0].Sigma)
 
-	assert.Equal(t, 25.15658163119379, response[0].Team1.Players[1].Mu)
-	assert.Equal(t, 8.028089596931006, response[0].Team1.Players[1].Sigma)
+	assert.Equal(t, 25.017889774450666, response[0].Team1.Players[1].Mu)
+	assert.Equal(t, 7.987856132049211, response[0].Team1.Players[1].Sigma)
 
 	// Check Mu and Sigma values for Team 2
-	assert.Equal(t, 28.77178937539814, response[0].Team2.Players[0].Mu)
-	assert.Equal(t, 8.026645815600702, response[0].Team2.Players[0].Sigma)
+	assert.Equal(t, 28.910481232141265, response[0].Team2.Players[0].Mu)
+	assert.Equal(t, 8.0206495537677, response[0].Team2.Players[0].Sigma)
 
-	assert.Equal(t, 26.877127097952258, response[0].Team2.Players[1].Mu)
-	assert.Equal(t, 8.173575444274817, response[0].Team2.Players[1].Sigma)
+	assert.Equal(t, 25.727615172476014, response[0].Team2.Players[1].Mu)
+	assert.Equal(t, 4.9643511518777474, response[0].Team2.Players[1].Sigma)
 
 	// Check the second response
 	assert.Equal(t, 100, *response[1].Team1.Score)
@@ -352,18 +352,18 @@ func TestSubmitMMRCalculationsBatchIgnoreLaterPlayerMuAndSigma(t *testing.T) {
 	assert.Equal(t, 2, len(response[1].Team2.Players))
 
 	// Check Mu and Sigma values for Team 1
-	assert.Equal(t, 19.845846211001017, response[1].Team1.Players[0].Mu)
-	assert.InEpsilon(t, 7.891967806350323, response[1].Team1.Players[0].Sigma, 0.000000000000001)
+	assert.Equal(t, 19.60583732187948, response[1].Team1.Players[0].Mu)
+	assert.InEpsilon(t, 7.817871209619984, response[1].Team1.Players[0].Sigma, 0.000000000000001)
 
-	assert.Equal(t, 23.77421721759295, response[1].Team1.Players[1].Mu)
-	assert.InEpsilon(t, 7.891967806350323, response[1].Team1.Players[1].Sigma, 0.000000000000001)
+	assert.Equal(t, 23.53420832847141, response[1].Team1.Players[1].Mu)
+	assert.InEpsilon(t, 7.817871209619984, response[1].Team1.Players[1].Sigma, 0.000000000000001)
 
 	// Check Mu and Sigma values for Team 2
-	assert.Equal(t, 30.15365662153678, response[1].Team2.Players[0].Mu)
-	assert.Equal(t, 7.889361057971979, response[1].Team2.Players[0].Sigma)
+	assert.Equal(t, 30.40636992494211, response[1].Team2.Players[0].Mu)
+	assert.Equal(t, 7.877201744950751, response[1].Team2.Players[0].Sigma)
 
-	assert.InEpsilon(t, 28.31004818853618, response[1].Team2.Players[1].Mu, 0.000000000000001)
-	assert.Equal(t, 8.028566122732826, response[1].Team2.Players[1].Sigma)
+	assert.InEpsilon(t, 26.30068188745282, response[1].Team2.Players[1].Mu, 0.000000000000001)
+	assert.Equal(t, 4.9305264691344615, response[1].Team2.Players[1].Sigma)
 }
 
 // TestSerializationPrecision tests that serialization and deserialization preserves Mu and Sigma values.
