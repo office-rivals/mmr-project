@@ -310,13 +310,13 @@ public class MatchesService(
             UpdatedAt = DateTime.UtcNow,
             MatchId = match.Id,
             TeamOnePlayerOneMmrDelta = MMRDeltaForPlayer(teamOnePlayerOne.Rating.Id,
-                teamOnePlayerOne.History, playerResults),
+                teamOnePlayerOne.History, teamOnePlayerOne.isCurrentSeason, playerResults),
             TeamOnePlayerTwoMmrDelta = MMRDeltaForPlayer(teamOnePlayerTwo.Rating.Id,
-                teamOnePlayerTwo.History, playerResults),
+                teamOnePlayerTwo.History, teamOnePlayerTwo.isCurrentSeason, playerResults),
             TeamTwoPlayerOneMmrDelta = MMRDeltaForPlayer(teamTwoPlayerOne.Rating.Id,
-                teamTwoPlayerOne.History, playerResults),
+                teamTwoPlayerOne.History, teamTwoPlayerOne.isCurrentSeason, playerResults),
             TeamTwoPlayerTwoMmrDelta = MMRDeltaForPlayer(teamTwoPlayerTwo.Rating.Id,
-                teamTwoPlayerTwo.History, playerResults)
+                teamTwoPlayerTwo.History, teamTwoPlayerTwo.isCurrentSeason, playerResults)
         });
 
         await dbContext.SaveChangesAsync();
@@ -324,6 +324,7 @@ public class MatchesService(
 
     private int? MMRDeltaForPlayer(long playerId,
         PlayerHistory? currentHistory,
+        bool isHistoryFromCurrentSeason,
         Dictionary<long, MMRCalculationPlayerResult> playerResults)
     {
         if (!playerResults.TryGetValue(playerId, out var playerResult))
@@ -331,22 +332,32 @@ public class MatchesService(
             logger.LogCritical("Failed to find MMR for player {PlayerId}", playerId);
             return null;
         }
+        
+        if (!isHistoryFromCurrentSeason)
+        {
+            // If the player's history is not from the current season, then use 0 as the delta
+            return 0;
+        }
 
         // If there is no current MMR, then use 0 as the delta
         return currentHistory?.Mmr is not null ? playerResult.MMR - (int)currentHistory.Mmr.Value : 0;
     }
 
-    private async Task<(PlayerHistory? History, MMRCalculationPlayerRating Rating)> PlayerRatingForUserAsync(
+    private async Task<(PlayerHistory? History, bool isCurrentSeason, MMRCalculationPlayerRating Rating)> PlayerRatingForUserAsync(
         long userId,
         long seasonId)
     {
-        var playerHistory = await userService.LatestPlayerHistoryAsync(userId, seasonId);
+        var playerHistoryResult = await userService.LatestPlayerHistoryAsync(userId);
+        
+        var isCurrentSeason = playerHistoryResult?.seasonId == seasonId;
 
-        return (playerHistory, new MMRCalculationPlayerRating
+        return (playerHistoryResult?.history, isCurrentSeason, new MMRCalculationPlayerRating
         {
             Id = userId,
-            Mu = playerHistory?.Mu,
-            Sigma = playerHistory?.Sigma
+            Mu = playerHistoryResult?.history.Mu,
+            Sigma = playerHistoryResult?.history.Sigma,
+            // TODO: This breaks if we are calculating for a different season than the most current one
+            IsPreviousSeasonRating = playerHistoryResult == null ? null : !isCurrentSeason,
         });
     }
 
@@ -435,6 +446,13 @@ public class MatchesService(
 
     public async Task RecalculateMMRForMatchesInSeason(long seasonId, long? fromMatchId)
     {
+        var latestSeason = await dbContext.Seasons.OrderByDescending(x => x.Id).FirstOrDefaultAsync();
+        if (latestSeason?.Id != seasonId)
+        {
+            // TODO: Maybe improve this?
+            throw new Exception("Only latest season can be recalculated");
+        }
+        
         await ClearMMRCalculations(seasonId, fromMatchId);
 
         var matchesQuery = dbContext.Matches

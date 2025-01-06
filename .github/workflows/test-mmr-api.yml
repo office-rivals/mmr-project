@@ -7,13 +7,13 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "backend-dotnet/**/*"
-      - ".github/workflows/deploy-api.yml"
+      - "backend/**/*"
+      - ".github/workflows/test-mmr-api.yml"
   pull_request:
     branches: ["main"]
     paths:
-      - "backend-dotnet/**/*"
-      - ".github/workflows/deploy-api.yml"
+      - "backend/**/*"
+      - ".github/workflows/test-mmr-api.yml"
 
 jobs:
   build:

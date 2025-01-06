@@ -12,7 +12,7 @@ public interface IUserService
     Task<User?> GetUserAsync(long userId);
     Task<User?> GetCurrentAuthenticatedUserAsync();
     Task<User> ClaimUserForCurrentAuthenticatedUserAsync(long userId);
-    Task<PlayerHistory?> LatestPlayerHistoryAsync(long userId, long seasonId);
+    Task<(PlayerHistory history, long seasonId)?> LatestPlayerHistoryAsync(long userId);
     Task<List<PlayerHistory>> LatestPlayerHistoriesAsync(List<long> userIds, long seasonId);
 }
 
@@ -86,12 +86,21 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
 
         return user;
     }
-
-    public async Task<PlayerHistory?> LatestPlayerHistoryAsync(long userId, long seasonId)
+    
+    public async Task<(PlayerHistory history, long seasonId)?> LatestPlayerHistoryAsync(long userId)
     {
-        return await dbContext.PlayerHistories.Where(x => x.UserId == userId && x.Match!.SeasonId == seasonId)
+        var playerHistory = await dbContext.PlayerHistories.Where(x => x.UserId == userId)
+            .Include(x => x.Match)
             .OrderByDescending(x => x.MatchId)
+            .AsNoTracking()
             .FirstOrDefaultAsync();
+        
+        if (playerHistory?.Match?.SeasonId is null)
+        {
+            return null;
+        }
+
+        return (playerHistory, playerHistory.Match.SeasonId.Value);
     }
     
     public async Task<List<PlayerHistory>> LatestPlayerHistoriesAsync(List<long> userIds, long seasonId)

@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/intinig/go-openskill/rating"
 	"github.com/intinig/go-openskill/types"
 )
 
@@ -158,16 +157,9 @@ func (m CalculationController) createPlayer(playerRating view.MMRCalculationPlay
 
 	// Check if Mu and Sigma are provided; use defaults if they are nil
 	if playerRating.Mu != nil && playerRating.Sigma != nil {
-		// Create Rating with provided Mu and Sigma
-		internalRating = rating.NewWithOptions(
-			&types.OpenSkillOptions{
-				Mu:    playerRating.Mu,
-				Sigma: playerRating.Sigma,
-			},
-		)
+		internalRating = mmr.RatingForPlayer(playerRating)
 	} else {
-		// Use the New function to get a Rating with default options
-		internalRating = rating.New()
+		internalRating = mmr.NewDefaultRating()
 	}
 
 	return mmr.PlayerV2{
