@@ -183,7 +183,8 @@ public class MatchesService(
         
         if (!isHistoryFromCurrentSeason)
         {
-            return null;
+            // If the player's history is not from the current season, then use 0 as the delta
+            return 0;
         }
 
         // If there is no current MMR, then use 0 as the delta
