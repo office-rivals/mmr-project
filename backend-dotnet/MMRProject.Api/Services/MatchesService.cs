@@ -125,6 +125,10 @@ public class MatchesService(
             return;
         }
 
+        var latestPlayerHistoryMap = playerRatings
+            .Select(x => (x.Value.History, x.Value.IsCurrentSeason))
+            .ToDictionary(x => x.History.UserId!.Value);
+
         // TODO: Maybe through services?
         for (var i = 0; i < mmrCalculationResponses.Count; i++)
         {
@@ -171,8 +175,7 @@ public class MatchesService(
 
                 playerHistories.Add(playerHistory);
                 // New player rating is in current season
-                var currentRating = RatingForPlayer(playerRatings, playerResult.Id);
-                playerRatings[playerResult.Id] = (playerHistory, true, currentRating);
+                latestPlayerHistoryMap[playerResult.Id] = (playerHistory, true);
             }
 
             await dbContext.PlayerHistories.AddRangeAsync(playerHistories);
@@ -183,7 +186,7 @@ public class MatchesService(
 
         (PlayerHistory? History, bool IsCurrentSeason, long userId) PlayerInfoForId(long id)
         {
-            return playerRatings.TryGetValue(id, out var player)
+            return latestPlayerHistoryMap.TryGetValue(id, out var player)
                 ? (player.History, player.IsCurrentSeason, id)
                 : (null, true, id);
         }
@@ -208,7 +211,7 @@ public class MatchesService(
         Dictionary<long, (PlayerHistory History, bool IsCurrentSeason, MMRCalculationPlayerRating Rating)>
             playerRatings)
     {
-        var mmrCalculationRequests = matches.Select(match =>
+        return matches.Select(match =>
             {
                 var teamOnePlayerOneRating = RatingForPlayer(playerRatings, match.TeamOne!.UserOneId!.Value);
                 var teamOnePlayerTwoRating = RatingForPlayer(playerRatings, match.TeamOne.UserTwoId!.Value);
@@ -238,14 +241,6 @@ public class MatchesService(
                 };
             })
             .ToList();
-
-        if (mmrCalculationRequests.Count != matches.Count)
-        {
-            logger.LogCritical("Failed to find all player ratings for matches");
-            return [];
-        }
-
-        return mmrCalculationRequests;
     }
 
     private static MMRCalculationPlayerRating RatingForPlayer(
