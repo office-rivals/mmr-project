@@ -17,4 +17,5 @@ public record MMRCalculationPlayerRating
     public required long Id { get; set; }
     public decimal? Mu { get; set; }
     public decimal? Sigma { get; set; }
+    public bool? IsPreviousSeasonRating { get; set; }
 }
