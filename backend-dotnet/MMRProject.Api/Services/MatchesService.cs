@@ -135,30 +135,26 @@ public class MatchesService(
                 .Concat(mmrCalculationResponse.Team2.Players)
                 .ToDictionary(x => x.Id);
 
-            if (!playerRatings.TryGetValue(match.TeamOne!.UserOneId!.Value, out var teamOnePlayerOne) ||
-                !playerRatings.TryGetValue(match.TeamOne.UserTwoId!.Value, out var teamOnePlayerTwo) ||
-                !playerRatings.TryGetValue(match.TeamTwo!.UserOneId!.Value, out var teamTwoPlayerOne) ||
-                !playerRatings.TryGetValue(match.TeamTwo.UserTwoId!.Value, out var teamTwoPlayerTwo))
-            {
-                logger.LogCritical("Failed to find all player ratings for match {MatchId}", match.Id);
-                return;
-            }
+            var teamOnePlayerOne = PlayerInfoForId(match.TeamOne!.UserOneId!.Value);
+            var teamOnePlayerTwo = PlayerInfoForId(match.TeamOne.UserTwoId!.Value);
+            var teamTwoPlayerOne = PlayerInfoForId(match.TeamTwo!.UserOneId!.Value);
+            var teamTwoPlayerTwo = PlayerInfoForId(match.TeamTwo.UserTwoId!.Value);
 
             await dbContext.MmrCalculations.AddAsync(new MmrCalculation
             {
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 MatchId = match.Id,
-                TeamOnePlayerOneMmrDelta = MMRDeltaForPlayer(teamOnePlayerOne.Rating.Id,
+                TeamOnePlayerOneMmrDelta = MMRDeltaForPlayer(teamOnePlayerOne.userId,
                     teamOnePlayerOne.History, teamOnePlayerOne.IsCurrentSeason, playerResults),
-                TeamOnePlayerTwoMmrDelta = MMRDeltaForPlayer(teamOnePlayerTwo.Rating.Id,
+                TeamOnePlayerTwoMmrDelta = MMRDeltaForPlayer(teamOnePlayerTwo.userId,
                     teamOnePlayerTwo.History, teamOnePlayerTwo.IsCurrentSeason, playerResults),
-                TeamTwoPlayerOneMmrDelta = MMRDeltaForPlayer(teamTwoPlayerOne.Rating.Id,
-                    teamTwoPlayerOne.History, teamTwoPlayerOne.IsCurrentSeason,playerResults),
-                TeamTwoPlayerTwoMmrDelta = MMRDeltaForPlayer(teamTwoPlayerTwo.Rating.Id,
-                    teamTwoPlayerTwo.History, teamTwoPlayerTwo.IsCurrentSeason,playerResults)
+                TeamTwoPlayerOneMmrDelta = MMRDeltaForPlayer(teamTwoPlayerOne.userId,
+                    teamTwoPlayerOne.History, teamTwoPlayerOne.IsCurrentSeason, playerResults),
+                TeamTwoPlayerTwoMmrDelta = MMRDeltaForPlayer(teamTwoPlayerTwo.userId,
+                    teamTwoPlayerTwo.History, teamTwoPlayerTwo.IsCurrentSeason, playerResults)
             });
-            
+
             var playerHistories = new List<PlayerHistory>();
             foreach (var playerResult in playerResults.Values)
             {
@@ -175,13 +171,22 @@ public class MatchesService(
 
                 playerHistories.Add(playerHistory);
                 // New player rating is in current season
-                playerRatings[playerResult.Id] = (playerHistory, true, playerRatings[playerResult.Id].Rating);
+                var currentRating = RatingForPlayer(playerRatings, playerResult.Id);
+                playerRatings[playerResult.Id] = (playerHistory, true, currentRating);
             }
 
             await dbContext.PlayerHistories.AddRangeAsync(playerHistories);
         }
 
         await dbContext.SaveChangesAsync();
+        return;
+
+        (PlayerHistory? History, bool IsCurrentSeason, long userId) PlayerInfoForId(long id)
+        {
+            return playerRatings.TryGetValue(id, out var player)
+                ? (player.History, player.IsCurrentSeason, id)
+                : (null, true, id);
+        }
     }
 
     private static List<long> UserIdsForMatches(IEnumerable<Match> matches)
@@ -200,17 +205,15 @@ public class MatchesService(
     }
 
     private List<MMRCalculationRequest> CalculationRequestsForMatches(List<Match> matches,
-        Dictionary<long, (PlayerHistory History, bool IsCurrentSeason, MMRCalculationPlayerRating Rating)> playerRatings)
+        Dictionary<long, (PlayerHistory History, bool IsCurrentSeason, MMRCalculationPlayerRating Rating)>
+            playerRatings)
     {
         var mmrCalculationRequests = matches.Select(match =>
             {
-                if (!playerRatings.TryGetValue(match.TeamOne!.UserOneId!.Value, out var teamOnePlayerOne) ||
-                    !playerRatings.TryGetValue(match.TeamOne.UserTwoId!.Value, out var teamOnePlayerTwo) ||
-                    !playerRatings.TryGetValue(match.TeamTwo!.UserOneId!.Value, out var teamTwoPlayerOne) ||
-                    !playerRatings.TryGetValue(match.TeamTwo.UserTwoId!.Value, out var teamTwoPlayerTwo))
-                {
-                    return null;
-                }
+                var teamOnePlayerOneRating = RatingForPlayer(playerRatings, match.TeamOne!.UserOneId!.Value);
+                var teamOnePlayerTwoRating = RatingForPlayer(playerRatings, match.TeamOne.UserTwoId!.Value);
+                var teamTwoPlayerOneRating = RatingForPlayer(playerRatings, match.TeamTwo!.UserOneId!.Value);
+                var teamTwoPlayerTwoRating = RatingForPlayer(playerRatings, match.TeamTwo.UserTwoId!.Value);
 
                 return new MMRCalculationRequest
                 {
@@ -219,8 +222,8 @@ public class MatchesService(
                         Score = (int)match.TeamOne!.Score!, // TODO: Fix this
                         Players =
                         [
-                            teamOnePlayerOne.Rating,
-                            teamOnePlayerTwo.Rating
+                            teamOnePlayerOneRating,
+                            teamOnePlayerTwoRating
                         ]
                     },
                     Team2 = new MMRCalculationTeam
@@ -228,13 +231,12 @@ public class MatchesService(
                         Score = (int)match.TeamTwo!.Score!,
                         Players =
                         [
-                            teamTwoPlayerOne.Rating,
-                            teamTwoPlayerTwo.Rating
+                            teamTwoPlayerOneRating,
+                            teamTwoPlayerTwoRating
                         ]
                     }
                 };
             })
-            .WhereNotNull()
             .ToList();
 
         if (mmrCalculationRequests.Count != matches.Count)
@@ -244,6 +246,15 @@ public class MatchesService(
         }
 
         return mmrCalculationRequests;
+    }
+
+    private static MMRCalculationPlayerRating RatingForPlayer(
+        Dictionary<long, (PlayerHistory History, bool IsCurrentSeason, MMRCalculationPlayerRating Rating)>
+            playerRatings, long id)
+    {
+        return playerRatings.TryGetValue(id, out var player)
+            ? player.Rating
+            : new MMRCalculationPlayerRating { Id = id };
     }
 
     private async Task CalculateMMR(long seasonId, Match match)
