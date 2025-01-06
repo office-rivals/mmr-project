@@ -188,13 +188,15 @@ public class MatchesService(
         long userId,
         long seasonId)
     {
-        var playerHistory = await userService.LatestPlayerHistoryAsync(userId, seasonId);
+        var playerHistoryResult = await userService.LatestPlayerHistoryAsync(userId);
 
-        return (playerHistory, new MMRCalculationPlayerRating
+        return (playerHistoryResult?.history, new MMRCalculationPlayerRating
         {
             Id = userId,
-            Mu = playerHistory?.Mu,
-            Sigma = playerHistory?.Sigma
+            Mu = playerHistoryResult?.history.Mu,
+            Sigma = playerHistoryResult?.history.Sigma,
+            // TODO: This breaks if we are calculating for a different season than the most current one
+            IsPreviousSeasonRating = playerHistoryResult == null ? null : playerHistoryResult.Value.seasonId != seasonId
         });
     }
 
@@ -269,6 +271,13 @@ public class MatchesService(
 
     public async Task RecalculateMMRForMatchesInSeason(long seasonId, long? fromMatchId)
     {
+        var latestSeason = await dbContext.Seasons.OrderByDescending(x => x.Id).FirstOrDefaultAsync();
+        if (latestSeason?.Id != seasonId)
+        {
+            // TODO: Maybe improve this?
+            throw new Exception("Only latest season can be recalculated");
+        }
+        
         await ClearMMRCalculations(seasonId, fromMatchId);
 
         var matchesQuery = dbContext.Matches
