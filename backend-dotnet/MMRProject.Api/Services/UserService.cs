@@ -13,7 +13,7 @@ public interface IUserService
     Task<User?> GetCurrentAuthenticatedUserAsync();
     Task<User> ClaimUserForCurrentAuthenticatedUserAsync(long userId);
     Task<(PlayerHistory history, long seasonId)?> LatestPlayerHistoryAsync(long userId);
-    Task<List<PlayerHistory>> LatestPlayerHistoriesAsync(List<long> userIds, long seasonId);
+    Task<List<(PlayerHistory history, long seasonId)>> LatestPlayerHistoriesAsync(List<long> userIds);
 }
 
 public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IUserContextResolver userContextResolver)
@@ -86,7 +86,7 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
 
         return user;
     }
-    
+
     public async Task<(PlayerHistory history, long seasonId)?> LatestPlayerHistoryAsync(long userId)
     {
         var playerHistory = await dbContext.PlayerHistories.Where(x => x.UserId == userId)
@@ -94,7 +94,7 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
             .OrderByDescending(x => x.MatchId)
             .AsNoTracking()
             .FirstOrDefaultAsync();
-        
+
         if (playerHistory?.Match?.SeasonId is null)
         {
             return null;
@@ -102,12 +102,18 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
 
         return (playerHistory, playerHistory.Match.SeasonId.Value);
     }
-    
-    public async Task<List<PlayerHistory>> LatestPlayerHistoriesAsync(List<long> userIds, long seasonId)
+
+    public async Task<List<(PlayerHistory history, long seasonId)>> LatestPlayerHistoriesAsync(List<long> userIds)
     {
-        return await dbContext.PlayerHistories.Where(x => userIds.Contains(x.User!.Id) && x.Match!.SeasonId == seasonId)
+        var playerHistories = await dbContext.PlayerHistories.Where(x => userIds.Contains(x.User!.Id))
+            .Include(x => x.Match)
             .GroupBy(x => x.UserId)
+            .AsNoTracking()
             .Select(x => x.OrderByDescending(y => y.MatchId).First())
             .ToListAsync();
+
+        return playerHistories.Where(x => x.Match?.SeasonId is not null)
+            .Select(x => (x, x.Match!.SeasonId!.Value))
+            .ToList();
     }
 }

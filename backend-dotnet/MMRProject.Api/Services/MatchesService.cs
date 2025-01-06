@@ -135,26 +135,6 @@ public class MatchesService(
                 .Concat(mmrCalculationResponse.Team2.Players)
                 .ToDictionary(x => x.Id);
 
-            var playerHistories = new List<PlayerHistory>();
-            foreach (var playerResult in playerResults.Values)
-            {
-                var playerHistory = new PlayerHistory
-                {
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    UserId = playerResult.Id,
-                    MatchId = match.Id,
-                    Mmr = playerResult.MMR,
-                    Mu = playerResult.Mu,
-                    Sigma = playerResult.Sigma
-                };
-                
-                playerHistories.Add(playerHistory);
-                playerRatings[playerResult.Id] = (playerHistory, playerRatings[playerResult.Id].Rating);
-            }
-
-            await dbContext.PlayerHistories.AddRangeAsync(playerHistories);
-
             if (!playerRatings.TryGetValue(match.TeamOne!.UserOneId!.Value, out var teamOnePlayerOne) ||
                 !playerRatings.TryGetValue(match.TeamOne.UserTwoId!.Value, out var teamOnePlayerTwo) ||
                 !playerRatings.TryGetValue(match.TeamTwo!.UserOneId!.Value, out var teamTwoPlayerOne) ||
@@ -170,14 +150,35 @@ public class MatchesService(
                 UpdatedAt = DateTime.UtcNow,
                 MatchId = match.Id,
                 TeamOnePlayerOneMmrDelta = MMRDeltaForPlayer(teamOnePlayerOne.Rating.Id,
-                    teamOnePlayerOne.History, playerResults),
+                    teamOnePlayerOne.History, teamOnePlayerOne.IsCurrentSeason, playerResults),
                 TeamOnePlayerTwoMmrDelta = MMRDeltaForPlayer(teamOnePlayerTwo.Rating.Id,
-                    teamOnePlayerTwo.History, playerResults),
+                    teamOnePlayerTwo.History, teamOnePlayerTwo.IsCurrentSeason, playerResults),
                 TeamTwoPlayerOneMmrDelta = MMRDeltaForPlayer(teamTwoPlayerOne.Rating.Id,
-                    teamTwoPlayerOne.History, playerResults),
+                    teamTwoPlayerOne.History, teamTwoPlayerOne.IsCurrentSeason,playerResults),
                 TeamTwoPlayerTwoMmrDelta = MMRDeltaForPlayer(teamTwoPlayerTwo.Rating.Id,
-                    teamTwoPlayerTwo.History, playerResults)
+                    teamTwoPlayerTwo.History, teamTwoPlayerTwo.IsCurrentSeason,playerResults)
             });
+            
+            var playerHistories = new List<PlayerHistory>();
+            foreach (var playerResult in playerResults.Values)
+            {
+                var playerHistory = new PlayerHistory
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    UserId = playerResult.Id,
+                    MatchId = match.Id,
+                    Mmr = playerResult.MMR,
+                    Mu = playerResult.Mu,
+                    Sigma = playerResult.Sigma
+                };
+
+                playerHistories.Add(playerHistory);
+                // New player rating is in current season
+                playerRatings[playerResult.Id] = (playerHistory, true, playerRatings[playerResult.Id].Rating);
+            }
+
+            await dbContext.PlayerHistories.AddRangeAsync(playerHistories);
         }
 
         await dbContext.SaveChangesAsync();
@@ -199,7 +200,7 @@ public class MatchesService(
     }
 
     private List<MMRCalculationRequest> CalculationRequestsForMatches(List<Match> matches,
-        Dictionary<long, (PlayerHistory History, MMRCalculationPlayerRating Rating)> playerRatings)
+        Dictionary<long, (PlayerHistory History, bool IsCurrentSeason, MMRCalculationPlayerRating Rating)> playerRatings)
     {
         var mmrCalculationRequests = matches.Select(match =>
             {
@@ -332,7 +333,7 @@ public class MatchesService(
             logger.LogCritical("Failed to find MMR for player {PlayerId}", playerId);
             return null;
         }
-        
+
         if (!isHistoryFromCurrentSeason)
         {
             // If the player's history is not from the current season, then use 0 as the delta
@@ -343,12 +344,13 @@ public class MatchesService(
         return currentHistory?.Mmr is not null ? playerResult.MMR - (int)currentHistory.Mmr.Value : 0;
     }
 
-    private async Task<(PlayerHistory? History, bool isCurrentSeason, MMRCalculationPlayerRating Rating)> PlayerRatingForUserAsync(
-        long userId,
-        long seasonId)
+    private async Task<(PlayerHistory? History, bool isCurrentSeason, MMRCalculationPlayerRating Rating)>
+        PlayerRatingForUserAsync(
+            long userId,
+            long seasonId)
     {
         var playerHistoryResult = await userService.LatestPlayerHistoryAsync(userId);
-        
+
         var isCurrentSeason = playerHistoryResult?.seasonId == seasonId;
 
         return (playerHistoryResult?.history, isCurrentSeason, new MMRCalculationPlayerRating
@@ -361,18 +363,28 @@ public class MatchesService(
         });
     }
 
-    private async Task<Dictionary<long, (PlayerHistory History, MMRCalculationPlayerRating Rating)>>
+    private async Task<Dictionary<long, (PlayerHistory History, bool IsCurrentSeason, MMRCalculationPlayerRating Rating
+            )>>
         PlayerRatingsForUsersAsync(List<long> userIds, long seasonId)
     {
-        var playerHistories = await userService.LatestPlayerHistoriesAsync(userIds, seasonId);
+        var playerHistoryResults = await userService.LatestPlayerHistoriesAsync(userIds);
 
-        return playerHistories.Select(playerHistory => (playerHistory,
-            new MMRCalculationPlayerRating
-            {
-                Id = playerHistory.UserId!.Value,
-                Mu = playerHistory.Mu,
-                Sigma = playerHistory.Sigma
-            })).ToDictionary(x => x.Item2.Id);
+        return playerHistoryResults.Select(playerHistoryResult =>
+        {
+            var playerHistory = playerHistoryResult.history;
+            var isCurrentSeason = playerHistoryResult.seasonId == seasonId;
+            return (
+                playerHistoryResult.history,
+                isCurrentSeason,
+                new MMRCalculationPlayerRating
+                {
+                    Id = playerHistory.UserId!.Value,
+                    Mu = playerHistory.Mu,
+                    Sigma = playerHistory.Sigma,
+                    IsPreviousSeasonRating = !isCurrentSeason,
+                }
+            );
+        }).ToDictionary(x => x.Item3.Id);
     }
 
     private async Task<bool> CheckExistingMatch(long playerOneId, long playerTwoId, long playerThreeId,
@@ -452,7 +464,7 @@ public class MatchesService(
             // TODO: Maybe improve this?
             throw new Exception("Only latest season can be recalculated");
         }
-        
+
         await ClearMMRCalculations(seasonId, fromMatchId);
 
         var matchesQuery = dbContext.Matches
