@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"github.com/intinig/go-openskill/ptr"
 	"mmr/backend/mmr"
 	view "mmr/backend/models"
 	"net/http"
@@ -167,7 +168,8 @@ func (m CalculationController) createPlayer(playerRating view.MMRCalculationPlay
 		)
 	} else {
 		// Use the New function to get a Rating with default options
-		internalRating = rating.New()
+		// TODO: Allow multiple options via "algorithm" field in the request
+		internalRating = rating.NewWithOptions(&types.OpenSkillOptions{Sigma: ptr.Float64(5)})
 	}
 
 	return mmr.PlayerV2{
