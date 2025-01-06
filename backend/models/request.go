@@ -11,7 +11,8 @@ type MMRCalculationTeam struct {
 }
 
 type MMRCalculationPlayerRating struct {
-	Id    int64    `json:"id" binding:"required"`
-	Mu    *float64 `json:"mu"`    // Use pointers to represent nullable values
-	Sigma *float64 `json:"sigma"` // Use pointers to represent nullable values
+	Id                     int64    `json:"id" binding:"required"`
+	Mu                     *float64 `json:"mu"`    // Use pointers to represent nullable values
+	Sigma                  *float64 `json:"sigma"` // Use pointers to represent nullable values
+	IsPreviousSeasonRating *bool    `json:"isPreviousSeasonRating"`
 }
