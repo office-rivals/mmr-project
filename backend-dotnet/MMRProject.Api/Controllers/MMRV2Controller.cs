@@ -20,6 +20,7 @@ public class MMRV2Controller(
         var currentSeasonId = await seasonService.CurrentSeasonIdAsync();
         if (!currentSeasonId.HasValue)
         {
+            logger.LogInformation("No season has been created");
             return Array.Empty<MatchDetailsV2>();
         }
 
@@ -34,6 +35,7 @@ public class MMRV2Controller(
         var currentSeasonId = await seasonService.CurrentSeasonIdAsync();
         if (!currentSeasonId.HasValue)
         {
+            logger.LogInformation("No season has been created");
             return BadRequest("No current season");
         }
         
