@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Auth;
 using MMRProject.Api.Data;
+using MMRProject.Api.Exceptions;
 using MMRProject.Api.MMRCalculationApi;
 using MMRProject.Api.Services;
 using MMRProject.Api.UserContext;
@@ -31,11 +32,16 @@ builder.Services.AddHttpClient<IMMRCalculationApiClient, MMRCalculationApiClient
 });
 
 builder.Services.AddControllers();
+builder.Services.AddExceptionHandler<HttpExceptionHandler>();
+builder.Services.AddProblemDetails();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

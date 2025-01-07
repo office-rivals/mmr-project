@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities;
 using MMRProject.Api.DTOs;
+using MMRProject.Api.Exceptions;
 using MMRProject.Api.MMRCalculationApi;
 using MMRProject.Api.MMRCalculationApi.Models;
 
@@ -67,24 +68,21 @@ public class MatchesService(
 
         if (uniquePlayers.Count != 4)
         {
-            // TODO: Throw better exception
-            throw new Exception("Players must be unique");
+            throw new InvalidArgumentException("Players must be unique");
         }
 
         var exists = await CheckExistingMatch(request.Team1.Member1, request.Team1.Member2, request.Team2.Member1,
             request.Team2.Member2, request.Team1.Score, request.Team2.Score);
         if (exists)
         {
-            // TODO: Throw better exception
-            throw new Exception("Match already exists");
+            throw new InvalidArgumentException("Match already exists");
         }
 
         var players = await dbContext.Users.Where(x => uniquePlayers.Contains(x.Id)).ToListAsync();
 
         if (players.Count != uniquePlayers.Count)
         {
-            // TODO: Throw better exception
-            throw new Exception("Not all players were found");
+            throw new InvalidArgumentException("Not all players were found");
         }
 
         var match = await CreateMatch(seasonId, request.Team1.Member1, request.Team1.Member2, request.Team2.Member1,
