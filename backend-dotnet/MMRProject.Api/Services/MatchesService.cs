@@ -215,6 +215,7 @@ public class MatchesService(
         // TODO: Validate this is the correct logic
         var exists = await dbContext.Matches
             .AsNoTracking()
+            .Where(m => m.CreatedAt > DateTime.UtcNow.AddMinutes(-10))
             .Where(m =>
                 (
                     (m.TeamOne!.UserOneId == playerOneId || m.TeamOne.UserTwoId == playerOneId) &&
@@ -231,8 +232,7 @@ public class MatchesService(
                     (m.TeamTwo!.UserOneId == playerOneId || m.TeamTwo.UserTwoId == playerOneId) &&
                     (m.TeamTwo.UserOneId == playerTwoId || m.TeamTwo.UserTwoId == playerTwoId) &&
                     m.TeamTwo.Score == teamOneScore
-                ) &&
-                m.CreatedAt > DateTime.UtcNow.AddMinutes(-10)
+                )
             )
             .Select(m => m.Id)
             .AnyAsync();
