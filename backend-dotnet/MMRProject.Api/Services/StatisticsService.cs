@@ -96,7 +96,7 @@ public class StatisticsService(ApiDbContext dbContext, IUserService userService)
                 Loses = x.Loses,
                 WinningStreak = x.StreakTypeIsWin == 1 ? x.StreakLength : 0,
                 LosingStreak = x.StreakTypeIsWin == 0 ? x.StreakLength : 0,
-                MMR = x.Wins + x.Loses > 10 ? x.MMR : null
+                MMR = x.Wins + x.Loses >= 10 ? x.MMR : null
             });
     }
 

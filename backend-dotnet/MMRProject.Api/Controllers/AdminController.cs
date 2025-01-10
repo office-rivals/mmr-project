@@ -10,7 +10,8 @@ namespace MMRProject.Api.Controllers;
 public class AdminController(
     ISeasonService seasonService,
     IMatchesService matchesService,
-    IConfiguration configuration
+    IConfiguration configuration,
+    ILogger<AdminController> logger
 ) : ControllerBase
 {
     [HttpPost("recalculate")]
@@ -23,12 +24,13 @@ public class AdminController(
         var adminKey = configuration["Admin:Secret"];
         if (string.IsNullOrWhiteSpace(adminKey))
         {
-            throw new Exception("An error occurred");
+            logger.LogCritical("Admin key is not set");
+            return Problem();
         }
 
         if (apiKey != adminKey)
         {
-            return BadRequest("Wrong API key");
+            return Unauthorized("Invalid API key");
         }
 
         var currentSeasonId = await seasonService.CurrentSeasonIdAsync();

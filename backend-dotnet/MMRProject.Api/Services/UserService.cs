@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities;
+using MMRProject.Api.Exceptions;
 using MMRProject.Api.UserContext;
 
 namespace MMRProject.Api.Services;
@@ -66,7 +67,7 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
 
         if (user is null)
         {
-            throw new Exception("User not found");
+            throw new InvalidArgumentException("User not found");
         }
 
         if (user.IdentityUserId == identityUserId)
@@ -76,7 +77,7 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
 
         if (user.IdentityUserId is not null)
         {
-            throw new Exception("User already claimed by another user");
+            throw new InvalidArgumentException("User already claimed by another user");
         }
 
         logger.LogInformation("Claiming user {UserId} for identity user {IdentityUserId}", userId, identityUserId);
