@@ -3,6 +3,7 @@ using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities;
 using MMRProject.Api.DTOs;
 using MMRProject.Api.Exceptions;
+using MMRProject.Api.Extensions;
 using MMRProject.Api.MMRCalculationApi;
 using MMRProject.Api.MMRCalculationApi.Models;
 
@@ -89,6 +90,164 @@ public class MatchesService(
             request.Team2.Member2, request.Team1.Score, request.Team2.Score);
 
         await CalculateMMR(seasonId, match);
+    }
+
+    private async Task CalculateMMROfBatch(long seasonId, List<Match> matches)
+    {
+        var userIds = UserIdsForMatches(matches);
+        var playerRatings = await PlayerRatingsForUsersAsync(userIds, seasonId);
+
+        var mmrCalculationRequests = CalculationRequestsForMatches(matches, playerRatings);
+
+        if (mmrCalculationRequests.Count == 0)
+        {
+            logger.LogInformation("No MMR calculation requests found for batch of matches");
+            return;
+        }
+
+        List<MMRCalculationResponse> mmrCalculationResponses;
+        try
+        {
+            mmrCalculationResponses = await mmrCalculationApiClient.CalculateMMRBatchAsync(mmrCalculationRequests);
+        }
+        catch (Exception e)
+        {
+            logger.LogCritical(e, "Failed to calculate MMR for batch of matches");
+            // TODO: Handle this better
+            throw;
+        }
+
+        if (mmrCalculationResponses.Count != mmrCalculationRequests.Count)
+        {
+            logger.LogCritical("Failed to calculate MMR for all matches in batch");
+            return;
+        }
+
+        var latestPlayerHistoryMap = playerRatings
+            .Select(x => (x.Value.History, x.Value.IsCurrentSeason))
+            .ToDictionary(x => x.History.UserId!.Value);
+
+        // TODO: Maybe through services?
+        for (var i = 0; i < mmrCalculationResponses.Count; i++)
+        {
+            var mmrCalculationResponse = mmrCalculationResponses[i];
+            var match = matches[i];
+
+            var playerResults = mmrCalculationResponse.Team1.Players
+                .Concat(mmrCalculationResponse.Team2.Players)
+                .ToDictionary(x => x.Id);
+
+            var teamOnePlayerOne = PlayerInfoForId(match.TeamOne!.UserOneId!.Value);
+            var teamOnePlayerTwo = PlayerInfoForId(match.TeamOne.UserTwoId!.Value);
+            var teamTwoPlayerOne = PlayerInfoForId(match.TeamTwo!.UserOneId!.Value);
+            var teamTwoPlayerTwo = PlayerInfoForId(match.TeamTwo.UserTwoId!.Value);
+
+            await dbContext.MmrCalculations.AddAsync(new MmrCalculation
+            {
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                MatchId = match.Id,
+                TeamOnePlayerOneMmrDelta = MMRDeltaForPlayer(teamOnePlayerOne.userId,
+                    teamOnePlayerOne.History, teamOnePlayerOne.IsCurrentSeason, playerResults),
+                TeamOnePlayerTwoMmrDelta = MMRDeltaForPlayer(teamOnePlayerTwo.userId,
+                    teamOnePlayerTwo.History, teamOnePlayerTwo.IsCurrentSeason, playerResults),
+                TeamTwoPlayerOneMmrDelta = MMRDeltaForPlayer(teamTwoPlayerOne.userId,
+                    teamTwoPlayerOne.History, teamTwoPlayerOne.IsCurrentSeason, playerResults),
+                TeamTwoPlayerTwoMmrDelta = MMRDeltaForPlayer(teamTwoPlayerTwo.userId,
+                    teamTwoPlayerTwo.History, teamTwoPlayerTwo.IsCurrentSeason, playerResults)
+            });
+
+            var playerHistories = new List<PlayerHistory>();
+            foreach (var playerResult in playerResults.Values)
+            {
+                var playerHistory = new PlayerHistory
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    UserId = playerResult.Id,
+                    MatchId = match.Id,
+                    Mmr = playerResult.MMR,
+                    Mu = playerResult.Mu,
+                    Sigma = playerResult.Sigma
+                };
+
+                playerHistories.Add(playerHistory);
+                // New player rating is in current season
+                latestPlayerHistoryMap[playerResult.Id] = (playerHistory, true);
+            }
+
+            await dbContext.PlayerHistories.AddRangeAsync(playerHistories);
+        }
+
+        await dbContext.SaveChangesAsync();
+        return;
+
+        (PlayerHistory? History, bool IsCurrentSeason, long userId) PlayerInfoForId(long id)
+        {
+            return latestPlayerHistoryMap.TryGetValue(id, out var player)
+                ? (player.History, player.IsCurrentSeason, id)
+                : (null, true, id);
+        }
+    }
+
+    private static List<long> UserIdsForMatches(IEnumerable<Match> matches)
+    {
+        HashSet<long> setOfUserIds = [];
+
+        foreach (var match in matches)
+        {
+            setOfUserIds.Add(match.TeamOne!.UserOneId!.Value);
+            setOfUserIds.Add(match.TeamOne.UserTwoId!.Value);
+            setOfUserIds.Add(match.TeamTwo!.UserOneId!.Value);
+            setOfUserIds.Add(match.TeamTwo.UserTwoId!.Value);
+        }
+
+        return setOfUserIds.ToList();
+    }
+
+    private List<MMRCalculationRequest> CalculationRequestsForMatches(List<Match> matches,
+        Dictionary<long, (PlayerHistory History, bool IsCurrentSeason, MMRCalculationPlayerRating Rating)>
+            playerRatings)
+    {
+        return matches.Select(match =>
+            {
+                var teamOnePlayerOneRating = RatingForPlayer(playerRatings, match.TeamOne!.UserOneId!.Value);
+                var teamOnePlayerTwoRating = RatingForPlayer(playerRatings, match.TeamOne.UserTwoId!.Value);
+                var teamTwoPlayerOneRating = RatingForPlayer(playerRatings, match.TeamTwo!.UserOneId!.Value);
+                var teamTwoPlayerTwoRating = RatingForPlayer(playerRatings, match.TeamTwo.UserTwoId!.Value);
+
+                return new MMRCalculationRequest
+                {
+                    Team1 = new MMRCalculationTeam
+                    {
+                        Score = (int)match.TeamOne!.Score!, // TODO: Fix this
+                        Players =
+                        [
+                            teamOnePlayerOneRating,
+                            teamOnePlayerTwoRating
+                        ]
+                    },
+                    Team2 = new MMRCalculationTeam
+                    {
+                        Score = (int)match.TeamTwo!.Score!,
+                        Players =
+                        [
+                            teamTwoPlayerOneRating,
+                            teamTwoPlayerTwoRating
+                        ]
+                    }
+                };
+            })
+            .ToList();
+    }
+
+    private static MMRCalculationPlayerRating RatingForPlayer(
+        Dictionary<long, (PlayerHistory History, bool IsCurrentSeason, MMRCalculationPlayerRating Rating)>
+            playerRatings, long id)
+    {
+        return playerRatings.TryGetValue(id, out var player)
+            ? player.Rating
+            : new MMRCalculationPlayerRating { Id = id };
     }
 
     private async Task CalculateMMR(long seasonId, Match match)
@@ -178,7 +337,7 @@ public class MatchesService(
             logger.LogCritical("Failed to find MMR for player {PlayerId}", playerId);
             return null;
         }
-        
+
         if (!isHistoryFromCurrentSeason)
         {
             // If the player's history is not from the current season, then use 0 as the delta
@@ -189,12 +348,13 @@ public class MatchesService(
         return currentHistory?.Mmr is not null ? playerResult.MMR - (int)currentHistory.Mmr.Value : 0;
     }
 
-    private async Task<(PlayerHistory? History, bool isCurrentSeason, MMRCalculationPlayerRating Rating)> PlayerRatingForUserAsync(
-        long userId,
-        long seasonId)
+    private async Task<(PlayerHistory? History, bool isCurrentSeason, MMRCalculationPlayerRating Rating)>
+        PlayerRatingForUserAsync(
+            long userId,
+            long seasonId)
     {
         var playerHistoryResult = await userService.LatestPlayerHistoryAsync(userId);
-        
+
         var isCurrentSeason = playerHistoryResult?.seasonId == seasonId;
 
         return (playerHistoryResult?.history, isCurrentSeason, new MMRCalculationPlayerRating
@@ -205,6 +365,30 @@ public class MatchesService(
             // TODO: This breaks if we are calculating for a different season than the most current one
             IsPreviousSeasonRating = playerHistoryResult == null ? null : !isCurrentSeason,
         });
+    }
+
+    private async Task<Dictionary<long, (PlayerHistory History, bool IsCurrentSeason, MMRCalculationPlayerRating Rating
+            )>>
+        PlayerRatingsForUsersAsync(List<long> userIds, long seasonId)
+    {
+        var playerHistoryResults = await userService.LatestPlayerHistoriesAsync(userIds);
+
+        return playerHistoryResults.Select(playerHistoryResult =>
+        {
+            var playerHistory = playerHistoryResult.history;
+            var isCurrentSeason = playerHistoryResult.seasonId == seasonId;
+            return (
+                playerHistoryResult.history,
+                isCurrentSeason,
+                new MMRCalculationPlayerRating
+                {
+                    Id = playerHistory.UserId!.Value,
+                    Mu = playerHistory.Mu,
+                    Sigma = playerHistory.Sigma,
+                    IsPreviousSeasonRating = !isCurrentSeason,
+                }
+            );
+        }).ToDictionary(x => x.Item3.Id);
     }
 
     private async Task<bool> CheckExistingMatch(long playerOneId, long playerTwoId, long playerThreeId,
@@ -284,7 +468,7 @@ public class MatchesService(
             // TODO: Maybe improve this?
             throw new Exception("Only latest season can be recalculated");
         }
-        
+
         await ClearMMRCalculations(seasonId, fromMatchId);
 
         var matchesQuery = dbContext.Matches
@@ -298,10 +482,11 @@ public class MatchesService(
         }
 
         var matches = await matchesQuery.ToListAsync();
+        var batchedMatches = matches.Chunk(200);
 
-        foreach (var match in matches)
+        foreach (var batch in batchedMatches)
         {
-            await CalculateMMR(seasonId, match);
+            await CalculateMMROfBatch(seasonId, batch.ToList());
         }
     }
 
