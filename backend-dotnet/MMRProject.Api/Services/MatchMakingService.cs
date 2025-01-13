@@ -12,21 +12,37 @@ public interface IMatchMakingService
     Task AddPlayerToQueueAsync();
     Task RemovePlayerFromQueueAsync();
     Task<MatchMakingQueueStatus> MatchMakingQueueStatusAsync();
+    Task<PendingMatchStatus> PendingMatchStatusAsync(long matchId);
+    Task AcceptPendingMatchAsync(long matchId);
+    Task DeclinePendingMatchAsync(long matchId);
 }
 
 public class MatchMakingService(
+    ILogger<MatchMakingService> logger,
     IUserContextResolver userContextResolver,
-    ApiDbContext dbContext,
-    IUserService userService
+    ApiDbContext dbContext
 ) : IMatchMakingService
 {
     public async Task AddPlayerToQueueAsync()
     {
-        var currentUser = await userService.GetCurrentAuthenticatedUserAsync();
+        var identityUserId = userContextResolver.GetIdentityUserId();
 
-        if (currentUser == null)
+        var currentUser = await dbContext.Users
+            .FirstOrDefaultAsync(x => x.IdentityUserId == identityUserId);
+
+        if (currentUser is null)
         {
-            throw new InvalidArgumentException("No user linked");
+            throw new InvalidArgumentException("User not linked");
+        }
+
+        var currentQueuedPlayer = await dbContext.QueuedPlayers
+            .Where(x => x.PendingMatch == null || x.PendingMatch.Status == PendingMatchStatus.Declined)
+            .FirstOrDefaultAsync(x => x.UserId == currentUser.Id);
+
+        if (currentQueuedPlayer is not null)
+        {
+            logger.LogInformation("User {IdentityUserId} already in queue", identityUserId);
+            return;
         }
 
         var newPlayer = new QueuedPlayer
@@ -46,6 +62,7 @@ public class MatchMakingService(
         var identityUserId = userContextResolver.GetIdentityUserId();
 
         var queuedPlayer = await dbContext.QueuedPlayers
+            .Where(x => x.PendingMatch == null || x.PendingMatch.Status == PendingMatchStatus.Declined)
             .FirstOrDefaultAsync(x => x.User.IdentityUserId == identityUserId);
 
         if (queuedPlayer is null)
@@ -61,6 +78,7 @@ public class MatchMakingService(
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
         var queuedPlayers = await dbContext.QueuedPlayers
+            .Where(x => x.PendingMatch == null || x.PendingMatch.Status == PendingMatchStatus.Declined)
             .Include(x => x.User)
             .OrderBy(x => x.CreatedAt)
             .ToListAsync();
@@ -77,6 +95,7 @@ public class MatchMakingService(
         // TODO: Lock this check
         var queuedPlayers = await dbContext.QueuedPlayers
             .Include(x => x.User)
+            .Where(x => x.PendingMatch == null || x.PendingMatch.Status == PendingMatchStatus.Declined)
             .OrderBy(x => x.CreatedAt)
             .ToListAsync();
 
@@ -85,115 +104,92 @@ public class MatchMakingService(
             return;
         }
 
-        var pendingMatch = new PendingMatch
-        {
-            UserOne = queuedPlayers[0].User,
-            UserTwo = queuedPlayers[1].User,
-            UserThree = queuedPlayers[2].User,
-            UserFour = queuedPlayers[3].User
-        };
+        var pendingMatch = new PendingMatch { QueuedPlayers = queuedPlayers.Take(4).ToList() };
 
         await dbContext.PendingMatches.AddAsync(pendingMatch);
-        dbContext.QueuedPlayers.RemoveRange(queuedPlayers.Take(4));
         await dbContext.SaveChangesAsync();
 
         // TODO: Add timeout to match
     }
 
-    public async Task AcceptPendingMatch(long matchId)
+    public async Task<PendingMatchStatus> PendingMatchStatusAsync(long matchId)
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
 
         var pendingMatch = await dbContext.PendingMatches
-            .Include(x => x.UserOne)
-            .Include(x => x.UserTwo)
-            .Include(x => x.UserThree)
-            .Include(x => x.UserFour)
-            .Where(x => x.UserOne.IdentityUserId == identityUserId ||
-                        x.UserTwo.IdentityUserId == identityUserId ||
-                        x.UserThree.IdentityUserId == identityUserId ||
-                        x.UserFour.IdentityUserId == identityUserId)
-            .FirstOrDefaultAsync(x => x.Id == matchId && x.Status == PendingMatchStatus.Pending);
+            .Include(pm => pm.QueuedPlayers)
+            .ThenInclude(qp => qp.User)
+            .Where(pm => pm.QueuedPlayers.Any(x => x.User.IdentityUserId == identityUserId))
+            .FirstOrDefaultAsync(pm => pm.Id == matchId);
 
         if (pendingMatch is null)
         {
             throw new InvalidArgumentException("Match not found");
         }
 
-        // TODO: Improve this somehow. Maybe an extra table?
-        if (pendingMatch.UserOne.IdentityUserId == identityUserId)
+        return pendingMatch.Status;
+    }
+
+    public async Task AcceptPendingMatchAsync(long matchId)
+    {
+        var identityUserId = userContextResolver.GetIdentityUserId();
+
+        var pendingMatch = await dbContext.PendingMatches
+            .Include(pm => pm.QueuedPlayers)
+            .ThenInclude(qp => qp.User)
+            .Where(pm => pm.QueuedPlayers.Any(x => x.User.IdentityUserId == identityUserId))
+            .FirstOrDefaultAsync(pm => pm.Id == matchId);
+
+        if (pendingMatch is null)
         {
-            pendingMatch.UserOneDecision = PendingMatchUserDecision.Accepted;
-        }
-        else if (pendingMatch.UserTwo.IdentityUserId == identityUserId)
-        {
-            pendingMatch.UserTwoDecision = PendingMatchUserDecision.Accepted;
-        }
-        else if (pendingMatch.UserThree.IdentityUserId == identityUserId)
-        {
-            pendingMatch.UserThreeDecision = PendingMatchUserDecision.Accepted;
-        }
-        else if (pendingMatch.UserFour.IdentityUserId == identityUserId)
-        {
-            pendingMatch.UserFourDecision = PendingMatchUserDecision.Accepted;
+            throw new InvalidArgumentException("Match not found");
         }
 
+        if (pendingMatch.Status != PendingMatchStatus.Pending)
+        {
+            throw new InvalidArgumentException("Match not pending");
+        }
+
+        var queuedPlayer = pendingMatch.QueuedPlayers.First(x => x.User.IdentityUserId == identityUserId);
+        queuedPlayer.LastAcceptedMatchId = matchId;
+
         // TODO: Lock this check somehow
-        if (pendingMatch is
-            {
-                UserOneDecision: PendingMatchUserDecision.Accepted,
-                UserTwoDecision: PendingMatchUserDecision.Accepted,
-                UserThreeDecision: PendingMatchUserDecision.Accepted,
-                UserFourDecision: PendingMatchUserDecision.Accepted
-            }
-           )
+        if (pendingMatch.QueuedPlayers.All(x => x.LastAcceptedMatchId.HasValue && x.LastAcceptedMatchId == matchId))
         {
             pendingMatch.Status = PendingMatchStatus.Accepted;
         }
 
+        // TODO: Cleanup old pending matches
+
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task DeclinePendingMatch(long matchId)
+    public async Task DeclinePendingMatchAsync(long matchId)
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
 
         var pendingMatch = await dbContext.PendingMatches
-            .Include(x => x.UserOne)
-            .Include(x => x.UserTwo)
-            .Include(x => x.UserThree)
-            .Include(x => x.UserFour)
-            .Where(x => x.UserOne.IdentityUserId == identityUserId ||
-                        x.UserTwo.IdentityUserId == identityUserId ||
-                        x.UserThree.IdentityUserId == identityUserId ||
-                        x.UserFour.IdentityUserId == identityUserId)
-            .FirstOrDefaultAsync(x => x.Id == matchId && x.Status == PendingMatchStatus.Pending);
+            .Include(pm => pm.QueuedPlayers)
+            .ThenInclude(qp => qp.User)
+            .Where(pm => pm.QueuedPlayers.Any(x => x.User.IdentityUserId == identityUserId))
+            .FirstOrDefaultAsync(pm => pm.Id == matchId);
 
         if (pendingMatch is null)
         {
             throw new InvalidArgumentException("Match not found");
         }
-        
-        if (pendingMatch.UserOne.IdentityUserId == identityUserId)
+
+        if (pendingMatch.Status != PendingMatchStatus.Pending)
         {
-            pendingMatch.UserOneDecision = PendingMatchUserDecision.Declined;
+            throw new InvalidArgumentException("Match not pending");
         }
-        else if (pendingMatch.UserTwo.IdentityUserId == identityUserId)
-        {
-            pendingMatch.UserTwoDecision = PendingMatchUserDecision.Declined;
-        }
-        else if (pendingMatch.UserThree.IdentityUserId == identityUserId)
-        {
-            pendingMatch.UserThreeDecision = PendingMatchUserDecision.Declined;
-        }
-        else if (pendingMatch.UserFour.IdentityUserId == identityUserId)
-        {
-            pendingMatch.UserFourDecision = PendingMatchUserDecision.Declined;
-        }
-        
+
+        var queuedPlayer = pendingMatch.QueuedPlayers.First(x => x.User.IdentityUserId == identityUserId);
+        dbContext.QueuedPlayers.Remove(queuedPlayer);
+
         // TODO: Lock this check somehow
         pendingMatch.Status = PendingMatchStatus.Declined;
-        
+
         await dbContext.SaveChangesAsync();
     }
 }
