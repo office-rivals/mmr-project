@@ -15,6 +15,7 @@ public interface IMatchMakingService
     Task<PendingMatchStatus> PendingMatchStatusAsync(long matchId);
     Task AcceptPendingMatchAsync(long matchId);
     Task DeclinePendingMatchAsync(long matchId);
+    Task<bool> VerifyStateOfPendingMatchesAsync(CancellationToken cancellationToken = default);
 }
 
 public class MatchMakingService(
@@ -191,5 +192,43 @@ public class MatchMakingService(
         pendingMatch.Status = PendingMatchStatus.Declined;
 
         await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<bool> VerifyStateOfPendingMatchesAsync(CancellationToken cancellationToken = default)
+    {
+        var pendingMatches = await dbContext.PendingMatches
+            .Include(pm => pm.QueuedPlayers)
+            .Where(pm => pm.Status == PendingMatchStatus.Pending)
+            .ToListAsync(cancellationToken);
+
+        if (pendingMatches.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var pendingMatch in pendingMatches)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            if (pendingMatch.CreatedAt.AddSeconds(30) > DateTime.UtcNow)
+            {
+                // We are still waiting for responses
+                continue;
+            }
+
+            // We are still in pending state after response timeout. Decline the match and allow players to queue again
+
+            var missingAcceptedPlayers =
+                pendingMatch.QueuedPlayers.Where(x => x.LastAcceptedMatchId != pendingMatch.Id);
+            pendingMatch.Status = PendingMatchStatus.Declined;
+            dbContext.QueuedPlayers.RemoveRange(missingAcceptedPlayers);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return true;
     }
 }
