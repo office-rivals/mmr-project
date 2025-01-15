@@ -8,6 +8,29 @@ namespace MMRProject.Api.Controllers;
 [Route("api/v1/match-making")]
 public class MatchMakingController(IMatchMakingService matchMakingService) : ControllerBase
 {
+    [HttpGet("active-matches")]
+    public async Task<ActionResult<IEnumerable<ActiveMatchDto>>> GetActiveMatches()
+    {
+        var matches = await matchMakingService.ActiveMatchesAsync();
+        return Ok(matches);
+    }
+
+    [HttpDelete("active-matches/{matchId:long}")]
+    public async Task<IActionResult> CancelActiveMatch([FromRoute] long matchId)
+    {
+        await matchMakingService.CancelActiveMatchAsync(matchId);
+
+        return Ok();
+    }
+
+    [HttpPost("active-matches/{matchId:long}/submit")]
+    public async Task<IActionResult> SubmitActiveMatchResult([FromRoute] long matchId,
+        [FromBody] ActiveMatchSubmitRequest request)
+    {
+        await matchMakingService.SubmitActiveMatchResultAsync(matchId, request);
+        return Ok();
+    }
+
     [HttpGet("pending-matches/{matchId:long}")]
     public async Task<ActionResult<PendingMatchDto>> GetPendingMatch([FromRoute] long matchId)
     {

@@ -16,12 +16,17 @@ public interface IMatchMakingService
     Task AcceptPendingMatchAsync(long matchId);
     Task DeclinePendingMatchAsync(long matchId);
     Task<bool> VerifyStateOfPendingMatchesAsync(CancellationToken cancellationToken = default);
+    Task<IEnumerable<ActiveMatchDto>> ActiveMatchesAsync();
+    Task CancelActiveMatchAsync(long matchId);
+    Task SubmitActiveMatchResultAsync(long matchId, ActiveMatchSubmitRequest submitRequest);
 }
 
 public class MatchMakingService(
     ILogger<MatchMakingService> logger,
     IUserContextResolver userContextResolver,
-    ApiDbContext dbContext
+    ApiDbContext dbContext,
+    IMatchesService matchesService,
+    ISeasonService seasonService
 ) : IMatchMakingService
 {
     public async Task AddPlayerToQueueAsync()
@@ -230,5 +235,100 @@ public class MatchMakingService(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return true;
+    }
+
+    public async Task<IEnumerable<ActiveMatchDto>> ActiveMatchesAsync()
+    {
+        var matches = await dbContext.ActiveMatches.ToListAsync();
+        return matches.Select(match => new ActiveMatchDto
+        {
+            Id = match.Id,
+            CreatedAt = match.CreatedAt,
+            Team1 = new ActiveMatchTeamDto
+            {
+                PlayerIds = new List<long>
+                {
+                    match.TeamOneUserOneId,
+                    match.TeamOneUserTwoId
+                }
+            },
+            Team2 = new ActiveMatchTeamDto
+            {
+                PlayerIds = new List<long>
+                {
+                    match.TeamTwoUserOneId,
+                    match.TeamTwoUserTwoId
+                }
+            }
+        });
+    }
+
+    public async Task CancelActiveMatchAsync(long matchId)
+    {
+        var match = await ReadActiveMatch(matchId);
+        dbContext.ActiveMatches.Remove(match);
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task SubmitActiveMatchResultAsync(long matchId, ActiveMatchSubmitRequest submitRequest)
+    {
+        var match = await ReadActiveMatch(matchId);
+
+        var seasonId = await seasonService.CurrentSeasonIdAsync();
+
+        if (seasonId is null)
+        {
+            throw new InvalidArgumentException("No active season");
+        }
+
+        await matchesService.SubmitMatch(seasonId.Value, new SubmitMatchV2Request
+        {
+            Team1 = new MatchTeamV2
+            {
+                Member1 = match.TeamOneUserOneId,
+                Member2 = match.TeamOneUserTwoId,
+                Score = submitRequest.Team1Score
+            },
+            Team2 = new MatchTeamV2
+            {
+                Member1 = match.TeamTwoUserOneId,
+                Member2 = match.TeamTwoUserTwoId,
+                Score = submitRequest.Team2Score
+            }
+        });
+        
+        dbContext.ActiveMatches.Remove(match);
+        await dbContext.SaveChangesAsync();
+    }
+    
+    private async Task<ActiveMatch> ReadActiveMatch(long matchId)
+    {
+        // TODO: Improve handling of players
+        var match = await dbContext.ActiveMatches
+            .Include(x => x.TeamOneUserOne)
+            .Include(x => x.TeamOneUserTwo)
+            .Include(x => x.TeamTwoUserOne)
+            .Include(x => x.TeamTwoUserTwo)
+            .FirstOrDefaultAsync(x => x.Id == matchId);
+
+        var identityUserId = userContextResolver.GetIdentityUserId();
+
+        if (match is null)
+        {
+            throw new InvalidArgumentException("Match not found");
+        }
+
+        var userIsInMatch = match.TeamOneUserOne.IdentityUserId == identityUserId
+                            || match.TeamOneUserTwo.IdentityUserId == identityUserId
+                            || match.TeamTwoUserOne.IdentityUserId == identityUserId
+                            || match.TeamTwoUserTwo.IdentityUserId == identityUserId;
+        
+        // TODO: Allow admins to manage active matches
+        if (!userIsInMatch)
+        {
+            throw new InvalidArgumentException("Match not found");
+        }
+
+        return match;
     }
 }
