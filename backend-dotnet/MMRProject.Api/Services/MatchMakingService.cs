@@ -12,13 +12,13 @@ public interface IMatchMakingService
     Task AddPlayerToQueueAsync();
     Task RemovePlayerFromQueueAsync();
     Task<MatchMakingQueueStatus> MatchMakingQueueStatusAsync();
-    Task<PendingMatchStatus> PendingMatchStatusAsync(long matchId);
-    Task AcceptPendingMatchAsync(long matchId);
-    Task DeclinePendingMatchAsync(long matchId);
+    Task<PendingMatchStatus> PendingMatchStatusAsync(Guid matchId);
+    Task AcceptPendingMatchAsync(Guid matchId);
+    Task DeclinePendingMatchAsync(Guid matchId);
     Task<bool> VerifyStateOfPendingMatchesAsync(CancellationToken cancellationToken = default);
     Task<IEnumerable<ActiveMatchDto>> ActiveMatchesAsync();
-    Task CancelActiveMatchAsync(long matchId);
-    Task SubmitActiveMatchResultAsync(long matchId, ActiveMatchSubmitRequest submitRequest);
+    Task CancelActiveMatchAsync(Guid matchId);
+    Task SubmitActiveMatchResultAsync(Guid matchId, ActiveMatchSubmitRequest submitRequest);
 }
 
 public class MatchMakingService(
@@ -118,7 +118,7 @@ public class MatchMakingService(
         // TODO: Add timeout to match
     }
 
-    public async Task<PendingMatchStatus> PendingMatchStatusAsync(long matchId)
+    public async Task<PendingMatchStatus> PendingMatchStatusAsync(Guid matchId)
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
 
@@ -136,7 +136,7 @@ public class MatchMakingService(
         return pendingMatch.Status;
     }
 
-    public async Task AcceptPendingMatchAsync(long matchId)
+    public async Task AcceptPendingMatchAsync(Guid matchId)
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
 
@@ -170,7 +170,7 @@ public class MatchMakingService(
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task DeclinePendingMatchAsync(long matchId)
+    public async Task DeclinePendingMatchAsync(Guid matchId)
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
 
@@ -263,14 +263,14 @@ public class MatchMakingService(
         });
     }
 
-    public async Task CancelActiveMatchAsync(long matchId)
+    public async Task CancelActiveMatchAsync(Guid matchId)
     {
         var match = await ReadActiveMatch(matchId);
         dbContext.ActiveMatches.Remove(match);
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task SubmitActiveMatchResultAsync(long matchId, ActiveMatchSubmitRequest submitRequest)
+    public async Task SubmitActiveMatchResultAsync(Guid matchId, ActiveMatchSubmitRequest submitRequest)
     {
         var match = await ReadActiveMatch(matchId);
 
@@ -301,7 +301,7 @@ public class MatchMakingService(
         await dbContext.SaveChangesAsync();
     }
     
-    private async Task<ActiveMatch> ReadActiveMatch(long matchId)
+    private async Task<ActiveMatch> ReadActiveMatch(Guid matchId)
     {
         // TODO: Improve handling of players
         var match = await dbContext.ActiveMatches

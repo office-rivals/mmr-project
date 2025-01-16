@@ -1,11 +1,7 @@
 namespace MMRProject.Api.Data.Entities;
 
-public class PendingMatch
+public class PendingMatch : BaseEntity
 {
-    public long Id { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
     public virtual ICollection<QueuedPlayer> QueuedPlayers { get; set; } = new List<QueuedPlayer>();
 
     public PendingMatchStatus Status { get; set; } = PendingMatchStatus.Pending;

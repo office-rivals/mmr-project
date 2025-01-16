@@ -2,7 +2,7 @@ namespace MMRProject.Api.DTOs;
 
 public record ActiveMatchDto
 {
-    public long Id { get; set; }
+    public Guid Id { get; set; }
     
     public DateTimeOffset CreatedAt { get; set; }
     

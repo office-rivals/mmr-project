@@ -1,11 +1,7 @@
 namespace MMRProject.Api.Data.Entities;
 
-public class ActiveMatch
+public class ActiveMatch: BaseEntity
 {
-    public long Id { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    
     public long TeamOneUserOneId { get; set; }
     public virtual User TeamOneUserOne { get; set; } = null!;
     
