@@ -92,7 +92,7 @@ public class MatchMakingService(
         return new MatchMakingQueueStatus
         {
             PlayersInQueue = queuedPlayers.Count,
-            UserInQueue = queuedPlayers.Any(x => x.User.IdentityUserId == identityUserId)
+            IsUserInQueue = queuedPlayers.Any(x => x.User.IdentityUserId == identityUserId)
         };
     }
 
