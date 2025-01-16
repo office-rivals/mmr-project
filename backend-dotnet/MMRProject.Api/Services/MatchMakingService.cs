@@ -165,9 +165,15 @@ public class MatchMakingService(
             pendingMatch.Status = PendingMatchStatus.Accepted;
         }
 
+        pendingMatch.UpdatedAt = DateTimeOffset.UtcNow;
         // TODO: Cleanup old pending matches
 
         await dbContext.SaveChangesAsync();
+
+        if (pendingMatch.Status == PendingMatchStatus.Accepted)
+        {
+            await PromotePendingMatchToActiveMatch(pendingMatch);
+        }
     }
 
     public async Task DeclinePendingMatchAsync(Guid matchId)
@@ -195,6 +201,7 @@ public class MatchMakingService(
 
         // TODO: Lock this check somehow
         pendingMatch.Status = PendingMatchStatus.Declined;
+        pendingMatch.UpdatedAt = DateTimeOffset.UtcNow;
 
         await dbContext.SaveChangesAsync();
     }
@@ -229,6 +236,7 @@ public class MatchMakingService(
             var missingAcceptedPlayers =
                 pendingMatch.QueuedPlayers.Where(x => x.LastAcceptedMatchId != pendingMatch.Id);
             pendingMatch.Status = PendingMatchStatus.Declined;
+            pendingMatch.UpdatedAt = DateTimeOffset.UtcNow;
             dbContext.QueuedPlayers.RemoveRange(missingAcceptedPlayers);
         }
 
@@ -266,8 +274,19 @@ public class MatchMakingService(
     public async Task CancelActiveMatchAsync(Guid matchId)
     {
         var match = await ReadActiveMatch(matchId);
-        dbContext.ActiveMatches.Remove(match);
+
+        RemovePendingMatch(match);
         await dbContext.SaveChangesAsync();
+    }
+
+    private void RemovePendingMatch(ActiveMatch match)
+    {
+        if (match.PendingMatch is not null)
+        {
+            dbContext.PendingMatches.Remove(match.PendingMatch);
+        }
+
+        dbContext.ActiveMatches.Remove(match);
     }
 
     public async Task SubmitActiveMatchResultAsync(Guid matchId, ActiveMatchSubmitRequest submitRequest)
@@ -281,26 +300,53 @@ public class MatchMakingService(
             throw new InvalidArgumentException("No active season");
         }
 
-        await matchesService.SubmitMatch(seasonId.Value, new SubmitMatchV2Request
-        {
-            Team1 = new MatchTeamV2
+        await matchesService.SubmitMatch(seasonId.Value,
+            new SubmitMatchV2Request
             {
-                Member1 = match.TeamOneUserOneId,
-                Member2 = match.TeamOneUserTwoId,
-                Score = submitRequest.Team1Score
-            },
-            Team2 = new MatchTeamV2
-            {
-                Member1 = match.TeamTwoUserOneId,
-                Member2 = match.TeamTwoUserTwoId,
-                Score = submitRequest.Team2Score
-            }
-        });
-        
-        dbContext.ActiveMatches.Remove(match);
+                Team1 = new MatchTeamV2
+                {
+                    Member1 = match.TeamOneUserOneId,
+                    Member2 = match.TeamOneUserTwoId,
+                    Score = submitRequest.Team1Score
+                },
+                Team2 = new MatchTeamV2
+                {
+                    Member1 = match.TeamTwoUserOneId,
+                    Member2 = match.TeamTwoUserTwoId,
+                    Score = submitRequest.Team2Score
+                }
+            });
+
+        RemovePendingMatch(match);
         await dbContext.SaveChangesAsync();
     }
-    
+
+    private async Task PromotePendingMatchToActiveMatch(PendingMatch pendingMatch)
+    {
+        // TODO: Allow players to vote for random or ranked teams
+
+        if (pendingMatch.QueuedPlayers.Count != 4)
+        {
+            // TODO: Better exception
+            throw new Exception("Pending match must have 4 players");
+        }
+
+        var random = new Random();
+        var shuffledQueuedPlayers = pendingMatch.QueuedPlayers.OrderBy(_ => random.Next()).ToList();
+        var activeMatch = new ActiveMatch
+        {
+            CreatedAt = DateTimeOffset.UtcNow,
+            TeamOneUserOne = shuffledQueuedPlayers[0].User,
+            TeamOneUserTwo = shuffledQueuedPlayers[1].User,
+            TeamTwoUserOne = shuffledQueuedPlayers[2].User,
+            TeamTwoUserTwo = shuffledQueuedPlayers[3].User
+        };
+
+        dbContext.ActiveMatches.Add(activeMatch);
+        pendingMatch.ActiveMatch = activeMatch;
+        await dbContext.SaveChangesAsync();
+    }
+
     private async Task<ActiveMatch> ReadActiveMatch(Guid matchId)
     {
         // TODO: Improve handling of players
@@ -309,6 +355,7 @@ public class MatchMakingService(
             .Include(x => x.TeamOneUserTwo)
             .Include(x => x.TeamTwoUserOne)
             .Include(x => x.TeamTwoUserTwo)
+            .Include(x => x.PendingMatch)
             .FirstOrDefaultAsync(x => x.Id == matchId);
 
         var identityUserId = userContextResolver.GetIdentityUserId();
@@ -322,7 +369,7 @@ public class MatchMakingService(
                             || match.TeamOneUserTwo.IdentityUserId == identityUserId
                             || match.TeamTwoUserOne.IdentityUserId == identityUserId
                             || match.TeamTwoUserTwo.IdentityUserId == identityUserId;
-        
+
         // TODO: Allow admins to manage active matches
         if (!userIsInMatch)
         {
