@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Auth;
 using MMRProject.Api.BackgroundServices;
@@ -42,7 +43,18 @@ builder.Services.AddExceptionHandler<HttpExceptionHandler>();
 builder.Services.AddProblemDetails();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.CustomOperationIds(api =>
+    {
+        if (api.ActionDescriptor is ControllerActionDescriptor actionDescriptor)
+        {
+            return $"{actionDescriptor.ControllerName}_{actionDescriptor.ActionName}";
+        }
+
+        return null;
+    });
+});
 
 var app = builder.Build();
 

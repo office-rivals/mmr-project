@@ -1,13 +1,13 @@
 import type {
-  ViewMatchDetailsV2,
-  ViewMatchMMRCalculationDetails,
-  ViewMatchTeamV2,
+  MatchDetailsV2,
+  MatchMMRCalculationDetails,
+  MatchTeamV2,
 } from '$api';
 
 export const movePlayerToMember1 = (
-  match: ViewMatchDetailsV2,
+  match: MatchDetailsV2,
   playerId: number
-): ViewMatchDetailsV2 => {
+): MatchDetailsV2 => {
   // Player is already member 1
   if (match.team1.member1 === playerId) {
     return match;
@@ -44,7 +44,7 @@ export const movePlayerToMember1 = (
   };
 };
 
-const flipMembersOfTeam = (team: ViewMatchTeamV2) => {
+const flipMembersOfTeam = (team: MatchTeamV2) => {
   return {
     ...team,
     member1: team.member2,
@@ -53,9 +53,9 @@ const flipMembersOfTeam = (team: ViewMatchTeamV2) => {
 };
 
 const flipMembersOfTeamInMMRCalculation = (
-  mmrCalculations: ViewMatchMMRCalculationDetails | undefined,
+  mmrCalculations: MatchMMRCalculationDetails | undefined,
   team: 'team1' | 'team2'
-): ViewMatchMMRCalculationDetails | undefined => {
+): MatchMMRCalculationDetails | undefined => {
   if (mmrCalculations == null) {
     return mmrCalculations;
   }
@@ -69,8 +69,8 @@ const flipMembersOfTeamInMMRCalculation = (
 };
 
 const flipTeamsInMMRCalculation = (
-  mmrCalculations: ViewMatchMMRCalculationDetails | undefined
-): ViewMatchMMRCalculationDetails | undefined => {
+  mmrCalculations: MatchMMRCalculationDetails | undefined
+): MatchMMRCalculationDetails | undefined => {
   if (mmrCalculations == null) {
     return mmrCalculations;
   }

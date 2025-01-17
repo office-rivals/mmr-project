@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using MMRProject.Api.DTOs;
 using MMRProject.Api.Services;
@@ -57,7 +58,7 @@ public class MatchMakingController(IMatchMakingService matchMakingService) : Con
     }
 
     [HttpPost("queue")]
-    public async Task<IActionResult> QueueForMatchMaking([FromBody] QueueForMatchMakingRequest request)
+    public async Task<IActionResult> QueueForMatchMaking([FromBody, Required] QueueForMatchMakingRequest request)
     {
         await matchMakingService.AddPlayerToQueueAsync();
         return Ok();
