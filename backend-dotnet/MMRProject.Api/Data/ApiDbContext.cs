@@ -25,11 +25,11 @@ public partial class ApiDbContext : DbContext
     public virtual DbSet<Team> Teams { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
-    
+
     public virtual DbSet<QueuedPlayer> QueuedPlayers { get; set; }
-    
+
     public virtual DbSet<PendingMatch> PendingMatches { get; set; }
-    
+
     public virtual DbSet<ActiveMatch> ActiveMatches { get; set; }
 
 //     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -187,6 +187,15 @@ public partial class ApiDbContext : DbContext
             entity.Property(e => e.Name).HasColumnName("name");
             entity.Property(e => e.Sigma).HasColumnName("sigma");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<QueuedPlayer>(entity => { entity.HasQueryFilter(e => e.User.DeletedAt == null); });
+
+        modelBuilder.Entity<ActiveMatch>(entity =>
+        {
+            entity.HasQueryFilter(e =>
+                e.TeamOneUserOne.DeletedAt == null && e.TeamOneUserTwo.DeletedAt == null &&
+                e.TeamTwoUserOne.DeletedAt == null && e.TeamTwoUserTwo.DeletedAt == null);
         });
     }
 }
