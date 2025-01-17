@@ -15,7 +15,6 @@ public interface IMatchMakingService
     Task<PendingMatchStatus> PendingMatchStatusAsync(Guid matchId);
     Task AcceptPendingMatchAsync(Guid matchId);
     Task DeclinePendingMatchAsync(Guid matchId);
-    Task<bool> VerifyStateOfPendingMatchesAsync(CancellationToken cancellationToken = default);
     Task<IEnumerable<ActiveMatchDto>> ActiveMatchesAsync();
     Task CancelActiveMatchAsync(Guid matchId);
     Task SubmitActiveMatchResultAsync(Guid matchId, ActiveMatchSubmitRequest submitRequest);
@@ -204,45 +203,6 @@ public class MatchMakingService(
         pendingMatch.UpdatedAt = DateTimeOffset.UtcNow;
 
         await dbContext.SaveChangesAsync();
-    }
-
-    public async Task<bool> VerifyStateOfPendingMatchesAsync(CancellationToken cancellationToken = default)
-    {
-        var pendingMatches = await dbContext.PendingMatches
-            .Include(pm => pm.QueuedPlayers)
-            .Where(pm => pm.Status == PendingMatchStatus.Pending)
-            .ToListAsync(cancellationToken);
-
-        if (pendingMatches.Count == 0)
-        {
-            return false;
-        }
-
-        foreach (var pendingMatch in pendingMatches)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return false;
-            }
-
-            if (pendingMatch.CreatedAt.AddSeconds(30) > DateTime.UtcNow)
-            {
-                // We are still waiting for responses
-                continue;
-            }
-
-            // We are still in pending state after response timeout. Decline the match and allow players to queue again
-
-            var missingAcceptedPlayers =
-                pendingMatch.QueuedPlayers.Where(x => x.LastAcceptedMatchId != pendingMatch.Id);
-            pendingMatch.Status = PendingMatchStatus.Declined;
-            pendingMatch.UpdatedAt = DateTimeOffset.UtcNow;
-            dbContext.QueuedPlayers.RemoveRange(missingAcceptedPlayers);
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return true;
     }
 
     public async Task<IEnumerable<ActiveMatchDto>> ActiveMatchesAsync()
