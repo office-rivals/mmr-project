@@ -1,4 +1,4 @@
-import type { LeaderboardEntry } from '$lib/components/leaderboard/leader-board-entry';
+import type { RankedLeaderboardEntry } from '$lib/components/leaderboard/leader-board-entry';
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -33,7 +33,10 @@ export const load: PageServerLoad = async ({ locals: { apiClient } }) => {
 
         return b.mmr - a.mmr;
       })
-      .map<LeaderboardEntry>((entry, idx) => ({ ...entry, rank: idx + 1 }));
+      .map<RankedLeaderboardEntry>((entry, idx) => ({
+        ...entry,
+        rank: idx + 1,
+      }));
 
     return {
       users,
