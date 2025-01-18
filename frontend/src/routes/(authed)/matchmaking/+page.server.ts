@@ -3,10 +3,15 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { apiClient } }) => {
   try {
-    const matchmaking =
-      await apiClient.matchmakingApi.matchMakingGetMatchMakingQueueStatus();
+    const [matchmaking, profile] = await Promise.all([
+      apiClient.matchmakingApi.matchMakingGetMatchMakingQueueStatus(),
+      apiClient.profileApi.profileGetProfile(),
+    ]);
+
+    const hasClaimedProfile = profile.userId != null;
     return {
       matchmaking,
+      hasClaimedProfile,
     };
   } catch (error) {
     return fail(500, {

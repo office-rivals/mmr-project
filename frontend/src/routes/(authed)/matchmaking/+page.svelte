@@ -43,6 +43,11 @@
     <Button variant="destructive" type="submit">
       <Pause /><span class="ml-2">Leave queue</span>
     </Button>
+  {:else if !data.hasClaimedProfile}
+    <p>You need to link your login to a player to queue up for a match.</p>
+    <Button href="/profile" size="lg" class="w-full py-6 text-xl"
+      >Claim profile</Button
+    >
   {:else if queueEligabiltiy === 'ready'}
     <input type="hidden" name="intent" value="queue" />
     <Button size="lg" class="w-full py-6" type="submit">
