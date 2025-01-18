@@ -24,8 +24,7 @@
   };
 
   const matchMakingStatuses = {
-    queued: 'Waiting for a match...',
-    inactive: 'Not in queue',
+    queued: 'Looking for other players...',
   };
 </script>
 
