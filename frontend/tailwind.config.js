@@ -66,6 +66,10 @@ const config = {
             '--border-angle': '360deg',
           },
         },
+        'min-max-width': {
+          '0%': { width: '0%' },
+          '100%': { width: '100%' },
+        },
       },
     },
   },
