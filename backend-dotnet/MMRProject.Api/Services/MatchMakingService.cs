@@ -82,17 +82,20 @@ public class MatchMakingService(
     public async Task<MatchMakingQueueStatus> MatchMakingQueueStatusAsync()
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
-        var queuedPlayers = await dbContext.QueuedPlayers
+        var totalQueuedPlayers = await dbContext.QueuedPlayers
             .Where(x => x.PendingMatch == null || x.PendingMatch.Status == PendingMatchStatus.Declined)
-            .Include(x => x.User)
-            .Include(x => x.PendingMatch)
-            .OrderBy(x => x.CreatedAt)
-            .ToListAsync();
+            .CountAsync();
 
-        var currentUser = queuedPlayers.FirstOrDefault(x => x.User.IdentityUserId == identityUserId);
+        var currentUser = await dbContext.QueuedPlayers
+            .Where(x => x.User.IdentityUserId == identityUserId)
+            .Include(x => x.PendingMatch)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync();
+
         MatchMakingQueueStatusPendingMatch? assignedPendingMatch;
 
-        if (currentUser?.PendingMatch is { } currentPendingMatch)
+        if (currentUser?.PendingMatch is { } currentPendingMatch &&
+            currentPendingMatch.Status != PendingMatchStatus.Declined)
         {
             assignedPendingMatch = new MatchMakingQueueStatusPendingMatch
             {
@@ -108,7 +111,7 @@ public class MatchMakingService(
 
         return new MatchMakingQueueStatus
         {
-            PlayersInQueue = queuedPlayers.Count,
+            PlayersInQueue = totalQueuedPlayers,
             IsUserInQueue = currentUser != null,
             AssignedPendingMatch = assignedPendingMatch
         };
