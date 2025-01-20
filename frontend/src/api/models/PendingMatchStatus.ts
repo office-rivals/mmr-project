@@ -18,9 +18,9 @@
  * @export
  */
 export const PendingMatchStatus = {
-    NUMBER_0: 0,
-    NUMBER_1: 1,
-    NUMBER_2: 2
+    Pending: 'Pending',
+    Accepted: 'Accepted',
+    Declined: 'Declined'
 } as const;
 export type PendingMatchStatus = typeof PendingMatchStatus[keyof typeof PendingMatchStatus];
 

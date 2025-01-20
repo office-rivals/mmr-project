@@ -8,7 +8,8 @@
   type MatchMakingStatus =
     | { type: 'queued' }
     | { type: 'inactive' }
-    | { type: 'pending-match'; matchId: string; expiresAt: Date };
+    | { type: 'pending-match'; matchId: string; expiresAt: Date }
+    | { type: 'match-accepted'; matchId: string };
   $: matchMakingStatus = { type: 'inactive' } as MatchMakingStatus;
 
   $: secondsToRespond =
@@ -24,11 +25,28 @@
   const refreshQueueStatus = async () => {
     const status = await getQueueStatus();
     if (status?.assignedPendingMatch != null) {
-      matchMakingStatus = {
-        type: 'pending-match',
-        matchId: status.assignedPendingMatch.id,
-        expiresAt: new Date(status.assignedPendingMatch.expiresAt),
-      };
+      switch (status.assignedPendingMatch.status) {
+        case 'Pending':
+          matchMakingStatus = {
+            type: 'pending-match',
+            matchId: status.assignedPendingMatch.id,
+            expiresAt: new Date(status.assignedPendingMatch.expiresAt),
+          };
+          break;
+        case 'Accepted':
+          matchMakingStatus = {
+            type: 'match-accepted',
+            matchId: status.assignedPendingMatch.id,
+          };
+          setTimeout(async () => {
+            matchMakingStatus = { type: 'inactive' };
+            await refreshQueueStatus();
+          }, 5000);
+          return;
+        case 'Declined':
+          matchMakingStatus = { type: 'inactive' };
+          break;
+      }
     } else if (status?.isUserInQueue) {
       matchMakingStatus = { type: 'queued' };
     } else {
@@ -63,8 +81,6 @@
     body.append('intent', 'accept');
     body.append('matchId', matchMakingStatus.matchId);
     await fetch('/api/matchmaking/queue', { method: 'POST', body });
-    // TODO When the user is in an active match, show those details - and don't allow him to queue up before entering results
-    matchMakingStatus = { type: 'inactive' };
   };
 
   const onRejectMatch = async () => {
@@ -83,6 +99,7 @@
   const matchMakingStatuses = {
     queued: 'Looking for other players...',
     'pending-match': 'Match found! Accept the match to start the game.',
+    'match-accepted': 'Match accepted! Go go go!',
   };
 </script>
 
@@ -112,6 +129,12 @@
             >
             <Button on:click={onRejectMatch} variant="destructive" size="icon"
               ><X /></Button
+            >
+          {:else if matchMakingStatus.type === 'match-accepted'}
+            <Button
+              on:click={() => {
+                matchMakingStatus = { type: 'inactive' };
+              }}>OK!</Button
             >
           {/if}
         </div>
