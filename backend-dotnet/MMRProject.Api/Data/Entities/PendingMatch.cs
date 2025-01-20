@@ -9,6 +9,7 @@ public class PendingMatch : BaseEntity
     
     public Guid? ActiveMatchId { get; set; }
     public virtual ActiveMatch? ActiveMatch { get; set; }
+    public DateTimeOffset ExpiresAt { get; set; } = DateTimeOffset.UtcNow.AddSeconds(30);
 }
 
 public enum PendingMatchStatus

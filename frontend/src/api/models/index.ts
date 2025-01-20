@@ -10,6 +10,7 @@ export * from './MatchDetailsV2';
 export * from './MatchMMRCalculationDetails';
 export * from './MatchMMRCalculationTeam';
 export * from './MatchMakingQueueStatus';
+export * from './MatchMakingQueueStatusPendingMatch';
 export * from './MatchTeamV2';
 export * from './PendingMatchDto';
 export * from './PendingMatchStatus';

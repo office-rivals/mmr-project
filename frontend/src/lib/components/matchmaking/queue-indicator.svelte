@@ -5,48 +5,79 @@
   import { onMount } from 'svelte';
   import Button from '../ui/button/button.svelte';
 
-  type MatchMakingStatus = 'queued' | 'inactive' | 'pending-match';
-  $: matchMakingStatus = 'inactive' as MatchMakingStatus;
+  type MatchMakingStatus =
+    | { type: 'queued' }
+    | { type: 'inactive' }
+    | { type: 'pending-match'; matchId: string; expiresAt: Date };
+  $: matchMakingStatus = { type: 'inactive' } as MatchMakingStatus;
 
-  const SECONDS_TO_ACCEPT_MATCH = 30;
+  $: secondsToRespond =
+    matchMakingStatus.type === 'pending-match'
+      ? Math.floor((matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000)
+      : 0;
 
-  onMount(async () => {
-    const status = (await fetch('/api/matchmaking/status').then((res) =>
-      res.json()
-    )) as MatchMakingQueueStatus;
-    if (status?.isUserInQueue) {
-      matchMakingStatus = 'queued';
+  const getQueueStatus = async () => {
+    const response = await fetch('/api/matchmaking/status');
+    return (await response.json()) as MatchMakingQueueStatus;
+  };
+
+  const refreshQueueStatus = async () => {
+    const status = await getQueueStatus();
+    if (status?.assignedPendingMatch != null) {
+      matchMakingStatus = {
+        type: 'pending-match',
+        matchId: status.assignedPendingMatch.id,
+        expiresAt: new Date(status.assignedPendingMatch.expiresAt),
+      };
+    } else if (status?.isUserInQueue) {
+      matchMakingStatus = { type: 'queued' };
+    } else {
+      matchMakingStatus = { type: 'inactive' };
     }
 
-    setTimeout(() => {
-      // TODO replace with long polling
-      if (matchMakingStatus === 'queued') {
-        matchMakingStatus = 'pending-match';
-      }
-    }, 3000);
+    setTimeout(
+      async () => {
+        await refreshQueueStatus();
+      },
+      matchMakingStatus.type === 'pending-match' ? 1000 : 3000
+    );
+  };
+
+  onMount(async () => {
+    await refreshQueueStatus();
   });
 
   const onLeaveQueue = async () => {
     const body = new FormData();
     body.append('intent', 'leave');
     await fetch('/api/matchmaking/queue', { method: 'POST', body });
-    matchMakingStatus = 'inactive';
+    matchMakingStatus = { type: 'inactive' };
   };
 
   const onAcceptMatch = async () => {
+    if (matchMakingStatus.type !== 'pending-match') {
+      return;
+    }
+
     const body = new FormData();
     body.append('intent', 'accept');
-    body.append('matchId', '1234'); // TODO get the match ID from the server
+    body.append('matchId', matchMakingStatus.matchId);
     await fetch('/api/matchmaking/queue', { method: 'POST', body });
     // TODO When the user is in an active match, show those details - and don't allow him to queue up before entering results
-    matchMakingStatus = 'inactive';
+    matchMakingStatus = { type: 'inactive' };
   };
 
   const onRejectMatch = async () => {
+    if (matchMakingStatus.type !== 'pending-match') {
+      return;
+    }
+
     const body = new FormData();
     body.append('intent', 'reject');
+    body.append('matchId', matchMakingStatus.matchId);
+
     await fetch('/api/matchmaking/queue', { method: 'POST', body });
-    matchMakingStatus = 'inactive';
+    matchMakingStatus = { type: 'inactive' };
   };
 
   const matchMakingStatuses = {
@@ -55,12 +86,12 @@
   };
 </script>
 
-{#if matchMakingStatus !== 'inactive'}
+{#if matchMakingStatus.type !== 'inactive'}
   <div class="fixed bottom-20 left-0 right-0 mx-auto max-w-screen-sm px-4">
     <div
       class={clsx(
         'w-full rounded-2xl border p-5',
-        matchMakingStatus === 'queued'
+        matchMakingStatus.type === 'queued'
           ? 'animate-border border border-transparent [background:linear-gradient(60deg,#001003,theme(colors.orange.950)_60%,#001003)_padding-box,conic-gradient(from_var(--border-angle),theme(colors.orange.600/.58)_80%,_theme(colors.orange.300)_94%,_theme(colors.orange.600/.58))_border-box]'
           : 'border-orange-500 [background:linear-gradient(60deg,#001003,theme(colors.orange.950)_60%,#001003)_padding-box]'
       )}
@@ -68,14 +99,14 @@
       <div class="flex items-center justify-between">
         <div>
           <span class="text-xs">Matchmaking</span>
-          <p>{matchMakingStatuses[matchMakingStatus]}</p>
+          <p>{matchMakingStatuses[matchMakingStatus.type]}</p>
         </div>
         <div>
-          {#if matchMakingStatus === 'queued'}
+          {#if matchMakingStatus.type === 'queued'}
             <Button variant="destructive" type="submit" on:click={onLeaveQueue}
               ><Pause class="mr-2" />Leave</Button
             >
-          {:else if matchMakingStatus === 'pending-match'}
+          {:else if matchMakingStatus.type === 'pending-match'}
             <Button on:click={onAcceptMatch} class="animate-bounce"
               >Accept</Button
             >
@@ -85,9 +116,9 @@
           {/if}
         </div>
       </div>
-      {#if matchMakingStatus === 'pending-match'}
+      {#if matchMakingStatus.type === 'pending-match'}
         <div
-          class="mt-3 h-4 animate-[min-max-width_{SECONDS_TO_ACCEPT_MATCH}s_linear_forwards] bg-gradient-to-r from-orange-700 to-orange-400"
+          class="mt-3 h-4 animate-[min-max-width_{secondsToRespond}s_linear_forwards] bg-gradient-to-r from-orange-700 to-orange-400"
         />
       {/if}
     </div>

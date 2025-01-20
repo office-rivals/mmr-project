@@ -1,4 +1,3 @@
-.openapi-generator-ignore
 apis/AdminApi.ts
 apis/MMRV2Api.ts
 apis/MatchMakingApi.ts
@@ -17,6 +16,7 @@ models/MatchDetailsV2.ts
 models/MatchMMRCalculationDetails.ts
 models/MatchMMRCalculationTeam.ts
 models/MatchMakingQueueStatus.ts
+models/MatchMakingQueueStatusPendingMatch.ts
 models/MatchTeamV2.ts
 models/PendingMatchDto.ts
 models/PendingMatchStatus.ts

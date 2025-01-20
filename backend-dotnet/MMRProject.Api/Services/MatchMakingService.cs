@@ -85,13 +85,32 @@ public class MatchMakingService(
         var queuedPlayers = await dbContext.QueuedPlayers
             .Where(x => x.PendingMatch == null || x.PendingMatch.Status == PendingMatchStatus.Declined)
             .Include(x => x.User)
+            .Include(x => x.PendingMatch)
             .OrderBy(x => x.CreatedAt)
             .ToListAsync();
+
+        var currentUser = queuedPlayers.FirstOrDefault(x => x.User.IdentityUserId == identityUserId);
+        MatchMakingQueueStatusPendingMatch? assignedPendingMatch;
+
+        if (currentUser?.PendingMatch is { } currentPendingMatch)
+        {
+            assignedPendingMatch = new MatchMakingQueueStatusPendingMatch
+            {
+                Id = currentPendingMatch.Id,
+                Status = currentPendingMatch.Status,
+                ExpiresAt = currentPendingMatch.ExpiresAt
+            };
+        }
+        else
+        {
+            assignedPendingMatch = null;
+        }
 
         return new MatchMakingQueueStatus
         {
             PlayersInQueue = queuedPlayers.Count,
-            IsUserInQueue = queuedPlayers.Any(x => x.User.IdentityUserId == identityUserId)
+            IsUserInQueue = currentUser != null,
+            AssignedPendingMatch = assignedPendingMatch
         };
     }
 

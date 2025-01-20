@@ -23,6 +23,14 @@ export const POST: RequestHandler = async ({
       await apiClient.matchmakingApi.matchMakingAcceptMatch({ matchId });
       return new Response('Accepted match');
     }
+    case 'reject': {
+      const matchId = formData.get('matchId')?.toString();
+      if (!matchId) {
+        return new Response('No matchId provided', { status: 400 });
+      }
+      await apiClient.matchmakingApi.matchMakingRejectMatch({ matchId });
+      return new Response('Rejected match');
+    }
     default:
       return new Response('Unknown intent', { status: 400 });
   }

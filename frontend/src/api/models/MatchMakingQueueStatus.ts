@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { MatchMakingQueueStatusPendingMatch } from './MatchMakingQueueStatusPendingMatch';
+import {
+    MatchMakingQueueStatusPendingMatchFromJSON,
+    MatchMakingQueueStatusPendingMatchFromJSONTyped,
+    MatchMakingQueueStatusPendingMatchToJSON,
+} from './MatchMakingQueueStatusPendingMatch';
+
 /**
  * 
  * @export
@@ -31,6 +38,12 @@ export interface MatchMakingQueueStatus {
      * @memberof MatchMakingQueueStatus
      */
     playersInQueue: number;
+    /**
+     * 
+     * @type {MatchMakingQueueStatusPendingMatch}
+     * @memberof MatchMakingQueueStatus
+     */
+    assignedPendingMatch?: MatchMakingQueueStatusPendingMatch;
 }
 
 /**
@@ -54,6 +67,7 @@ export function MatchMakingQueueStatusFromJSONTyped(json: any, ignoreDiscriminat
         
         'isUserInQueue': json['isUserInQueue'],
         'playersInQueue': json['playersInQueue'],
+        'assignedPendingMatch': json['assignedPendingMatch'] == null ? undefined : MatchMakingQueueStatusPendingMatchFromJSON(json['assignedPendingMatch']),
     };
 }
 
@@ -65,6 +79,7 @@ export function MatchMakingQueueStatusToJSON(value?: MatchMakingQueueStatus | nu
         
         'isUserInQueue': value['isUserInQueue'],
         'playersInQueue': value['playersInQueue'],
+        'assignedPendingMatch': MatchMakingQueueStatusPendingMatchToJSON(value['assignedPendingMatch']),
     };
 }
 

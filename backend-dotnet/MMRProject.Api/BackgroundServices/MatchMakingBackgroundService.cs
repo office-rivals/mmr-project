@@ -44,7 +44,7 @@ public class MatchMakingBackgroundService(
                 return false;
             }
 
-            if (pendingMatch.CreatedAt.AddSeconds(30) > DateTime.UtcNow)
+            if (pendingMatch.ExpiresAt.AddSeconds(1) > DateTime.UtcNow)
             {
                 // We are still waiting for responses
                 continue;
