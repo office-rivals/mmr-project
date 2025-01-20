@@ -2,14 +2,14 @@
   import * as Card from '$lib/components/ui/card';
   import * as Table from '$lib/components/ui/table';
   import { SHOW_STREAK_THRESHOLD } from '$lib/constants';
-  import type { ViewPlayerHistoryDetails, ViewUserDetails } from '../../../api';
+  import type { PlayerHistoryDetails, UserDetails } from '../../../api';
   import Sparkline from '../ui/sparkline/sparkline.svelte';
-  import type { LeaderboardEntry } from './leader-board-entry';
+  import type { RankedLeaderboardEntry } from './leader-board-entry';
 
-  export let data: LeaderboardEntry[];
-  export let users: ViewUserDetails[] | null | undefined;
-  export let onSelectedUser: (user: ViewUserDetails) => void;
-  export let statisticsPromise: Promise<ViewPlayerHistoryDetails[]> | undefined;
+  export let data: RankedLeaderboardEntry[];
+  export let users: UserDetails[] | null | undefined;
+  export let onSelectedUser: (user: UserDetails) => void;
+  export let statisticsPromise: Promise<PlayerHistoryDetails[]> | undefined;
 </script>
 
 <Card.Root>

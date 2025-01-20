@@ -5,9 +5,9 @@ export const load: PageServerLoad = async ({ locals: { apiClient } }) => {
   try {
     const [statistics, timeDistribution] = await Promise.all([
       apiClient.statisticsApi
-        .v1StatsPlayerHistoryGet()
+        .statisticsGetPlayerHistory()
         .then((res) => res.toSorted((a, b) => a.name.localeCompare(b.name))),
-      apiClient.statisticsApi.v1StatsTimeDistributionGet(),
+      apiClient.statisticsApi.statisticsGetTimeDistribution(),
     ]);
 
     return {

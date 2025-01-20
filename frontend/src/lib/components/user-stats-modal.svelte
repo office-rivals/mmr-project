@@ -2,15 +2,15 @@
   import { Button } from '$lib/components/ui/button';
   import * as Dialog from '$lib/components/ui/dialog';
   import { LoaderCircle } from 'lucide-svelte';
-  import type { ViewMatchDetailsV2, ViewUserDetails } from '../../api';
+  import type { UserDetails } from '../../api';
   import Kpi from './kpi.svelte';
-  import type { LeaderboardEntry } from './leaderboard/leader-board-entry';
+  import type { RankedLeaderboardEntry } from './leaderboard/leader-board-entry';
   import MatchCard from './match-card/match-card.svelte';
   import * as Card from './ui/card';
 
-  export let user: ViewUserDetails;
-  export let users: ViewUserDetails[];
-  export let leaderboardEntry: LeaderboardEntry | null | undefined;
+  export let user: UserDetails;
+  export let users: UserDetails[];
+  export let leaderboardEntry: RankedLeaderboardEntry | null | undefined;
   export let open: boolean;
   export let onOpenChange: (open: boolean) => void;
 

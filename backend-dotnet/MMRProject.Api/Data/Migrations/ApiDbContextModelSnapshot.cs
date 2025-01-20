@@ -22,6 +22,40 @@ namespace MMRProject.Api.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.ActiveMatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("TeamOneUserOneId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TeamOneUserTwoId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TeamTwoUserOneId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TeamTwoUserTwoId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeamOneUserOneId");
+
+                    b.HasIndex("TeamOneUserTwoId");
+
+                    b.HasIndex("TeamTwoUserOneId");
+
+                    b.HasIndex("TeamTwoUserTwoId");
+
+                    b.ToTable("ActiveMatches");
+                });
+
             modelBuilder.Entity("MMRProject.Api.Data.Entities.Match", b =>
                 {
                     b.Property<long>("Id")
@@ -120,6 +154,35 @@ namespace MMRProject.Api.Data.Migrations
                     b.ToTable("mmr_calculations", (string)null);
                 });
 
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.PendingMatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ActiveMatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActiveMatchId")
+                        .IsUnique();
+
+                    b.ToTable("PendingMatches");
+                });
+
             modelBuilder.Entity("MMRProject.Api.Data.Entities.PlayerHistory", b =>
                 {
                     b.Property<long>("Id")
@@ -171,6 +234,33 @@ namespace MMRProject.Api.Data.Migrations
                     b.HasIndex(new[] { "DeletedAt" }, "idx_player_histories_deleted_at");
 
                     b.ToTable("player_histories", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.QueuedPlayer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LastAcceptedMatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PendingMatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PendingMatchId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("QueuedPlayers");
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.Season", b =>
@@ -313,6 +403,41 @@ namespace MMRProject.Api.Data.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.ActiveMatch", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.User", "TeamOneUserOne")
+                        .WithMany()
+                        .HasForeignKey("TeamOneUserOneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MMRProject.Api.Data.Entities.User", "TeamOneUserTwo")
+                        .WithMany()
+                        .HasForeignKey("TeamOneUserTwoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MMRProject.Api.Data.Entities.User", "TeamTwoUserOne")
+                        .WithMany()
+                        .HasForeignKey("TeamTwoUserOneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MMRProject.Api.Data.Entities.User", "TeamTwoUserTwo")
+                        .WithMany()
+                        .HasForeignKey("TeamTwoUserTwoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TeamOneUserOne");
+
+                    b.Navigation("TeamOneUserTwo");
+
+                    b.Navigation("TeamTwoUserOne");
+
+                    b.Navigation("TeamTwoUserTwo");
+                });
+
             modelBuilder.Entity("MMRProject.Api.Data.Entities.Match", b =>
                 {
                     b.HasOne("MMRProject.Api.Data.Entities.Season", "Season")
@@ -347,6 +472,15 @@ namespace MMRProject.Api.Data.Migrations
                     b.Navigation("Match");
                 });
 
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.PendingMatch", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.ActiveMatch", "ActiveMatch")
+                        .WithOne("PendingMatch")
+                        .HasForeignKey("MMRProject.Api.Data.Entities.PendingMatch", "ActiveMatchId");
+
+                    b.Navigation("ActiveMatch");
+                });
+
             modelBuilder.Entity("MMRProject.Api.Data.Entities.PlayerHistory", b =>
                 {
                     b.HasOne("MMRProject.Api.Data.Entities.Match", "Match")
@@ -360,6 +494,23 @@ namespace MMRProject.Api.Data.Migrations
                         .HasConstraintName("fk_player_histories_user");
 
                     b.Navigation("Match");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.QueuedPlayer", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.PendingMatch", "PendingMatch")
+                        .WithMany("QueuedPlayers")
+                        .HasForeignKey("PendingMatchId");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PendingMatch");
 
                     b.Navigation("User");
                 });
@@ -381,11 +532,21 @@ namespace MMRProject.Api.Data.Migrations
                     b.Navigation("UserTwo");
                 });
 
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.ActiveMatch", b =>
+                {
+                    b.Navigation("PendingMatch");
+                });
+
             modelBuilder.Entity("MMRProject.Api.Data.Entities.Match", b =>
                 {
                     b.Navigation("MmrCalculations");
 
                     b.Navigation("PlayerHistories");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.PendingMatch", b =>
+                {
+                    b.Navigation("QueuedPlayers");
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.Season", b =>

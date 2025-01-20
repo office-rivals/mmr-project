@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { ViewUserDetails } from '$api';
+  import type { UserDetails } from '$api';
   import { cn } from '$lib/utils';
   import type { HTMLAttributes } from 'svelte/elements';
 
-  export let user: ViewUserDetails;
+  export let user: UserDetails;
 
   let className: HTMLAttributes<HTMLButtonElement>['class'] = undefined;
   export { className as class };

@@ -4,7 +4,7 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { apiClient } }) => {
   return {
-    users: await apiClient.usersApi.v1UsersGet(),
+    users: await apiClient.usersApi.usersGetUsers(),
   };
 };
 
@@ -25,8 +25,8 @@ export const actions = {
     }
 
     try {
-      await apiClient.profileApi.v1ProfileClaimPost({
-        user: { userId },
+      await apiClient.profileApi.profileClaimProfile({
+        claimProfileRequest: { userId },
       });
     } catch (error) {
       if (error instanceof ResponseError) {

@@ -1,4 +1,4 @@
-import type { ViewMatchTeamV2 } from '../../../../api';
+import type { MatchTeamV2 } from '../../../../api';
 import type { PageServerLoad } from './$types';
 import type { MemberLeaderboardEntry } from './types';
 import { movePlayerToMember1 } from './utils';
@@ -12,14 +12,14 @@ export const load: PageServerLoad = async ({
     throw new Error('Invalid player ID');
   }
   const [userProfile, rawMatches, users, mmrHistory] = await Promise.all([
-    apiClient.profileApi.v1ProfileGet(),
-    apiClient.mmrApi.v2MmrMatchesGet({
+    apiClient.profileApi.profileGetProfile(),
+    apiClient.mmrApi.mMRV2GetMatches({
       userId: playerId,
       limit: 1000,
       offset: 0,
     }),
-    apiClient.usersApi.v1UsersGet(),
-    apiClient.statisticsApi.v1StatsPlayerHistoryGet({ userId: playerId }),
+    apiClient.usersApi.usersGetUsers(),
+    apiClient.statisticsApi.statisticsGetPlayerHistory({ userId: playerId }),
   ]);
 
   const matches = rawMatches.map((match) =>
@@ -141,7 +141,7 @@ export const load: PageServerLoad = async ({
   };
 };
 
-const isOnTeam = (team: ViewMatchTeamV2, playerId: number) => {
+const isOnTeam = (team: MatchTeamV2, playerId: number) => {
   return team.member1 === playerId || team.member2 === playerId;
 };
 

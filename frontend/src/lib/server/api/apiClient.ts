@@ -1,7 +1,7 @@
 import {
   Configuration,
-  LeaderboardApi,
-  MatchesApi,
+  MatchMakingApi,
+  MMRV2Api,
   ProfileApi,
   StatisticsApi,
   UsersApi,
@@ -17,11 +17,11 @@ export const createConfiguration = (token: string) =>
 export const createApiClient = (token: string) => {
   const configuration = createConfiguration(token);
   return {
-    leaderboardApi: new LeaderboardApi(configuration),
-    mmrApi: new MatchesApi(configuration),
+    mmrApi: new MMRV2Api(configuration),
     profileApi: new ProfileApi(configuration),
     statisticsApi: new StatisticsApi(configuration),
     usersApi: new UsersApi(configuration),
+    matchmakingApi: new MatchMakingApi(configuration),
   };
 };
 

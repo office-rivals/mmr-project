@@ -1,12 +1,9 @@
 <script lang="ts">
-  import type { ViewMatchDetailsV2 } from '../../../api';
+  import type { MatchDetailsV2 } from '../../../api';
   import type { MatchUser } from './match-user';
   import MmrDelta from './mmr-delta.svelte';
 
-  export let match: Pick<
-    ViewMatchDetailsV2,
-    'mmrCalculations' | 'team1' | 'team2'
-  >;
+  export let match: Pick<MatchDetailsV2, 'mmrCalculations' | 'team1' | 'team2'>;
   export let users: MatchUser[];
   export let showMmr = false;
   export let team: 'team1' | 'team2';

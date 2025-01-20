@@ -1,20 +1,25 @@
-import type { LeaderboardEntry } from '$lib/components/leaderboard/leader-board-entry';
+import type { RankedLeaderboardEntry } from '$lib/components/leaderboard/leader-board-entry';
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { apiClient } }) => {
   try {
     // Not awaited by design, since we don't need to wait for this to render the page
-    const statisticsPromise = apiClient.statisticsApi.v1StatsPlayerHistoryGet();
+    const statisticsPromise =
+      apiClient.statisticsApi.statisticsGetPlayerHistory();
 
-    const [entries, matches, users] = await Promise.all([
-      apiClient.leaderboardApi.v1StatsLeaderboardGet(),
-      apiClient.mmrApi.v2MmrMatchesGet({
-        limit: 5,
-        offset: 0,
-      }),
-      apiClient.usersApi.v1UsersGet(),
-    ]);
+    const [entries, matches, users, activeMatches, profile] = await Promise.all(
+      [
+        apiClient.statisticsApi.statisticsGetLeaderboard(),
+        apiClient.mmrApi.mMRV2GetMatches({
+          limit: 5,
+          offset: 0,
+        }),
+        apiClient.usersApi.usersGetUsers(),
+        apiClient.matchmakingApi.matchMakingGetActiveMatches(),
+        apiClient.profileApi.profileGetProfile(),
+      ]
+    );
 
     const leaderboardEntries = entries
       .toSorted((a, b) => {
@@ -32,13 +37,18 @@ export const load: PageServerLoad = async ({ locals: { apiClient } }) => {
 
         return b.mmr - a.mmr;
       })
-      .map<LeaderboardEntry>((entry, idx) => ({ ...entry, rank: idx + 1 }));
+      .map<RankedLeaderboardEntry>((entry, idx) => ({
+        ...entry,
+        rank: idx + 1,
+      }));
 
     return {
       users,
       statisticsPromise,
       leaderboardEntries,
       recentMatches: matches ?? [],
+      activeMatches,
+      profile,
     };
   } catch (error) {
     fail(500, {

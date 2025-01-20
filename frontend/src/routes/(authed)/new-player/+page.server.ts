@@ -29,8 +29,8 @@ export const actions: Actions = {
     let userId;
 
     try {
-      const user = await apiClient.usersApi.v1UsersPost({
-        user: form.data,
+      const user = await apiClient.usersApi.usersCreateUser({
+        createUserRequest: form.data,
       });
       userId = user.userId;
     } catch (error) {

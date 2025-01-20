@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { message, superValidate, type ErrorStatus } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
-import { ResponseError, type ViewUserDetails } from '../../../api';
+import { ResponseError, type UserDetails } from '../../../api';
 import type { Actions, PageServerLoad } from './$types';
 import { matchSchema } from './match-schema';
 
@@ -9,7 +9,7 @@ const playerId = (
   url: URL,
   idParam: string,
   nameParam: string,
-  users: ViewUserDetails[]
+  users: UserDetails[]
 ): number | undefined => {
   const id = url.searchParams.get(idParam);
   if (id != null) {
@@ -26,7 +26,7 @@ const playerId = (
 };
 
 export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
-  const users = await apiClient.usersApi.v1UsersGet(); // TODO: Add error handling
+  const users = await apiClient.usersApi.usersGetUsers(); // TODO: Add error handling
 
   const player1 = playerId(url, 'player1_id', 'player1', users);
   const player2 = playerId(url, 'player2_id', 'player2', users);
@@ -56,7 +56,9 @@ export const actions: Actions = {
     }
 
     try {
-      await apiClient.mmrApi.v2MmrMatchesPost({ match: form.data });
+      await apiClient.mmrApi.mMRV2SubmitMatch({
+        submitMatchV2Request: form.data,
+      });
     } catch (error) {
       if (error instanceof ResponseError) {
         const errorResponse = await error.response.json();

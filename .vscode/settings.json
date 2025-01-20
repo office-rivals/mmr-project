@@ -1,9 +1,5 @@
 {
-  "conventionalCommits.scopes": [
-    "frontend",
-    "backend",
-    "repo",
-    "full-stack"
-  ],
-  "editor.tabSize": 2
+  "conventionalCommits.scopes": ["frontend", "backend", "repo", "full-stack"],
+  "editor.tabSize": 2,
+  "csharp.preview.improvedLaunchExperience": true
 }

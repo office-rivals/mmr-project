@@ -5,7 +5,7 @@ export const GET: RequestHandler = async ({ url, locals: { apiClient } }) => {
   if (Number.isNaN(playerId)) {
     throw new Error('Invalid player ID');
   }
-  const latestMatch = await apiClient.mmrApi.v2MmrMatchesGet({
+  const latestMatch = await apiClient.mmrApi.mMRV2GetMatches({
     userId: playerId,
     limit: 1,
     offset: 0,
