@@ -13,10 +13,6 @@
 
   let isCancellingMatch = false;
 
-  function cancelMatch() {
-    console.log('Cancel match');
-  }
-
   $: currentActiveMatch =
     currentPlayerId != null
       ? activeMatches?.find((match) => {
@@ -26,6 +22,13 @@
           );
         }) ?? null
       : null;
+
+  const onCancelMatch = async (matchId: string) => {
+    const body = new FormData();
+    body.append('intent', 'cancel');
+    body.append('matchId', matchId);
+    await fetch('/api/active-matches', { method: 'POST', body });
+  };
 </script>
 
 {#if currentActiveMatch != null && currentPlayerId != null}
@@ -83,7 +86,7 @@
             variant="destructive"
             on:click={() => {
               isCancellingMatch = false;
-              cancelMatch();
+              onCancelMatch(currentActiveMatch.id);
             }}
           >
             Cancel match
