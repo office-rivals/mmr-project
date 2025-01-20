@@ -2,16 +2,28 @@
   import Leaderboard from '$lib/components/leaderboard';
   import { MatchCard } from '$lib/components/match-card';
   import PageTitle from '$lib/components/page-title.svelte';
+  import { Button } from '$lib/components/ui/button';
   import Label from '$lib/components/ui/label/label.svelte';
   import UserStatsModal from '$lib/components/user-stats-modal.svelte';
   import { Checkbox } from 'bits-ui';
-  import { Check, Minus } from 'lucide-svelte';
-  import type { UserDetails } from '../../api';
+  import { Check, CircleOff, Minus, Send } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+  import type { ActiveMatchDto, UserDetails } from '../../api';
   import { showMmr } from '../../stores/show-mmr';
   import type { PageData } from './$types';
+  import ActiveMatchCard from './components/active-match-card.svelte';
+  import ActiveMatches from './components/active-matches.svelte';
+  import CurrentActiveMatch from './components/current-active-match.svelte';
 
   export let data: PageData;
-  const { leaderboardEntries, recentMatches, users, statisticsPromise } = data;
+  const {
+    leaderboardEntries,
+    recentMatches,
+    users,
+    statisticsPromise,
+    activeMatches: initialActiveMatches,
+    profile,
+  } = data;
   let selectedUser: UserDetails | null | undefined;
   $: leaderboardEntry =
     selectedUser != null
@@ -19,11 +31,35 @@
           (entry) => entry.userId === selectedUser!.userId
         )
       : null;
+
+  const fetchActiveMatches = async () => {
+    const response = await fetch(`/api/active-matches`);
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.activeMatches as ActiveMatchDto[];
+    } else {
+      throw new Error('Failed to active matches');
+    }
+  };
+
+  let activeMatches = initialActiveMatches;
+
+  onMount(async () => {
+    setInterval(async () => {
+      activeMatches = await fetchActiveMatches();
+    }, 30000);
+  });
 </script>
 
 <div class="flex flex-col gap-4">
   <PageTitle>Trifork Foosball</PageTitle>
 
+  <CurrentActiveMatch
+    activeMatches={activeMatches ?? []}
+    users={users ?? []}
+    currentPlayerId={profile?.userId}
+  />
   <div class="flex">
     <h2 class="flex-1 text-2xl md:text-4xl">Recent Matches</h2>
     <div class="flex items-center space-x-3 self-center">
@@ -58,6 +94,7 @@
     {statisticsPromise}
   />
 </div>
+<ActiveMatches activeMatches={activeMatches ?? []} users={users ?? []} />
 
 {#if selectedUser != null}
   <UserStatsModal
