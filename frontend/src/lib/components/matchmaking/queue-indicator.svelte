@@ -12,10 +12,7 @@
     | { type: 'match-accepted'; matchId: string };
   $: matchMakingStatus = { type: 'inactive' } as MatchMakingStatus;
 
-  $: secondsToRespond =
-    matchMakingStatus.type === 'pending-match'
-      ? Math.floor((matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000)
-      : 0;
+  let acceptedMatchId: string | null = null;
 
   const getQueueStatus = async () => {
     const response = await fetch('/api/matchmaking/status');
@@ -34,15 +31,17 @@
           };
           break;
         case 'Accepted':
+          if (matchMakingStatus.type === 'inactive') {
+            break;
+          }
           matchMakingStatus = {
             type: 'match-accepted',
             matchId: status.assignedPendingMatch.id,
           };
           setTimeout(async () => {
             matchMakingStatus = { type: 'inactive' };
-            await refreshQueueStatus();
           }, 5000);
-          return;
+          break;
         case 'Declined':
           matchMakingStatus = { type: 'inactive' };
           break;
@@ -52,17 +51,37 @@
     } else {
       matchMakingStatus = { type: 'inactive' };
     }
-
-    setTimeout(
-      async () => {
-        await refreshQueueStatus();
-      },
-      matchMakingStatus.type === 'pending-match' ? 1000 : 3000
-    );
   };
 
-  onMount(async () => {
-    await refreshQueueStatus();
+  let secondsToRespond = -1;
+
+  onMount(() => {
+    let frame: number;
+    const updateSecondsToRespond = () => {
+      if (matchMakingStatus.type === 'pending-match') {
+        secondsToRespond = Math.floor(
+          (matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000
+        );
+      } else {
+        secondsToRespond = -1;
+      }
+      frame = requestAnimationFrame(updateSecondsToRespond);
+    };
+    frame = requestAnimationFrame(updateSecondsToRespond);
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  });
+
+  onMount(() => {
+    refreshQueueStatus();
+    const intervalId = setInterval(() => {
+      refreshQueueStatus();
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
   });
 
   const onLeaveQueue = async () => {
@@ -81,6 +100,7 @@
     body.append('intent', 'accept');
     body.append('matchId', matchMakingStatus.matchId);
     await fetch('/api/matchmaking/queue', { method: 'POST', body });
+    acceptedMatchId = matchMakingStatus.matchId;
   };
 
   const onRejectMatch = async () => {
@@ -118,18 +138,25 @@
           <span class="text-xs">Matchmaking</span>
           <p>{matchMakingStatuses[matchMakingStatus.type]}</p>
         </div>
-        <div>
+        <div class="flex items-center gap-2">
           {#if matchMakingStatus.type === 'queued'}
             <Button variant="destructive" type="submit" on:click={onLeaveQueue}
               ><Pause class="mr-2" />Leave</Button
             >
           {:else if matchMakingStatus.type === 'pending-match'}
-            <Button on:click={onAcceptMatch} class="animate-bounce"
-              >Accept</Button
-            >
-            <Button on:click={onRejectMatch} variant="destructive" size="icon"
-              ><X /></Button
-            >
+            <div class="mr-2 text-xl font-bold text-white">
+              {Math.max(secondsToRespond, 0)}
+            </div>
+            {#if acceptedMatchId === matchMakingStatus.matchId}
+              <Button disabled>Match accepted</Button>
+            {:else}
+              <Button on:click={onAcceptMatch} class="animate-bounce"
+                >Accept</Button
+              >
+              <Button on:click={onRejectMatch} variant="destructive" size="icon"
+                ><X /></Button
+              >
+            {/if}
           {:else if matchMakingStatus.type === 'match-accepted'}
             <Button
               on:click={() => {

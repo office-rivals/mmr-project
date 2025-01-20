@@ -2,16 +2,14 @@
   import Leaderboard from '$lib/components/leaderboard';
   import { MatchCard } from '$lib/components/match-card';
   import PageTitle from '$lib/components/page-title.svelte';
-  import { Button } from '$lib/components/ui/button';
   import Label from '$lib/components/ui/label/label.svelte';
   import UserStatsModal from '$lib/components/user-stats-modal.svelte';
   import { Checkbox } from 'bits-ui';
-  import { Check, CircleOff, Minus, Send } from 'lucide-svelte';
+  import { Check, Minus } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import type { ActiveMatchDto, UserDetails } from '../../api';
   import { showMmr } from '../../stores/show-mmr';
   import type { PageData } from './$types';
-  import ActiveMatchCard from './components/active-match-card.svelte';
   import ActiveMatches from './components/active-matches.svelte';
   import CurrentActiveMatch from './components/current-active-match.svelte';
 
