@@ -73,14 +73,28 @@
     };
   });
 
+  const fastRefreshStatusTypes: MatchMakingStatus['type'][] = [
+    'pending-match',
+    'queued',
+  ];
+
   onMount(() => {
     refreshQueueStatus();
-    const intervalId = setInterval(() => {
-      refreshQueueStatus();
+    const fastIntervalId = setInterval(() => {
+      if (fastRefreshStatusTypes.includes(matchMakingStatus.type)) {
+        refreshQueueStatus();
+      }
     }, 1000);
 
+    const slowIntervalId = setInterval(() => {
+      if (!fastRefreshStatusTypes.includes(matchMakingStatus.type)) {
+        refreshQueueStatus();
+      }
+    }, 10000);
+
     return () => {
-      clearInterval(intervalId);
+      clearInterval(fastIntervalId);
+      clearInterval(slowIntervalId);
     };
   });
 
