@@ -8,14 +8,18 @@ export const load: PageServerLoad = async ({ locals: { apiClient } }) => {
     const statisticsPromise =
       apiClient.statisticsApi.statisticsGetPlayerHistory();
 
-    const [entries, matches, users] = await Promise.all([
-      apiClient.statisticsApi.statisticsGetLeaderboard(),
-      apiClient.mmrApi.mMRV2GetMatches({
-        limit: 5,
-        offset: 0,
-      }),
-      apiClient.usersApi.usersGetUsers(),
-    ]);
+    const [entries, matches, users, activeMatches, profile] = await Promise.all(
+      [
+        apiClient.statisticsApi.statisticsGetLeaderboard(),
+        apiClient.mmrApi.mMRV2GetMatches({
+          limit: 5,
+          offset: 0,
+        }),
+        apiClient.usersApi.usersGetUsers(),
+        apiClient.matchmakingApi.matchMakingGetActiveMatches(),
+        apiClient.profileApi.profileGetProfile(),
+      ]
+    );
 
     const leaderboardEntries = entries
       .toSorted((a, b) => {
@@ -43,6 +47,8 @@ export const load: PageServerLoad = async ({ locals: { apiClient } }) => {
       statisticsPromise,
       leaderboardEntries,
       recentMatches: matches ?? [],
+      activeMatches,
+      profile,
     };
   } catch (error) {
     fail(500, {

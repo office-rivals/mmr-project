@@ -1,0 +1,15 @@
+meta {
+  name: Add to Queue
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{api_host}}/api/v1/match-making/queue
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}

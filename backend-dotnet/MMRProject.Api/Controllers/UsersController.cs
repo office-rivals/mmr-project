@@ -30,7 +30,7 @@ public class UsersController(IUserService userService) : ControllerBase
         var users = await userService.AllUsersAsync(query);
         return users.Select(UserMapper.MapUserToUserDetails);
     }
-    
+
     [HttpGet("{userId:long}")]
     public async Task<ActionResult<UserDetails>> GetUser(long userId)
     {
@@ -39,6 +39,7 @@ public class UsersController(IUserService userService) : ControllerBase
         {
             return NotFound("User not found");
         }
+
         return UserMapper.MapUserToUserDetails(user);
     }
 }

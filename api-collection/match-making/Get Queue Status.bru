@@ -1,0 +1,11 @@
+meta {
+  name: Get Queue Status
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{api_host}}/api/v1/match-making/queue
+  body: none
+  auth: none
+}

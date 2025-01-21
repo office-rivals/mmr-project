@@ -16,7 +16,8 @@ public class MMRV2Controller(
 ) : ControllerBase
 {
     [HttpGet]
-    public async Task<IEnumerable<MatchDetailsV2>> GetMatches([FromQuery] long? userId, [FromQuery] int limit = 100, [FromQuery] int offset = 0)
+    public async Task<IEnumerable<MatchDetailsV2>> GetMatches([FromQuery] long? userId, [FromQuery] int limit = 100,
+        [FromQuery] int offset = 0)
     {
         var currentSeasonId = await seasonService.CurrentSeasonIdAsync();
         if (!currentSeasonId.HasValue)
@@ -25,7 +26,8 @@ public class MMRV2Controller(
             return Array.Empty<MatchDetailsV2>();
         }
 
-        var matches = await matchesService.GetMatchesForSeason(currentSeasonId.Value, limit, offset, true, true, userId);
+        var matches =
+            await matchesService.GetMatchesForSeason(currentSeasonId.Value, limit, offset, true, true, userId);
 
         return matches.Select(MatchMapper.MapMatchToMatchDetails).WhereNotNull();
     }
@@ -39,7 +41,7 @@ public class MMRV2Controller(
             logger.LogInformation("No season has been created");
             return BadRequest("No current season");
         }
-        
+
         await matchesService.SubmitMatch(currentSeasonId.Value, request);
         return Created();
     }

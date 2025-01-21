@@ -1,0 +1,11 @@
+meta {
+  name: Remove from Queue
+  type: http
+  seq: 2
+}
+
+delete {
+  url: {{api_host}}/api/v1/match-making/queue
+  body: none
+  auth: none
+}

@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Auth;
+using MMRProject.Api.BackgroundServices;
 using MMRProject.Api.Data;
 using MMRProject.Api.Exceptions;
 using MMRProject.Api.MMRCalculationApi;
@@ -23,10 +24,15 @@ builder.AddAuth();
 builder.Services.AddUserContextResolver();
 
 builder.Services.AddScoped<IMatchesService, MatchesService>();
+builder.Services.AddScoped<IMatchMakingService, MatchMakingService>();
 builder.Services.AddScoped<ISeasonService, SeasonService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<IUserService, UserService>();
 
+// Background services
+builder.Services.AddHostedService<MatchMakingBackgroundService>();
+
+// External APIs
 builder.Services.AddHttpClient<IMMRCalculationApiClient, MMRCalculationApiClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["MMRCalculationAPI:BaseUrl"]!);

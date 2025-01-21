@@ -89,6 +89,7 @@ public class MatchesService(
         var match = await CreateMatch(seasonId, request.Team1.Member1, request.Team1.Member2, request.Team2.Member1,
             request.Team2.Member2, request.Team1.Score, request.Team2.Score);
 
+        // TODO: Handle that this fails
         await CalculateMMR(seasonId, match);
     }
 
