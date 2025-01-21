@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using MMRProject.Api.DTOs;
 using MMRProject.Api.Mappers;
@@ -17,7 +18,7 @@ public class UsersController(IUserService userService) : ControllerBase
     }
 
     [HttpPost]
-    public async Task<UserDetails> CreateUser([FromBody] CreateUserRequest request)
+    public async Task<UserDetails> CreateUser([FromBody, Required] CreateUserRequest request)
     {
         var user = await userService.CreateUserAsync(request.Name, request.DisplayName);
         return UserMapper.MapUserToUserDetails(user);

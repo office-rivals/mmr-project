@@ -1,12 +1,12 @@
 <script lang="ts">
   import * as Card from '$lib/components/ui/card';
-  import type { ViewMatchDetailsV2 } from '../../../api';
+  import type { MatchDetailsV2 } from '../../../api';
   import type { MatchUser } from './match-user';
   import TeamMember from './team-member.svelte';
 
   export let users: MatchUser[];
-  export let match: Omit<ViewMatchDetailsV2, 'date'> & {
-    date?: string;
+  export let match: Omit<MatchDetailsV2, 'date'> & {
+    date?: Date | string;
   };
 
   export let showMmr: boolean;
