@@ -23,12 +23,11 @@
 
   type TeamOption = 'team1' | 'team2';
 
-  let currentUserTeam: TeamOption | null = null;
-  $: currentUserTeam = activeMatch.team1.playerIds.find(
-    (id) => id === currentPlayerId
+  let currentUserTeam: TeamOption | null = activeMatch.team1.playerIds.includes(
+    currentPlayerId
   )
     ? 'team1'
-    : activeMatch.team2.playerIds.find((id) => id === currentPlayerId)
+    : activeMatch.team2.playerIds.includes(currentPlayerId)
       ? 'team2'
       : null;
 
@@ -36,13 +35,24 @@
     throw new Error('Current player is not in the active match');
   }
 
-  let otherTeam: TeamOption;
-  $: otherTeam = currentUserTeam === 'team1' ? 'team2' : 'team1';
+  const otherTeam: TeamOption = currentUserTeam === 'team1' ? 'team2' : 'team1';
 
-  let tweakedActiveMatch = {
+  const currentUserTeamPlayers = [
+    currentPlayerId,
+    ...activeMatch[currentUserTeam].playerIds.filter(
+      (id) => id !== currentPlayerId
+    ),
+  ];
+
+  const otherTeamPlayers = activeMatch[otherTeam].playerIds;
+
+  const tweakedActiveMatch: ActiveMatchDto = {
     ...activeMatch,
-    team1: { ...activeMatch[currentUserTeam] },
-    team2: { ...activeMatch[otherTeam] },
+    team1: {
+      ...activeMatch[currentUserTeam],
+      playerIds: currentUserTeamPlayers,
+    },
+    team2: { ...activeMatch[otherTeam], playerIds: otherTeamPlayers },
   };
 
   const form = superForm(data, {
@@ -79,7 +89,7 @@
     <div class="flex gap-3">
       <div id="team1-step" class="flex flex-1 flex-col gap-4">
         <h3 class="mb-2 text-center text-2xl">Team 1</h3>
-        {#each activeMatch[currentUserTeam].playerIds as playerId}
+        {#each tweakedActiveMatch.team1.playerIds as playerId}
           {@const user = users.find((user) => user.userId === playerId)}
           <p
             class="space-x-1"
@@ -92,7 +102,7 @@
       <div class="flex-s bg-border min-h-full w-px"></div>
       <div id="team2-step" class="flex flex-1 flex-col gap-4">
         <h3 class="mb-2 text-center text-2xl">Team 2</h3>
-        {#each activeMatch[otherTeam].playerIds as playerId}
+        {#each tweakedActiveMatch.team2.playerIds as playerId}
           {@const user = users.find((user) => user.userId === playerId)}
           <p
             class="space-x-1"
@@ -126,7 +136,7 @@
     {#if loosingTeam}
       <div id="score-step" class="flex flex-col gap-4" transition:fade>
         <h2 class="text-center text-4xl">
-          What was {loosingTeam === 'team1' ? 'your' : 'their'} score?
+          What was {loosingTeam === currentUserTeam ? 'your' : 'their'} score?
         </h2>
         <div class="grid grid-cols-5 gap-2">
           {#each Array.from({ length: 10 }, (_, i) => i) as score}
@@ -151,7 +161,6 @@
         <ActiveMatchCard
           match={tweakedActiveMatch}
           {users}
-          {currentPlayerId}
           team1Score={$formData[`${currentUserTeam}Score`]}
           team2Score={$formData[`${otherTeam}Score`]}
         />

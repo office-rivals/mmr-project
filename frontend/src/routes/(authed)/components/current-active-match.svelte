@@ -35,11 +35,7 @@
   <div class="flex flex-col gap-4">
     <h2 class="text-2xl md:text-4xl">Active Match</h2>
     <div class="flex flex-col gap-2">
-      <ActiveMatchCard
-        users={users ?? []}
-        match={currentActiveMatch}
-        {currentPlayerId}
-      />
+      <ActiveMatchCard users={users ?? []} match={currentActiveMatch} />
       <div class="flex justify-end gap-2">
         <Button
           variant="secondary"

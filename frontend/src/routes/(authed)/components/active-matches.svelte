@@ -39,7 +39,7 @@
         </div>
         <hr class="border-t-1 h-0" />
         {#each activeMatches as match}
-          <ActiveMatchCard {match} users={users ?? []} currentPlayerId={null} />
+          <ActiveMatchCard {match} users={users ?? []} />
         {/each}
       </div>
     {/if}
