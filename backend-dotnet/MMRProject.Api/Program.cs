@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Auth;
 using MMRProject.Api.Data;
@@ -31,12 +33,25 @@ builder.Services.AddHttpClient<IMMRCalculationApiClient, MMRCalculationApiClient
     client.DefaultRequestHeaders.Add("X-API-KEY", builder.Configuration["MMRCalculationAPI:ApiKey"]);
 });
 
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(options => { options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()); });
 builder.Services.AddExceptionHandler<HttpExceptionHandler>();
 builder.Services.AddProblemDetails();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.CustomOperationIds(api =>
+    {
+        if (api.ActionDescriptor is ControllerActionDescriptor actionDescriptor)
+        {
+            return $"{actionDescriptor.ControllerName}_{actionDescriptor.ActionName}";
+        }
+
+        return null;
+    });
+});
 
 var app = builder.Build();
 

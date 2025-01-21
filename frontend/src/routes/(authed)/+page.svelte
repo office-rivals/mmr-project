@@ -6,13 +6,13 @@
   import UserStatsModal from '$lib/components/user-stats-modal.svelte';
   import { Checkbox } from 'bits-ui';
   import { Check, Minus } from 'lucide-svelte';
-  import type { ViewUserDetails } from '../../api';
+  import type { UserDetails } from '../../api';
   import { showMmr } from '../../stores/show-mmr';
   import type { PageData } from './$types';
 
   export let data: PageData;
   const { leaderboardEntries, recentMatches, users, statisticsPromise } = data;
-  let selectedUser: ViewUserDetails | null | undefined;
+  let selectedUser: UserDetails | null | undefined;
   $: leaderboardEntry =
     selectedUser != null
       ? leaderboardEntries?.find(

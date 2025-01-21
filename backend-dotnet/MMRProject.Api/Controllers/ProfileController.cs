@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using MMRProject.Api.DTOs;
 using MMRProject.Api.Mappers;
@@ -17,7 +18,7 @@ public class ProfileController(IUserService userService) : ControllerBase
     }
 
     [HttpPost("claim")]
-    public async Task<ProfileDetails> ClaimProfile([FromBody] ClaimProfileRequest request)
+    public async Task<ProfileDetails> ClaimProfile([FromBody, Required] ClaimProfileRequest request)
     {
         var user = await userService.ClaimUserForCurrentAuthenticatedUserAsync(request.UserId);
         return new ProfileDetails { UserId = user.Id };

@@ -1,5 +1,5 @@
-import type { ReposLeaderboardEntry } from '../../../api';
+import type { LeaderboardEntry } from '../../../api';
 
-export interface LeaderboardEntry extends ReposLeaderboardEntry {
+export interface RankedLeaderboardEntry extends LeaderboardEntry {
   rank: number;
 }

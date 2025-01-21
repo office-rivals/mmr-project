@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using MMRProject.Api.DTOs;
 using MMRProject.Api.Extensions;
@@ -30,7 +31,7 @@ public class MMRV2Controller(
     }
 
     [HttpPost]
-    public async Task<IActionResult> SubmitMatch([FromBody] SubmitMatchV2Request request)
+    public async Task<IActionResult> SubmitMatch([FromBody, Required] SubmitMatchV2Request request)
     {
         var currentSeasonId = await seasonService.CurrentSeasonIdAsync();
         if (!currentSeasonId.HasValue)

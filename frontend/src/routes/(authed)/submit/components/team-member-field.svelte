@@ -4,13 +4,13 @@
   import { Input } from '$lib/components/ui/input';
   import { isPresent } from '$lib/util/isPresent';
   import X from 'lucide-svelte/icons/x';
-  import type { ViewUserDetails } from '../../../../api';
+  import type { UserDetails } from '../../../../api';
 
   export let label: string;
   export let userId: number | null;
-  export let users: ViewUserDetails[];
+  export let users: UserDetails[];
   export let latestPlayerIds: number[];
-  export let availableUsers: ViewUserDetails[] = [];
+  export let availableUsers: UserDetails[] = [];
 
   export let onCreateUser: (suggested: string) => void;
 
@@ -32,7 +32,7 @@
     .filter(isPresent)
     .slice(0, 4);
 
-  const selectUser = (user: ViewUserDetails) => {
+  const selectUser = (user: UserDetails) => {
     userId = user.userId;
     filter = '';
   };

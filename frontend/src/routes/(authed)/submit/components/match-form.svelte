@@ -14,13 +14,13 @@
     type SuperValidated,
   } from 'sveltekit-superforms';
   import { zodClient } from 'sveltekit-superforms/adapters';
-  import type { ViewUserDetails } from '../../../../api';
+  import type { UserDetails } from '../../../../api';
   import type { MatchSchema } from '../match-schema';
   import { matchSchema } from '../match-schema';
   import TeamMemberField from './team-member-field.svelte';
 
   export let data: SuperValidated<Infer<MatchSchema>>;
-  export let users: ViewUserDetails[];
+  export let users: UserDetails[];
 
   const PLAYER_1_LOCAL_STORAGE_KEY = 'player1Id';
   const LATEST_PLAYERS_LOCAL_STORAGE_KEY = 'latestPlayers';
@@ -273,7 +273,7 @@
     {#if isMatchCardVisible}
       <div id="submit-step" class="flex flex-col gap-4" transition:fade>
         <h2 class="text-center text-4xl">Submit?</h2>
-        <MatchCard match={$formData} {users} />
+        <MatchCard match={$formData} {users} showMmr={false} />
         <Form.Button>Submit the match</Form.Button>
       </div>
     {/if}

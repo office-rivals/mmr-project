@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { ViewUserDetails } from '$api';
+  import type { UserDetails } from '$api';
   import PlayerButton from '$lib/components/player-button.svelte';
   import { Input } from '$lib/components/ui/input';
 
-  export let users: ViewUserDetails[];
+  export let users: UserDetails[];
   export let onSelectedUser: (userId: number) => void;
   export let autofocus = false;
 
@@ -16,7 +16,7 @@
         u.displayName.toLowerCase().includes(filter.toLowerCase()))
   );
 
-  const selectUser = (user: ViewUserDetails) => {
+  const selectUser = (user: UserDetails) => {
     onSelectedUser(user.userId);
     filter = '';
   };
