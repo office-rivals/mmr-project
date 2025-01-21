@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { MatchMakingQueueStatus } from '$api';
   import PageTitle from '$lib/components/page-title.svelte';
   import { Button } from '$lib/components/ui/button';
   import { LoaderCircle, Pause, Play } from 'lucide-svelte';
@@ -9,9 +10,24 @@
 
   const PLAYERS_REQUIRED_FOR_MATCH = 4;
 
-  const remainingPlayers = data.matchmaking
+  let remainingPlayers = data.matchmaking
     ? PLAYERS_REQUIRED_FOR_MATCH - data.matchmaking.playersInQueue
     : undefined;
+  let isUserInQueue = data.matchmaking?.isUserInQueue;
+
+  const getQueueStatus = async () => {
+    const response = await fetch('/api/matchmaking/status');
+    return (await response.json()) as MatchMakingQueueStatus;
+  };
+
+  const refreshQueueStatus = async () => {
+    if (!isUserInQueue) {
+      return;
+    }
+    const status = await getQueueStatus();
+    remainingPlayers = PLAYERS_REQUIRED_FOR_MATCH - status.playersInQueue;
+    isUserInQueue = status.isUserInQueue;
+  };
 
   $: queueEligabiltiy = 'notification-unsupported';
   onMount(() => {
@@ -19,6 +35,14 @@
       Notification?.permission === 'granted'
         ? 'ready'
         : 'disabled-notifications';
+
+    const intervalId = setInterval(() => {
+      refreshQueueStatus();
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
   });
 </script>
 
@@ -33,7 +57,7 @@
   queue.
 </p>
 <form method="post">
-  {#if data.matchmaking?.isUserInQueue}
+  {#if isUserInQueue}
     <input type="hidden" name="intent" value="leave" />
     <div class="flex gap-2">
       <LoaderCircle class="animate-spin" />
