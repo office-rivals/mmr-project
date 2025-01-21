@@ -208,7 +208,8 @@
       </div>
       {#if matchMakingStatus.type === 'pending-match' && initialSecondsToRespond != null}
         <div
-          class="mt-3 h-4 animate-[min-max-width_{initialSecondsToRespond}s_linear_forwards] bg-gradient-to-r from-orange-700 to-orange-400"
+          style="animation-duration: {initialSecondsToRespond}s"
+          class="mt-3 h-4 animate-[min-max-width_0s_linear_forwards] rounded-full bg-gradient-to-r from-orange-700 to-orange-400"
         />
       {/if}
     </div>
