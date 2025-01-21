@@ -29,13 +29,7 @@
     isUserInQueue = status.isUserInQueue;
   };
 
-  $: queueEligabiltiy = 'notification-unsupported';
   onMount(() => {
-    queueEligabiltiy =
-      Notification?.permission === 'granted'
-        ? 'ready'
-        : 'disabled-notifications';
-
     const intervalId = setInterval(() => {
       refreshQueueStatus();
     }, 1000);
@@ -55,6 +49,8 @@
   <br />
   If you do not accept the match within 30 seconds, you will be removed from the
   queue.
+  <br />
+  A sound will play when a match is found.
 </p>
 <form method="post">
   {#if isUserInQueue}
@@ -72,27 +68,10 @@
     <Button href="/profile" size="lg" class="w-full py-6 text-xl"
       >Claim profile</Button
     >
-  {:else if queueEligabiltiy === 'ready'}
+  {:else}
     <input type="hidden" name="intent" value="queue" />
     <Button size="lg" class="w-full py-6" type="submit">
       <Play /><span class="ml-2 text-xl">Queue up</span>
     </Button>
-  {:else if queueEligabiltiy === 'notification-unsupported'}
-    <p>Your browser does not support notifications.</p>
-  {:else}
-    <p>
-      You need to allow notifications to queue up for a match.
-      <Button
-        size="lg"
-        class="w-full py-6"
-        type="button"
-        on:click={() =>
-          Notification?.requestPermission().then(() => {
-            if (Notification.permission === 'granted') {
-              queueEligabiltiy = 'ready';
-            }
-          })}><span class="ml-2 text-xl">Enable notifications</span></Button
-      >
-    </p>
   {/if}
 </form>
