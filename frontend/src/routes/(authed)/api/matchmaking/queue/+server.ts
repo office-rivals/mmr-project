@@ -1,4 +1,4 @@
-import type { RequestHandler } from '../$types';
+import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({
   request,
@@ -23,13 +23,13 @@ export const POST: RequestHandler = async ({
       await apiClient.matchmakingApi.matchMakingAcceptMatch({ matchId });
       return new Response('Accepted match');
     }
-    case 'reject': {
+    case 'decline': {
       const matchId = formData.get('matchId')?.toString();
       if (!matchId) {
         return new Response('No matchId provided', { status: 400 });
       }
-      await apiClient.matchmakingApi.matchMakingRejectMatch({ matchId });
-      return new Response('Rejected match');
+      await apiClient.matchmakingApi.matchMakingDeclineMatch({ matchId });
+      return new Response('Declined match');
     }
     default:
       return new Response('Unknown intent', { status: 400 });

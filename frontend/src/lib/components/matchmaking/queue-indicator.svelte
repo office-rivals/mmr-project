@@ -14,6 +14,14 @@
 
   let acceptedMatchId: string | null = null;
 
+  let initialSecondsToRespond: number | null = null;
+
+  let matchFoundAudio: HTMLAudioElement;
+  onMount(() => {
+    matchFoundAudio = new Audio('/sounds/match-found.mp3');
+    matchFoundAudio.preload = 'auto';
+  });
+
   const getQueueStatus = async () => {
     const response = await fetch('/api/matchmaking/status');
     return (await response.json()) as MatchMakingQueueStatus;
@@ -24,11 +32,21 @@
     if (status?.assignedPendingMatch != null) {
       switch (status.assignedPendingMatch.status) {
         case 'Pending':
+          if (
+            matchMakingStatus.type === 'pending-match' &&
+            matchMakingStatus.matchId === status.assignedPendingMatch.id
+          ) {
+            break;
+          }
+          matchFoundAudio.play();
           matchMakingStatus = {
             type: 'pending-match',
             matchId: status.assignedPendingMatch.id,
             expiresAt: new Date(status.assignedPendingMatch.expiresAt),
           };
+          initialSecondsToRespond = Math.floor(
+            (matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000
+          );
           break;
         case 'Accepted':
           if (matchMakingStatus.type === 'inactive') {
@@ -117,13 +135,13 @@
     acceptedMatchId = matchMakingStatus.matchId;
   };
 
-  const onRejectMatch = async () => {
+  const onDeclineMatch = async () => {
     if (matchMakingStatus.type !== 'pending-match') {
       return;
     }
 
     const body = new FormData();
-    body.append('intent', 'reject');
+    body.append('intent', 'decline');
     body.append('matchId', matchMakingStatus.matchId);
 
     await fetch('/api/matchmaking/queue', { method: 'POST', body });
@@ -167,8 +185,10 @@
               <Button on:click={onAcceptMatch} class="animate-bounce"
                 >Accept</Button
               >
-              <Button on:click={onRejectMatch} variant="destructive" size="icon"
-                ><X /></Button
+              <Button
+                on:click={onDeclineMatch}
+                variant="destructive"
+                size="icon"><X /></Button
               >
             {/if}
           {:else if matchMakingStatus.type === 'match-accepted'}
@@ -180,9 +200,9 @@
           {/if}
         </div>
       </div>
-      {#if matchMakingStatus.type === 'pending-match'}
+      {#if matchMakingStatus.type === 'pending-match' && initialSecondsToRespond != null}
         <div
-          class="mt-3 h-4 animate-[min-max-width_{secondsToRespond}s_linear_forwards] bg-gradient-to-r from-orange-700 to-orange-400"
+          class="mt-3 h-4 animate-[min-max-width_{initialSecondsToRespond}s_linear_forwards] bg-gradient-to-r from-orange-700 to-orange-400"
         />
       {/if}
     </div>
