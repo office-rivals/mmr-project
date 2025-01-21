@@ -6,7 +6,7 @@
   import Button from '../ui/button/button.svelte';
 
   type MatchMakingStatus =
-    | { type: 'queued' }
+    | { type: 'queued'; playersInQueue: number }
     | { type: 'inactive' }
     | { type: 'pending-match'; matchId: string; expiresAt: Date }
     | { type: 'match-accepted'; matchId: string };
@@ -65,7 +65,10 @@
           break;
       }
     } else if (status?.isUserInQueue) {
-      matchMakingStatus = { type: 'queued' };
+      matchMakingStatus = {
+        type: 'queued',
+        playersInQueue: status.playersInQueue,
+      };
     } else {
       matchMakingStatus = { type: 'inactive' };
     }
@@ -170,8 +173,9 @@
           <span class="text-xs">Matchmaking</span>
           <p>{matchMakingStatuses[matchMakingStatus.type]}</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-4">
           {#if matchMakingStatus.type === 'queued'}
+            <p class="text-sm">{matchMakingStatus.playersInQueue} / 4</p>
             <Button variant="destructive" type="submit" on:click={onLeaveQueue}
               ><Pause class="mr-2" />Leave</Button
             >
@@ -182,14 +186,16 @@
             {#if acceptedMatchId === matchMakingStatus.matchId}
               <Button disabled>Match accepted</Button>
             {:else}
-              <Button on:click={onAcceptMatch} class="animate-bounce"
-                >Accept</Button
-              >
-              <Button
-                on:click={onDeclineMatch}
-                variant="destructive"
-                size="icon"><X /></Button
-              >
+              <div class="flex gap-2">
+                <Button on:click={onAcceptMatch} class="animate-bounce"
+                  >Accept</Button
+                >
+                <Button
+                  on:click={onDeclineMatch}
+                  variant="destructive"
+                  size="icon"><X /></Button
+                >
+              </div>
             {/if}
           {:else if matchMakingStatus.type === 'match-accepted'}
             <Button
