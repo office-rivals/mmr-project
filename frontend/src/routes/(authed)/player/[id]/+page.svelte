@@ -72,7 +72,7 @@
       <Kpi title="Last match">
         {new Intl.RelativeTimeFormat(undefined, {
           style: 'narrow',
-          numeric: 'auto',
+          numeric: data.stats.daysSinceLastMatch !== 0 ? 'always' : 'auto',
         }).format(data.stats.daysSinceLastMatch, 'day')}
       </Kpi>
     {/if}
