@@ -6,7 +6,7 @@
 
   export let users: MatchUser[];
   export let match: Omit<MatchDetailsV2, 'date'> & {
-    date?: Date;
+    date?: Date | string;
   };
 
   export let showMmr: boolean;

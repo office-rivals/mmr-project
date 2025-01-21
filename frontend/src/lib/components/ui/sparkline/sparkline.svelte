@@ -5,7 +5,7 @@
     type AreaChartOptions,
   } from '@carbon/charts-svelte';
 
-  export let data: Array<{ date: Date; rating: number }>;
+  export let data: Array<{ date: Date | string; rating: number }>;
   export let options: Partial<AreaChartOptions> = {};
 
   const chartOptions: AreaChartOptions = {

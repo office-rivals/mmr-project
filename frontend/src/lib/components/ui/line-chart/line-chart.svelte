@@ -7,7 +7,11 @@
 
   // TODO: Make this component more generic, and not hardcoded to showing MMR stats
 
-  export let data: Array<{ player: string; date: string; rating: number }>;
+  export let data: Array<{
+    player: string;
+    date: Date | string;
+    rating: number;
+  }>;
   export let height: number;
   export let legend = true;
 
