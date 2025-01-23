@@ -1,0 +1,15 @@
+meta {
+  name: Cancel Active Match
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{api_host}}/api/v1/match-making/active-matches/30e9dcb7-13f3-4868-9098-8ef79257f29f
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
