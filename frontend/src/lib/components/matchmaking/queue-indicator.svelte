@@ -253,7 +253,7 @@
               {matchMakingStatusTitles[matchMakingStatus.type] ?? 'Matchmaking'}
             </p>
             {#if matchMakingStatus.type === 'pending-match' && initialSecondsToRespond != null}
-              <div class="relative h-40 w-40 self-center">
+              <div class="relative h-44 w-44 self-center">
                 <svg
                   viewBox="0 0 100 100"
                   class="h-full w-full rotate-[135deg] transform"
@@ -263,7 +263,7 @@
                     cy="50"
                     r="40"
                     fill="none"
-                    stroke-width="8"
+                    stroke-width="6"
                     stroke-linecap="round"
                     stroke-dasharray="188.5 251.3"
                     class="stroke-muted"
@@ -274,7 +274,7 @@
                     cy="50"
                     r="40"
                     fill="none"
-                    stroke-width="8"
+                    stroke-width="6"
                     stroke-linecap="round"
                     stroke-dasharray={`${188.5 * ((secondsToRespond - 1) / (initialSecondsToRespond - 1))} 251.3`}
                     style="transition: stroke-dasharray 1s linear"
