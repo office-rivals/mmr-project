@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { MatchMakingQueueStatus } from '$api';
   import clsx from 'clsx';
-  import { Pause, X } from 'lucide-svelte';
+  import { Check, CircleCheckBig, Pause, X } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import Button from '../ui/button/button.svelte';
 
@@ -74,20 +74,17 @@
     }
   };
 
-  let secondsToRespond = 0;
+  let secondsToRespond = -1;
 
   onMount(() => {
     let frame: number;
     const updateSecondsToRespond = () => {
       if (matchMakingStatus.type === 'pending-match') {
-        secondsToRespond = Math.max(
-          Math.floor(
-            (matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000
-          ),
-          0
+        secondsToRespond = Math.ceil(
+          (matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000
         );
       } else {
-        secondsToRespond = 0;
+        secondsToRespond = -1;
       }
       frame = requestAnimationFrame(updateSecondsToRespond);
     };
@@ -154,10 +151,19 @@
     matchMakingStatus = { type: 'inactive' };
   };
 
-  const matchMakingStatuses = {
+  const matchMakingStatuses: Partial<
+    Record<MatchMakingStatus['type'], string>
+  > = {
     queued: 'Looking for other players...',
-    'pending-match': 'Match found! Accept the match to start the game.',
-    'match-accepted': 'Match accepted! Go go go!',
+    'pending-match': 'Accept or decline the match before time runs out',
+  };
+
+  const matchMakingStatusTitles: Partial<
+    Record<MatchMakingStatus['type'], string>
+  > = {
+    queued: 'Matchmaking',
+    'pending-match': 'Match found!',
+    'match-accepted': 'Match accepted!',
   };
 
   type ModalSize = 'sm' | 'xl';
@@ -232,7 +238,7 @@
       </div>
     </div>
   {:else if modalSizeForMatchMakingStatus[matchMakingStatus.type] === 'xl'}
-    <div class="fixed inset-20 flex items-center justify-center p-4">
+    <div class="fixed inset-2 flex items-center justify-center p-4 sm:inset-20">
       <div class="h-full max-h-96 w-full max-w-2xl">
         <div
           class={clsx(
@@ -243,12 +249,9 @@
           )}
         >
           <div class="flex h-full flex-col items-stretch justify-between">
-            <div class="flex flex-col items-start gap-4">
-              <span class="text-lg">Matchmaking</span>
-              <p class="text-xl">
-                {matchMakingStatuses[matchMakingStatus.type]}
-              </p>
-            </div>
+            <p class="self-center text-3xl font-bold">
+              {matchMakingStatusTitles[matchMakingStatus.type] ?? 'Matchmaking'}
+            </p>
             {#if matchMakingStatus.type === 'pending-match' && initialSecondsToRespond != null}
               <div class="relative h-40 w-40 self-center">
                 <svg
@@ -273,50 +276,57 @@
                     fill="none"
                     stroke-width="8"
                     stroke-linecap="round"
-                    stroke-dasharray={`${188.5 * ((secondsToRespond - 1) / initialSecondsToRespond)} 251.3`}
+                    stroke-dasharray={`${188.5 * ((secondsToRespond - 1) / (initialSecondsToRespond - 1))} 251.3`}
                     style="transition: stroke-dasharray 1s linear"
-                    class="stroke-primary"
-                    class:opacity-0={secondsToRespond === 0}
+                    class="stroke-white"
+                    class:opacity-0={secondsToRespond <= 0}
                   />
                 </svg>
-
                 <div
                   class="absolute inset-x-0 bottom-0 flex flex-col items-center justify-end pb-4"
                 >
                   <span class="text-3xl font-bold text-white"
-                    >{secondsToRespond}</span
+                    >{Math.max(secondsToRespond, 0)}s</span
                   >
                 </div>
               </div>
             {/if}
-            <div class="flex flex-col items-center gap-4">
-              {#if matchMakingStatus.type === 'pending-match'}
-                {#if acceptedMatchId === matchMakingStatus.matchId}
-                  <Button class="px-8 py-6 text-lg" disabled
-                    >Match accepted</Button
-                  >
-                {:else}
-                  <div class="flex gap-2">
-                    <Button
-                      on:click={onAcceptMatch}
-                      class="animate-bounce px-8 py-6 text-lg">Accept</Button
-                    >
-                    <Button
-                      on:click={onDeclineMatch}
-                      variant="destructive"
-                      class="px-8 py-6 text-lg">Decline</Button
-                    >
-                  </div>
-                {/if}
-              {:else if matchMakingStatus.type === 'match-accepted'}
-                <Button
-                  on:click={() => {
-                    matchMakingStatus = { type: 'inactive' };
-                  }}
-                  class="px-8 py-6 text-lg">OK!</Button
+            {#if matchMakingStatus.type === 'match-accepted'}
+              <!-- TODO: Show the match card for the created match here -->
+              <CircleCheckBig class="size-28 self-center text-white" />
+            {/if}
+            {#if matchMakingStatuses[matchMakingStatus.type]}
+              <p class="self-center text-lg text-gray-400">
+                {matchMakingStatuses[matchMakingStatus.type]}
+              </p>
+            {/if}
+            {#if matchMakingStatus.type === 'pending-match'}
+              {#if acceptedMatchId === matchMakingStatus.matchId}
+                <Button class="self-center px-8 py-6 text-lg" disabled
+                  >Match accepted</Button
                 >
+              {:else}
+                <div class="flex justify-stretch gap-2 sm:gap-4">
+                  <Button
+                    on:click={onDeclineMatch}
+                    variant="secondary"
+                    class="flex-1 gap-1 text-lg sm:gap-3"><X />Decline</Button
+                  >
+                  <Button
+                    on:click={onAcceptMatch}
+                    class="flex-1 gap-1 text-lg sm:gap-3"
+                    ><Check /> Accept</Button
+                  >
+                </div>
               {/if}
-            </div>
+            {:else if matchMakingStatus.type === 'match-accepted'}
+              <Button
+                on:click={() => {
+                  matchMakingStatus = { type: 'inactive' };
+                }}
+                class="self-center px-8 py-6 text-lg">OK!</Button
+              >
+            {/if}
           </div>
         </div>
       </div>
