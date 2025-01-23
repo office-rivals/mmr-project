@@ -257,14 +257,15 @@ public class MatchMakingService(
     {
         var match = await ReadActiveMatch(matchId);
 
-        RemovePendingMatch(match);
+        RemoveActiveMatch(match);
         await dbContext.SaveChangesAsync();
     }
 
-    private void RemovePendingMatch(ActiveMatch match)
+    private void RemoveActiveMatch(ActiveMatch match)
     {
         if (match.PendingMatch is not null)
         {
+            dbContext.QueuedPlayers.RemoveRange(match.PendingMatch.QueuedPlayers);
             dbContext.PendingMatches.Remove(match.PendingMatch);
         }
 
@@ -299,7 +300,7 @@ public class MatchMakingService(
                 }
             });
 
-        RemovePendingMatch(match);
+        RemoveActiveMatch(match);
         await dbContext.SaveChangesAsync();
     }
 
@@ -338,6 +339,7 @@ public class MatchMakingService(
             .Include(x => x.TeamTwoUserOne)
             .Include(x => x.TeamTwoUserTwo)
             .Include(x => x.PendingMatch)
+            .ThenInclude(pm => pm!.QueuedPlayers)
             .FirstOrDefaultAsync(x => x.Id == matchId);
 
         var identityUserId = userContextResolver.GetIdentityUserId();
