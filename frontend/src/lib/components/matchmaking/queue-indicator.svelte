@@ -74,17 +74,20 @@
     }
   };
 
-  let secondsToRespond = -1;
+  let secondsToRespond = 0;
 
   onMount(() => {
     let frame: number;
     const updateSecondsToRespond = () => {
       if (matchMakingStatus.type === 'pending-match') {
-        secondsToRespond = Math.floor(
-          (matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000
+        secondsToRespond = Math.max(
+          Math.floor(
+            (matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000
+          ),
+          0
         );
       } else {
-        secondsToRespond = -1;
+        secondsToRespond = 0;
       }
       frame = requestAnimationFrame(updateSecondsToRespond);
     };
@@ -246,9 +249,44 @@
                 {matchMakingStatuses[matchMakingStatus.type]}
               </p>
             </div>
-            {#if matchMakingStatus.type === 'pending-match'}
-              <div class="mr-2 self-center text-3xl font-bold text-white">
-                {Math.max(secondsToRespond, 0)}
+            {#if matchMakingStatus.type === 'pending-match' && initialSecondsToRespond != null}
+              <div class="relative h-40 w-40 self-center">
+                <svg
+                  viewBox="0 0 100 100"
+                  class="h-full w-full rotate-[135deg] transform"
+                >
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    fill="none"
+                    stroke-width="8"
+                    stroke-linecap="round"
+                    stroke-dasharray="188.5 251.3"
+                    class="stroke-muted"
+                  />
+
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    fill="none"
+                    stroke-width="8"
+                    stroke-linecap="round"
+                    stroke-dasharray={`${188.5 * ((secondsToRespond - 1) / initialSecondsToRespond)} 251.3`}
+                    style="transition: stroke-dasharray 1s linear"
+                    class="stroke-primary"
+                    class:opacity-0={secondsToRespond === 0}
+                  />
+                </svg>
+
+                <div
+                  class="absolute inset-x-0 bottom-0 flex flex-col items-center justify-end pb-4"
+                >
+                  <span class="text-3xl font-bold text-white"
+                    >{secondsToRespond}</span
+                  >
+                </div>
               </div>
             {/if}
             <div class="flex flex-col items-center gap-4">
@@ -280,12 +318,6 @@
               {/if}
             </div>
           </div>
-          {#if matchMakingStatus.type === 'pending-match' && initialSecondsToRespond != null}
-            <div
-              style="animation-duration: {initialSecondsToRespond}s"
-              class="mt-3 h-4 animate-[min-max-width_0s_linear_forwards] rounded-full bg-gradient-to-r from-orange-700 to-orange-400"
-            />
-          {/if}
         </div>
       </div>
     </div>
