@@ -156,64 +156,140 @@
     'pending-match': 'Match found! Accept the match to start the game.',
     'match-accepted': 'Match accepted! Go go go!',
   };
+
+  type ModalSize = 'sm' | 'xl';
+  const modalSizeForMatchMakingStatus: Record<
+    MatchMakingStatus['type'],
+    ModalSize
+  > = {
+    queued: 'sm',
+    'pending-match': 'xl',
+    'match-accepted': 'xl',
+    inactive: 'sm',
+  };
 </script>
 
 {#if matchMakingStatus.type !== 'inactive'}
-  <div class="fixed bottom-20 left-0 right-0 mx-auto max-w-screen-sm px-4">
-    <div
-      class={clsx(
-        'w-full rounded-2xl border p-5',
-        matchMakingStatus.type === 'queued'
-          ? 'animate-border border border-transparent [background:linear-gradient(60deg,#001003,theme(colors.orange.950)_60%,#001003)_padding-box,conic-gradient(from_var(--border-angle),theme(colors.orange.600/.58)_80%,_theme(colors.orange.300)_94%,_theme(colors.orange.600/.58))_border-box]'
-          : 'border-orange-500 [background:linear-gradient(60deg,#001003,theme(colors.orange.950)_60%,#001003)_padding-box]'
-      )}
-    >
-      <div class="flex items-center justify-between">
-        <div>
-          <span class="text-xs">Matchmaking</span>
-          <p>{matchMakingStatuses[matchMakingStatus.type]}</p>
+  {#if modalSizeForMatchMakingStatus[matchMakingStatus.type] === 'sm'}
+    <div class="fixed bottom-20 left-0 right-0 mx-auto max-w-screen-sm px-4">
+      <div
+        class={clsx(
+          'w-full rounded-2xl border p-5',
+          matchMakingStatus.type === 'queued'
+            ? 'animate-border border border-transparent [background:linear-gradient(60deg,#001003,theme(colors.orange.950)_60%,#001003)_padding-box,conic-gradient(from_var(--border-angle),theme(colors.orange.600/.58)_80%,_theme(colors.orange.300)_94%,_theme(colors.orange.600/.58))_border-box]'
+            : 'border-orange-500 [background:linear-gradient(60deg,#001003,theme(colors.orange.950)_60%,#001003)_padding-box]'
+        )}
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-xs">Matchmaking</span>
+            <p>{matchMakingStatuses[matchMakingStatus.type]}</p>
+          </div>
+          <div class="flex items-center gap-4">
+            {#if matchMakingStatus.type === 'queued'}
+              <p class="text-sm">{matchMakingStatus.playersInQueue} / 4</p>
+              <Button
+                variant="destructive"
+                type="submit"
+                on:click={onLeaveQueue}><Pause class="mr-2" />Leave</Button
+              >
+            {:else if matchMakingStatus.type === 'pending-match'}
+              <div class="mr-2 text-xl font-bold text-white">
+                {Math.max(secondsToRespond, 0)}
+              </div>
+              {#if acceptedMatchId === matchMakingStatus.matchId}
+                <Button disabled>Match accepted</Button>
+              {:else}
+                <div class="flex gap-2">
+                  <Button on:click={onAcceptMatch} class="animate-bounce"
+                    >Accept</Button
+                  >
+                  <Button
+                    on:click={onDeclineMatch}
+                    variant="destructive"
+                    size="icon"><X /></Button
+                  >
+                </div>
+              {/if}
+            {:else if matchMakingStatus.type === 'match-accepted'}
+              <Button
+                on:click={() => {
+                  matchMakingStatus = { type: 'inactive' };
+                }}>OK!</Button
+              >
+            {/if}
+          </div>
         </div>
-        <div class="flex items-center gap-4">
-          {#if matchMakingStatus.type === 'queued'}
-            <p class="text-sm">{matchMakingStatus.playersInQueue} / 4</p>
-            <Button variant="destructive" type="submit" on:click={onLeaveQueue}
-              ><Pause class="mr-2" />Leave</Button
-            >
-          {:else if matchMakingStatus.type === 'pending-match'}
-            <div class="mr-2 text-xl font-bold text-white">
-              {Math.max(secondsToRespond, 0)}
+        {#if matchMakingStatus.type === 'pending-match' && initialSecondsToRespond != null}
+          <div
+            style="animation-duration: {initialSecondsToRespond}s"
+            class="mt-3 h-4 animate-[min-max-width_0s_linear_forwards] rounded-full bg-gradient-to-r from-orange-700 to-orange-400"
+          />
+        {/if}
+      </div>
+    </div>
+  {:else if modalSizeForMatchMakingStatus[matchMakingStatus.type] === 'xl'}
+    <div class="fixed inset-20 flex items-center justify-center p-4">
+      <div class="h-full max-h-96 w-full max-w-2xl">
+        <div
+          class={clsx(
+            'size-full rounded-2xl border p-5',
+            matchMakingStatus.type === 'queued'
+              ? 'animate-border border border-transparent [background:linear-gradient(60deg,#001003,theme(colors.orange.950)_60%,#001003)_padding-box,conic-gradient(from_var(--border-angle),theme(colors.orange.600/.58)_80%,_theme(colors.orange.300)_94%,_theme(colors.orange.600/.58))_border-box]'
+              : 'border-orange-500 [background:linear-gradient(60deg,#001003,theme(colors.orange.950)_60%,#001003)_padding-box]'
+          )}
+        >
+          <div class="flex h-full flex-col items-stretch justify-between">
+            <div class="flex flex-col items-start gap-4">
+              <span class="text-lg">Matchmaking</span>
+              <p class="text-xl">
+                {matchMakingStatuses[matchMakingStatus.type]}
+              </p>
             </div>
-            {#if acceptedMatchId === matchMakingStatus.matchId}
-              <Button disabled>Match accepted</Button>
-            {:else}
-              <div class="flex gap-2">
-                <Button on:click={onAcceptMatch} class="animate-bounce"
-                  >Accept</Button
-                >
-                <Button
-                  on:click={onDeclineMatch}
-                  variant="destructive"
-                  size="icon"><X /></Button
-                >
+            {#if matchMakingStatus.type === 'pending-match'}
+              <div class="mr-2 self-center text-3xl font-bold text-white">
+                {Math.max(secondsToRespond, 0)}
               </div>
             {/if}
-          {:else if matchMakingStatus.type === 'match-accepted'}
-            <Button
-              on:click={() => {
-                matchMakingStatus = { type: 'inactive' };
-              }}>OK!</Button
-            >
+            <div class="flex flex-col items-center gap-4">
+              {#if matchMakingStatus.type === 'pending-match'}
+                {#if acceptedMatchId === matchMakingStatus.matchId}
+                  <Button class="px-8 py-6 text-lg" disabled
+                    >Match accepted</Button
+                  >
+                {:else}
+                  <div class="flex gap-2">
+                    <Button
+                      on:click={onAcceptMatch}
+                      class="animate-bounce px-8 py-6 text-lg">Accept</Button
+                    >
+                    <Button
+                      on:click={onDeclineMatch}
+                      variant="destructive"
+                      class="px-8 py-6 text-lg">Decline</Button
+                    >
+                  </div>
+                {/if}
+              {:else if matchMakingStatus.type === 'match-accepted'}
+                <Button
+                  on:click={() => {
+                    matchMakingStatus = { type: 'inactive' };
+                  }}
+                  class="px-8 py-6 text-lg">OK!</Button
+                >
+              {/if}
+            </div>
+          </div>
+          {#if matchMakingStatus.type === 'pending-match' && initialSecondsToRespond != null}
+            <div
+              style="animation-duration: {initialSecondsToRespond}s"
+              class="mt-3 h-4 animate-[min-max-width_0s_linear_forwards] rounded-full bg-gradient-to-r from-orange-700 to-orange-400"
+            />
           {/if}
         </div>
       </div>
-      {#if matchMakingStatus.type === 'pending-match' && initialSecondsToRespond != null}
-        <div
-          style="animation-duration: {initialSecondsToRespond}s"
-          class="mt-3 h-4 animate-[min-max-width_0s_linear_forwards] rounded-full bg-gradient-to-r from-orange-700 to-orange-400"
-        />
-      {/if}
     </div>
-  </div>
+  {/if}
 {/if}
 
 <style>
