@@ -40,6 +40,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@auth/sveltekit": "^1.7.4",
     "@carbon/charts-svelte": "^1.16.1",
     "@supabase/ssr": "^0.3.0",
     "@supabase/supabase-js": "^2.43.4",
