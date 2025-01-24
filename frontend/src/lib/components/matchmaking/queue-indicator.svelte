@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import type { TweakedMatchMakingQueueStatus } from '../../../routes/(authed)/api/matchmaking/status/types';
   import ActiveMatchState from './active-match-state.svelte';
-  import MatchAcceptedState from './match-accepted-state.svelte';
   import PendingMatchState from './pending-match-state.svelte';
   import QueuedState from './queued-state.svelte';
   import type { MatchMakingState } from './types';
@@ -31,8 +30,7 @@
       switch (status.assignedPendingMatch.status) {
         case 'Pending':
           if (
-            (matchMakingState.type === 'pending-match' ||
-              matchMakingState.type === 'match-accepted') &&
+            matchMakingState.type === 'pending-match' &&
             matchMakingState.pendingMatchId === status.assignedPendingMatch.id
           ) {
             break;
@@ -42,6 +40,7 @@
             type: 'pending-match',
             pendingMatchId: status.assignedPendingMatch.id,
             expiresAt: new Date(status.assignedPendingMatch.expiresAt),
+            hasBeenAccepted: false,
           };
 
           break;
@@ -102,9 +101,8 @@
     body.append('matchId', matchMakingState.pendingMatchId);
     await fetch('/api/matchmaking/queue', { method: 'POST', body });
     matchMakingState = {
-      type: 'match-accepted',
-      pendingMatchId: matchMakingState.pendingMatchId,
-      expiresAt: matchMakingState.expiresAt,
+      ...matchMakingState,
+      hasBeenAccepted: true,
     };
   };
 
@@ -130,8 +128,6 @@
   <QueuedState {matchMakingState} {onLeaveQueue} />
 {:else if matchMakingState.type === 'pending-match'}
   <PendingMatchState {matchMakingState} {onAcceptMatch} {onDeclineMatch} />
-{:else if matchMakingState.type === 'match-accepted'}
-  <MatchAcceptedState {matchMakingState} />
 {:else if matchMakingState.type === 'active-match'}
   <ActiveMatchState {matchMakingState} {onConfirmedMatch} />
 {/if}

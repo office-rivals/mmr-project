@@ -5,11 +5,10 @@ export type MatchMakingStatePendingMatch = {
   type: 'pending-match';
   pendingMatchId: string;
   expiresAt: Date;
+  hasBeenAccepted: boolean;
 };
 export type MatchMakingStateMatchAccepted = {
   type: 'match-accepted';
-  pendingMatchId: string;
-  expiresAt: Date;
 };
 export type MatchMakingStateActiveMatch = {
   type: 'active-match';
