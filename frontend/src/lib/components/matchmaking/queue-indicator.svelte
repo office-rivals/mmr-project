@@ -31,7 +31,8 @@
       switch (status.assignedPendingMatch.status) {
         case 'Pending':
           if (
-            matchMakingState.type === 'pending-match' &&
+            (matchMakingState.type === 'pending-match' ||
+              matchMakingState.type === 'match-accepted') &&
             matchMakingState.pendingMatchId === status.assignedPendingMatch.id
           ) {
             break;
