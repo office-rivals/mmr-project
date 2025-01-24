@@ -70,6 +70,10 @@ const config = {
           '0%': { width: '0%' },
           '100%': { width: '100%' },
         },
+        progress: {
+          '0%': { strokeDasharray: '0 251.3' },
+          '100%': { strokeDasharray: '188.5 251.3' },
+        },
       },
     },
   },

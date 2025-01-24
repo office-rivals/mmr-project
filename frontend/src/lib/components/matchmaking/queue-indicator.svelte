@@ -14,8 +14,6 @@
 
   let acceptedMatchId: string | null = null;
 
-  let initialSecondsToRespond: number | null = null;
-
   let matchFoundAudio: HTMLAudioElement;
   onMount(() => {
     matchFoundAudio = new Audio('/sounds/match-found.mp3');
@@ -41,12 +39,10 @@
           matchFoundAudio.play();
           matchMakingStatus = {
             type: 'pending-match',
-            matchId: status.assignedPendingMatch.id,
-            expiresAt: new Date(status.assignedPendingMatch.expiresAt),
+            matchId: 'status.assignedPendingMatch.id',
+            expiresAt: new Date(Date.now() + 30000),
           };
-          initialSecondsToRespond = Math.floor(
-            (matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000
-          );
+
           break;
         case 'Accepted':
           if (matchMakingStatus.type === 'inactive') {
@@ -74,25 +70,10 @@
     }
   };
 
-  let secondsToRespond = -1;
-
-  onMount(() => {
-    let frame: number;
-    const updateSecondsToRespond = () => {
-      if (matchMakingStatus.type === 'pending-match') {
-        secondsToRespond = Math.ceil(
-          (matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000
-        );
-      } else {
-        secondsToRespond = -1;
-      }
-      frame = requestAnimationFrame(updateSecondsToRespond);
-    };
-    frame = requestAnimationFrame(updateSecondsToRespond);
-    return () => {
-      cancelAnimationFrame(frame);
-    };
-  });
+  $: secondsToRespond =
+    matchMakingStatus.type === 'pending-match'
+      ? Math.ceil((matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000)
+      : -1;
 
   const fastRefreshStatusTypes: MatchMakingStatus['type'][] = [
     'pending-match',
@@ -229,9 +210,9 @@
             {/if}
           </div>
         </div>
-        {#if matchMakingStatus.type === 'pending-match' && initialSecondsToRespond != null}
+        {#if matchMakingStatus.type === 'pending-match' && secondsToRespond != null}
           <div
-            style="animation-duration: {initialSecondsToRespond}s"
+            style="animation-duration: {secondsToRespond}s"
             class="mt-3 h-4 animate-[min-max-width_0s_linear_forwards] rounded-full bg-gradient-to-r from-orange-700 to-orange-400"
           />
         {/if}
@@ -252,7 +233,7 @@
             <p class="self-center text-3xl font-bold">
               {matchMakingStatusTitles[matchMakingStatus.type] ?? 'Matchmaking'}
             </p>
-            {#if matchMakingStatus.type === 'pending-match' && initialSecondsToRespond != null}
+            {#if matchMakingStatus.type === 'pending-match' && secondsToRespond != null}
               <div class="relative h-44 w-44 self-center">
                 <svg
                   viewBox="0 0 100 100"
@@ -276,9 +257,8 @@
                     fill="none"
                     stroke-width="6"
                     stroke-linecap="round"
-                    stroke-dasharray={`${188.5 * ((secondsToRespond - 1) / (initialSecondsToRespond - 1))} 251.3`}
-                    style="transition: stroke-dasharray 1s linear"
-                    class="stroke-white"
+                    style="animation-duration: {secondsToRespond}s"
+                    class="animate-[progress_0s_linear_forwards] stroke-white"
                     class:opacity-0={secondsToRespond <= 0}
                   />
                 </svg>
