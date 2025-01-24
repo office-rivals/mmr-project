@@ -1,18 +1,13 @@
 <script lang="ts">
-  import type { MatchMakingQueueStatus } from '$api';
   import clsx from 'clsx';
-  import { Check, CircleCheckBig, Pause, X } from 'lucide-svelte';
+  import { Check, Pause, X } from 'lucide-svelte';
   import { onMount } from 'svelte';
+  import type { TweakedMatchMakingQueueStatus } from '../../../routes/(authed)/api/matchmaking/status/types';
+  import ActiveMatchCard from '../../../routes/(authed)/components/active-match-card.svelte';
   import Button from '../ui/button/button.svelte';
+  import type { MatchMakingState } from './types';
 
-  type MatchMakingStatus =
-    | { type: 'queued'; playersInQueue: number }
-    | { type: 'inactive' }
-    | { type: 'pending-match'; matchId: string; expiresAt: Date }
-    | { type: 'match-accepted'; matchId: string };
-  $: matchMakingStatus = { type: 'inactive' } as MatchMakingStatus;
-
-  let acceptedMatchId: string | null = null;
+  $: matchMakingStatus = { type: 'inactive' } as MatchMakingState;
 
   let initialSecondsToRespond: number | null = null;
 
@@ -24,42 +19,35 @@
 
   const getQueueStatus = async () => {
     const response = await fetch('/api/matchmaking/status');
-    return (await response.json()) as MatchMakingQueueStatus;
+    return (await response.json()) as TweakedMatchMakingQueueStatus;
   };
 
   const refreshQueueStatus = async () => {
     const status = await getQueueStatus();
-    if (status?.assignedPendingMatch != null) {
+    if (status?.assignedActiveMatch != null) {
+      matchMakingStatus = {
+        type: 'active-match',
+        activeMatch: status.assignedActiveMatch,
+      };
+    } else if (status?.assignedPendingMatch != null) {
       switch (status.assignedPendingMatch.status) {
         case 'Pending':
           if (
             matchMakingStatus.type === 'pending-match' &&
-            matchMakingStatus.matchId === status.assignedPendingMatch.id
+            matchMakingStatus.pendingMatchId === status.assignedPendingMatch.id
           ) {
             break;
           }
           matchFoundAudio.play();
           matchMakingStatus = {
             type: 'pending-match',
-            matchId: status.assignedPendingMatch.id,
+            pendingMatchId: status.assignedPendingMatch.id,
             expiresAt: new Date(status.assignedPendingMatch.expiresAt),
           };
           initialSecondsToRespond = Math.floor(
             (matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000
           );
 
-          break;
-        case 'Accepted':
-          if (matchMakingStatus.type === 'inactive') {
-            break;
-          }
-          matchMakingStatus = {
-            type: 'match-accepted',
-            matchId: status.assignedPendingMatch.id,
-          };
-          setTimeout(async () => {
-            matchMakingStatus = { type: 'inactive' };
-          }, 5000);
           break;
         case 'Declined':
           matchMakingStatus = { type: 'inactive' };
@@ -79,7 +67,10 @@
   onMount(() => {
     let frame: number;
     const updateSecondsToRespond = () => {
-      if (matchMakingStatus.type === 'pending-match') {
+      if (
+        matchMakingStatus.type === 'pending-match' ||
+        matchMakingStatus.type === 'match-accepted'
+      ) {
         secondsToRespond = Math.ceil(
           (matchMakingStatus.expiresAt.getTime() - Date.now()) / 1000
         );
@@ -94,7 +85,8 @@
     };
   });
 
-  const fastRefreshStatusTypes: MatchMakingStatus['type'][] = [
+  const fastRefreshStatusTypes: MatchMakingState['type'][] = [
+    'match-accepted',
     'pending-match',
     'queued',
   ];
@@ -133,9 +125,13 @@
 
     const body = new FormData();
     body.append('intent', 'accept');
-    body.append('matchId', matchMakingStatus.matchId);
+    body.append('matchId', matchMakingStatus.pendingMatchId);
     await fetch('/api/matchmaking/queue', { method: 'POST', body });
-    acceptedMatchId = matchMakingStatus.matchId;
+    matchMakingStatus = {
+      type: 'match-accepted',
+      pendingMatchId: matchMakingStatus.pendingMatchId,
+      expiresAt: matchMakingStatus.expiresAt,
+    };
   };
 
   const onDeclineMatch = async () => {
@@ -145,35 +141,38 @@
 
     const body = new FormData();
     body.append('intent', 'decline');
-    body.append('matchId', matchMakingStatus.matchId);
+    body.append('matchId', matchMakingStatus.pendingMatchId);
 
     await fetch('/api/matchmaking/queue', { method: 'POST', body });
     matchMakingStatus = { type: 'inactive' };
   };
 
-  const matchMakingStatuses: Partial<
-    Record<MatchMakingStatus['type'], string>
-  > = {
-    queued: 'Looking for other players...',
-    'pending-match': 'Accept or decline the match before time runs out',
-  };
+  const matchMakingStatuses: Partial<Record<MatchMakingState['type'], string>> =
+    {
+      queued: 'Looking for other players...',
+      'pending-match': 'Accept or decline the match before time runs out',
+      'match-accepted': 'Waiting for other players to accept the match',
+      'active-match': 'Now the teams are set. Go play!',
+    };
 
   const matchMakingStatusTitles: Partial<
-    Record<MatchMakingStatus['type'], string>
+    Record<MatchMakingState['type'], string>
   > = {
     queued: 'Matchmaking',
     'pending-match': 'Match found!',
     'match-accepted': 'Match accepted!',
+    'active-match': 'Match ready!',
   };
 
   type ModalSize = 'sm' | 'xl';
   const modalSizeForMatchMakingStatus: Record<
-    MatchMakingStatus['type'],
+    MatchMakingState['type'],
     ModalSize
   > = {
     queued: 'sm',
     'pending-match': 'xl',
     'match-accepted': 'xl',
+    'active-match': 'xl',
     inactive: 'sm',
   };
 </script>
@@ -206,26 +205,18 @@
               <div class="mr-2 text-xl font-bold text-white">
                 {Math.max(secondsToRespond, 0)}
               </div>
-              {#if acceptedMatchId === matchMakingStatus.matchId}
-                <Button disabled>Match accepted</Button>
-              {:else}
-                <div class="flex gap-2">
-                  <Button on:click={onAcceptMatch} class="animate-bounce"
-                    >Accept</Button
-                  >
-                  <Button
-                    on:click={onDeclineMatch}
-                    variant="destructive"
-                    size="icon"><X /></Button
-                  >
-                </div>
-              {/if}
+              <div class="flex gap-2">
+                <Button on:click={onAcceptMatch} class="animate-bounce"
+                  >Accept</Button
+                >
+                <Button
+                  on:click={onDeclineMatch}
+                  variant="destructive"
+                  size="icon"><X /></Button
+                >
+              </div>
             {:else if matchMakingStatus.type === 'match-accepted'}
-              <Button
-                on:click={() => {
-                  matchMakingStatus = { type: 'inactive' };
-                }}>OK!</Button
-              >
+              <Button disabled>Match accepted</Button>
             {/if}
           </div>
         </div>
@@ -252,7 +243,7 @@
             <p class="self-center text-3xl font-bold">
               {matchMakingStatusTitles[matchMakingStatus.type] ?? 'Matchmaking'}
             </p>
-            {#if matchMakingStatus.type === 'pending-match' && initialSecondsToRespond != null}
+            {#if (matchMakingStatus.type === 'pending-match' || matchMakingStatus.type === 'match-accepted') && initialSecondsToRespond != null}
               <div class="relative h-44 w-44 self-center">
                 <svg
                   viewBox="0 0 100 100"
@@ -289,9 +280,11 @@
                 </div>
               </div>
             {/if}
-            {#if matchMakingStatus.type === 'match-accepted'}
-              <!-- TODO: Show the match card for the created match here -->
-              <CircleCheckBig class="size-28 self-center text-white" />
+            {#if matchMakingStatus.type === 'active-match'}
+              <ActiveMatchCard
+                match={matchMakingStatus.activeMatch}
+                users={matchMakingStatus.activeMatch.users}
+              />
             {/if}
             {#if matchMakingStatuses[matchMakingStatus.type]}
               <p class="self-center text-lg text-gray-400">
@@ -299,25 +292,22 @@
               </p>
             {/if}
             {#if matchMakingStatus.type === 'pending-match'}
-              {#if acceptedMatchId === matchMakingStatus.matchId}
-                <Button class="self-center px-8 py-6 text-lg" disabled
-                  >Match accepted</Button
+              <div class="flex justify-stretch gap-2 sm:gap-4">
+                <Button
+                  on:click={onDeclineMatch}
+                  variant="secondary"
+                  class="flex-1 gap-1 text-lg sm:gap-3"><X />Decline</Button
                 >
-              {:else}
-                <div class="flex justify-stretch gap-2 sm:gap-4">
-                  <Button
-                    on:click={onDeclineMatch}
-                    variant="secondary"
-                    class="flex-1 gap-1 text-lg sm:gap-3"><X />Decline</Button
-                  >
-                  <Button
-                    on:click={onAcceptMatch}
-                    class="flex-1 gap-1 text-lg sm:gap-3"
-                    ><Check /> Accept</Button
-                  >
-                </div>
-              {/if}
+                <Button
+                  on:click={onAcceptMatch}
+                  class="flex-1 gap-1 text-lg sm:gap-3"><Check /> Accept</Button
+                >
+              </div>
             {:else if matchMakingStatus.type === 'match-accepted'}
+              <Button class="self-center px-8 py-6 text-lg" disabled>
+                Match accepted
+              </Button>
+            {:else if matchMakingStatus.type === 'active-match'}
               <Button
                 on:click={() => {
                   matchMakingStatus = { type: 'inactive' };

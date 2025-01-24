@@ -11,7 +11,9 @@ public record MatchMakingQueueStatus
     [Required]
     public required int PlayersInQueue { get; set; }
     
-    public MatchMakingQueueStatusPendingMatch? AssignedPendingMatch { get; set; } 
+    public MatchMakingQueueStatusPendingMatch? AssignedPendingMatch { get; set; }
+    
+    public ActiveMatchDto? AssignedActiveMatch { get; set; }
 }
 
 public record MatchMakingQueueStatusPendingMatch
