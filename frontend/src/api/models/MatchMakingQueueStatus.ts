@@ -13,6 +13,12 @@
  */
 
 import { mapValues } from '../runtime';
+import type { ActiveMatchDto } from './ActiveMatchDto';
+import {
+    ActiveMatchDtoFromJSON,
+    ActiveMatchDtoFromJSONTyped,
+    ActiveMatchDtoToJSON,
+} from './ActiveMatchDto';
 import type { MatchMakingQueueStatusPendingMatch } from './MatchMakingQueueStatusPendingMatch';
 import {
     MatchMakingQueueStatusPendingMatchFromJSON,
@@ -44,6 +50,12 @@ export interface MatchMakingQueueStatus {
      * @memberof MatchMakingQueueStatus
      */
     assignedPendingMatch?: MatchMakingQueueStatusPendingMatch;
+    /**
+     * 
+     * @type {ActiveMatchDto}
+     * @memberof MatchMakingQueueStatus
+     */
+    assignedActiveMatch?: ActiveMatchDto;
 }
 
 /**
@@ -68,6 +80,7 @@ export function MatchMakingQueueStatusFromJSONTyped(json: any, ignoreDiscriminat
         'isUserInQueue': json['isUserInQueue'],
         'playersInQueue': json['playersInQueue'],
         'assignedPendingMatch': json['assignedPendingMatch'] == null ? undefined : MatchMakingQueueStatusPendingMatchFromJSON(json['assignedPendingMatch']),
+        'assignedActiveMatch': json['assignedActiveMatch'] == null ? undefined : ActiveMatchDtoFromJSON(json['assignedActiveMatch']),
     };
 }
 
@@ -80,6 +93,7 @@ export function MatchMakingQueueStatusToJSON(value?: MatchMakingQueueStatus | nu
         'isUserInQueue': value['isUserInQueue'],
         'playersInQueue': value['playersInQueue'],
         'assignedPendingMatch': MatchMakingQueueStatusPendingMatchToJSON(value['assignedPendingMatch']),
+        'assignedActiveMatch': ActiveMatchDtoToJSON(value['assignedActiveMatch']),
     };
 }
 
