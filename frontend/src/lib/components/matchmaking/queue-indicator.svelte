@@ -59,7 +59,6 @@
   };
 
   const fastRefreshStatusTypes: MatchMakingState['type'][] = [
-    'match-accepted',
     'pending-match',
     'queued',
   ];
