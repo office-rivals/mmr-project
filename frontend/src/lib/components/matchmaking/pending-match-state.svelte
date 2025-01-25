@@ -3,10 +3,7 @@
   import Button from '../ui/button/button.svelte';
   import GaugeCountdown from './gauge-countdown.svelte';
   import LargeQueueModal from './large-queue-modal.svelte';
-  import type {
-    MatchMakingStateMatchAccepted,
-    MatchMakingStatePendingMatch,
-  } from './types';
+  import type { MatchMakingStatePendingMatch } from './types';
 
   export let matchMakingState: MatchMakingStatePendingMatch;
   export let onAcceptMatch: () => void;

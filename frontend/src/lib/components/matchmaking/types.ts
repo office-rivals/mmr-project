@@ -7,9 +7,6 @@ export type MatchMakingStatePendingMatch = {
   expiresAt: Date;
   hasBeenAccepted: boolean;
 };
-export type MatchMakingStateMatchAccepted = {
-  type: 'match-accepted';
-};
 export type MatchMakingStateActiveMatch = {
   type: 'active-match';
   activeMatch: ActiveMatchWithUsers;
@@ -18,5 +15,4 @@ export type MatchMakingState =
   | { type: 'inactive' }
   | MatchMakingStateQueued
   | MatchMakingStatePendingMatch
-  | MatchMakingStateMatchAccepted
   | MatchMakingStateActiveMatch;
