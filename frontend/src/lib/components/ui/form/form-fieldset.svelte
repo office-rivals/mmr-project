@@ -1,30 +1,29 @@
-<script lang="ts" context="module">
-	import type { FormPath, SuperForm } from "sveltekit-superforms";
-	type T = Record<string, unknown>;
-	type U = FormPath<T>;
+<script lang="ts" module>
+  import type { FormPath, SuperForm } from 'sveltekit-superforms';
+  type T = Record<string, unknown>;
+  type U = FormPath<T>;
 </script>
 
-<script lang="ts" generics="T extends Record<string, unknown>, U extends FormPath<T>">
-	import * as FormPrimitive from "formsnap";
-	import { cn } from "$lib/utils.js";
+<script
+  lang="ts"
+  generics="T extends Record<string, unknown>, U extends FormPath<T>"
+>
+  import { cn } from '$lib/utils.js';
+  import * as FormPrimitive from 'formsnap';
+  import type { Snippet } from 'svelte';
 
-	type $$Props = FormPrimitive.FieldsetProps<T, U>;
+  interface Props extends FormPrimitive.FieldsetProps<T, U> {
+    form: SuperForm<T>;
+    name: U;
+    children?: Snippet;
+  }
 
-	export let form: SuperForm<T>;
-	export let name: U;
-
-	let className: $$Props["class"] = undefined;
-	export { className as class };
+  let { form, name, class: className = undefined, ...rest }: Props = $props();
 </script>
 
 <FormPrimitive.Fieldset
-	{form}
-	{name}
-	let:constraints
-	let:errors
-	let:tainted
-	let:value
-	class={cn("space-y-2", className)}
->
-	<slot {constraints} {errors} {tainted} {value} />
-</FormPrimitive.Fieldset>
+  {form}
+  {name}
+  class={cn('space-y-2', className)}
+  {...rest}
+/>

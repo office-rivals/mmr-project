@@ -3,19 +3,20 @@
   import { cn } from '$lib/utils';
   import type { HTMLAttributes } from 'svelte/elements';
 
-  export let user: UserDetails;
+  interface Props extends HTMLAttributes<HTMLButtonElement> {
+    user: UserDetails;
+  }
 
-  let className: HTMLAttributes<HTMLButtonElement>['class'] = undefined;
-  export { className as class };
+  let { user, class: className = undefined, ...rest }: Props = $props();
 </script>
 
 <button
+  {...rest}
   class={cn(
     'border-input hover:border-primary focus-visible:ring-ring ring-offset-background flex w-full flex-col gap-1 rounded-md border px-3 py-2 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
     className
   )}
   type="button"
-  on:click
 >
   <p class="line-clamp-1 text-sm md:text-base">
     {user.displayName ?? user.name}

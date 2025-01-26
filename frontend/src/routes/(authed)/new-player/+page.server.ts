@@ -45,6 +45,6 @@ export const actions: Actions = {
       });
     }
 
-    throw redirect(303, redirectTo != null ? redirectTo + userId : '/');
+    redirect(303, redirectTo != null ? redirectTo + userId : '/');
   },
 };

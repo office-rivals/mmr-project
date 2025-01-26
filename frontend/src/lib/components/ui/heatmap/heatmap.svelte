@@ -6,11 +6,15 @@
     type HeatmapChartOptions,
   } from '@carbon/charts-svelte';
 
-  export let data: Array<{
-    dayOfWeek: number;
-    hourOfDay: number;
-    count: number;
-  }>;
+  interface Props {
+    data: Array<{
+      dayOfWeek: number;
+      hourOfDay: number;
+      count: number;
+    }>;
+  }
+
+  let { data }: Props = $props();
 
   const hourOfDayFormatter = new Intl.DateTimeFormat(undefined, {
     hour: 'numeric',

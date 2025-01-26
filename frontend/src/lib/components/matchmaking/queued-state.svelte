@@ -3,8 +3,12 @@
   import Button from '../ui/button/button.svelte';
   import type { MatchMakingStateQueued } from './types';
 
-  export let matchMakingState: MatchMakingStateQueued;
-  export let onLeaveQueue: () => void;
+  interface Props {
+    matchMakingState: MatchMakingStateQueued;
+    onLeaveQueue: () => void;
+  }
+
+  let { matchMakingState, onLeaveQueue }: Props = $props();
 </script>
 
 <div class="fixed bottom-20 left-0 right-0 mx-auto max-w-screen-sm px-4">
@@ -18,7 +22,7 @@
       </div>
       <div class="flex items-center gap-4">
         <p class="text-sm">{matchMakingState.playersInQueue} / 4</p>
-        <Button variant="destructive" type="submit" on:click={onLeaveQueue}
+        <Button variant="destructive" type="submit" onclick={onLeaveQueue}
           ><Pause class="mr-2" />Leave</Button
         >
       </div>

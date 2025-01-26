@@ -3,7 +3,11 @@
   import type { PageServerData } from './$types';
   import ActiveMatchSubmitForm from './components/active-match-submit-form.svelte';
 
-  export let data: PageServerData;
+  interface Props {
+    data: PageServerData;
+  }
+
+  let { data }: Props = $props();
 </script>
 
 <div class="flex flex-col gap-8">
