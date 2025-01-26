@@ -16,6 +16,13 @@ public class ProfileController(IUserService userService) : ControllerBase
         var user = await userService.GetCurrentAuthenticatedUserAsync();
         return new ProfileDetails { UserId = user?.Id };
     }
+    
+    [HttpGet("permissions")]
+    public async Task<ProfilePermissionsDto> GetProfilePermissions()
+    {
+        var user = await userService.GetCurrentAuthenticatedUserAsync();
+        return new ProfilePermissionsDto { CanClaimProfile = user is null };
+    }
 
     [HttpPost("claim")]
     public async Task<ProfileDetails> ClaimProfile([FromBody, Required] ClaimProfileRequest request)
