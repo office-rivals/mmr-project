@@ -55,4 +55,4 @@
   <Button href="/login" variant="link">Already have a user? Login here.</Button>
 </form>
 
-<LoadingOverlay isLoading={$submitting} />
+<LoadingOverlay isLoading={$submitting} message="Signing up..." />
