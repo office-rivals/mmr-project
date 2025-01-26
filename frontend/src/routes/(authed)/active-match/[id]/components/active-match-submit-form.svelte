@@ -180,4 +180,4 @@
   </div>
 </form>
 
-<LoadingOverlay isLoading={$submitting} />
+<LoadingOverlay isLoading={$submitting} message="Uploading match result" />

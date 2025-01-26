@@ -58,4 +58,4 @@
   {/if}
 </form>
 
-<LoadingOverlay isLoading={$submitting} />
+<LoadingOverlay isLoading={$submitting} message="Creating new player" />

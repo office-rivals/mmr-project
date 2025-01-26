@@ -2,10 +2,11 @@
   import * as Dialog from '$lib/components/ui/dialog';
   import { LoaderCircle } from 'lucide-svelte';
   interface Props {
+    message?: string;
     isLoading: boolean;
   }
 
-  let { isLoading = $bindable() }: Props = $props();
+  let { isLoading = $bindable(), message }: Props = $props();
 </script>
 
 <Dialog.Root bind:open={isLoading}>
@@ -14,7 +15,9 @@
     interactOutsideBehavior="defer-otherwise-ignore"
     class="loading-dialog flex flex-col items-center justify-center"
   >
-    Uploading match result
+    {#if message}
+      {message}
+    {/if}
     <LoaderCircle class="animate-spin" />
   </Dialog.Content>
 </Dialog.Root>
