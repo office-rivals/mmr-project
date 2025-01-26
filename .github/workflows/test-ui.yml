@@ -28,3 +28,6 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: ./frontend
+        env:
+          PUBLIC_SUPABASE_ANON_KEY: ""
+          PUBLIC_SUPABASE_URL: ""
