@@ -24,5 +24,7 @@ jobs:
           node-version: 22
       - name: Install
         run: npm install
+        working-directory: ./frontend
       - name: Build
         run: npm run build
+        working-directory: ./frontend
