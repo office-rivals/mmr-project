@@ -24,9 +24,9 @@ jobs:
 
       # Run the svelte check action
       - name: Svelte Check
-        uses: ghostdevv/svelte-check-action@v1
+        uses: ghostdevv/svelte-check-action@v1x
         with:
-          paths: "frontend"
+          paths: "./frontend"
           filterChanges: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
