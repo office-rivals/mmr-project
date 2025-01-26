@@ -5,9 +5,13 @@
   import LargeQueueModal from './large-queue-modal.svelte';
   import type { MatchMakingStatePendingMatch } from './types';
 
-  export let matchMakingState: MatchMakingStatePendingMatch;
-  export let onAcceptMatch: () => void;
-  export let onDeclineMatch: () => void;
+  interface Props {
+    matchMakingState: MatchMakingStatePendingMatch;
+    onAcceptMatch: () => void;
+    onDeclineMatch: () => void;
+  }
+
+  let { matchMakingState, onAcceptMatch, onDeclineMatch }: Props = $props();
 </script>
 
 <LargeQueueModal>
@@ -24,18 +28,21 @@
       {/if}
     </p>
     {#if matchMakingState.hasBeenAccepted}
-      <Button class="self-center px-8 py-6 text-lg" disabled>
+      <Button type="button" class="self-center px-8 py-6 text-lg" disabled>
         Match accepted
       </Button>
     {:else}
       <div class="flex justify-stretch gap-2 sm:gap-4">
         <Button
-          on:click={onDeclineMatch}
+          type="button"
+          onclick={onDeclineMatch}
           variant="secondary"
           class="flex-1 gap-1 text-lg sm:gap-3"><X />Decline</Button
         >
-        <Button on:click={onAcceptMatch} class="flex-1 gap-1 text-lg sm:gap-3"
-          ><Check /> Accept</Button
+        <Button
+          type="button"
+          onclick={onAcceptMatch}
+          class="flex-1 gap-1 text-lg sm:gap-3"><Check /> Accept</Button
         >
       </div>
     {/if}

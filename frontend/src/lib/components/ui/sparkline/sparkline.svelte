@@ -5,8 +5,12 @@
     type AreaChartOptions,
   } from '@carbon/charts-svelte';
 
-  export let data: Array<{ date: Date | string; rating: number }>;
-  export let options: Partial<AreaChartOptions> = {};
+  interface Props {
+    data: Array<{ date: Date | string; rating: number }>;
+    options?: Partial<AreaChartOptions>;
+  }
+
+  let { data, options = {} }: Props = $props();
 
   const chartOptions: AreaChartOptions = {
     theme: 'g100',

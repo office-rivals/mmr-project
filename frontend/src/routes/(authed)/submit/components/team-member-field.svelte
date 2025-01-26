@@ -6,31 +6,45 @@
   import X from 'lucide-svelte/icons/x';
   import type { UserDetails } from '../../../../api';
 
-  export let label: string;
-  export let userId: number | null;
-  export let users: UserDetails[];
-  export let latestPlayerIds: number[];
-  export let availableUsers: UserDetails[] = [];
+  interface Props {
+    label: string;
+    userId: number;
+    users: UserDetails[];
+    latestPlayerIds: number[];
+    availableUsers?: UserDetails[];
+    onCreateUser: (suggested: string) => void;
+  }
 
-  export let onCreateUser: (suggested: string) => void;
+  let {
+    label,
+    userId = $bindable(),
+    users,
+    latestPlayerIds,
+    availableUsers = [],
+    onCreateUser,
+  }: Props = $props();
 
   const resetValue = () => {
-    userId = null;
+    userId = -1;
   };
 
-  let filter = '';
+  let filter = $state('');
 
-  $: filteredUsers = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(filter.toLowerCase()) ||
-      (u.displayName != null &&
-        u.displayName.toLowerCase().includes(filter.toLowerCase()))
+  let filteredUsers = $derived(
+    users.filter(
+      (u) =>
+        u.name.toLowerCase().includes(filter.toLowerCase()) ||
+        (u.displayName != null &&
+          u.displayName.toLowerCase().includes(filter.toLowerCase()))
+    )
   );
-  $: user = users.find((u) => u.userId === userId);
-  $: latestPlayers = latestPlayerIds
-    .map((id) => availableUsers.find((u) => u.userId === id))
-    .filter(isPresent)
-    .slice(0, 4);
+  let user = $derived(users.find((u) => u.userId === userId));
+  let latestPlayers = $derived(
+    latestPlayerIds
+      .map((id) => availableUsers.find((u) => u.userId === id))
+      .filter(isPresent)
+      .slice(0, 4)
+  );
 
   const selectUser = (user: UserDetails) => {
     userId = user.userId;
@@ -40,7 +54,7 @@
 
 <div class="flex flex-col gap-2">
   <h4>{label}</h4>
-  {#if userId == null}
+  {#if userId === -1}
     <Input bind:value={filter} placeholder="Filter..." autofocus />
     {#if filter.length === 0 && latestPlayers.length > 0}
       <p class="text-sm">Recent players</p>
@@ -49,7 +63,7 @@
           <li class="mb-1 last:mb-0">
             <PlayerButton
               user={latestPlayer}
-              on:click={() => selectUser(latestPlayer)}
+              onclick={() => selectUser(latestPlayer)}
             />
           </li>
         {/each}
@@ -60,14 +74,16 @@
         <ul>
           {#each filteredUsers as user}
             <li>
-              <PlayerButton {user} on:click={() => selectUser(user)} />
+              <PlayerButton {user} onclick={() => selectUser(user)} />
             </li>
           {/each}
         </ul>
       {:else}
         <div class="flex flex-col items-start gap-1">
           <p class="text-sm">No users found</p>
-          <Button on:click={() => onCreateUser(filter)}>Add new user</Button>
+          <Button type="button" onclick={() => onCreateUser(filter)}
+            >Add new user</Button
+          >
         </div>
       {/if}
     {/if}
@@ -92,8 +108,9 @@
         {/if}
       </div>
       <Button
+        type="button"
         class="-mr-1 h-7 w-7 rounded p-1 text-sm"
-        on:click={resetValue}
+        onclick={resetValue}
         variant="ghost"
       >
         <X class="h-full w-full" />

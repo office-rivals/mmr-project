@@ -4,8 +4,12 @@
   import LargeQueueModal from './large-queue-modal.svelte';
   import type { MatchMakingStateActiveMatch } from './types';
 
-  export let matchMakingState: MatchMakingStateActiveMatch;
-  export let onConfirmedMatch: () => void;
+  interface Props {
+    matchMakingState: MatchMakingStateActiveMatch;
+    onConfirmedMatch: () => void;
+  }
+
+  let { matchMakingState, onConfirmedMatch }: Props = $props();
 </script>
 
 <LargeQueueModal>
@@ -18,8 +22,10 @@
     <p class="self-center text-lg text-gray-400">
       Now the teams are set. Go play!
     </p>
-    <Button on:click={onConfirmedMatch} class="self-center px-8 py-6 text-lg"
-      >OK!</Button
+    <Button
+      type="button"
+      onclick={onConfirmedMatch}
+      class="self-center px-8 py-6 text-lg">OK!</Button
     >
   </div>
 </LargeQueueModal>

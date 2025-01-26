@@ -5,23 +5,26 @@
   import { CircleOff, Send } from 'lucide-svelte';
   import ActiveMatchCard from './active-match-card.svelte';
 
-  export let activeMatches: ActiveMatchDto[];
+  interface Props {
+    activeMatches: ActiveMatchDto[];
+    users: UserDetails[];
+    currentPlayerId: number | null | undefined;
+  }
 
-  export let users: UserDetails[];
+  let { activeMatches, users, currentPlayerId }: Props = $props();
 
-  export let currentPlayerId: number | null | undefined;
+  let isCancellingMatch = $state(false);
 
-  let isCancellingMatch = false;
-
-  $: currentActiveMatch =
+  let currentActiveMatch = $derived(
     currentPlayerId != null
-      ? activeMatches?.find((match) => {
+      ? (activeMatches?.find((match) => {
           return (
             match.team1.playerIds.includes(currentPlayerId) ||
             match.team2.playerIds.includes(currentPlayerId)
           );
-        }) ?? null
-      : null;
+        }) ?? null)
+      : null
+  );
 
   const onCancelMatch = async (matchId: string) => {
     const body = new FormData();
@@ -38,8 +41,9 @@
       <ActiveMatchCard users={users ?? []} match={currentActiveMatch} />
       <div class="flex justify-end gap-2">
         <Button
+          type="button"
           variant="secondary"
-          on:click={() => {
+          onclick={() => {
             isCancellingMatch = true;
           }}
         >
@@ -69,18 +73,20 @@
         >
         <div class="flex gap-2">
           <Button
+            type="button"
             class="flex-1"
             variant="secondary"
-            on:click={() => {
+            onclick={() => {
               isCancellingMatch = false;
             }}
           >
             Keep match
           </Button>
           <Button
+            type="button"
             class="flex-1"
             variant="destructive"
-            on:click={() => {
+            onclick={() => {
               isCancellingMatch = false;
               onCancelMatch(currentActiveMatch.id);
             }}

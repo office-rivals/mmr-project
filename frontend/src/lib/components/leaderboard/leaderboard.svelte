@@ -6,10 +6,14 @@
   import Sparkline from '../ui/sparkline/sparkline.svelte';
   import type { RankedLeaderboardEntry } from './leader-board-entry';
 
-  export let data: RankedLeaderboardEntry[];
-  export let users: UserDetails[] | null | undefined;
-  export let onSelectedUser: (user: UserDetails) => void;
-  export let statisticsPromise: Promise<PlayerHistoryDetails[]> | undefined;
+  interface Props {
+    data: RankedLeaderboardEntry[];
+    users: UserDetails[] | null | undefined;
+    onSelectedUser: (user: UserDetails) => void;
+    statisticsPromise: Promise<PlayerHistoryDetails[]> | undefined;
+  }
+
+  let { data, users, onSelectedUser, statisticsPromise }: Props = $props();
 </script>
 
 <Card.Root>
@@ -38,7 +42,7 @@
           <Table.Row
             class="cursor-pointer"
             tabindex={0}
-            on:click={() => {
+            onclick={() => {
               const user = users?.find((user) => user.userId == userId);
               if (user) {
                 onSelectedUser(user);

@@ -4,7 +4,11 @@
   import LineChart from '$lib/components/ui/line-chart/line-chart.svelte';
   import type { PageData } from './$types';
 
-  export let data: PageData;
+  interface Props {
+    data: PageData;
+  }
+
+  let { data }: Props = $props();
 
   const chartData =
     data.statistics?.map((stat) => ({

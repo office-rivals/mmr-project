@@ -10,29 +10,35 @@
   import type { PageData } from './$types';
   import Filter from './components/filter.svelte';
 
-  export let data: PageData;
+  interface Props {
+    data: PageData;
+  }
+
+  let { data }: Props = $props();
 
   const winRateFormatter = new Intl.NumberFormat(undefined, {
     style: 'percent',
     maximumFractionDigits: 0,
   });
 
-  let filteredUsers: number[] = [];
-  $: matches = (data.matches ?? []).filter((match) => {
-    // If filteredUsers is empty, show all matches
-    if (filteredUsers.length === 0) {
-      return true;
-    }
+  let filteredUsers: number[] = $state([]);
+  let matches = $derived(
+    (data.matches ?? []).filter((match) => {
+      // If filteredUsers is empty, show all matches
+      if (filteredUsers.length === 0) {
+        return true;
+      }
 
-    // If filteredUsers is not empty, show only matches that contain all of the filtered users
-    return filteredUsers.every(
-      (userId) =>
-        match.team1.member1 === userId ||
-        match.team1.member2 === userId ||
-        match.team2.member1 === userId ||
-        match.team2.member2 === userId
-    );
-  });
+      // If filteredUsers is not empty, show only matches that contain all of the filtered users
+      return filteredUsers.every(
+        (userId) =>
+          match.team1.member1 === userId ||
+          match.team1.member2 === userId ||
+          match.team2.member1 === userId ||
+          match.team2.member2 === userId
+      );
+    })
+  );
 
   const profileSuffix = data.isCurrentUser ? ' - You' : '';
 </script>
@@ -226,7 +232,7 @@
               >
                 <span>{user.displayName ?? user.name}</span>
                 <button
-                  on:click={() => {
+                  onclick={() => {
                     filteredUsers = filteredUsers.filter(
                       (userId) => userId !== filteredUser
                     );

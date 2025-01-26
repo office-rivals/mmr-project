@@ -7,16 +7,20 @@
   import { getRandomTeamsSessionStorageKey } from '$lib/util/session';
   import type { PageData } from './$types';
 
-  export let data: PageData;
+  interface Props {
+    data: PageData;
+  }
 
-  let players = [
+  let { data }: Props = $props();
+
+  let players = $state([
     data.players[0] ?? '',
     data.players[1] ?? '',
     data.players[2] ?? '',
     data.players[3] ?? '',
-  ];
+  ]);
 
-  var teams: string[][] = data.teams;
+  var teams: string[][] = $state(data.teams);
   function generateTeams() {
     const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
     teams = [shuffledPlayers.slice(0, 2), shuffledPlayers.slice(2, 4)];
@@ -36,13 +40,14 @@
     {#each players as player, idx}
       <div class="flex flex-col gap-2">
         <Label for="player-{idx}">Player {idx + 1}</Label>
-        <Input id="player-{idx}" bind:value={player} />
+        <Input id="player-{idx}" bind:value={players[idx]} />
       </div>
     {/each}
   </div>
   <Button
+    type="button"
     disabled={players.some((p) => p == null || p.trim() === '')}
-    on:click={generateTeams}>Generate Teams</Button
+    onclick={generateTeams}>Generate Teams</Button
   >
   {#if teams.length === 2}
     <div class="flex flex-row gap-4 text-center">

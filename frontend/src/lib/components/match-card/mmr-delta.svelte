@@ -1,5 +1,9 @@
 <script lang="ts">
-  export let delta: number | undefined | null = null;
+  interface Props {
+    delta?: number | undefined | null;
+  }
+
+  let { delta = null }: Props = $props();
 </script>
 
 {#if delta != null}

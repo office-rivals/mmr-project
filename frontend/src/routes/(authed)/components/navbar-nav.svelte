@@ -1,10 +1,16 @@
 <script lang="ts">
-  import { Button } from '$lib/components/ui/button';
   import { page } from '$app/stores';
+  import { Button } from '$lib/components/ui/button';
   import { cn } from '$lib/utils';
+  import type { Snippet } from 'svelte';
 
-  export let path: string;
-  export let isPrimary = false;
+  interface Props {
+    path: string;
+    isPrimary?: boolean;
+    children?: Snippet;
+  }
+
+  let { path, isPrimary = false, children }: Props = $props();
 </script>
 
 <Button
@@ -15,5 +21,5 @@
       !isPrimary && path === $page.url.pathname,
   })}
 >
-  <slot />
+  {@render children?.()}
 </Button>

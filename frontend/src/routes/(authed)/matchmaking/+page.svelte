@@ -6,14 +6,20 @@
   import { onMount } from 'svelte';
   import type { PageData } from './$types';
 
-  export let data: PageData;
+  interface Props {
+    data: PageData;
+  }
+
+  let { data }: Props = $props();
 
   const PLAYERS_REQUIRED_FOR_MATCH = 4;
 
-  let remainingPlayers = data.matchmaking
-    ? PLAYERS_REQUIRED_FOR_MATCH - data.matchmaking.playersInQueue
-    : undefined;
-  let isUserInQueue = data.matchmaking?.isUserInQueue;
+  let remainingPlayers = $state(
+    data.matchmaking
+      ? PLAYERS_REQUIRED_FOR_MATCH - data.matchmaking.playersInQueue
+      : undefined
+  );
+  let isUserInQueue = $state(data.matchmaking?.isUserInQueue);
 
   const getQueueStatus = async () => {
     const response = await fetch('/api/matchmaking/status');

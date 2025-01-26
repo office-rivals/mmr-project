@@ -4,12 +4,15 @@
   import type { MatchUser } from './match-user';
   import TeamMember from './team-member.svelte';
 
-  export let users: MatchUser[];
-  export let match: Omit<MatchDetailsV2, 'date'> & {
-    date?: Date | string;
-  };
+  interface Props {
+    users: MatchUser[];
+    match: Omit<MatchDetailsV2, 'date'> & {
+      date?: Date | string;
+    };
+    showMmr: boolean;
+  }
 
-  export let showMmr: boolean;
+  let { users, match, showMmr }: Props = $props();
 </script>
 
 <Card.Root>

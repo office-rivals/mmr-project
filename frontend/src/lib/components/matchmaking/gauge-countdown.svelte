@@ -1,12 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
-  export let toDate: Date;
+  interface Props {
+    toDate: Date;
+  }
+
+  let { toDate }: Props = $props();
 
   const initialSecondsToRespond = Math.ceil(
     (toDate.getTime() - Date.now()) / 1000
   );
-  let secondsToRespond = Math.ceil((toDate.getTime() - Date.now()) / 1000);
+  let secondsToRespond = $state(
+    Math.ceil((toDate.getTime() - Date.now()) / 1000)
+  );
   onMount(() => {
     let frame: number;
     const updateSecondsToRespond = () => {

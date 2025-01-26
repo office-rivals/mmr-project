@@ -6,8 +6,8 @@
   import { zodClient } from 'sveltekit-superforms/adapters';
   import { loginSchema, type LoginForm } from './schema.js';
 
-  export let data;
-  $: ({ supabase } = data);
+  let { data } = $props();
+  let { supabase } = $derived(data);
 
   async function signInWithAzure() {
     await supabase.auth.signInWithOAuth({
@@ -37,26 +37,30 @@
   class="container flex max-w-96 flex-col gap-2 pt-3"
 >
   <Form.Field {form} name="email">
-    <Form.Control let:attrs>
-      <Form.Label>Email</Form.Label>
-      <Input
-        {...attrs}
-        bind:value={$formData.email}
-        type="email"
-        placeholder="Enter your email address"
-      />
+    <Form.Control>
+      {#snippet children({ props })}
+        <Form.Label>Email</Form.Label>
+        <Input
+          {...props}
+          bind:value={$formData.email}
+          type="email"
+          placeholder="Enter your email address"
+        />
+      {/snippet}
     </Form.Control>
     <Form.FieldErrors />
   </Form.Field>
   <Form.Field {form} name="password">
-    <Form.Control let:attrs>
-      <Form.Label>Password</Form.Label>
-      <Input
-        {...attrs}
-        bind:value={$formData.password}
-        type="password"
-        placeholder="Enter your password"
-      />
+    <Form.Control>
+      {#snippet children({ props })}
+        <Form.Label>Password</Form.Label>
+        <Input
+          {...props}
+          bind:value={$formData.password}
+          type="password"
+          placeholder="Enter your password"
+        />
+      {/snippet}
     </Form.Control>
     <Form.FieldErrors />
   </Form.Field>
@@ -64,7 +68,7 @@
     <p class="text-red-500">{$message}</p>
   {/if}
   <Form.Button>Login</Form.Button>
-  <Button type="button" on:click={signInWithAzure} variant="secondary">
+  <Button type="button" onclick={signInWithAzure} variant="secondary">
     Sign in with Azure
   </Button>
   <Button href="/signup" variant="link">No user? Sign up here.</Button>

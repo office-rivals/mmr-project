@@ -1,14 +1,16 @@
 <script lang="ts">
-	import type { HTMLAttributes } from "svelte/elements";
-	import { cn } from "$lib/utils.js";
+  import { cn } from '$lib/utils.js';
+  import type { Snippet } from 'svelte';
+  import type { HTMLAttributes } from 'svelte/elements';
 
-	type $$Props = HTMLAttributes<HTMLTableSectionElement>;
+  interface Props extends HTMLAttributes<HTMLTableSectionElement> {
+    children?: Snippet;
+  }
 
-	let className: $$Props["class"] = undefined;
-	export { className as class };
+  let { class: className = undefined, children, ...rest }: Props = $props();
 </script>
 
-<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-<thead class={cn("[&_tr]:border-b", className)} {...$$restProps} on:click on:keydown>
-	<slot />
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<thead class={cn('[&_tr]:border-b', className)} {...rest}>
+  {@render children?.()}
 </thead>

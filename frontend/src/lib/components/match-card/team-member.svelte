@@ -3,21 +3,27 @@
   import type { MatchUser } from './match-user';
   import MmrDelta from './mmr-delta.svelte';
 
-  export let match: Pick<MatchDetailsV2, 'mmrCalculations' | 'team1' | 'team2'>;
-  export let users: MatchUser[];
-  export let showMmr = false;
-  export let team: 'team1' | 'team2';
-  export let member: 'member1' | 'member2';
+  interface Props {
+    match: Pick<MatchDetailsV2, 'mmrCalculations' | 'team1' | 'team2'>;
+    users: MatchUser[];
+    showMmr?: boolean;
+    team: 'team1' | 'team2';
+    member: 'member1' | 'member2';
+  }
 
-  $: memberId = match[team][member];
-  $: memberName =
-    users.find((user) => user.userId === memberId)?.name ?? 'Unknown';
-  $: delta =
+  let { match, users, showMmr = false, team, member }: Props = $props();
+
+  let memberId = $derived(match[team][member]);
+  let memberName = $derived(
+    users.find((user) => user.userId === memberId)?.name ?? 'Unknown'
+  );
+  let delta = $derived(
     member === 'member1'
       ? match.mmrCalculations?.[team].player1MMRDelta
-      : match.mmrCalculations?.[team].player2MMRDelta;
+      : match.mmrCalculations?.[team].player2MMRDelta
+  );
 
-  $: align = team === 'team1' ? 'left' : 'right';
+  let align = $derived(team === 'team1' ? 'left' : 'right');
 </script>
 
 <p class="space-x-1">

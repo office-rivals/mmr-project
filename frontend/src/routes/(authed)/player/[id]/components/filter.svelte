@@ -3,17 +3,23 @@
   import PlayerButton from '$lib/components/player-button.svelte';
   import { Input } from '$lib/components/ui/input';
 
-  export let users: UserDetails[];
-  export let onSelectedUser: (userId: number) => void;
-  export let autofocus = false;
+  interface Props {
+    users: UserDetails[];
+    onSelectedUser: (userId: number) => void;
+    autofocus?: boolean;
+  }
 
-  let filter = '';
+  let { users, onSelectedUser, autofocus = false }: Props = $props();
 
-  $: filteredUsers = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(filter.toLowerCase()) ||
-      (u.displayName != null &&
-        u.displayName.toLowerCase().includes(filter.toLowerCase()))
+  let filter = $state('');
+
+  let filteredUsers = $derived(
+    users.filter(
+      (u) =>
+        u.name.toLowerCase().includes(filter.toLowerCase()) ||
+        (u.displayName != null &&
+          u.displayName.toLowerCase().includes(filter.toLowerCase()))
+    )
   );
 
   const selectUser = (user: UserDetails) => {
@@ -35,7 +41,7 @@
           <li>
             <PlayerButton
               {user}
-              on:click={() => selectUser(user)}
+              onclick={() => selectUser(user)}
               class="bg-background"
             />
           </li>

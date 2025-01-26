@@ -5,15 +5,18 @@
     type LineChartOptions,
   } from '@carbon/charts-svelte';
 
-  // TODO: Make this component more generic, and not hardcoded to showing MMR stats
+  interface Props {
+    // TODO: Make this component more generic, and not hardcoded to showing MMR stats
+    data: Array<{
+      player: string;
+      date: Date | string;
+      rating: number;
+    }>;
+    height: number;
+    legend?: boolean;
+  }
 
-  export let data: Array<{
-    player: string;
-    date: Date | string;
-    rating: number;
-  }>;
-  export let height: number;
-  export let legend = true;
+  let { data, height, legend = true }: Props = $props();
 
   const options: LineChartOptions = {
     theme: 'g100',

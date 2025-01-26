@@ -13,7 +13,11 @@
   import ActiveMatches from './components/active-matches.svelte';
   import CurrentActiveMatch from './components/current-active-match.svelte';
 
-  export let data: PageData;
+  interface Props {
+    data: PageData;
+  }
+
+  let { data }: Props = $props();
   const {
     leaderboardEntries,
     recentMatches,
@@ -22,13 +26,14 @@
     activeMatches: initialActiveMatches,
     profile,
   } = data;
-  let selectedUser: UserDetails | null | undefined;
-  $: leaderboardEntry =
+  let selectedUser: UserDetails | null | undefined = $state();
+  let leaderboardEntry = $derived(
     selectedUser != null
       ? leaderboardEntries?.find(
           (entry) => entry.userId === selectedUser!.userId
         )
-      : null;
+      : null
+  );
 
   const fetchActiveMatches = async () => {
     const response = await fetch(`/api/active-matches`);
@@ -41,7 +46,7 @@
     }
   };
 
-  let activeMatches = initialActiveMatches;
+  let activeMatches = $state(initialActiveMatches);
 
   onMount(async () => {
     setInterval(async () => {
@@ -67,13 +72,13 @@
         id="show-mmr"
         class="border-muted bg-primary active:scale-98 data-[state=unchecked]:border-border-input data-[state=unchecked]:hover:border-dark-40 peer inline-flex size-[25px] items-center justify-center rounded-md border transition-all duration-150 ease-in-out data-[state=unchecked]:bg-white"
       >
-        <Checkbox.Indicator let:isChecked let:isIndeterminate>
-          {#if isChecked}
+        {#snippet children({ checked, indeterminate })}
+          {#if checked}
             <Check class="text-primary-foreground size-[15px] font-bold" />
-          {:else if isIndeterminate}
+          {:else if indeterminate}
             <Minus class="size-[15px] font-bold" />
           {/if}
-        </Checkbox.Indicator>
+        {/snippet}
       </Checkbox.Root>
     </div>
   </div>

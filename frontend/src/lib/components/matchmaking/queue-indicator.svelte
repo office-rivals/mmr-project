@@ -6,7 +6,7 @@
   import QueuedState from './queued-state.svelte';
   import type { MatchMakingState } from './types';
 
-  $: matchMakingState = { type: 'inactive' } as MatchMakingState;
+  let matchMakingState: MatchMakingState = $state({ type: 'inactive' });
 
   let matchFoundAudio: HTMLAudioElement;
   onMount(() => {

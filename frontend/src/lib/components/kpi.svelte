@@ -2,10 +2,13 @@
   import { cn } from '$lib/utils';
   import type { HTMLAttributes } from 'svelte/elements';
 
-  export let title: string;
+  interface Props {
+    title: string;
+    class?: HTMLAttributes<HTMLDivElement>['class'];
+    children?: import('svelte').Snippet;
+  }
 
-  let className: HTMLAttributes<HTMLDivElement>['class'] = undefined;
-  export { className as class };
+  let { title, class: className = undefined, children }: Props = $props();
 </script>
 
 <div
@@ -16,6 +19,6 @@
 >
   <div class="text-base text-gray-300">{title}</div>
   <div class="text-primary text-2xl font-bold">
-    <slot />
+    {@render children?.()}
   </div>
 </div>
