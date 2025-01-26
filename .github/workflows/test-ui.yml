@@ -1,0 +1,28 @@
+name: UI - build and test
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "frontend/**/*"
+      - ".github/workflows/test-ui.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "frontend/**/*"
+      - ".github/workflows/ui.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install
+      - name: Build
+        run: npm run build
