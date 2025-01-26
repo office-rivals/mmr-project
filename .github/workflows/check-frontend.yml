@@ -1,0 +1,32 @@
+name: Svelte Check
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**/*"
+      - ".github/workflows/check-frontend.yml"
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org/
+
+      - name: Install
+        run: npm install
+
+      # Run the svelte check action
+      - name: Svelte Check
+        uses: ghostdevv/svelte-check-action@v1
+        with:
+          paths: "frontend"
+          filterChanges: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
