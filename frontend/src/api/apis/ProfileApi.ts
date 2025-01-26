@@ -17,12 +17,15 @@ import * as runtime from '../runtime';
 import type {
   ClaimProfileRequest,
   ProfileDetails,
+  ProfilePermissionsDto,
 } from '../models/index';
 import {
     ClaimProfileRequestFromJSON,
     ClaimProfileRequestToJSON,
     ProfileDetailsFromJSON,
     ProfileDetailsToJSON,
+    ProfilePermissionsDtoFromJSON,
+    ProfilePermissionsDtoToJSON,
 } from '../models/index';
 
 export interface ProfileClaimProfileRequest {
@@ -89,6 +92,30 @@ export class ProfileApi extends runtime.BaseAPI {
      */
     async profileGetProfile(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ProfileDetails> {
         const response = await this.profileGetProfileRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async profileGetProfilePermissionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ProfilePermissionsDto>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/api/v1/profile/permissions`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ProfilePermissionsDtoFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async profileGetProfilePermissions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ProfilePermissionsDto> {
+        const response = await this.profileGetProfilePermissionsRaw(initOverrides);
         return await response.value();
     }
 

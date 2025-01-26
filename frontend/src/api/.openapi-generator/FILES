@@ -22,6 +22,7 @@ models/PendingMatchDto.ts
 models/PendingMatchStatus.ts
 models/PlayerHistoryDetails.ts
 models/ProfileDetails.ts
+models/ProfilePermissionsDto.ts
 models/SubmitMatchV2Request.ts
 models/TimeStatisticsEntry.ts
 models/UserDetails.ts

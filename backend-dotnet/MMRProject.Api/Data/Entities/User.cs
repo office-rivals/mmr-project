@@ -27,4 +27,6 @@ public class User
     public virtual ICollection<Team> TeamUserOnes { get; set; } = new List<Team>();
 
     public virtual ICollection<Team> TeamUserTwos { get; set; } = new List<Team>();
+    
+    public bool IsAdmin { get; set; } // TODO: Move to a separate table
 }

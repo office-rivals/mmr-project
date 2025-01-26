@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using MMRProject.Api.DTOs;
+using MMRProject.Api.Extensions;
 using MMRProject.Api.Mappers;
 using MMRProject.Api.Services;
 
@@ -21,7 +22,7 @@ public class ProfileController(IUserService userService) : ControllerBase
     public async Task<ProfilePermissionsDto> GetProfilePermissions()
     {
         var user = await userService.GetCurrentAuthenticatedUserAsync();
-        return new ProfilePermissionsDto { CanClaimProfile = user is null };
+        return new ProfilePermissionsDto { IsAdmin = user?.IsAdmin.NullIfFalse()  };
     }
 
     [HttpPost("claim")]
