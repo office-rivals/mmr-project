@@ -34,3 +34,6 @@ jobs:
       - name: Svelte Check
         run: npm run check
         working-directory: ./frontend
+        env:
+          PUBLIC_SUPABASE_ANON_KEY: ""
+          PUBLIC_SUPABASE_URL: ""
