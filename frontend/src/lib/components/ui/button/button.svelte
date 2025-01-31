@@ -10,7 +10,7 @@
     ...rest
   }: ButtonProps = $props();
 
-  let buttonClass = cn(buttonVariants({ variant, size }), className);
+  let buttonClass = $derived(cn(buttonVariants({ variant, size }), className));
 </script>
 
 <ButtonPrimitive.Root class={buttonClass} {...rest} />

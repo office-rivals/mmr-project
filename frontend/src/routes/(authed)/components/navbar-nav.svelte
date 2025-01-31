@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { Button } from '$lib/components/ui/button';
   import { cn } from '$lib/utils';
   import type { Snippet } from 'svelte';
@@ -11,14 +11,14 @@
   }
 
   let { path, isPrimary = false, children }: Props = $props();
+  let isActive = $derived(path === page.url.pathname);
 </script>
 
 <Button
   variant={isPrimary ? 'default' : 'ghost'}
   href={path}
   class={cn('h-16 min-w-16 flex-1', {
-    'text-primary hover:text-primary':
-      !isPrimary && path === $page.url.pathname,
+    'text-primary hover:text-primary': !isPrimary && isActive,
   })}
 >
   {@render children?.()}
