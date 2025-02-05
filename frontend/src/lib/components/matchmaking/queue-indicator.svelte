@@ -3,6 +3,7 @@
   import type { TweakedMatchMakingQueueStatus } from '../../../routes/(authed)/api/matchmaking/status/types';
   import ActiveMatchState from './active-match-state.svelte';
   import PendingMatchState from './pending-match-state.svelte';
+  import { createRefreshQueueStatus } from './queue-status-updater';
   import QueuedState from './queued-state.svelte';
   import type { MatchMakingState } from './types';
 
@@ -14,13 +15,7 @@
     matchFoundAudio.preload = 'auto';
   });
 
-  const getQueueStatus = async () => {
-    const response = await fetch('/api/matchmaking/status');
-    return (await response.json()) as TweakedMatchMakingQueueStatus;
-  };
-
-  const refreshQueueStatus = async () => {
-    const status = await getQueueStatus();
+  const updateMatchMakingState = (status: TweakedMatchMakingQueueStatus) => {
     if (status?.assignedActiveMatch != null) {
       matchMakingState = {
         type: 'active-match',
@@ -57,6 +52,8 @@
       matchMakingState = { type: 'inactive' };
     }
   };
+
+  const refreshQueueStatus = createRefreshQueueStatus(updateMatchMakingState);
 
   const fastRefreshStatusTypes: MatchMakingState['type'][] = [
     'pending-match',
