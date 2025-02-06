@@ -8,11 +8,15 @@
   import MatchCard from './match-card/match-card.svelte';
   import * as Card from './ui/card';
 
-  export let user: UserDetails;
-  export let users: UserDetails[];
-  export let leaderboardEntry: RankedLeaderboardEntry | null | undefined;
-  export let open: boolean;
-  export let onOpenChange: (open: boolean) => void;
+  interface Props {
+    user: UserDetails;
+    users: UserDetails[];
+    leaderboardEntry: RankedLeaderboardEntry | null | undefined;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+  }
+
+  let { user, users, leaderboardEntry, open, onOpenChange }: Props = $props();
 
   const percentFormatter = new Intl.NumberFormat(undefined, {
     style: 'percent',
@@ -30,8 +34,9 @@
   };
 
   // Fetch recent match every time user changes and store in promise
-  $: recentMatchPromise =
-    user && user.userId ? fetchRecentMatch(user.userId) : null;
+  let recentMatchPromise = $derived(
+    user && user.userId ? fetchRecentMatch(user.userId) : null
+  );
 </script>
 
 <Dialog.Root {open} {onOpenChange}>

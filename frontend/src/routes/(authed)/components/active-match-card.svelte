@@ -2,11 +2,21 @@
   import * as Card from '$lib/components/ui/card';
   import type { ActiveMatchDto, UserDetails } from '../../../api';
 
-  export let users: UserDetails[];
-  export let match: ActiveMatchDto;
-  export let highlighted: boolean = false;
-  export let team1Score: number | undefined = undefined;
-  export let team2Score: number | undefined = undefined;
+  interface Props {
+    users: UserDetails[];
+    match: ActiveMatchDto;
+    highlighted?: boolean;
+    team1Score?: number | undefined;
+    team2Score?: number | undefined;
+  }
+
+  let {
+    users,
+    match,
+    highlighted = false,
+    team1Score = undefined,
+    team2Score = undefined,
+  }: Props = $props();
 </script>
 
 <Card.Root class={highlighted ? 'border-primary' : undefined}>

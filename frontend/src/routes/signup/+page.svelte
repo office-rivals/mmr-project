@@ -7,7 +7,7 @@
   import { zodClient } from 'sveltekit-superforms/adapters';
   import { signupSchema, type SignupForm } from './schema.js';
 
-  export let data;
+  let { data } = $props();
 
   const form = superForm<SignupForm>(data.form, {
     validators: zodClient(signupSchema),
@@ -24,26 +24,30 @@
   class="container flex max-w-96 flex-col gap-2 pt-3"
 >
   <Form.Field {form} name="email">
-    <Form.Control let:attrs>
-      <Form.Label>Email</Form.Label>
-      <Input
-        {...attrs}
-        bind:value={$formData.email}
-        type="email"
-        placeholder="Enter your email address"
-      />
+    <Form.Control>
+      {#snippet children({ props })}
+        <Form.Label>Email</Form.Label>
+        <Input
+          {...props}
+          bind:value={$formData.email}
+          type="email"
+          placeholder="Enter your email address"
+        />
+      {/snippet}
     </Form.Control>
     <Form.FieldErrors />
   </Form.Field>
   <Form.Field {form} name="password">
-    <Form.Control let:attrs>
-      <Form.Label>Password</Form.Label>
-      <Input
-        {...attrs}
-        bind:value={$formData.password}
-        type="password"
-        placeholder="Enter your password"
-      />
+    <Form.Control>
+      {#snippet children({ props })}
+        <Form.Label>Password</Form.Label>
+        <Input
+          {...props}
+          bind:value={$formData.password}
+          type="password"
+          placeholder="Enter your password"
+        />
+      {/snippet}
     </Form.Control>
     <Form.FieldErrors />
   </Form.Field>
@@ -51,4 +55,4 @@
   <Button href="/login" variant="link">Already have a user? Login here.</Button>
 </form>
 
-<LoadingOverlay isLoading={$submitting} />
+<LoadingOverlay isLoading={$submitting} message="Signing up..." />

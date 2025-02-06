@@ -10,7 +10,7 @@ const playerId = (
   idParam: string,
   nameParam: string,
   users: UserDetails[]
-): number | undefined => {
+): number => {
   const id = url.searchParams.get(idParam);
   if (id != null) {
     const idNumber = parseInt(id, 10);
@@ -21,8 +21,8 @@ const playerId = (
 
   const name = url.searchParams.get(nameParam);
   return name != null
-    ? users.find((user) => user.name === name)?.userId
-    : undefined;
+    ? (users.find((user) => user.name === name)?.userId ?? -1)
+    : -1;
 };
 
 export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
@@ -71,6 +71,6 @@ export const actions: Actions = {
       });
     }
 
-    throw redirect(303, '/');
+    redirect(303, '/');
   },
 };

@@ -3,6 +3,7 @@ using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities;
 using MMRProject.Api.DTOs;
 using MMRProject.Api.Exceptions;
+using MMRProject.Api.Mappers;
 using MMRProject.Api.UserContext;
 
 namespace MMRProject.Api.Services;
@@ -89,11 +90,13 @@ public class MatchMakingService(
         var currentUser = await dbContext.QueuedPlayers
             .Where(x => x.User.IdentityUserId == identityUserId)
             .Include(x => x.PendingMatch)
+            .ThenInclude(pm => pm!.ActiveMatch)
             .OrderByDescending(x => x.CreatedAt)
             .FirstOrDefaultAsync();
 
         MatchMakingQueueStatusPendingMatch? assignedPendingMatch;
-
+        ActiveMatchDto? assignedActiveMatch;
+        
         if (currentUser?.PendingMatch is { } currentPendingMatch &&
             currentPendingMatch.Status != PendingMatchStatus.Declined)
         {
@@ -103,17 +106,27 @@ public class MatchMakingService(
                 Status = currentPendingMatch.Status,
                 ExpiresAt = currentPendingMatch.ExpiresAt
             };
+            if (currentPendingMatch.ActiveMatch is { } currentActiveMatch)
+            {
+                assignedActiveMatch = currentActiveMatch.ToActiveMatchDto();
+            }
+            else
+            {
+                assignedActiveMatch = null;
+            }
         }
         else
         {
             assignedPendingMatch = null;
+            assignedActiveMatch = null;
         }
 
         return new MatchMakingQueueStatus
         {
             PlayersInQueue = totalQueuedPlayers,
             IsUserInQueue = currentUser != null,
-            AssignedPendingMatch = assignedPendingMatch
+            AssignedPendingMatch = assignedPendingMatch,
+            AssignedActiveMatch = assignedActiveMatch
         };
     }
 
@@ -230,41 +243,22 @@ public class MatchMakingService(
     public async Task<IEnumerable<ActiveMatchDto>> ActiveMatchesAsync()
     {
         var matches = await dbContext.ActiveMatches.ToListAsync();
-        return matches.Select(match => new ActiveMatchDto
-        {
-            Id = match.Id,
-            CreatedAt = match.CreatedAt,
-            Team1 = new ActiveMatchTeamDto
-            {
-                PlayerIds = new List<long>
-                {
-                    match.TeamOneUserOneId,
-                    match.TeamOneUserTwoId
-                }
-            },
-            Team2 = new ActiveMatchTeamDto
-            {
-                PlayerIds = new List<long>
-                {
-                    match.TeamTwoUserOneId,
-                    match.TeamTwoUserTwoId
-                }
-            }
-        });
+        return matches.Select(match => match.ToActiveMatchDto());
     }
 
     public async Task CancelActiveMatchAsync(Guid matchId)
     {
         var match = await ReadActiveMatch(matchId);
 
-        RemovePendingMatch(match);
+        RemoveActiveMatch(match);
         await dbContext.SaveChangesAsync();
     }
 
-    private void RemovePendingMatch(ActiveMatch match)
+    private void RemoveActiveMatch(ActiveMatch match)
     {
         if (match.PendingMatch is not null)
         {
+            dbContext.QueuedPlayers.RemoveRange(match.PendingMatch.QueuedPlayers);
             dbContext.PendingMatches.Remove(match.PendingMatch);
         }
 
@@ -299,7 +293,7 @@ public class MatchMakingService(
                 }
             });
 
-        RemovePendingMatch(match);
+        RemoveActiveMatch(match);
         await dbContext.SaveChangesAsync();
     }
 
@@ -338,6 +332,7 @@ public class MatchMakingService(
             .Include(x => x.TeamTwoUserOne)
             .Include(x => x.TeamTwoUserTwo)
             .Include(x => x.PendingMatch)
+            .ThenInclude(pm => pm!.QueuedPlayers)
             .FirstOrDefaultAsync(x => x.Id == matchId);
 
         var identityUserId = userContextResolver.GetIdentityUserId();

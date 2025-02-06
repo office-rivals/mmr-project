@@ -11,7 +11,9 @@ public record MatchMakingQueueStatus
     [Required]
     public required int PlayersInQueue { get; set; }
     
-    public MatchMakingQueueStatusPendingMatch? AssignedPendingMatch { get; set; } 
+    public MatchMakingQueueStatusPendingMatch? AssignedPendingMatch { get; set; }
+    
+    public ActiveMatchDto? AssignedActiveMatch { get; set; }
 }
 
 public record MatchMakingQueueStatusPendingMatch
@@ -20,7 +22,7 @@ public record MatchMakingQueueStatusPendingMatch
     public required Guid Id { get; set; }
     
     [Required]
-    public required PendingMatchStatus Status { get; set; } 
+    public required PendingMatchStatus Status { get; set; }
     
     [Required]
     public required DateTimeOffset ExpiresAt { get; set; }

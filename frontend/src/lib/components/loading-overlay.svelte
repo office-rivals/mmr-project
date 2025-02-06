@@ -1,18 +1,23 @@
 <script lang="ts">
   import * as Dialog from '$lib/components/ui/dialog';
   import { LoaderCircle } from 'lucide-svelte';
-  export let isLoading: boolean;
+  interface Props {
+    message?: string;
+    isLoading: boolean;
+  }
+
+  let { isLoading = $bindable(), message }: Props = $props();
 </script>
 
-<Dialog.Root
-  bind:open={isLoading}
-  closeOnEscape={false}
-  closeOnOutsideClick={false}
->
+<Dialog.Root bind:open={isLoading}>
   <Dialog.Content
+    escapeKeydownBehavior="defer-otherwise-ignore"
+    interactOutsideBehavior="defer-otherwise-ignore"
     class="loading-dialog flex flex-col items-center justify-center"
   >
-    Uploading match result
+    {#if message}
+      {message}
+    {/if}
     <LoaderCircle class="animate-spin" />
   </Dialog.Content>
 </Dialog.Root>

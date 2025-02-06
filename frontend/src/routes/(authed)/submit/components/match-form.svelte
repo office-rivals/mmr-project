@@ -19,8 +19,12 @@
   import { matchSchema } from '../match-schema';
   import TeamMemberField from './team-member-field.svelte';
 
-  export let data: SuperValidated<Infer<MatchSchema>>;
-  export let users: UserDetails[];
+  interface Props {
+    initialData: SuperValidated<Infer<MatchSchema>>;
+    users: UserDetails[];
+  }
+
+  let { initialData, users }: Props = $props();
 
   const PLAYER_1_LOCAL_STORAGE_KEY = 'player1Id';
   const LATEST_PLAYERS_LOCAL_STORAGE_KEY = 'latestPlayers';
@@ -43,7 +47,7 @@
   const player1Id =
     localPlayer1Id != null && !isNaN(localPlayer1Id) ? localPlayer1Id : null;
 
-  const form = superForm(data, {
+  const form = superForm(initialData, {
     validators: zodClient(matchSchema),
     dataType: 'json',
     delayMs: 500,
@@ -90,13 +94,13 @@
     $formData.team1.member1 = player1Id ?? $formData.team1.member1;
   });
 
-  let loosingTeam: 'team1' | 'team2' | null = null;
-  $: loosingTeam =
+  let loosingTeam: 'team1' | 'team2' | null = $derived(
     $formData.team1.score === 10
       ? 'team2'
       : $formData.team2.score === 10
         ? 'team1'
-        : null;
+        : null
+  );
 
   const setTeam1AsWinner = () => {
     $formData.team1.score = 10;
@@ -109,43 +113,46 @@
     goto('#score-step');
   };
 
-  $: isMatchCardVisible =
+  let isMatchCardVisible = $derived(
     loosingTeam !== null &&
-    $formData.team1.score !== -1 &&
-    $formData.team2.score !== -1;
+      $formData.team1.score !== -1 &&
+      $formData.team2.score !== -1
+  );
 
-  $: allInitialsFilled =
-    $formData.team1.member1 != null &&
-    $formData.team1.member2 != null &&
-    $formData.team2.member1 != null &&
-    $formData.team2.member2 != null;
+  let allInitialsFilled = $derived(
+    $formData.team1.member1 !== -1 &&
+      $formData.team1.member2 !== -1 &&
+      $formData.team2.member1 !== -1 &&
+      $formData.team2.member2 !== -1
+  );
 
-  $: filledTeam1 =
-    $formData.team1.member1 != null && $formData.team1.member2 != null;
+  let filledTeam1 = $derived(
+    $formData.team1.member1 !== -1 && $formData.team1.member2 !== -1
+  );
 
-  $: currentMatchUsers = [
+  let currentMatchUsers = $derived([
     $formData.team1.member1,
     $formData.team1.member2,
     $formData.team2.member1,
     $formData.team2.member2,
-  ];
+  ]);
 
-  $: availableUsers = users.filter(
-    (user) => !currentMatchUsers.includes(user.userId)
+  let availableUsers = $derived(
+    users.filter((user) => !currentMatchUsers.includes(user.userId))
   );
 
-  $: onCreateUser = (suggested: string, inputName: string) => {
+  let onCreateUser = $derived((suggested: string, inputName: string) => {
     const redirectToParams = [
-      $formData.team1.member1 != null
+      $formData.team1.member1 !== -1
         ? `player1_id=${$formData.team1.member1}`
         : null,
-      $formData.team1.member2 != null
+      $formData.team1.member2 !== -1
         ? `player2_id=${$formData.team1.member2}`
         : null,
-      $formData.team2.member1 != null
+      $formData.team2.member1 !== -1
         ? `player3_id=${$formData.team2.member1}`
         : null,
-      $formData.team2.member2 != null
+      $formData.team2.member2 !== -1
         ? `player4_id=${$formData.team2.member2}`
         : null,
     ]
@@ -156,7 +163,7 @@
     goto(
       `/new-player?redirect_to=${encodeURIComponent(redirectTo)}${nameParam}`
     );
-  };
+  });
 </script>
 
 <form method="post" use:enhance>
@@ -192,7 +199,7 @@
           {latestPlayerIds}
           onCreateUser={(suggested) => onCreateUser(suggested, 'player1_id')}
         />
-        {#if $formData.team1.member1 != null || $formData.team1.member2 != null}
+        {#if $formData.team1.member1 !== -1 || $formData.team1.member2 !== -1}
           <TeamMemberField
             bind:userId={$formData.team1.member2}
             label="Your teammate"
@@ -206,7 +213,7 @@
       <div class="flex-s bg-border min-h-full w-px"></div>
       <div id="team2-step" class="flex flex-1 flex-col gap-4">
         <h3 class="mb-2 text-center text-2xl">Team 2</h3>
-        {#if filledTeam1 || $formData.team2.member1 != null}
+        {#if filledTeam1 || $formData.team2.member1 !== -1}
           <TeamMemberField
             bind:userId={$formData.team2.member1}
             label="Opponent 1"
@@ -216,7 +223,7 @@
             onCreateUser={(suggested) => onCreateUser(suggested, 'player3_id')}
           />
         {/if}
-        {#if $formData.team2.member1 != null || $formData.team2.member2 != null}
+        {#if $formData.team2.member1 !== -1 || $formData.team2.member2 !== -1}
           <TeamMemberField
             bind:userId={$formData.team2.member2}
             label="Opponent 2"
@@ -233,14 +240,16 @@
         <h2 class="text-center text-4xl">Who won?</h2>
         <div class="flex flex-row gap-4">
           <Button
-            on:click={setTeam1AsWinner}
+            type="button"
+            onclick={setTeam1AsWinner}
             class="flex-1"
             variant="default"
             disabled={$formData.team1.score === 10}>We won &nbsp; 🎉</Button
           >
           <div class="flex-s bg-border min-h-full w-px"></div>
           <Button
-            on:click={setTeam2AsWinner}
+            type="button"
+            onclick={setTeam2AsWinner}
             class="flex-1"
             variant="destructive"
             disabled={$formData.team2.score === 10}>They won &nbsp; 😓</Button
@@ -256,10 +265,11 @@
         <div class="grid grid-cols-5 gap-2">
           {#each Array.from({ length: 10 }, (_, i) => i) as score}
             <Button
+              type="button"
               variant={$formData[loosingTeam].score === score
                 ? 'default'
                 : 'outline'}
-              on:click={() => {
+              onclick={() => {
                 $formData[loosingTeam].score = score;
                 goto('#submit-step');
               }}
@@ -283,4 +293,4 @@
   </div>
 </form>
 
-<LoadingOverlay isLoading={$submitting} />
+<LoadingOverlay isLoading={$submitting} message="Uploading match result" />

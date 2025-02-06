@@ -8,7 +8,11 @@
   import type { PageServerData } from './$types';
   import { createPlayerSchema } from './schema';
 
-  export let data: PageServerData;
+  interface Props {
+    data: PageServerData;
+  }
+
+  let { data }: Props = $props();
 
   const form = superForm(data.form, {
     validators: zodClient(createPlayerSchema),
@@ -23,24 +27,28 @@
   <PageTitle>Create player</PageTitle>
 
   <Form.Field {form} name="name">
-    <Form.Control let:attrs>
-      <Form.Label>Initials</Form.Label>
-      <Input
-        {...attrs}
-        bind:value={$formData.name}
-        placeholder="Enter player's initials"
-      />
+    <Form.Control>
+      {#snippet children({ props })}
+        <Form.Label>Initials</Form.Label>
+        <Input
+          {...props}
+          bind:value={$formData.name}
+          placeholder="Enter player's initials"
+        />
+      {/snippet}
     </Form.Control>
     <Form.FieldErrors />
   </Form.Field>
   <Form.Field {form} name="displayName">
-    <Form.Control let:attrs>
-      <Form.Label>Name</Form.Label>
-      <Input
-        {...attrs}
-        bind:value={$formData.displayName}
-        placeholder="Enter player's name"
-      />
+    <Form.Control>
+      {#snippet children({ props })}
+        <Form.Label>Name</Form.Label>
+        <Input
+          {...props}
+          bind:value={$formData.displayName}
+          placeholder="Enter player's name"
+        />
+      {/snippet}
     </Form.Control>
     <Form.FieldErrors />
   </Form.Field>
@@ -50,4 +58,4 @@
   {/if}
 </form>
 
-<LoadingOverlay isLoading={$submitting} />
+<LoadingOverlay isLoading={$submitting} message="Creating new player" />

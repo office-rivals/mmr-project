@@ -1,17 +1,17 @@
 <script lang="ts">
-	import type { Label as LabelPrimitive } from "bits-ui";
-	import { getFormControl } from "formsnap";
-	import { cn } from "$lib/utils.js";
-	import { Label } from "$lib/components/ui/label/index.js";
+  import { Label } from '$lib/components/ui/label/index.js';
+  import { cn } from '$lib/utils.js';
+  import { useFormControl, type LabelProps } from 'formsnap';
 
-	type $$Props = LabelPrimitive.Props;
+  let { class: className = undefined, child, ...rest }: LabelProps = $props();
 
-	let className: $$Props["class"] = undefined;
-	export { className as class };
-
-	const { labelAttrs } = getFormControl();
+  const control = useFormControl({});
 </script>
 
-<Label {...$labelAttrs} class={cn("data-[fs-error]:text-destructive", className)} {...$$restProps}>
-	<slot {labelAttrs} />
+<Label
+  {...control.labelProps}
+  class={cn('data-[fs-error]:text-destructive', className)}
+  {...rest}
+>
+  {@render child?.({ props: control.labelProps })}
 </Label>

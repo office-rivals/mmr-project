@@ -3,10 +3,14 @@
   import { X } from 'lucide-svelte';
   import ActiveMatchCard from './active-match-card.svelte';
 
-  export let users: UserDetails[];
-  export let activeMatches: ActiveMatchDto[];
+  interface Props {
+    users: UserDetails[];
+    activeMatches: ActiveMatchDto[];
+  }
 
-  let isExpanded = false;
+  let { users, activeMatches }: Props = $props();
+
+  let isExpanded = $state(false);
 </script>
 
 {#if activeMatches.length > 0}
@@ -14,7 +18,7 @@
     {#if !isExpanded}
       <button
         class="bg-background flex items-center gap-4 rounded-md border p-4 shadow-md"
-        on:click={() => (isExpanded = true)}
+        onclick={() => (isExpanded = true)}
       >
         <div>Active matches</div>
         <div
@@ -31,7 +35,7 @@
           <h3>Active Matches</h3>
           <button
             class="text-primary underline"
-            on:click={() => (isExpanded = false)}
+            onclick={() => (isExpanded = false)}
           >
             <X class="h-4 w-4" />
             <span class="sr-only">Close</span>

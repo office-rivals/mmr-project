@@ -15,11 +15,14 @@
   import type { ActiveMatchSubmitSchema } from '../active-match-submit-schema';
   import { activeMatchSubmitSchema } from '../active-match-submit-schema';
 
-  export let data: SuperValidated<Infer<ActiveMatchSubmitSchema>>;
+  interface Props {
+    data: SuperValidated<Infer<ActiveMatchSubmitSchema>>;
+    activeMatch: ActiveMatchDto;
+    users: UserDetails[];
+    currentPlayerId: number;
+  }
 
-  export let activeMatch: ActiveMatchDto;
-  export let users: UserDetails[];
-  export let currentPlayerId: number;
+  let { data, activeMatch, users, currentPlayerId }: Props = $props();
 
   type TeamOption = 'team1' | 'team2';
 
@@ -63,13 +66,13 @@
 
   const { form: formData, enhance, submitting, message } = form;
 
-  let loosingTeam: TeamOption | null = null;
-  $: loosingTeam =
+  let loosingTeam: TeamOption | null = $derived(
     $formData.team1Score === 10
       ? 'team2'
       : $formData.team2Score === 10
         ? 'team1'
-        : null;
+        : null
+  );
 
   const setTeamAsWinner = (winningTeam: TeamOption) => {
     let losingTeam: TeamOption = winningTeam === 'team1' ? 'team2' : 'team1';
@@ -78,10 +81,11 @@
     goto('#score-step');
   };
 
-  $: isMatchCardVisible =
+  let isMatchCardVisible = $derived(
     loosingTeam !== null &&
-    $formData.team1Score !== -1 &&
-    $formData.team2Score !== -1;
+      $formData.team1Score !== -1 &&
+      $formData.team2Score !== -1
+  );
 </script>
 
 <form method="post" use:enhance>
@@ -117,7 +121,8 @@
       <h2 class="text-center text-4xl">Who won?</h2>
       <div class="flex flex-row gap-4">
         <Button
-          on:click={() => setTeamAsWinner(currentUserTeam)}
+          type="button"
+          onclick={() => setTeamAsWinner(currentUserTeam)}
           class="flex-1"
           variant="default"
           disabled={$formData[`${currentUserTeam}Score`] === 10}
@@ -125,7 +130,8 @@
         >
         <div class="flex-s bg-border min-h-full w-px"></div>
         <Button
-          on:click={() => setTeamAsWinner(otherTeam)}
+          type="button"
+          onclick={() => setTeamAsWinner(otherTeam)}
           class="flex-1"
           variant="destructive"
           disabled={$formData[`${otherTeam}Score`] === 10}
@@ -141,10 +147,11 @@
         <div class="grid grid-cols-5 gap-2">
           {#each Array.from({ length: 10 }, (_, i) => i) as score}
             <Button
+              type="button"
               variant={$formData[`${loosingTeam}Score`] === score
                 ? 'default'
                 : 'outline'}
-              on:click={() => {
+              onclick={() => {
                 $formData[`${loosingTeam}Score`] = score;
                 goto('#submit-step');
               }}
@@ -173,4 +180,4 @@
   </div>
 </form>
 
-<LoadingOverlay isLoading={$submitting} />
+<LoadingOverlay isLoading={$submitting} message="Uploading match result" />
