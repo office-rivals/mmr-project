@@ -65,7 +65,7 @@
           <Kpi title="# Matches">{totalGamesPlayed}</Kpi>
           <Kpi title="Streak">
             {#if (leaderboardEntry.winningStreak ?? 0) > 0}🔥 {leaderboardEntry.winningStreak}{/if}
-            {#if (leaderboardEntry.losingStreak ?? 0) > 0}{losingStreak >= 7 ? '⛈️' : '🌧️'} {leaderboardEntry.losingStreak}{/if}
+            {#if (leaderboardEntry.losingStreak ?? 0) > 0}{leaderboardEntry.losingStreak >= 7 ? '⛈️' : '🌧️'} {leaderboardEntry.losingStreak}{/if}
           </Kpi>
         </div>
       {/if}
