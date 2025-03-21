@@ -19,7 +19,7 @@ require (
 	ariga.io/atlas-go-sdk v0.2.3
 	ariga.io/atlas-provider-gorm v0.3.4
 	github.com/caarlos0/env/v6 v6.10.1
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/joho/godotenv v1.5.1
 	gorm.io/driver/postgres v1.5.7
 )
