@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "ariga.io/atlas-provider-gorm/gormschema"
 	"mmr/backend/config"
 )
 
@@ -13,6 +12,5 @@ import (
 
 func main() {
 	config.LoadEnv()
-	//database.Init()
 	server.Init()
 }

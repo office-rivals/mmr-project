@@ -7,7 +7,7 @@
       "type": "process",
       "args": [
         "build",
-        "${workspaceFolder}/backend-dotnet/MMRProject.Api/MMRProject.Api.sln",
+        "${workspaceFolder}/api/MMRProject.Api/MMRProject.Api.sln",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary;ForceNoAlign"
       ],
@@ -19,7 +19,7 @@
       "type": "process",
       "args": [
         "publish",
-        "${workspaceFolder}/backend-dotnet/MMRProject.Api/MMRProject.Api.sln",
+        "${workspaceFolder}/api/MMRProject.Api/MMRProject.Api.sln",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary;ForceNoAlign"
       ],
@@ -33,7 +33,7 @@
         "watch",
         "run",
         "--project",
-        "${workspaceFolder}/backend-dotnet/MMRProject.Api/MMRProject.Api.sln"
+        "${workspaceFolder}/api/MMRProject.Api/MMRProject.Api.sln"
       ],
       "problemMatcher": "$msCompile"
     }

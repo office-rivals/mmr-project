@@ -7,12 +7,12 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "backend-dotnet/**/*"
+      - "api/**/*"
       - ".github/workflows/test-api.yml"
   pull_request:
     branches: ["main"]
     paths:
-      - "backend-dotnet/**/*"
+      - "api/**/*"
       - ".github/workflows/test-api.yml"
 
 jobs:
@@ -26,11 +26,11 @@ jobs:
         with:
           dotnet-version: 8.0.x
       - name: Restore dependencies
-        working-directory: ./backend-dotnet/MMRProject.Api
+        working-directory: ./api/MMRProject.Api
         run: dotnet restore
       - name: Build
-        working-directory: ./backend-dotnet/MMRProject.Api
+        working-directory: ./api/MMRProject.Api
         run: dotnet build --no-restore
       - name: Test
-        working-directory: ./backend-dotnet/MMRProject.Api
+        working-directory: ./api/MMRProject.Api
         run: dotnet test --no-build --verbosity normal
