@@ -14,7 +14,7 @@
     "start": "node -r dotenv/config build"
   },
   "devDependencies": {
-    "@openapitools/openapi-generator-cli": "^2.13.4",
+    "@openapitools/openapi-generator-cli": "^2.18.4",
     "@sveltejs/adapter-auto": "^3.0.0",
     "@sveltejs/adapter-node": "^5.2.11",
     "@sveltejs/kit": "^2.16.1",
