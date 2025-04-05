@@ -118,7 +118,40 @@
   const onConfirmedMatch = () => {
     matchMakingState = { type: 'inactive' };
   };
+
+  let titleTick = $state(false);
+  onMount(() => {
+    const intervalId = setInterval(() => {
+      titleTick = !titleTick;
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  });
+
+  const titleForState = (
+    state: MatchMakingState,
+    isTick: boolean
+  ): string | null => {
+    switch (state.type) {
+      case 'queued':
+      // return `Queued ${state.playersInQueue}/4`;
+      case 'pending-match':
+        return isTick ? '⚽️ Match found!' : '⏳ Accept match now!';
+      default:
+        return null;
+    }
+  };
+
+  let title = $derived(titleForState(matchMakingState, titleTick));
 </script>
+
+<svelte:head>
+  {#if title != null}
+    <title>{title}</title>
+  {/if}
+</svelte:head>
 
 {#if matchMakingState.type === 'queued'}
   <QueuedState {matchMakingState} {onLeaveQueue} />
