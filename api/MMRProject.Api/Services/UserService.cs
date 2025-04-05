@@ -14,11 +14,17 @@ public interface IUserService
     Task<User?> GetCurrentAuthenticatedUserAsync();
     Task<User> ClaimUserForCurrentAuthenticatedUserAsync(long userId);
     Task<(PlayerHistory history, long seasonId)?> LatestPlayerHistoryAsync(long userId);
-    Task<List<(PlayerHistory history, long seasonId)>> LatestPlayerHistoriesAsync(List<long> userIds);
+    Task<List<(PlayerHistory history, long seasonId)>> LatestPlayerHistoriesAsync(
+        List<long> userIds
+    );
+    Task RegisterChipToUser(string chipId, int[] colorCode);
 }
 
-public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IUserContextResolver userContextResolver)
-    : IUserService
+public class UserService(
+    ILogger<UserService> logger,
+    ApiDbContext dbContext,
+    IUserContextResolver userContextResolver
+) : IUserService
 {
     public async Task<List<User>> AllUsersAsync(string? searchQuery = default)
     {
@@ -27,8 +33,9 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
         if (!string.IsNullOrWhiteSpace(searchQuery))
         {
             var pattern = $"%{searchQuery}%";
-            query = query.Where(
-                x => EF.Functions.ILike(x.Name!, pattern) || EF.Functions.ILike(x.DisplayName!, pattern));
+            query = query.Where(x =>
+                EF.Functions.ILike(x.Name!, pattern) || EF.Functions.ILike(x.DisplayName!, pattern)
+            );
         }
 
         return await query.ToListAsync();
@@ -41,7 +48,7 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
             Name = name,
             DisplayName = displayName,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
         };
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync();
@@ -80,7 +87,11 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
             throw new InvalidArgumentException("User already claimed by another user");
         }
 
-        logger.LogInformation("Claiming user {UserId} for identity user {IdentityUserId}", userId, identityUserId);
+        logger.LogInformation(
+            "Claiming user {UserId} for identity user {IdentityUserId}",
+            userId,
+            identityUserId
+        );
         user.IdentityUserId = identityUserId;
 
         await dbContext.SaveChangesAsync();
@@ -90,7 +101,8 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
 
     public async Task<(PlayerHistory history, long seasonId)?> LatestPlayerHistoryAsync(long userId)
     {
-        var playerHistory = await dbContext.PlayerHistories.Where(x => x.UserId == userId)
+        var playerHistory = await dbContext
+            .PlayerHistories.Where(x => x.UserId == userId)
             .Include(x => x.Match)
             .OrderByDescending(x => x.MatchId)
             .AsNoTracking()
@@ -104,17 +116,56 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
         return (playerHistory, playerHistory.Match.SeasonId.Value);
     }
 
-    public async Task<List<(PlayerHistory history, long seasonId)>> LatestPlayerHistoriesAsync(List<long> userIds)
+    public async Task<List<(PlayerHistory history, long seasonId)>> LatestPlayerHistoriesAsync(
+        List<long> userIds
+    )
     {
-        var playerHistories = await dbContext.PlayerHistories.Where(x => userIds.Contains(x.User!.Id))
+        var playerHistories = await dbContext
+            .PlayerHistories.Where(x => userIds.Contains(x.User!.Id))
             .Include(x => x.Match)
             .GroupBy(x => x.UserId)
             .AsNoTracking()
             .Select(x => x.OrderByDescending(y => y.MatchId).First())
             .ToListAsync();
 
-        return playerHistories.Where(x => x.Match?.SeasonId is not null)
+        return playerHistories
+            .Where(x => x.Match?.SeasonId is not null)
             .Select(x => (x, x.Match!.SeasonId!.Value))
             .ToList();
+    }
+
+    public async Task RegisterChipToUser(string chipId, int[] colorCode)
+    {
+        var existingOwnerOfChip = await dbContext
+            .Users.Where(x => chipId.Equals(x.ChipId))
+            .FirstOrDefaultAsync();
+
+        if (existingOwnerOfChip is not null)
+        {
+            throw new InvalidArgumentException($"Chip {chipId} already registered to another user");
+        }
+
+        var user = await dbContext.Users.FirstOrDefaultAsync(u =>
+            u.Id.Equals(GetUserIdFromColorCode(colorCode))
+        );
+
+        if (user is null)
+        {
+            throw new InvalidArgumentException(
+                $"User with color code {string.Join(",", colorCode)} (UserId {ColorCodeHelper.ConvertBase4ToIntId(colorCode)}) not found"
+            );
+        }
+
+        user.ChipId = chipId;
+
+        dbContext.Users.Update(user);
+        dbContext.Entry(user).State = EntityState.Modified;
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public int GetUserIdFromColorCode(int[] colorCode)
+    {
+        return ColorCodeHelper.ConvertBase4ToIntId(colorCode);
     }
 }

@@ -1,8 +1,7 @@
 namespace MMRProject.Api.DTOs;
 
-public record ProfileDetails
+public class ChipRegistrationRequest
 {
-    public long? UserId { get; set; }
-
+    public string ChipId { get; set; } = "";
     public int[] ColorCode { get; set; } = [];
 }

@@ -14,7 +14,19 @@ public class ProfileController(IUserService userService) : ControllerBase
     public async Task<ProfileDetails> GetProfile()
     {
         var user = await userService.GetCurrentAuthenticatedUserAsync();
-        return new ProfileDetails { UserId = user?.Id };
+
+        var userId = user?.Id;
+
+        if (userId is null)
+        {
+            throw new UnauthorizedAccessException("User not found");
+        }
+
+        return new ProfileDetails
+        {
+            UserId = userId,
+            ColorCode = ColorCodeHelper.ConvertIntIdToBase4(Convert.ToInt32(userId))
+        };
     }
 
     [HttpPost("claim")]

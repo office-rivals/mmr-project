@@ -16,52 +16,52 @@ import { mapValues } from '../runtime';
 /**
  * 
  * @export
- * @interface ProfileDetails
+ * @interface ChipRegistrationRequest
  */
-export interface ProfileDetails {
+export interface ChipRegistrationRequest {
     /**
      * 
-     * @type {number}
-     * @memberof ProfileDetails
+     * @type {string}
+     * @memberof ChipRegistrationRequest
      */
-    userId?: number;
+    chipId?: string;
     /**
      * 
      * @type {Array<number>}
-     * @memberof ProfileDetails
+     * @memberof ChipRegistrationRequest
      */
     colorCode?: Array<number>;
 }
 
 /**
- * Check if a given object implements the ProfileDetails interface.
+ * Check if a given object implements the ChipRegistrationRequest interface.
  */
-export function instanceOfProfileDetails(value: object): boolean {
+export function instanceOfChipRegistrationRequest(value: object): boolean {
     return true;
 }
 
-export function ProfileDetailsFromJSON(json: any): ProfileDetails {
-    return ProfileDetailsFromJSONTyped(json, false);
+export function ChipRegistrationRequestFromJSON(json: any): ChipRegistrationRequest {
+    return ChipRegistrationRequestFromJSONTyped(json, false);
 }
 
-export function ProfileDetailsFromJSONTyped(json: any, ignoreDiscriminator: boolean): ProfileDetails {
+export function ChipRegistrationRequestFromJSONTyped(json: any, ignoreDiscriminator: boolean): ChipRegistrationRequest {
     if (json == null) {
         return json;
     }
     return {
         
-        'userId': json['userId'] == null ? undefined : json['userId'],
+        'chipId': json['chipId'] == null ? undefined : json['chipId'],
         'colorCode': json['colorCode'] == null ? undefined : json['colorCode'],
     };
 }
 
-export function ProfileDetailsToJSON(value?: ProfileDetails | null): any {
+export function ChipRegistrationRequestToJSON(value?: ChipRegistrationRequest | null): any {
     if (value == null) {
         return value;
     }
     return {
         
-        'userId': value['userId'],
+        'chipId': value['chipId'],
         'colorCode': value['colorCode'],
     };
 }

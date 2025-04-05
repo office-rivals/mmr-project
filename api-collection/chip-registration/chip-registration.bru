@@ -1,0 +1,20 @@
+meta {
+  name: chip-registration
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{api_host}}/api/v1/chip-registration
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "chipId": "xqsdsdc123",
+    "colorCode": [
+      0,0,1,0
+    ]
+  }
+}
