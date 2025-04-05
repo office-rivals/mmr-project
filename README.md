@@ -40,20 +40,34 @@ Since we are using Supabase for authentication you will need to start Supabase l
 3. Configure environment variables:
    - Frontend (.env):
      ```
-     PUBLIC_SUPABASE_ANON_KEY=<anon key from supabase start>
-     PUBLIC_SUPABASE_URL=<API URL from supabase start>
+     PUBLIC_SUPABASE_URL=<your_supabase_project_url>
+     PUBLIC_SUPABASE_ANON_KEY=<your_supabase_anon_key>
+     API_BASE_PATH=http://localhost:8081
      ```
    - API (appsettings.Development.json):
      ```json
      {
-       "Jwt": {
-         "Secret": "<JWT secret from supabase start>"
+       "ConnectionStrings": {
+         "ApiDbContext": "Host=localhost;Database=mmr_project;Username=postgres;Password=<your_db_password>"
+       },
+       "Supabase": {
+         "SignatureKey": "<your_jwt_signature_key>"
+       },
+       "Admin": {
+         "Secret": "<your_admin_secret>"
+       },
+       "Migration": {
+         "Enabled": true
+       },
+       "MMRCalculationAPI": {
+         "BaseUrl": "http://localhost:8080",
+         "ApiKey": "<your_mmr_api_key>"
        }
      }
      ```
    - MMR API (.env):
      ```
-     JWT_SECRET=<JWT secret from supabase start>
+     ADMIN_SECRET=<your_admin_secret>
      ```
 
 You can now visit your local Supabase Dashboard at [http://localhost:54323/](http://localhost:54323/).
