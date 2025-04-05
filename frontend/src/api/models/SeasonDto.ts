@@ -24,7 +24,7 @@ export interface SeasonDto {
      * @type {number}
      * @memberof SeasonDto
      */
-    id?: number;
+    id: number;
     /**
      * 
      * @type {Date}
@@ -37,6 +37,7 @@ export interface SeasonDto {
  * Check if a given object implements the SeasonDto interface.
  */
 export function instanceOfSeasonDto(value: object): boolean {
+    if (!('id' in value)) return false;
     return true;
 }
 
@@ -50,7 +51,7 @@ export function SeasonDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean):
     }
     return {
         
-        'id': json['id'] == null ? undefined : json['id'],
+        'id': json['id'],
         'createdAt': json['createdAt'] == null ? undefined : (new Date(json['createdAt'])),
     };
 }
