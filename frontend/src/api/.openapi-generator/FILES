@@ -1,4 +1,5 @@
 apis/AdminApi.ts
+apis/ChipApi.ts
 apis/MMRV2Api.ts
 apis/MatchMakingApi.ts
 apis/ProfileApi.ts
@@ -9,6 +10,7 @@ index.ts
 models/ActiveMatchDto.ts
 models/ActiveMatchSubmitRequest.ts
 models/ActiveMatchTeamDto.ts
+models/ChipRegistrationRequest.ts
 models/ClaimProfileRequest.ts
 models/CreateUserRequest.ts
 models/LeaderboardEntry.ts

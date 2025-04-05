@@ -48,6 +48,23 @@
     <PageTitle
       >{data.user?.displayName} ({data.user?.name}){profileSuffix}</PageTitle
     >
+    {#if data.isCurrentUser}
+      <div class="flex w-full items-center justify-center space-x-2">
+        <p>Color code:</p>
+        {#each data.colorCode! as cc}
+          <div
+            class="h-5 w-5 rounded-full"
+            style="background-color: {cc === 0
+              ? 'green'
+              : cc === 1
+                ? 'red'
+                : cc === 2
+                  ? 'blue'
+                  : 'yellow'}"
+          ></div>
+        {/each}
+      </div>
+    {/if}
   {:else}
     <PageTitle>{data.user?.name}{profileSuffix}</PageTitle>
   {/if}
@@ -228,7 +245,7 @@
             {@const user = data.users?.find((u) => u.userId === filteredUser)}
             {#if user != null}
               <div
-                class="bg-secondary text-secondary-foreground flex items-center space-x-2 rounded-md p-3"
+                class="flex items-center space-x-2 rounded-md bg-secondary p-3 text-secondary-foreground"
               >
                 <span>{user.displayName ?? user.name}</span>
                 <button

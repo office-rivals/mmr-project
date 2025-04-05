@@ -3,6 +3,7 @@
 export * from './ActiveMatchDto';
 export * from './ActiveMatchSubmitRequest';
 export * from './ActiveMatchTeamDto';
+export * from './ChipRegistrationRequest';
 export * from './ClaimProfileRequest';
 export * from './CreateUserRequest';
 export * from './LeaderboardEntry';

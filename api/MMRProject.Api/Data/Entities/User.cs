@@ -1,4 +1,4 @@
-﻿namespace MMRProject.Api.Data.Entities;
+namespace MMRProject.Api.Data.Entities;
 
 public class User
 {
@@ -22,7 +22,10 @@ public class User
 
     public string? IdentityUserId { get; set; }
 
-    public virtual ICollection<PlayerHistory> PlayerHistories { get; set; } = new List<PlayerHistory>();
+    public string? ChipId { get; set; }
+
+    public virtual ICollection<PlayerHistory> PlayerHistories { get; set; } =
+        new List<PlayerHistory>();
 
     public virtual ICollection<Team> TeamUserOnes { get; set; } = new List<Team>();
 

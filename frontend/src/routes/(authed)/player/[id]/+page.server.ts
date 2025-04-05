@@ -26,7 +26,7 @@ export const load: PageServerLoad = async ({
     movePlayerToMember1(match, playerId)
   );
 
-  const { userId: currentUserPlayerId } = userProfile;
+  const { userId: currentUserPlayerId, colorCode } = userProfile;
 
   const user = users.find((user) => user.userId === playerId);
   if (!user) {
@@ -138,6 +138,7 @@ export const load: PageServerLoad = async ({
     },
     teammates,
     opponents,
+    colorCode,
   };
 };
 

@@ -1,0 +1,17 @@
+meta {
+  name: Claim Profile
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{api_host}}/api/v1/profile/claim
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "userId": 1
+  }
+}
