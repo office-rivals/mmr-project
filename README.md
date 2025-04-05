@@ -142,6 +142,26 @@ You can now visit your local Supabase Dashboard at [http://localhost:54323/](htt
 
 ## Database Management
 
+### Generating Migrations
+
+To create a new database migration:
+
+```bash
+cd api/MMRProject.Api
+dotnet ef migrations add <migration-name> -o Data/Migrations -c ApiDbContext
+```
+
+Alternatively, you can use the helper script:
+
+```bash
+cd api/MMRProject.Api
+./scripts/addMigration.sh <migration-name>
+```
+
+Migrations will be generated in the `Data/Migrations` directory. Make sure to review the generated migration files before committing them.
+
+### Importing Data
+
 To import data from the production database:
 
 ```bash
