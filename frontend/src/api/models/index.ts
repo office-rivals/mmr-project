@@ -16,6 +16,7 @@ export * from './PendingMatchDto';
 export * from './PendingMatchStatus';
 export * from './PlayerHistoryDetails';
 export * from './ProfileDetails';
+export * from './SeasonDto';
 export * from './SubmitMatchV2Request';
 export * from './TimeStatisticsEntry';
 export * from './UserDetails';

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Microsoft.AspNetCore.Mvc;
 using MMRProject.Api.DTOs;
 using MMRProject.Api.Services;
@@ -9,34 +10,43 @@ namespace MMRProject.Api.Controllers;
 public class StatisticsController(IStatisticsService statisticsService, ISeasonService seasonService) : ControllerBase
 {
     [HttpGet("leaderboard")]
-    public async Task<IEnumerable<LeaderboardEntry>> GetLeaderboard()
+    public async Task<IEnumerable<LeaderboardEntry>> GetLeaderboard([FromQuery, Description("Season ID (defaults to current season)")] long? seasonId = null)
     {
-        var currentSeason = await seasonService.CurrentSeasonIdAsync();
+        var targetSeason = seasonId ?? await seasonService.CurrentSeasonIdAsync();
 
-        if (currentSeason is null)
+        if (targetSeason is null)
         {
             return [];
         }
 
-        return await statisticsService.GetLeaderboardAsync(currentSeason.Value);
+        return await statisticsService.GetLeaderboardAsync(targetSeason.Value);
     }
 
     [HttpGet("player-history")]
-    public async Task<IEnumerable<PlayerHistoryDetails>> GetPlayerHistory([FromQuery] long? userId)
+    public async Task<IEnumerable<PlayerHistoryDetails>> GetPlayerHistory(
+        [FromQuery] long? userId,
+        [FromQuery, Description("Season ID (defaults to current season)")] long? seasonId = null)
     {
-        var currentSeason = await seasonService.CurrentSeasonIdAsync();
+        var targetSeason = seasonId ?? await seasonService.CurrentSeasonIdAsync();
 
-        if (currentSeason is null)
+        if (targetSeason is null)
         {
             return [];
         }
 
-        return await statisticsService.GetPlayerHistoryAsync(currentSeason.Value, userId);
+        return await statisticsService.GetPlayerHistoryAsync(targetSeason.Value, userId);
     }
 
     [HttpGet("time-distribution")]
-    public async Task<IEnumerable<TimeStatisticsEntry>> GetTimeDistribution()
+    public async Task<IEnumerable<TimeStatisticsEntry>> GetTimeDistribution([FromQuery, Description("Season ID (defaults to current season)")] long? seasonId = null)
     {
-        return await statisticsService.GetTimeDistributionAsync();
+        var targetSeason = seasonId ?? await seasonService.CurrentSeasonIdAsync();
+
+        if (targetSeason is null)
+        {
+            return [];
+        }
+
+        return await statisticsService.GetTimeDistributionAsync(targetSeason.Value);
     }
 }

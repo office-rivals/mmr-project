@@ -11,7 +11,7 @@ public interface IStatisticsService
 {
     Task<IEnumerable<LeaderboardEntry>> GetLeaderboardAsync(long seasonId);
     Task<IEnumerable<PlayerHistoryDetails>> GetPlayerHistoryAsync(long seasonId, long? userId);
-    Task<IEnumerable<TimeStatisticsEntry>> GetTimeDistributionAsync();
+    Task<IEnumerable<TimeStatisticsEntry>> GetTimeDistributionAsync(long seasonId);
 }
 
 public class StatisticsService(ApiDbContext dbContext, IUserService userService) : IStatisticsService
@@ -164,7 +164,7 @@ public class StatisticsService(ApiDbContext dbContext, IUserService userService)
         return filteredPlayerHistories.Select(PlayerHistoryMapper.MapPlayerHistoryToPlayerHistoryDetails);
     }
 
-    public async Task<IEnumerable<TimeStatisticsEntry>> GetTimeDistributionAsync()
+    public async Task<IEnumerable<TimeStatisticsEntry>> GetTimeDistributionAsync(long seasonId)
     {
         var timeStatistics = await dbContext.Database
             .SqlQueryRaw<TimeStatisticsEntry>("""
@@ -173,6 +173,7 @@ public class StatisticsService(ApiDbContext dbContext, IUserService userService)
                                                   EXTRACT(HOUR FROM created_at) AS HourOfDay, 
                                                   COUNT(*) AS Count
                                               FROM matches
+                                              WHERE season_id = {0}
                                               GROUP BY DayOfWeek, HourOfDay
                                               ORDER BY DayOfWeek, HourOfDay
                                               """)
