@@ -2,12 +2,13 @@
   import Leaderboard from '$lib/components/leaderboard';
   import { MatchCard } from '$lib/components/match-card';
   import PageTitle from '$lib/components/page-title.svelte';
+  import SeasonPicker from '$lib/components/season-picker.svelte';
   import Label from '$lib/components/ui/label/label.svelte';
   import UserStatsModal from '$lib/components/user-stats-modal.svelte';
   import { Checkbox } from 'bits-ui';
   import { Check, Minus } from 'lucide-svelte';
   import { onMount } from 'svelte';
-  import type { ActiveMatchDto, UserDetails } from '../../api';
+  import type { ActiveMatchDto, SeasonDto, UserDetails } from '../../api';
   import { showMmr } from '../../stores/show-mmr';
   import type { PageData } from './$types';
   import ActiveMatches from './components/active-matches.svelte';
@@ -23,9 +24,11 @@
     recentMatches,
     users,
     statisticsPromise,
-    activeMatches: initialActiveMatches,
     profile,
-  } = data;
+    seasons,
+    currentSeason,
+  } = $derived(data);
+
   let selectedUser: UserDetails | null | undefined = $state();
   let leaderboardEntry = $derived(
     selectedUser != null
@@ -46,7 +49,7 @@
     }
   };
 
-  let activeMatches = $state(initialActiveMatches);
+  let activeMatches = $state(data.activeMatches);
 
   onMount(async () => {
     setInterval(async () => {
@@ -57,6 +60,9 @@
 
 <div class="flex flex-col gap-4">
   <PageTitle>Trifork Foosball</PageTitle>
+  {#if seasons != null && seasons.length > 1}
+    <div class="self-end"><SeasonPicker {seasons} {currentSeason} /></div>
+  {/if}
 
   <CurrentActiveMatch
     activeMatches={activeMatches ?? []}
