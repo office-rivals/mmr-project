@@ -4,7 +4,7 @@ on:
     branches:
       - main
     paths:
-      - "backend/**/*"
+      - "mmr-api/**/*"
       - ".github/workflows/deploy-mmr-api.yml"
 
 concurrency:
@@ -24,7 +24,7 @@ jobs:
       - name: Build and deploy Container App
         uses: azure/container-apps-deploy-action@v2
         with:
-          appSourcePath: ${{ github.workspace }}/backend
+          appSourcePath: ${{ github.workspace }}/mmr-api
           acrName: ${{ secrets.ACR_NAME }}
           containerAppName: ${{ secrets.MMR_API_CONTAINER_APP_NAME }}
           resourceGroup: ${{ secrets.RESOURCE_GROUP }}

@@ -4,7 +4,7 @@ on:
     branches:
       - main
     paths:
-      - "backend-dotnet/**/*"
+      - "api/**/*"
       - ".github/workflows/deploy-api.yml"
 
 concurrency:
@@ -24,7 +24,7 @@ jobs:
       - name: Build and deploy Container App
         uses: azure/container-apps-deploy-action@v2
         with:
-          appSourcePath: ${{ github.workspace }}/backend-dotnet/MMRProject.Api
+          appSourcePath: ${{ github.workspace }}/api/MMRProject.Api
           acrName: ${{ secrets.ACR_NAME }}
           containerAppName: ${{ secrets.API_CONTAINER_APP_NAME }}
           resourceGroup: ${{ secrets.RESOURCE_GROUP }}
