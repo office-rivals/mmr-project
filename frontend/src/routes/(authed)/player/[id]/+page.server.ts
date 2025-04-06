@@ -6,21 +6,33 @@ import { movePlayerToMember1 } from './utils';
 export const load: PageServerLoad = async ({
   params,
   locals: { apiClient },
+  url,
 }) => {
+  const searchParams = url.searchParams;
+  const seasonId = searchParams.get('season')
+    ? Number(searchParams.get('season'))
+    : undefined;
+
   const playerId = Number(params.id);
   if (Number.isNaN(playerId)) {
     throw new Error('Invalid player ID');
   }
-  const [userProfile, rawMatches, users, mmrHistory] = await Promise.all([
-    apiClient.profileApi.profileGetProfile(),
-    apiClient.mmrApi.mMRV2GetMatches({
-      userId: playerId,
-      limit: 1000,
-      offset: 0,
-    }),
-    apiClient.usersApi.usersGetUsers(),
-    apiClient.statisticsApi.statisticsGetPlayerHistory({ userId: playerId }),
-  ]);
+  const [userProfile, rawMatches, users, mmrHistory, seasons] =
+    await Promise.all([
+      apiClient.profileApi.profileGetProfile(),
+      apiClient.mmrApi.mMRV2GetMatches({
+        userId: playerId,
+        limit: 1000,
+        offset: 0,
+        seasonId,
+      }),
+      apiClient.usersApi.usersGetUsers(),
+      apiClient.statisticsApi.statisticsGetPlayerHistory({
+        userId: playerId,
+        seasonId,
+      }),
+      apiClient.seasonsApi.seasonsGetSeasons(),
+    ]);
 
   const matches = rawMatches.map((match) =>
     movePlayerToMember1(match, playerId)
@@ -138,6 +150,8 @@ export const load: PageServerLoad = async ({
     },
     teammates,
     opponents,
+    seasons,
+    currentSeason: seasons[0],
   };
 };
 

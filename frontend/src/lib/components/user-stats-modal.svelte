@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { page } from '$app/state';
   import { Button } from '$lib/components/ui/button';
   import * as Dialog from '$lib/components/ui/dialog';
+  import { withSeasonParam } from '$lib/util/url';
   import { LoaderCircle } from 'lucide-svelte';
   import type { UserDetails } from '../../api';
   import Kpi from './kpi.svelte';
@@ -18,13 +20,25 @@
 
   let { user, users, leaderboardEntry, open, onOpenChange }: Props = $props();
 
+  // TODO: Refactor this to use a store
+  const seasonId = $derived(
+    page.url.searchParams.get('season')
+      ? parseInt(page.url.searchParams.get('season') ?? '')
+      : undefined
+  );
+
   const percentFormatter = new Intl.NumberFormat(undefined, {
     style: 'percent',
     maximumFractionDigits: 0,
   });
 
-  const fetchRecentMatch = async (userId: number) => {
-    const response = await fetch(`/api/recent-match?playerId=${userId}`);
+  const fetchRecentMatch = async (
+    userId: number,
+    seasonId: number | undefined
+  ) => {
+    const response = await fetch(
+      withSeasonParam(`/api/recent-match?playerId=${userId}`, seasonId)
+    );
     if (response.ok) {
       const data = await response.json();
       return data.latestMatch;
@@ -35,7 +49,7 @@
 
   // Fetch recent match every time user changes and store in promise
   let recentMatchPromise = $derived(
-    user && user.userId ? fetchRecentMatch(user.userId) : null
+    user && user.userId ? fetchRecentMatch(user.userId, seasonId) : null
   );
 </script>
 
@@ -65,7 +79,11 @@
           <Kpi title="# Matches">{totalGamesPlayed}</Kpi>
           <Kpi title="Streak">
             {#if (leaderboardEntry.winningStreak ?? 0) > 0}🔥 {leaderboardEntry.winningStreak}{/if}
-            {#if (leaderboardEntry.losingStreak ?? 0) > 0}{leaderboardEntry.losingStreak >= 7 ? '⛈️' : '🌧️'} {leaderboardEntry.losingStreak}{/if}
+            {#if (leaderboardEntry.losingStreak ?? 0) > 0}{leaderboardEntry.losingStreak >=
+              7
+                ? '⛈️'
+                : '🌧️'}
+              {leaderboardEntry.losingStreak}{/if}
           </Kpi>
         </div>
       {/if}
@@ -92,7 +110,9 @@
           {/if}
         </div>
       {/if}
-      <Button href={`/player/${user.userId}`}>More details</Button>
+      <Button href={withSeasonParam(`/player/${user.userId}`, seasonId)}
+        >More details</Button
+      >
     </Dialog.Description>
   </Dialog.Content>
 </Dialog.Root>

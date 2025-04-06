@@ -5,10 +5,16 @@ export const GET: RequestHandler = async ({ url, locals: { apiClient } }) => {
   if (Number.isNaN(playerId)) {
     throw new Error('Invalid player ID');
   }
+
+  const seasonId = url.searchParams.get('season')
+    ? Number(url.searchParams.get('season'))
+    : undefined;
+
   const latestMatch = await apiClient.mmrApi.mMRV2GetMatches({
     userId: playerId,
     limit: 1,
     offset: 0,
+    seasonId,
   });
 
   return new Response(

@@ -8,7 +8,7 @@
   import { Checkbox } from 'bits-ui';
   import { Check, Minus } from 'lucide-svelte';
   import { onMount } from 'svelte';
-  import type { ActiveMatchDto, SeasonDto, UserDetails } from '../../api';
+  import type { ActiveMatchDto, UserDetails } from '../../api';
   import { showMmr } from '../../stores/show-mmr';
   import type { PageData } from './$types';
   import ActiveMatches from './components/active-matches.svelte';
