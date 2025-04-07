@@ -1,7 +1,7 @@
-backend/db/foosball.db
-backend/db/foosball.db
 .env
-backend/.env.local
-backend/.env
 .DS_Store
 postgres_dump/
+
+# Cline
+.clinerules
+memory-bank/

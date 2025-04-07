@@ -1,108 +1,191 @@
 # MMR Project
 
-This repository contains the source code for the MMR Project, a web application combining a Go backend using Gin and Swagger with a SvelteKit frontend. The backend structure is loosly based on the repo: [Go Gin Boilerplate](https://github.com/vsouza/go-gin-boilerplate).
+This repository contains a matchmaking and rating system split into three main components:
 
-## Local development
+1. **Frontend**: SvelteKit web application
+2. **API**: ASP.NET Core service handling business logic and data
+3. **MMR API**: Go service specializing in MMR calculations and team balancing
 
-Since we are using Supabase for authentication you will need to start Supabase locally. You can do this by running the following command ([install CLI by following these steps](https://supabase.com/docs/guides/cli/getting-started)):
+## Project Structure
 
-```bash
-supabase start
+```
+/
+├── frontend/           # SvelteKit web application
+├── api/               # ASP.NET Core API service
+├── mmr-api/           # Go MMR calculation service
+├── local-development/ # Local development setup
+├── api-collection/    # API test collection
+└── supabase/         # Database configuration
 ```
 
-**Note:** You will need to have Docker installed to run Supabase locally.
+## Getting Started
 
-Use the following values from the output of the `supabase start` command in the backend folders `.env` file:
+### Prerequisites
 
-- `JWT secret`: `JWT_SECRET`
+- Node.js 18+ for frontend
+- .NET 7+ for API
+- Go 1.20+ for MMR API
+- Docker for local services
+- PostgreSQL client
 
-Use the following values from the output of the `supabase start` command in the frontend folders `.env` file:
+### Local Development
 
-- `anon key`: `PUBLIC_SUPABASE_ANON_KEY`
-- `API URL`: `PUBLIC_SUPABASE_URL`
+Since we are using Supabase for authentication you will need to start Supabase locally. Follow these steps to get started:
 
-You can now visit your local Dashboard at [http://localhost:54323/](http://localhost:54323/).
+1. Install the Supabase CLI ([install guide](https://supabase.com/docs/guides/cli/getting-started))
+2. Start Supabase:
+   ```bash
+   supabase start
+   ```
+3. Configure environment variables:
+   - Frontend (.env):
+     ```
+     PUBLIC_SUPABASE_URL=<your_supabase_project_url>
+     PUBLIC_SUPABASE_ANON_KEY=<your_supabase_anon_key>
+     API_BASE_PATH=http://localhost:8081
+     ```
+   - API (appsettings.Development.json):
+     ```json
+     {
+       "ConnectionStrings": {
+         "ApiDbContext": "Host=localhost;Database=mmr_project;Username=postgres;Password=<your_db_password>"
+       },
+       "Supabase": {
+         "SignatureKey": "<your_jwt_signature_key>"
+       },
+       "Admin": {
+         "Secret": "<your_admin_secret>"
+       },
+       "Migration": {
+         "Enabled": true
+       },
+       "MMRCalculationAPI": {
+         "BaseUrl": "http://localhost:8080",
+         "ApiKey": "<your_mmr_api_key>"
+       }
+     }
+     ```
+   - MMR API (.env):
+     ```
+     ADMIN_SECRET=<your_admin_secret>
+     ```
 
-You can stop the supabase instance by running:
+You can now visit your local Supabase Dashboard at [http://localhost:54323/](http://localhost:54323/).
 
-```bash
-supabase stop
-```
+### Starting the Services
+
+1. Start the MMR API:
+
+   ```bash
+   cd mmr-api
+   go run main.go
+   ```
+
+2. Start the API:
+
+   ```bash
+   cd api/MMRProject.Api
+   dotnet run
+   ```
+
+3. Start the frontend:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+## Development
+
+### Frontend (SvelteKit)
+
+- Built with TypeScript and TailwindCSS
+- Uses OpenAPI generated clients for API communication
+- Component-driven architecture
+- Protected routes under (authed)
+
+### API (ASP.NET Core)
+
+- Service-based architecture
+- Background services for matchmaking
+- Entity Framework Core for data access
+- JWT authentication
+
+### MMR API (Go)
+
+- Gin framework for HTTP handling
+- Custom MMR calculation system
+- Swagger documentation
+- Testing utilities
+
+## Testing
+
+- API tests using Bruno collection
+- MMR API tests using Go test framework
+- Frontend tests with Vitest and Playwright
+- Integration tests across services
 
 ## Deployment
 
-### Backend Deployment:
+### Frontend
 
-The backend is automatically deployed to fly.io on merges to the main branch.
+- Auto-deploys to Azure Container Apps on merges to main
+- Containerized SvelteKit application
+- Zero-downtime updates
+- Auto-scaling enabled
+- Application monitoring
+- Environment configuration
 
-### Frontend Deployment:
+### API
 
-The frontend is automatically deployed to Vercel on merges to the main branch.
+- Auto-deploys to Azure Container Apps on merges to main
+- Containerized service
+- Built-in auto-scaling
+- Zero-downtime updates
+- Health monitoring
+- Virtual network integration
 
-## Frontend
+### MMR API
 
-TBA
+- Auto-deploys to Azure Container Apps on merges to main
+- Containerized calculation service
+- Horizontal pod autoscaling
+- Application Insights integration
+- High availability
+- Resource governance
 
-## Backend
+## Database Management
 
-Go with the Gin framework and Swagger UI with swag / swagger.
+### Generating Migrations
 
-### Get started
-
-Navigate to the backend directory.
-
-_Make sure Go is installed..._
-
-Install dependencies:
-
-```bash
-go mod tidy
-```
-
-Run the backend server:
-
-First start a local postgres db. You can use the docker-compose file in the backend directory.
-
-```bash
-go run main.go
-```
-
-### Testing - Backend
-
-Run `go test ./test/...` in the backend folder to run tests
-
-### Migrate db
-
-We use [Atlas](https://atlasgo.io/) for database migrations.
-
-You can install it with in various ways ([found here](https://atlasgo.io/getting-started#installation)). For example, with brew:
+To create a new database migration:
 
 ```bash
-brew install ariga/tap/atlas
+cd api/MMRProject.Api
+dotnet ef migrations add <migration-name> -o Data/Migrations -c ApiDbContext
 ```
 
-To apply the migrations run:
+Alternatively, you can use the helper script:
 
 ```bash
-atlas migrate apply --env gorm --revisions-schema public --allow-dirty`
+cd api/MMRProject.Api
+./scripts/addMigration.sh <migration-name>
 ```
 
-#### New migration
+Migrations will be generated in the `Data/Migrations` directory. Make sure to review the generated migration files before committing them.
 
-In order to add a new migration, you can run:
+### Importing Data
 
-```bash
-atlas migrate diff <name_of_migration> --env gorm
-```
-
-This will create a new migration file in the `migrations` folder with the name `YYYYMMddHHmmss<name_of_migration>.sql` based on the changes you've made to the GORM models.
-
-### Import data from prod
-
-To import data from the prod database, you can run:
+To import data from the production database:
 
 ```bash
 ./scripts/import_data.sh <resource-group-name> <prod-server-name> <database-name> <tenant-id> <subscription-id> <username>
 ```
 
-Username has to have access to the prod database.
+Note: Username must have access to the production database.
+
+## Additional Resources
+
+- [Swagger UI](http://localhost:5000/swagger) for API documentation
+- [Bruno Collection](./api-collection) for API testing
+- [Local Development](./local-development) for development setup

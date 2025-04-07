@@ -75,7 +75,7 @@
                 {loses}
                 {#if losingStreak && losingStreak >= SHOW_STREAK_THRESHOLD}
                   <span class="text-nowrap text-xs" title="Losing streak">
-                    🌧️ <span class="hidden sm:inline">{losingStreak}</span>
+                    {losingStreak >= 7 ? '⛈️' : '🌧️'} <span class="hidden sm:inline">{losingStreak}</span>
                   </span>
                 {/if}
               </div>

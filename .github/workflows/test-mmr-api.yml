@@ -7,12 +7,12 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "backend/**/*"
+      - "mmr-api/**/*"
       - ".github/workflows/test-mmr-api.yml"
   pull_request:
     branches: ["main"]
     paths:
-      - "backend/**/*"
+      - "mmr-api/**/*"
       - ".github/workflows/test-mmr-api.yml"
 
 jobs:
@@ -25,11 +25,11 @@ jobs:
         uses: actions/setup-go@v4
 
       - name: Build
-        working-directory: ./backend
+        working-directory: ./mmr-api
         run: go build -v ./...
 
       - name: Test
-        working-directory: ./backend
+        working-directory: ./mmr-api
         run: go test -v ./... -race -coverprofile=coverage.out -covermode=atomic
 
       - name: Upload coverage reports to Codecov
