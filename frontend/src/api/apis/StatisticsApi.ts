@@ -28,8 +28,17 @@ import {
     TimeStatisticsEntryToJSON,
 } from '../models/index';
 
+export interface StatisticsGetLeaderboardRequest {
+    seasonId?: number;
+}
+
 export interface StatisticsGetPlayerHistoryRequest {
     userId?: number;
+    seasonId?: number;
+}
+
+export interface StatisticsGetTimeDistributionRequest {
+    seasonId?: number;
 }
 
 /**
@@ -39,8 +48,12 @@ export class StatisticsApi extends runtime.BaseAPI {
 
     /**
      */
-    async statisticsGetLeaderboardRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<LeaderboardEntry>>> {
+    async statisticsGetLeaderboardRaw(requestParameters: StatisticsGetLeaderboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<LeaderboardEntry>>> {
         const queryParameters: any = {};
+
+        if (requestParameters['seasonId'] != null) {
+            queryParameters['seasonId'] = requestParameters['seasonId'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -56,8 +69,8 @@ export class StatisticsApi extends runtime.BaseAPI {
 
     /**
      */
-    async statisticsGetLeaderboard(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<LeaderboardEntry>> {
-        const response = await this.statisticsGetLeaderboardRaw(initOverrides);
+    async statisticsGetLeaderboard(requestParameters: StatisticsGetLeaderboardRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<LeaderboardEntry>> {
+        const response = await this.statisticsGetLeaderboardRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -68,6 +81,10 @@ export class StatisticsApi extends runtime.BaseAPI {
 
         if (requestParameters['userId'] != null) {
             queryParameters['userId'] = requestParameters['userId'];
+        }
+
+        if (requestParameters['seasonId'] != null) {
+            queryParameters['seasonId'] = requestParameters['seasonId'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -91,8 +108,12 @@ export class StatisticsApi extends runtime.BaseAPI {
 
     /**
      */
-    async statisticsGetTimeDistributionRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<TimeStatisticsEntry>>> {
+    async statisticsGetTimeDistributionRaw(requestParameters: StatisticsGetTimeDistributionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<TimeStatisticsEntry>>> {
         const queryParameters: any = {};
+
+        if (requestParameters['seasonId'] != null) {
+            queryParameters['seasonId'] = requestParameters['seasonId'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -108,8 +129,8 @@ export class StatisticsApi extends runtime.BaseAPI {
 
     /**
      */
-    async statisticsGetTimeDistribution(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<TimeStatisticsEntry>> {
-        const response = await this.statisticsGetTimeDistributionRaw(initOverrides);
+    async statisticsGetTimeDistribution(requestParameters: StatisticsGetTimeDistributionRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<TimeStatisticsEntry>> {
+        const response = await this.statisticsGetTimeDistributionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

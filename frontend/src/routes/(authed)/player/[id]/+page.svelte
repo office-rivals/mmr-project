@@ -2,6 +2,7 @@
   import Kpi from '$lib/components/kpi.svelte';
   import { MatchCard } from '$lib/components/match-card';
   import PageTitle from '$lib/components/page-title.svelte';
+  import SeasonPicker from '$lib/components/season-picker.svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import LineChart from '$lib/components/ui/line-chart/line-chart.svelte';
@@ -55,6 +56,12 @@
     <form method="post" action="/signout" class="contents">
       <Button type="submit" variant="secondary">Logout</Button>
     </form>
+  {/if}
+
+  {#if data.seasons != null && data.seasons.length > 1}
+    <div class="self-end">
+      <SeasonPicker seasons={data.seasons} currentSeason={data.currentSeason} />
+    </div>
   {/if}
 
   <div class="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">

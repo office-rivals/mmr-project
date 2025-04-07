@@ -2,6 +2,7 @@ apis/AdminApi.ts
 apis/MMRV2Api.ts
 apis/MatchMakingApi.ts
 apis/ProfileApi.ts
+apis/SeasonsApi.ts
 apis/StatisticsApi.ts
 apis/UsersApi.ts
 apis/index.ts
@@ -22,6 +23,7 @@ models/PendingMatchDto.ts
 models/PendingMatchStatus.ts
 models/PlayerHistoryDetails.ts
 models/ProfileDetails.ts
+models/SeasonDto.ts
 models/SubmitMatchV2Request.ts
 models/TimeStatisticsEntry.ts
 models/UserDetails.ts

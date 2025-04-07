@@ -27,6 +27,7 @@ import {
 
 export interface MMRV2GetMatchesRequest {
     userId?: number;
+    seasonId?: number;
     limit?: number;
     offset?: number;
 }
@@ -47,6 +48,10 @@ export class MMRV2Api extends runtime.BaseAPI {
 
         if (requestParameters['userId'] != null) {
             queryParameters['userId'] = requestParameters['userId'];
+        }
+
+        if (requestParameters['seasonId'] != null) {
+            queryParameters['seasonId'] = requestParameters['seasonId'];
         }
 
         if (requestParameters['limit'] != null) {

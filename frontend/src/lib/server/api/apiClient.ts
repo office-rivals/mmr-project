@@ -3,6 +3,7 @@ import {
   MatchMakingApi,
   MMRV2Api,
   ProfileApi,
+  SeasonsApi,
   StatisticsApi,
   UsersApi,
 } from '$api';
@@ -22,6 +23,7 @@ export const createApiClient = (token: string) => {
     statisticsApi: new StatisticsApi(configuration),
     usersApi: new UsersApi(configuration),
     matchmakingApi: new MatchMakingApi(configuration),
+    seasonsApi: new SeasonsApi(configuration),
   };
 };
 
