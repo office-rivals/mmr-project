@@ -136,7 +136,7 @@
   ): string | null => {
     switch (state.type) {
       case 'queued':
-      // return `Queued ${state.playersInQueue}/4`;
+        return `Queued ${state.playersInQueue}/4`;
       case 'pending-match':
         return isTick ? '⚽️ Match found!' : '⏳ Accept match now!';
       default:
