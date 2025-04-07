@@ -5,11 +5,11 @@ go 1.23.0
 toolchain go1.23.1
 
 require (
-	github.com/gin-gonic/gin v1.9.1
+	github.com/gin-gonic/gin v1.10.0
 	github.com/intinig/go-openskill v0.0.0-20240619100423-fcdc459e6631
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
-	github.com/swaggo/swag v1.16.3
+	github.com/swaggo/swag v1.16.4
 )
 
 require (
@@ -53,12 +53,12 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
-	golang.org/x/arch v0.7.0 // indirect
+	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/tools v0.31.0 // indirect
-	google.golang.org/protobuf v1.34.0 // indirect
+	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
