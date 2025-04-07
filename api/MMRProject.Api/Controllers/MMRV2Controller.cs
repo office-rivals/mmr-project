@@ -22,8 +22,8 @@ public class MMRV2Controller(
         var targetSeasonId = seasonId ?? await seasonService.CurrentSeasonIdAsync();
         if (!targetSeasonId.HasValue)
         {
-            logger.LogInformation("No season has been created");
-            return Array.Empty<MatchDetailsV2>();
+            logger.LogInformation("No target season ID provided and no current season found");
+            return [];
         }
 
         var matches =

@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Data;
-using MMRProject.Api.Data.Entities;
 using MMRProject.Api.DTOs;
 using MMRProject.Api.Extensions;
 using MMRProject.Api.Mappers;
@@ -176,7 +175,7 @@ public class StatisticsService(ApiDbContext dbContext, IUserService userService)
                                               WHERE season_id = {0}
                                               GROUP BY DayOfWeek, HourOfDay
                                               ORDER BY DayOfWeek, HourOfDay
-                                              """)
+                                              """, seasonId)
             .ToListAsync();
 
         return timeStatistics;

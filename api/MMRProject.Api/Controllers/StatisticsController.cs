@@ -7,7 +7,7 @@ namespace MMRProject.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/stats")]
-public class StatisticsController(IStatisticsService statisticsService, ISeasonService seasonService) : ControllerBase
+public class StatisticsController(ILogger<StatisticsController> logger, IStatisticsService statisticsService, ISeasonService seasonService) : ControllerBase
 {
     [HttpGet("leaderboard")]
     public async Task<IEnumerable<LeaderboardEntry>> GetLeaderboard([FromQuery, Description("Season ID (defaults to current season)")] long? seasonId = null)
@@ -16,6 +16,7 @@ public class StatisticsController(IStatisticsService statisticsService, ISeasonS
 
         if (targetSeason is null)
         {
+            logger.LogInformation("No target season ID provided and no current season found");
             return [];
         }
 
@@ -31,6 +32,7 @@ public class StatisticsController(IStatisticsService statisticsService, ISeasonS
 
         if (targetSeason is null)
         {
+            logger.LogInformation("No target season ID provided and no current season found");
             return [];
         }
 
@@ -44,9 +46,10 @@ public class StatisticsController(IStatisticsService statisticsService, ISeasonS
 
         if (targetSeason is null)
         {
+            logger.LogInformation("No target season ID provided and no current season found");
             return [];
         }
-
+        
         return await statisticsService.GetTimeDistributionAsync(targetSeason.Value);
     }
 }
