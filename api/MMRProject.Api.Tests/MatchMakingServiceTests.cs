@@ -85,68 +85,46 @@ public class MatchMakingServiceTests : IDisposable
         _dbContext.SaveChanges();
     }
 
-    [Fact]
-    public async Task GenerateTeams_WithValidChipIds_ReturnsTeams()
+    [Theory]
+    [InlineData(new[] { "chip1", "chip2", "chip3", "chip4" }, new[] { 1, 2 }, "1,1,0,0")] // First two players in team 1
+    [InlineData(new[] { "chip4", "chip3", "chip2", "chip1" }, new[] { 1, 2 }, "0,0,1,1")] // Last two players in team 1
+    [InlineData(new[] { "chip2", "chip3", "chip4", "chip1" }, new[] { 2, 1 }, "1,0,0,1")] // Players 2,1 in team 1 (first and last positions)
+    public async Task GenerateTeams_ReturnsTeamsInCorrectOrder(string[] chipIds, int[] team1PlayerIds, string expectedResult)
     {
         // Arrange
-        var chipIds = new List<string> { "chip1", "chip2", "chip3", "chip4" };
         var mmrResponse = new GenerateTeamsResponse
         {
             Team1 = new TeamV2Response
             {
-                Players = new List<PlayerV2Response>
+                Players = team1PlayerIds.Select(id => new PlayerV2Response 
                 {
-                    new()
-                    {
-                        Id = 1,
-                        Mu = 25.0m,
-                        Sigma = 8.33m
-                    },
-                    new()
-                    {
-                        Id = 2,
-                        Mu = 25.0m,
-                        Sigma = 8.33m
-                    }
-                }
+                    Id = id,
+                    Mu = 25.0m,
+                    Sigma = 8.33m
+                }).ToList()
             },
             Team2 = new TeamV2Response
             {
-                Players = new List<PlayerV2Response>
-                {
-                    new()
+                Players = Enumerable.Range(1, 4)
+                    .Where(id => !team1PlayerIds.Contains(id))
+                    .Select(id => new PlayerV2Response
                     {
-                        Id = 3,
+                        Id = id,
                         Mu = 25.0m,
                         Sigma = 8.33m
-                    },
-                    new()
-                    {
-                        Id = 4,
-                        Mu = 25.0m,
-                        Sigma = 8.33m
-                    }
-                }
+                    }).ToList()
             }
         };
 
         _mockMmrClient
-            .Setup(c =>
-                c.GenerateTeamsAsync(It.IsAny<MMRCalculationApi.Models.GenerateTeamsRequest>())
-            )
+            .Setup(c => c.GenerateTeamsAsync(It.IsAny<MMRCalculationApi.Models.GenerateTeamsRequest>()))
             .ReturnsAsync(mmrResponse);
 
         // Act
-        var result = await _service.GenerateTeamsAsync(chipIds);
+        var result = await _service.GenerateTeamsAsync(chipIds.ToList());
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(2, result.Team1.ChipIds.Count);
-        Assert.Equal(2, result.Team2.ChipIds.Count);
-        Assert.Contains("chip1", result.Team1.ChipIds);
-        Assert.Contains("chip2", result.Team1.ChipIds);
-        Assert.Contains("chip3", result.Team2.ChipIds);
-        Assert.Contains("chip4", result.Team2.ChipIds);
+        Assert.Equal(expectedResult, result);
     }
 
     [Fact]

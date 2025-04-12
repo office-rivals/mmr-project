@@ -78,7 +78,7 @@ public class MatchMakingController(IMatchMakingService matchMakingService) : Con
     }
 
     [HttpPost("generate-teams")]
-    public async Task<ActionResult<GeneratedTeams>> GenerateTeams([FromBody] GenerateTeamsRequest request)
+    public async Task<ActionResult<string>> GenerateTeams([FromBody] GenerateTeamsRequest request)
     {
         if (request.ChipIds.Count != 4)
         {

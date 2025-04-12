@@ -26,17 +26,7 @@ public class MatchMakingControllerTests
             ChipIds = new List<string> { "chip1", "chip2", "chip3", "chip4" }
         };
 
-        var expectedResponse = new GeneratedTeams
-        {
-            Team1 = new TeamAssignment
-            {
-                ChipIds = new List<string> { "chip1", "chip2" }
-            },
-            Team2 = new TeamAssignment
-            {
-                ChipIds = new List<string> { "chip3", "chip4" }
-            }
-        };
+        var expectedResponse = "1,1,0,0";
 
         _mockService
             .Setup(s => s.GenerateTeamsAsync(request.ChipIds))
@@ -47,17 +37,8 @@ public class MatchMakingControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var teams = Assert.IsType<GeneratedTeams>(okResult.Value);
-        Assert.Collection(
-            teams.Team1.ChipIds,
-            id => Assert.Equal("chip1", id),
-            id => Assert.Equal("chip2", id)
-        );
-        Assert.Collection(
-            teams.Team2.ChipIds,
-            id => Assert.Equal("chip3", id),
-            id => Assert.Equal("chip4", id)
-        );
+        var teamAssignments = Assert.IsType<string>(okResult.Value);
+        Assert.Equal(expectedResponse, teamAssignments);
         _mockService.Verify(s => s.GenerateTeamsAsync(request.ChipIds), Times.Once);
     }
 
