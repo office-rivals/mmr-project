@@ -1,0 +1,15 @@
+meta {
+  name: Generate Teams
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{api_host}}/api/v1/match-making/generate-teams
+  body: json
+  auth: none
+}
+
+body:json {
+  ["123", "456", "789", "101112"]
+}

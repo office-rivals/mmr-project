@@ -16,3 +16,7 @@ type MMRCalculationPlayerRating struct {
 	Sigma                  *float64 `json:"sigma"` // Use pointers to represent nullable values
 	IsPreviousSeasonRating *bool    `json:"isPreviousSeasonRating"`
 }
+
+type GenerateTeamsRequest struct {
+	Players []MMRCalculationPlayerRating `json:"players" binding:"required"`
+}

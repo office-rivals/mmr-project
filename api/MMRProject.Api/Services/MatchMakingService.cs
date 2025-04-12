@@ -5,6 +5,8 @@ using MMRProject.Api.DTOs;
 using MMRProject.Api.Exceptions;
 using MMRProject.Api.Mappers;
 using MMRProject.Api.UserContext;
+using MMRProject.Api.MMRCalculationApi;
+using MMRProject.Api.MMRCalculationApi.Models;
 
 namespace MMRProject.Api.Services;
 
@@ -19,6 +21,7 @@ public interface IMatchMakingService
     Task<IEnumerable<ActiveMatchDto>> ActiveMatchesAsync();
     Task CancelActiveMatchAsync(Guid matchId);
     Task SubmitActiveMatchResultAsync(Guid matchId, ActiveMatchSubmitRequest submitRequest);
+    Task<GeneratedTeams> GenerateTeamsAsync(List<string> chipIds);
 }
 
 public class MatchMakingService(
@@ -26,7 +29,8 @@ public class MatchMakingService(
     IUserContextResolver userContextResolver,
     ApiDbContext dbContext,
     IMatchesService matchesService,
-    ISeasonService seasonService
+    ISeasonService seasonService,
+    IMMRCalculationApiClient mmrCalculationApiClient
 ) : IMatchMakingService
 {
     public async Task AddPlayerToQueueAsync()
@@ -295,6 +299,55 @@ public class MatchMakingService(
 
         RemoveActiveMatch(match);
         await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<GeneratedTeams> GenerateTeamsAsync(List<string> chipIds)
+    {
+        // Get users with their current MMR data for the given chip IDs
+        var users = await dbContext.Users
+            .Where(u => u.ChipId != null && chipIds.Contains(u.ChipId))
+            .Select(u => new
+            {
+                ChipId = u.ChipId!,
+                u.Id,
+                u.Mu,
+                u.Sigma
+            })
+            .ToListAsync();
+
+        if (users.Count != 4)
+        {
+            throw new InvalidArgumentException("Could not find all 4 players");
+        }
+
+        // Convert to MMR calculation request
+        var request = new MMRCalculationApi.Models.GenerateTeamsRequest
+        {
+            Players = users.Select(u => new MMRCalculationPlayerRating
+            {
+                Id = u.Id,
+                Mu = u.Mu,
+                Sigma = u.Sigma
+            }).ToList()
+        };
+
+        // Call MMR service to generate fair teams
+        var result = await mmrCalculationApiClient.GenerateTeamsAsync(request);
+
+        // Map response back to chip IDs
+        var chipIdMap = users.ToDictionary(u => u.Id, u => u.ChipId);
+
+        return new GeneratedTeams
+        {
+            Team1 = new TeamAssignment
+            {
+                ChipIds = result.Team1.Players.Select(p => chipIdMap[p.Id]!).ToList()
+            },
+            Team2 = new TeamAssignment
+            {
+                ChipIds = result.Team2.Players.Select(p => chipIdMap[p.Id]!).ToList()
+            }
+        };
     }
 
     private async Task PromotePendingMatchToActiveMatch(PendingMatch pendingMatch)

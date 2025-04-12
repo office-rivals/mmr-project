@@ -6,6 +6,11 @@ public record MMRCalculationRequest
     public required MMRCalculationTeam Team2 { get; set; }
 }
 
+public record GenerateTeamsRequest
+{
+    public required IEnumerable<MMRCalculationPlayerRating> Players { get; set; }
+}
+
 public record MMRCalculationTeam
 {
     public required int Score { get; set; }

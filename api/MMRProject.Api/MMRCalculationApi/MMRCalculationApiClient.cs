@@ -6,6 +6,7 @@ public interface IMMRCalculationApiClient
 {
     Task<MMRCalculationResponse> CalculateMMRAsync(MMRCalculationRequest request);
     Task<List<MMRCalculationResponse>> CalculateMMRBatchAsync(List<MMRCalculationRequest> requests);
+    Task<GenerateTeamsResponse> GenerateTeamsAsync(GenerateTeamsRequest request);
 }
 
 public class MMRCalculationApiClient(HttpClient httpClient) : IMMRCalculationApiClient
@@ -32,6 +33,19 @@ public class MMRCalculationApiClient(HttpClient httpClient) : IMMRCalculationApi
         if (result == null)
         {
             // TODO: Better exception
+            throw new Exception("Failed to deserialize response");
+        }
+
+        return result;
+    }
+
+    public async Task<GenerateTeamsResponse> GenerateTeamsAsync(GenerateTeamsRequest request)
+    {
+        var response = await httpClient.PostAsJsonAsync("api/v1/generate-teams", request);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<GenerateTeamsResponse>();
+        if (result == null)
+        {
             throw new Exception("Failed to deserialize response");
         }
 

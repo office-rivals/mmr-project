@@ -23,6 +23,12 @@ func NewRouter() *gin.Engine {
 			calc.POST("", calculation.SubmitMMRCalculation)
 			calc.POST("/batch", calculation.SubmitMMRCalculationsBatch)
 		}
+
+		generateTeams := v1.Group("/generate-teams", middleware.RequireAdminAuth)
+		{
+			teams := new(controllers.TeamsController)
+			generateTeams.POST("", teams.GenerateTeams)
+		}
 	}
 
 	router.GET("/swagger", func(ctx *gin.Context) {
@@ -31,5 +37,4 @@ func NewRouter() *gin.Engine {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	return router
-
 }

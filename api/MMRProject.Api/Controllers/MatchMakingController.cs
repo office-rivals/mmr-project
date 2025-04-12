@@ -76,4 +76,16 @@ public class MatchMakingController(IMatchMakingService matchMakingService) : Con
     {
         return await matchMakingService.MatchMakingQueueStatusAsync();
     }
+
+    [HttpPost("generate-teams")]
+    public async Task<ActionResult<GeneratedTeams>> GenerateTeams([FromBody] GenerateTeamsRequest request)
+    {
+        if (request.ChipIds.Count != 4)
+        {
+            return BadRequest(new { error = "Exactly 4 chip IDs are required" });
+        }
+        
+        var generatedTeams = await matchMakingService.GenerateTeamsAsync(request.ChipIds);
+        return Ok(generatedTeams);
+    }
 }
