@@ -5,3 +5,39 @@ postgres_dump/
 # Cline
 .clinerules
 memory-bank/
+
+# .NET
+*.swp
+*.*~
+project.lock.json
+.project
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+# Test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.TestResults
+*.coverage
+*.coveragexml
+coverage.json
+coverage.info
+coverage/
+TestResults/
