@@ -10,6 +10,7 @@ public static class SeasonMapper
         return new SeasonDto
         {
             Id = season.Id,
+            StartsAt = season.StartsAt,
             CreatedAt = season.CreatedAt
         };
     }

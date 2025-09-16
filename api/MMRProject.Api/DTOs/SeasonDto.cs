@@ -7,5 +7,7 @@ public record SeasonDto
     [Required]
     public required long Id { get; set; }
 
+    public DateTimeOffset? StartsAt { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 }

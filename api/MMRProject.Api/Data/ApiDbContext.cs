@@ -130,6 +130,7 @@ public partial class ApiDbContext : DbContext
             entity.HasIndex(e => e.DeletedAt, "idx_seasons_deleted_at");
 
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.StartsAt).HasColumnName("starts_at");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
