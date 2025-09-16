@@ -131,7 +131,6 @@ public partial class ApiDbContext : DbContext
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.StartsAt).HasColumnName("starts_at");
-            entity.Property(e => e.EndsAt).HasColumnName("ends_at");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");

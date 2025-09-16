@@ -12,18 +12,25 @@ public interface ISeasonService
 
 public class SeasonService(ApiDbContext dbContext) : ISeasonService
 {
+    private long? _cachedCurrentSeasonId;
     public async Task<long?> CurrentSeasonIdAsync()
     {
-        var now = DateTime.UtcNow;
+        if (_cachedCurrentSeasonId.HasValue)
+        {
+            return _cachedCurrentSeasonId;
+        }
+        
+        var now = DateTimeOffset.UtcNow;
         var currentSeason = await dbContext.Seasons
-            .Where(x => x.StartsAt <= now && (x.EndsAt == null || x.EndsAt > now))
+            .Where(x => x.StartsAt <= now)
             .OrderByDescending(x => x.StartsAt)
             .FirstOrDefaultAsync();
 
         currentSeason ??= await dbContext.Seasons
-            .OrderByDescending(x => x.StartsAt ?? x.CreatedAt)
-            .FirstOrDefaultAsync();
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
 
+        _cachedCurrentSeasonId = currentSeason?.Id;
         return currentSeason?.Id;
     }
 

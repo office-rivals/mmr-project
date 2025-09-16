@@ -11,13 +11,7 @@ namespace MMRProject.Api.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<DateTime>(
-                name: "ends_at",
-                table: "seasons",
-                type: "timestamp with time zone",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
+            migrationBuilder.AddColumn<DateTimeOffset>(
                 name: "starts_at",
                 table: "seasons",
                 type: "timestamp with time zone",
@@ -27,10 +21,6 @@ namespace MMRProject.Api.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "ends_at",
-                table: "seasons");
-
             migrationBuilder.DropColumn(
                 name: "starts_at",
                 table: "seasons");

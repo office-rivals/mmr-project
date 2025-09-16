@@ -11,7 +11,6 @@ public static class SeasonMapper
         {
             Id = season.Id,
             StartsAt = season.StartsAt,
-            EndsAt = season.EndsAt,
             CreatedAt = season.CreatedAt
         };
     }
