@@ -4,7 +4,7 @@ public class Season
 {
     public long Id { get; set; }
 
-    public DateTimeOffset? StartsAt { get; set; }
+    public DateTimeOffset StartsAt { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
