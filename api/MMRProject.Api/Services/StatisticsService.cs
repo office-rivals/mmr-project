@@ -28,7 +28,7 @@ public class StatisticsService(ApiDbContext dbContext, IUserService userService)
                                   ELSE 0
                               END AS IsWin,
                               ROW_NUMBER() OVER (PARTITION BY u.Id ORDER BY m.Id DESC) AS RowNum
-                          FROM players u
+                          FROM "Players" u
                           LEFT JOIN teams t ON u.Id = t.player_one_id OR u.Id = t.player_two_id
                           LEFT JOIN matches m ON t.Id = m.team_one_id OR t.Id = m.team_two_id
                           WHERE m.season_id = {0}
@@ -73,7 +73,7 @@ public class StatisticsService(ApiDbContext dbContext, IUserService userService)
                               ORDER BY ph.match_id DESC
                               LIMIT 1
                           ) AS MMR
-                      FROM players u
+                      FROM "Players" u
                       LEFT JOIN teams t ON u.Id = t.player_one_id OR u.Id = t.player_two_id
                       LEFT JOIN matches m ON t.Id = m.team_one_id OR t.Id = m.team_two_id
                       LEFT JOIN CurrentStreak cs ON u.Id = cs.UserId
