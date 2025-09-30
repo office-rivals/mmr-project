@@ -229,8 +229,6 @@ namespace MMRProject.Api.Data.Migrations
 
                     b.HasIndex("MatchId");
 
-                    b.HasIndex("UserId");
-
                     b.HasIndex(new[] { "DeletedAt" }, "idx_player_histories_deleted_at");
 
                     b.ToTable("player_histories", (string)null);
@@ -335,10 +333,6 @@ namespace MMRProject.Api.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("teams_pkey");
-
-                    b.HasIndex("UserOneId");
-
-                    b.HasIndex("UserTwoId");
 
                     b.HasIndex(new[] { "DeletedAt" }, "idx_teams_deleted_at");
 
