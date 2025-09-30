@@ -15,16 +15,16 @@ public static class ActiveMatchMapper
             {
                 PlayerIds = new List<long>
                 {
-                    activeMatch.TeamOneUserOneId,
-                    activeMatch.TeamOneUserTwoId
+                    activeMatch.TeamOnePlayerOneId,
+                    activeMatch.TeamOnePlayerTwoId
                 }
             },
             Team2 = new ActiveMatchTeamDto
             {
                 PlayerIds = new List<long>
                 {
-                    activeMatch.TeamTwoUserOneId,
-                    activeMatch.TeamTwoUserTwoId
+                    activeMatch.TeamTwoPlayerOneId,
+                    activeMatch.TeamTwoPlayerTwoId
                 }
             }
         };

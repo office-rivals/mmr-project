@@ -9,8 +9,8 @@ public static class PlayerHistoryMapper
     {
         return new PlayerHistoryDetails
         {
-            UserId = playerHistory.UserId ?? 0, // TODO: Fix this
-            Name = playerHistory.User?.Name ?? string.Empty, // TODO: Fix this
+            UserId = playerHistory.PlayerId ?? 0, // TODO: Fix this
+            Name = playerHistory.Player?.Name ?? string.Empty, // TODO: Fix this
             Date = playerHistory.Match?.CreatedAt ?? DateTimeOffset.UtcNow, // TODO: Fix this
             MMR = playerHistory.Mmr ?? 0, // TODO: Fix this
         };

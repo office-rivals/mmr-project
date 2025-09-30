@@ -31,7 +31,7 @@ public static class MatchMapper
 
     private static MatchTeamV2? MapTeamToMatchTeam(Team? team)
     {
-        if (team?.Score is null || team.UserOneId is null || team.UserTwoId is null)
+        if (team?.Score is null || team.PlayerOneId is null || team.PlayerTwoId is null)
         {
             return null;
         }
@@ -39,8 +39,8 @@ public static class MatchMapper
         return new MatchTeamV2
         {
             Score = (int)team.Score.Value,
-            Member1 = team.UserOneId.Value,
-            Member2 = team.UserTwoId.Value
+            Member1 = team.PlayerOneId.Value,
+            Member2 = team.PlayerTwoId.Value
         };
     }
     

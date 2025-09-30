@@ -5,13 +5,13 @@ namespace MMRProject.Api.Mappers;
 
 public static class UserMapper
 {
-    public static UserDetails MapUserToUserDetails(User user)
+    public static UserDetails MapUserToUserDetails(Player player)
     {
         return new UserDetails
         {
-            UserId = user.Id,
-            Name = user.Name ?? string.Empty, // TODO: Fix this
-            DisplayName = user.DisplayName
+            UserId = player.Id,
+            Name = player.Name ?? string.Empty, // TODO: Fix this
+            DisplayName = player.DisplayName
         };
     }
 }

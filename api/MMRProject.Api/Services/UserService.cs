@@ -8,11 +8,11 @@ namespace MMRProject.Api.Services;
 
 public interface IUserService
 {
-    Task<List<User>> AllUsersAsync(string? searchQuery = default);
-    Task<User> CreateUserAsync(string name, string? displayName);
-    Task<User?> GetUserAsync(long userId);
-    Task<User?> GetCurrentAuthenticatedUserAsync();
-    Task<User> ClaimUserForCurrentAuthenticatedUserAsync(long userId);
+    Task<List<Player>> AllUsersAsync(string? searchQuery = default);
+    Task<Player> CreateUserAsync(string name, string? displayName);
+    Task<Player?> GetUserAsync(long userId);
+    Task<Player?> GetCurrentAuthenticatedUserAsync();
+    Task<Player> ClaimUserForCurrentAuthenticatedUserAsync(long userId);
     Task<(PlayerHistory history, long seasonId)?> LatestPlayerHistoryAsync(long userId);
     Task<List<(PlayerHistory history, long seasonId)>> LatestPlayerHistoriesAsync(List<long> userIds);
 }
@@ -20,9 +20,9 @@ public interface IUserService
 public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IUserContextResolver userContextResolver)
     : IUserService
 {
-    public async Task<List<User>> AllUsersAsync(string? searchQuery = default)
+    public async Task<List<Player>> AllUsersAsync(string? searchQuery = default)
     {
-        var query = dbContext.Users.AsQueryable();
+        var query = dbContext.Players.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(searchQuery))
         {
@@ -34,36 +34,36 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
         return await query.ToListAsync();
     }
 
-    public async Task<User> CreateUserAsync(string name, string? displayName)
+    public async Task<Player> CreateUserAsync(string name, string? displayName)
     {
-        var user = new User
+        var user = new Player
         {
             Name = name,
             DisplayName = displayName,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        dbContext.Users.Add(user);
+        dbContext.Players.Add(user);
         await dbContext.SaveChangesAsync();
         return user;
     }
 
-    public async Task<User?> GetUserAsync(long userId)
+    public async Task<Player?> GetUserAsync(long userId)
     {
-        return await dbContext.Users.FindAsync(userId);
+        return await dbContext.Players.FindAsync(userId);
     }
 
-    public Task<User?> GetCurrentAuthenticatedUserAsync()
+    public Task<Player?> GetCurrentAuthenticatedUserAsync()
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
 
-        return dbContext.Users.FirstOrDefaultAsync(x => x.IdentityUserId == identityUserId);
+        return dbContext.Players.FirstOrDefaultAsync(x => x.IdentityUserId == identityUserId);
     }
 
-    public async Task<User> ClaimUserForCurrentAuthenticatedUserAsync(long userId)
+    public async Task<Player> ClaimUserForCurrentAuthenticatedUserAsync(long userId)
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
-        var user = await dbContext.Users.FindAsync(userId);
+        var user = await dbContext.Players.FindAsync(userId);
 
         if (user is null)
         {
@@ -90,7 +90,7 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
 
     public async Task<(PlayerHistory history, long seasonId)?> LatestPlayerHistoryAsync(long userId)
     {
-        var playerHistory = await dbContext.PlayerHistories.Where(x => x.UserId == userId)
+        var playerHistory = await dbContext.PlayerHistories.Where(x => x.PlayerId == userId)
             .Include(x => x.Match)
             .OrderByDescending(x => x.MatchId)
             .AsNoTracking()
@@ -106,9 +106,9 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
 
     public async Task<List<(PlayerHistory history, long seasonId)>> LatestPlayerHistoriesAsync(List<long> userIds)
     {
-        var playerHistories = await dbContext.PlayerHistories.Where(x => userIds.Contains(x.User!.Id))
+        var playerHistories = await dbContext.PlayerHistories.Where(x => userIds.Contains(x.Player!.Id))
             .Include(x => x.Match)
-            .GroupBy(x => x.UserId)
+            .GroupBy(x => x.PlayerId)
             .AsNoTracking()
             .Select(x => x.OrderByDescending(y => y.MatchId).First())
             .ToListAsync();

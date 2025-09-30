@@ -33,7 +33,7 @@ public class MatchMakingService(
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
 
-        var currentUser = await dbContext.Users
+        var currentUser = await dbContext.Players
             .FirstOrDefaultAsync(x => x.IdentityUserId == identityUserId);
 
         if (currentUser is null)
@@ -43,7 +43,7 @@ public class MatchMakingService(
 
         var currentQueuedPlayer = await dbContext.QueuedPlayers
             .Where(x => x.PendingMatch == null || x.PendingMatch.Status == PendingMatchStatus.Declined)
-            .FirstOrDefaultAsync(x => x.UserId == currentUser.Id);
+            .FirstOrDefaultAsync(x => x.PlayerId == currentUser.Id);
 
         if (currentQueuedPlayer is not null)
         {
@@ -54,7 +54,7 @@ public class MatchMakingService(
         var newPlayer = new QueuedPlayer
         {
             CreatedAt = DateTime.UtcNow,
-            User = currentUser
+            Player = currentUser
         };
 
         await dbContext.QueuedPlayers.AddAsync(newPlayer);
@@ -69,7 +69,7 @@ public class MatchMakingService(
 
         var queuedPlayer = await dbContext.QueuedPlayers
             .Where(x => x.PendingMatch == null || x.PendingMatch.Status == PendingMatchStatus.Declined)
-            .FirstOrDefaultAsync(x => x.User.IdentityUserId == identityUserId);
+            .FirstOrDefaultAsync(x => x.Player.IdentityUserId == identityUserId);
 
         if (queuedPlayer is null)
         {
@@ -88,7 +88,7 @@ public class MatchMakingService(
             .CountAsync();
 
         var currentUser = await dbContext.QueuedPlayers
-            .Where(x => x.User.IdentityUserId == identityUserId)
+            .Where(x => x.Player.IdentityUserId == identityUserId)
             .Include(x => x.PendingMatch)
             .ThenInclude(pm => pm!.ActiveMatch)
             .OrderByDescending(x => x.CreatedAt)
@@ -134,7 +134,7 @@ public class MatchMakingService(
     {
         // TODO: Lock this check
         var queuedPlayers = await dbContext.QueuedPlayers
-            .Include(x => x.User)
+            .Include(x => x.Player)
             .Where(x => x.PendingMatch == null || x.PendingMatch.Status == PendingMatchStatus.Declined)
             .OrderBy(x => x.CreatedAt)
             .ToListAsync();
@@ -158,8 +158,8 @@ public class MatchMakingService(
 
         var pendingMatch = await dbContext.PendingMatches
             .Include(pm => pm.QueuedPlayers)
-            .ThenInclude(qp => qp.User)
-            .Where(pm => pm.QueuedPlayers.Any(x => x.User.IdentityUserId == identityUserId))
+            .ThenInclude(qp => qp.Player)
+            .Where(pm => pm.QueuedPlayers.Any(x => x.Player.IdentityUserId == identityUserId))
             .FirstOrDefaultAsync(pm => pm.Id == matchId);
 
         if (pendingMatch is null)
@@ -176,8 +176,8 @@ public class MatchMakingService(
 
         var pendingMatch = await dbContext.PendingMatches
             .Include(pm => pm.QueuedPlayers)
-            .ThenInclude(qp => qp.User)
-            .Where(pm => pm.QueuedPlayers.Any(x => x.User.IdentityUserId == identityUserId))
+            .ThenInclude(qp => qp.Player)
+            .Where(pm => pm.QueuedPlayers.Any(x => x.Player.IdentityUserId == identityUserId))
             .FirstOrDefaultAsync(pm => pm.Id == matchId);
 
         if (pendingMatch is null)
@@ -190,7 +190,7 @@ public class MatchMakingService(
             throw new InvalidArgumentException("Match not pending");
         }
 
-        var queuedPlayer = pendingMatch.QueuedPlayers.First(x => x.User.IdentityUserId == identityUserId);
+        var queuedPlayer = pendingMatch.QueuedPlayers.First(x => x.Player.IdentityUserId == identityUserId);
         queuedPlayer.LastAcceptedMatchId = matchId;
 
         // TODO: Lock this check somehow
@@ -216,8 +216,8 @@ public class MatchMakingService(
 
         var pendingMatch = await dbContext.PendingMatches
             .Include(pm => pm.QueuedPlayers)
-            .ThenInclude(qp => qp.User)
-            .Where(pm => pm.QueuedPlayers.Any(x => x.User.IdentityUserId == identityUserId))
+            .ThenInclude(qp => qp.Player)
+            .Where(pm => pm.QueuedPlayers.Any(x => x.Player.IdentityUserId == identityUserId))
             .FirstOrDefaultAsync(pm => pm.Id == matchId);
 
         if (pendingMatch is null)
@@ -230,7 +230,7 @@ public class MatchMakingService(
             throw new InvalidArgumentException("Match not pending");
         }
 
-        var queuedPlayer = pendingMatch.QueuedPlayers.First(x => x.User.IdentityUserId == identityUserId);
+        var queuedPlayer = pendingMatch.QueuedPlayers.First(x => x.Player.IdentityUserId == identityUserId);
         dbContext.QueuedPlayers.Remove(queuedPlayer);
 
         // TODO: Lock this check somehow
@@ -281,14 +281,14 @@ public class MatchMakingService(
             {
                 Team1 = new MatchTeamV2
                 {
-                    Member1 = match.TeamOneUserOneId,
-                    Member2 = match.TeamOneUserTwoId,
+                    Member1 = match.TeamOnePlayerOneId,
+                    Member2 = match.TeamOnePlayerTwoId,
                     Score = submitRequest.Team1Score
                 },
                 Team2 = new MatchTeamV2
                 {
-                    Member1 = match.TeamTwoUserOneId,
-                    Member2 = match.TeamTwoUserTwoId,
+                    Member1 = match.TeamTwoPlayerOneId,
+                    Member2 = match.TeamTwoPlayerTwoId,
                     Score = submitRequest.Team2Score
                 }
             });
@@ -312,10 +312,10 @@ public class MatchMakingService(
         var activeMatch = new ActiveMatch
         {
             CreatedAt = DateTimeOffset.UtcNow,
-            TeamOneUserOne = shuffledQueuedPlayers[0].User,
-            TeamOneUserTwo = shuffledQueuedPlayers[1].User,
-            TeamTwoUserOne = shuffledQueuedPlayers[2].User,
-            TeamTwoUserTwo = shuffledQueuedPlayers[3].User
+            TeamOnePlayerOne = shuffledQueuedPlayers[0].Player,
+            TeamOnePlayerTwo = shuffledQueuedPlayers[1].Player,
+            TeamTwoPlayerOne = shuffledQueuedPlayers[2].Player,
+            TeamTwoPlayerTwo = shuffledQueuedPlayers[3].Player
         };
 
         dbContext.ActiveMatches.Add(activeMatch);
@@ -327,10 +327,10 @@ public class MatchMakingService(
     {
         // TODO: Improve handling of players
         var match = await dbContext.ActiveMatches
-            .Include(x => x.TeamOneUserOne)
-            .Include(x => x.TeamOneUserTwo)
-            .Include(x => x.TeamTwoUserOne)
-            .Include(x => x.TeamTwoUserTwo)
+            .Include(x => x.TeamOnePlayerOne)
+            .Include(x => x.TeamOnePlayerTwo)
+            .Include(x => x.TeamTwoPlayerOne)
+            .Include(x => x.TeamTwoPlayerTwo)
             .Include(x => x.PendingMatch)
             .ThenInclude(pm => pm!.QueuedPlayers)
             .FirstOrDefaultAsync(x => x.Id == matchId);
@@ -342,10 +342,10 @@ public class MatchMakingService(
             throw new InvalidArgumentException("Match not found");
         }
 
-        var userIsInMatch = match.TeamOneUserOne.IdentityUserId == identityUserId
-                            || match.TeamOneUserTwo.IdentityUserId == identityUserId
-                            || match.TeamTwoUserOne.IdentityUserId == identityUserId
-                            || match.TeamTwoUserTwo.IdentityUserId == identityUserId;
+        var userIsInMatch = match.TeamOnePlayerOne.IdentityUserId == identityUserId
+                            || match.TeamOnePlayerTwo.IdentityUserId == identityUserId
+                            || match.TeamTwoPlayerOne.IdentityUserId == identityUserId
+                            || match.TeamTwoPlayerTwo.IdentityUserId == identityUserId;
 
         // TODO: Allow admins to manage active matches
         if (!userIsInMatch)

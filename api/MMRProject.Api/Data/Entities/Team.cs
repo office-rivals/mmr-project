@@ -10,9 +10,9 @@ public class Team
 
     public DateTime? DeletedAt { get; set; }
 
-    public long? UserOneId { get; set; }
+    public long? PlayerOneId { get; set; }
 
-    public long? UserTwoId { get; set; }
+    public long? PlayerTwoId { get; set; }
 
     public long? Score { get; set; }
 
@@ -22,7 +22,7 @@ public class Team
 
     public virtual ICollection<Match> MatchTeamTwos { get; set; } = new List<Match>();
 
-    public virtual User? UserOne { get; set; }
+    public virtual Player? PlayerOne { get; set; }
 
-    public virtual User? UserTwo { get; set; }
+    public virtual Player? PlayerTwo { get; set; }
 }
