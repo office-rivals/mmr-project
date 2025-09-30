@@ -166,9 +166,6 @@ public partial class ApiDbContext : DbContext
         modelBuilder.Entity<Player>(entity =>
         {
             entity.HasQueryFilter(e => e.DeletedAt == null);
-            entity.HasKey(e => e.Id).HasName("users_pkey");
-
-            entity.ToTable("users");
 
             entity.HasIndex(e => e.DeletedAt, "idx_players_deleted_at");
 
