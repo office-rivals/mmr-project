@@ -2,9 +2,9 @@ namespace MMRProject.Api.Data.Entities;
 
 public class QueuedPlayer : BaseEntity
 {
-    public long UserId { get; set; }
+    public long PlayerId { get; set; }
 
-    public virtual User User { get; set; } = null!;
+    public virtual Player Player { get; set; } = null!;
 
     public virtual PendingMatch? PendingMatch { get; set; }
 

@@ -10,7 +10,7 @@ public class PlayerHistory
 
     public DateTime? DeletedAt { get; set; }
 
-    public long? UserId { get; set; }
+    public long? PlayerId { get; set; }
 
     public long? Mmr { get; set; }
 
@@ -22,5 +22,5 @@ public class PlayerHistory
 
     public virtual Match? Match { get; set; }
 
-    public virtual User? User { get; set; }
+    public virtual Player? Player { get; set; }
 }

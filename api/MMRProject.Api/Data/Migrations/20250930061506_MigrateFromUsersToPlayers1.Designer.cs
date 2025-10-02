@@ -3,6 +3,7 @@ using System;
 using MMRProject.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MMRProject.Api.Data.Migrations
 {
     [DbContext(typeof(ApiDbContext))]
-    partial class ApiDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250930061506_MigrateFromUsersToPlayers1")]
+    partial class MigrateFromUsersToPlayers1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -228,7 +231,8 @@ namespace MMRProject.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("users_pkey");
 
                     b.HasIndex(new[] { "DeletedAt" }, "idx_players_deleted_at");
 
@@ -241,7 +245,7 @@ namespace MMRProject.Api.Data.Migrations
                     b.HasIndex(new[] { "Name" }, "uni_players_name")
                         .IsUnique();
 
-                    b.ToTable("Players");
+                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.PlayerHistory", b =>

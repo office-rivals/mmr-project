@@ -28,8 +28,8 @@ public class StatisticsService(ApiDbContext dbContext, IUserService userService)
                                   ELSE 0
                               END AS IsWin,
                               ROW_NUMBER() OVER (PARTITION BY u.Id ORDER BY m.Id DESC) AS RowNum
-                          FROM users u
-                          LEFT JOIN teams t ON u.Id = t.user_one_id OR u.Id = t.user_two_id
+                          FROM "Players" u
+                          LEFT JOIN teams t ON u.Id = t.player_one_id OR u.Id = t.player_two_id
                           LEFT JOIN matches m ON t.Id = m.team_one_id OR t.Id = m.team_two_id
                           WHERE m.season_id = {0}
                       ),
@@ -69,12 +69,12 @@ public class StatisticsService(ApiDbContext dbContext, IUserService userService)
                               SELECT ph.Mmr
                               FROM player_histories ph
                               LEFT JOIN matches m ON ph.match_id = m.id
-                              WHERE ph.user_id = u.id AND m.season_id = {0}
+                              WHERE ph.player_id = u.id AND m.season_id = {0}
                               ORDER BY ph.match_id DESC
                               LIMIT 1
                           ) AS MMR
-                      FROM users u
-                      LEFT JOIN teams t ON u.Id = t.user_one_id OR u.Id = t.user_two_id
+                      FROM "Players" u
+                      LEFT JOIN teams t ON u.Id = t.player_one_id OR u.Id = t.player_two_id
                       LEFT JOIN matches m ON t.Id = m.team_one_id OR t.Id = m.team_two_id
                       LEFT JOIN CurrentStreak cs ON u.Id = cs.UserId
                       GROUP BY u.Id, u.Name, cs.StreakLength, cs.IsWin
@@ -137,13 +137,13 @@ public class StatisticsService(ApiDbContext dbContext, IUserService userService)
     public async Task<IEnumerable<PlayerHistoryDetails>> GetPlayerHistoryAsync(long seasonId, long? userId)
     {
         var query = dbContext.PlayerHistories
-            .Include(x => x.User)
+            .Include(x => x.Player)
             .Include(x => x.Match)
             .Where(x => x.Match!.SeasonId == seasonId);
 
         if (userId.HasValue)
         {
-            query = query.Where(x => x.UserId == userId);
+            query = query.Where(x => x.PlayerId == userId);
         }
 
         var playerHistories = await query
@@ -152,13 +152,13 @@ public class StatisticsService(ApiDbContext dbContext, IUserService userService)
 
         // Count occurrences of user id in player histories
         var userIdOccurrences = playerHistories
-            .Select(x => x.UserId)
+            .Select(x => x.PlayerId)
             .WhereNotNull()
             .GroupBy(x => x)
             .ToDictionary(x => x.Key, x => x.Count());
 
         var filteredPlayerHistories = playerHistories
-            .Where(x => x.UserId.HasValue && userIdOccurrences[x.UserId.Value] >= 10);
+            .Where(x => x.PlayerId.HasValue && userIdOccurrences[x.PlayerId.Value] >= 10);
 
         return filteredPlayerHistories.Select(PlayerHistoryMapper.MapPlayerHistoryToPlayerHistoryDetails);
     }

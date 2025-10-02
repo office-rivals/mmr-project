@@ -1,6 +1,6 @@
 ﻿namespace MMRProject.Api.Data.Entities;
 
-public class User
+public class Player
 {
     public long Id { get; set; }
 
@@ -24,7 +24,7 @@ public class User
 
     public virtual ICollection<PlayerHistory> PlayerHistories { get; set; } = new List<PlayerHistory>();
 
-    public virtual ICollection<Team> TeamUserOnes { get; set; } = new List<Team>();
+    public virtual ICollection<Team> TeamPlayerOnes { get; set; } = new List<Team>();
 
-    public virtual ICollection<Team> TeamUserTwos { get; set; } = new List<Team>();
+    public virtual ICollection<Team> TeamPlayerTwos { get; set; } = new List<Team>();
 }

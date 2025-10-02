@@ -24,7 +24,7 @@ public partial class ApiDbContext : DbContext
 
     public virtual DbSet<Team> Teams { get; set; }
 
-    public virtual DbSet<User> Users { get; set; }
+    public virtual DbSet<Player> Players { get; set; }
 
     public virtual DbSet<QueuedPlayer> QueuedPlayers { get; set; }
 
@@ -109,15 +109,15 @@ public partial class ApiDbContext : DbContext
             entity.Property(e => e.Mu).HasColumnName("mu");
             entity.Property(e => e.Sigma).HasColumnName("sigma");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.PlayerId).HasColumnName("player_id");
 
             entity.HasOne(d => d.Match).WithMany(p => p.PlayerHistories)
                 .HasForeignKey(d => d.MatchId)
                 .HasConstraintName("fk_player_histories_match");
 
-            entity.HasOne(d => d.User).WithMany(p => p.PlayerHistories)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("fk_player_histories_user");
+            entity.HasOne(d => d.Player).WithMany(p => p.PlayerHistories)
+                .HasForeignKey(d => d.PlayerId)
+                .HasConstraintName("fk_player_histories_player");
         });
 
         modelBuilder.Entity<Season>(entity =>
@@ -150,33 +150,30 @@ public partial class ApiDbContext : DbContext
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
             entity.Property(e => e.Score).HasColumnName("score");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
-            entity.Property(e => e.UserOneId).HasColumnName("user_one_id");
-            entity.Property(e => e.UserTwoId).HasColumnName("user_two_id");
+            entity.Property(e => e.PlayerOneId).HasColumnName("player_one_id");
+            entity.Property(e => e.PlayerTwoId).HasColumnName("player_two_id");
             entity.Property(e => e.Winner).HasColumnName("winner");
 
-            entity.HasOne(d => d.UserOne).WithMany(p => p.TeamUserOnes)
-                .HasForeignKey(d => d.UserOneId)
-                .HasConstraintName("fk_teams_user_one");
+            entity.HasOne(d => d.PlayerOne).WithMany(p => p.TeamPlayerOnes)
+                .HasForeignKey(d => d.PlayerOneId)
+                .HasConstraintName("fk_teams_player_one");
 
-            entity.HasOne(d => d.UserTwo).WithMany(p => p.TeamUserTwos)
-                .HasForeignKey(d => d.UserTwoId)
-                .HasConstraintName("fk_teams_user_two");
+            entity.HasOne(d => d.PlayerTwo).WithMany(p => p.TeamPlayerTwos)
+                .HasForeignKey(d => d.PlayerTwoId)
+                .HasConstraintName("fk_teams_play_two");
         });
 
-        modelBuilder.Entity<User>(entity =>
+        modelBuilder.Entity<Player>(entity =>
         {
             entity.HasQueryFilter(e => e.DeletedAt == null);
-            entity.HasKey(e => e.Id).HasName("users_pkey");
 
-            entity.ToTable("users");
+            entity.HasIndex(e => e.DeletedAt, "idx_players_deleted_at");
 
-            entity.HasIndex(e => e.DeletedAt, "idx_users_deleted_at");
+            entity.HasIndex(e => e.IdentityUserId, "uni_players_identity_user_id").IsUnique();
 
-            entity.HasIndex(e => e.IdentityUserId, "uni_users_identity_user_id").IsUnique();
+            entity.HasIndex(e => e.Name, "uni_players_name").IsUnique();
 
-            entity.HasIndex(e => e.Name, "uni_users_name").IsUnique();
-
-            entity.HasIndex(e => e.Id, "users_id_key").IsUnique();
+            entity.HasIndex(e => e.Id, "players_id_key").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -190,13 +187,13 @@ public partial class ApiDbContext : DbContext
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
         });
 
-        modelBuilder.Entity<QueuedPlayer>(entity => { entity.HasQueryFilter(e => e.User.DeletedAt == null); });
+        modelBuilder.Entity<QueuedPlayer>(entity => { entity.HasQueryFilter(e => e.Player.DeletedAt == null); });
 
         modelBuilder.Entity<ActiveMatch>(entity =>
         {
             entity.HasQueryFilter(e =>
-                e.TeamOneUserOne.DeletedAt == null && e.TeamOneUserTwo.DeletedAt == null &&
-                e.TeamTwoUserOne.DeletedAt == null && e.TeamTwoUserTwo.DeletedAt == null);
+                e.TeamOnePlayerOne.DeletedAt == null && e.TeamOnePlayerTwo.DeletedAt == null &&
+                e.TeamTwoPlayerOne.DeletedAt == null && e.TeamTwoPlayerTwo.DeletedAt == null);
         });
     }
 }

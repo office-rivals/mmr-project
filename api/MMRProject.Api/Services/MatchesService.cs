@@ -50,8 +50,8 @@ public class MatchesService(
 
         if (userId.HasValue)
         {
-            query = query.Where(x => x.TeamOne!.UserOneId == userId || x.TeamOne.UserTwoId == userId ||
-                                     x.TeamTwo!.UserOneId == userId || x.TeamTwo.UserTwoId == userId);
+            query = query.Where(x => x.TeamOne!.PlayerOneId == userId || x.TeamOne.PlayerTwoId == userId ||
+                                     x.TeamTwo!.PlayerOneId == userId || x.TeamTwo.PlayerTwoId == userId);
         }
 
         return await query.Skip(offset).Take(limit).ToListAsync();
@@ -79,7 +79,7 @@ public class MatchesService(
             throw new InvalidArgumentException("Match already exists");
         }
 
-        var players = await dbContext.Users.Where(x => uniquePlayers.Contains(x.Id)).ToListAsync();
+        var players = await dbContext.Players.Where(x => uniquePlayers.Contains(x.Id)).ToListAsync();
 
         if (players.Count != uniquePlayers.Count)
         {
@@ -126,7 +126,7 @@ public class MatchesService(
 
         var latestPlayerHistoryMap = playerRatings
             .Select(x => (x.Value.History, x.Value.IsCurrentSeason))
-            .ToDictionary(x => x.History.UserId!.Value);
+            .ToDictionary(x => x.History.PlayerId!.Value);
 
         // TODO: Maybe through services?
         for (var i = 0; i < mmrCalculationResponses.Count; i++)
@@ -138,10 +138,10 @@ public class MatchesService(
                 .Concat(mmrCalculationResponse.Team2.Players)
                 .ToDictionary(x => x.Id);
 
-            var teamOnePlayerOne = PlayerInfoForId(match.TeamOne!.UserOneId!.Value);
-            var teamOnePlayerTwo = PlayerInfoForId(match.TeamOne.UserTwoId!.Value);
-            var teamTwoPlayerOne = PlayerInfoForId(match.TeamTwo!.UserOneId!.Value);
-            var teamTwoPlayerTwo = PlayerInfoForId(match.TeamTwo.UserTwoId!.Value);
+            var teamOnePlayerOne = PlayerInfoForId(match.TeamOne!.PlayerOneId!.Value);
+            var teamOnePlayerTwo = PlayerInfoForId(match.TeamOne.PlayerTwoId!.Value);
+            var teamTwoPlayerOne = PlayerInfoForId(match.TeamTwo!.PlayerOneId!.Value);
+            var teamTwoPlayerTwo = PlayerInfoForId(match.TeamTwo.PlayerTwoId!.Value);
 
             await dbContext.MmrCalculations.AddAsync(new MmrCalculation
             {
@@ -165,7 +165,7 @@ public class MatchesService(
                 {
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    UserId = playerResult.Id,
+                    PlayerId = playerResult.Id,
                     MatchId = match.Id,
                     Mmr = playerResult.MMR,
                     Mu = playerResult.Mu,
@@ -197,10 +197,10 @@ public class MatchesService(
 
         foreach (var match in matches)
         {
-            setOfUserIds.Add(match.TeamOne!.UserOneId!.Value);
-            setOfUserIds.Add(match.TeamOne.UserTwoId!.Value);
-            setOfUserIds.Add(match.TeamTwo!.UserOneId!.Value);
-            setOfUserIds.Add(match.TeamTwo.UserTwoId!.Value);
+            setOfUserIds.Add(match.TeamOne!.PlayerOneId!.Value);
+            setOfUserIds.Add(match.TeamOne.PlayerTwoId!.Value);
+            setOfUserIds.Add(match.TeamTwo!.PlayerOneId!.Value);
+            setOfUserIds.Add(match.TeamTwo.PlayerTwoId!.Value);
         }
 
         return setOfUserIds.ToList();
@@ -212,10 +212,10 @@ public class MatchesService(
     {
         return matches.Select(match =>
             {
-                var teamOnePlayerOneRating = RatingForPlayer(playerRatings, match.TeamOne!.UserOneId!.Value);
-                var teamOnePlayerTwoRating = RatingForPlayer(playerRatings, match.TeamOne.UserTwoId!.Value);
-                var teamTwoPlayerOneRating = RatingForPlayer(playerRatings, match.TeamTwo!.UserOneId!.Value);
-                var teamTwoPlayerTwoRating = RatingForPlayer(playerRatings, match.TeamTwo.UserTwoId!.Value);
+                var teamOnePlayerOneRating = RatingForPlayer(playerRatings, match.TeamOne!.PlayerOneId!.Value);
+                var teamOnePlayerTwoRating = RatingForPlayer(playerRatings, match.TeamOne.PlayerTwoId!.Value);
+                var teamTwoPlayerOneRating = RatingForPlayer(playerRatings, match.TeamTwo!.PlayerOneId!.Value);
+                var teamTwoPlayerTwoRating = RatingForPlayer(playerRatings, match.TeamTwo.PlayerTwoId!.Value);
 
                 return new MMRCalculationRequest
                 {
@@ -253,10 +253,10 @@ public class MatchesService(
 
     private async Task CalculateMMR(long seasonId, Match match)
     {
-        var teamOnePlayerOne = await PlayerRatingForUserAsync(match.TeamOne!.UserOneId!.Value, seasonId);
-        var teamOnePlayerTwo = await PlayerRatingForUserAsync(match.TeamOne!.UserTwoId!.Value, seasonId);
-        var teamTwoPlayerOne = await PlayerRatingForUserAsync(match.TeamTwo!.UserOneId!.Value, seasonId);
-        var teamTwoPlayerTwo = await PlayerRatingForUserAsync(match.TeamTwo!.UserTwoId!.Value, seasonId);
+        var teamOnePlayerOne = await PlayerRatingForUserAsync(match.TeamOne!.PlayerOneId!.Value, seasonId);
+        var teamOnePlayerTwo = await PlayerRatingForUserAsync(match.TeamOne!.PlayerTwoId!.Value, seasonId);
+        var teamTwoPlayerOne = await PlayerRatingForUserAsync(match.TeamTwo!.PlayerOneId!.Value, seasonId);
+        var teamTwoPlayerTwo = await PlayerRatingForUserAsync(match.TeamTwo!.PlayerTwoId!.Value, seasonId);
 
         var mmrCalculationRequest = new MMRCalculationRequest
         {
@@ -301,7 +301,7 @@ public class MatchesService(
         {
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            UserId = playerResult.Id,
+            PlayerId = playerResult.Id,
             MatchId = match.Id,
             Mmr = playerResult.MMR,
             Mu = playerResult.Mu,
@@ -383,7 +383,7 @@ public class MatchesService(
                 isCurrentSeason,
                 new MMRCalculationPlayerRating
                 {
-                    Id = playerHistory.UserId!.Value,
+                    Id = playerHistory.PlayerId!.Value,
                     Mu = playerHistory.Mu,
                     Sigma = playerHistory.Sigma,
                     IsPreviousSeasonRating = !isCurrentSeason,
@@ -401,19 +401,19 @@ public class MatchesService(
             .Where(m => m.CreatedAt > DateTime.UtcNow.AddMinutes(-10))
             .Where(m =>
                 (
-                    (m.TeamOne!.UserOneId == playerOneId || m.TeamOne.UserTwoId == playerOneId) &&
-                    (m.TeamOne.UserOneId == playerTwoId || m.TeamOne.UserTwoId == playerTwoId) &&
+                    (m.TeamOne!.PlayerOneId == playerOneId || m.TeamOne.PlayerTwoId == playerOneId) &&
+                    (m.TeamOne.PlayerOneId == playerTwoId || m.TeamOne.PlayerTwoId == playerTwoId) &&
                     m.TeamOne.Score == teamOneScore &&
-                    (m.TeamTwo!.UserOneId == playerThreeId || m.TeamTwo.UserTwoId == playerThreeId) &&
-                    (m.TeamTwo.UserOneId == playerFourId || m.TeamTwo.UserTwoId == playerFourId) &&
+                    (m.TeamTwo!.PlayerOneId == playerThreeId || m.TeamTwo.PlayerTwoId == playerThreeId) &&
+                    (m.TeamTwo.PlayerOneId == playerFourId || m.TeamTwo.PlayerTwoId == playerFourId) &&
                     m.TeamTwo.Score == teamTwoScore
                 ) ||
                 (
-                    (m.TeamOne.UserOneId == playerThreeId || m.TeamOne.UserTwoId == playerThreeId) &&
-                    (m.TeamOne.UserOneId == playerFourId || m.TeamOne.UserTwoId == playerFourId) &&
+                    (m.TeamOne.PlayerOneId == playerThreeId || m.TeamOne.PlayerTwoId == playerThreeId) &&
+                    (m.TeamOne.PlayerOneId == playerFourId || m.TeamOne.PlayerTwoId == playerFourId) &&
                     m.TeamOne.Score == teamTwoScore &&
-                    (m.TeamTwo!.UserOneId == playerOneId || m.TeamTwo.UserTwoId == playerOneId) &&
-                    (m.TeamTwo.UserOneId == playerTwoId || m.TeamTwo.UserTwoId == playerTwoId) &&
+                    (m.TeamTwo!.PlayerOneId == playerOneId || m.TeamTwo.PlayerTwoId == playerOneId) &&
+                    (m.TeamTwo.PlayerOneId == playerTwoId || m.TeamTwo.PlayerTwoId == playerTwoId) &&
                     m.TeamTwo.Score == teamOneScore
                 )
             )
@@ -447,8 +447,8 @@ public class MatchesService(
         {
             var team = new Team
             {
-                UserOneId = userOneId,
-                UserTwoId = userTwoId,
+                PlayerOneId = userOneId,
+                PlayerTwoId = userTwoId,
                 Score = score,
                 Winner = isWinner,
                 CreatedAt = DateTime.UtcNow,
