@@ -1,6 +1,7 @@
 apis/AdminApi.ts
 apis/MMRV2Api.ts
 apis/MatchMakingApi.ts
+apis/PersonalAccessTokensApi.ts
 apis/ProfileApi.ts
 apis/SeasonsApi.ts
 apis/StatisticsApi.ts
@@ -11,6 +12,8 @@ models/ActiveMatchDto.ts
 models/ActiveMatchSubmitRequest.ts
 models/ActiveMatchTeamDto.ts
 models/ClaimProfileRequest.ts
+models/CreatePersonalAccessTokenRequest.ts
+models/CreatePersonalAccessTokenResponse.ts
 models/CreateUserRequest.ts
 models/LeaderboardEntry.ts
 models/MatchDetailsV2.ts
@@ -21,6 +24,7 @@ models/MatchMakingQueueStatusPendingMatch.ts
 models/MatchTeamV2.ts
 models/PendingMatchDto.ts
 models/PendingMatchStatus.ts
+models/PersonalAccessTokenResponse.ts
 models/PlayerHistoryDetails.ts
 models/ProfileDetails.ts
 models/SeasonDto.ts
