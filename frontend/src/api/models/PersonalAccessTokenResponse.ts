@@ -24,13 +24,13 @@ export interface PersonalAccessTokenResponse {
      * @type {number}
      * @memberof PersonalAccessTokenResponse
      */
-    id?: number;
+    id: number;
     /**
      * 
      * @type {string}
      * @memberof PersonalAccessTokenResponse
      */
-    name?: string;
+    name: string;
     /**
      * 
      * @type {Date}
@@ -55,6 +55,8 @@ export interface PersonalAccessTokenResponse {
  * Check if a given object implements the PersonalAccessTokenResponse interface.
  */
 export function instanceOfPersonalAccessTokenResponse(value: object): boolean {
+    if (!('id' in value)) return false;
+    if (!('name' in value)) return false;
     return true;
 }
 
@@ -68,8 +70,8 @@ export function PersonalAccessTokenResponseFromJSONTyped(json: any, ignoreDiscri
     }
     return {
         
-        'id': json['id'] == null ? undefined : json['id'],
-        'name': json['name'] == null ? undefined : json['name'],
+        'id': json['id'],
+        'name': json['name'],
         'lastUsedAt': json['lastUsedAt'] == null ? undefined : (new Date(json['lastUsedAt'])),
         'expiresAt': json['expiresAt'] == null ? undefined : (new Date(json['expiresAt'])),
         'createdAt': json['createdAt'] == null ? undefined : (new Date(json['createdAt'])),

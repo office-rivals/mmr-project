@@ -1,17 +1,28 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace MMRProject.Api.DTOs;
 
-public record CreatePersonalAccessTokenRequest(string Name, DateTime? ExpiresAt);
+public record CreatePersonalAccessTokenRequest
+{
+    [Required] public required string Name { get; set; }
+    public DateTimeOffset? ExpiresAt { get; set; }
+};
 
-public record PersonalAccessTokenResponse(
-    long Id,
-    string Name,
-    DateTime? LastUsedAt,
-    DateTime? ExpiresAt,
-    DateTime? CreatedAt);
+public class PersonalAccessTokenResponse
+{
+    [Required] public required long Id { get; set; }
+    [Required] public required string Name { get; set; }
+    public DateTimeOffset? LastUsedAt { get; set; }
+    public DateTimeOffset? ExpiresAt { get; set; }
+    public DateTimeOffset? CreatedAt { get; set; }
+};
 
-public record CreatePersonalAccessTokenResponse(
-    long Id,
-    string Name,
-    string Token,
-    DateTime? ExpiresAt,
-    DateTime? CreatedAt);
+public class CreatePersonalAccessTokenResponse
+{
+    [Required] public required long Id { get; set; }
+    [Required] public required string Name { get; set; }
+    [Required] public required string Token { get; set; }
+
+    public DateTimeOffset? ExpiresAt { get; set; }
+    public DateTimeOffset? CreatedAt { get; set; }
+};

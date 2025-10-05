@@ -1,4 +1,3 @@
-using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +12,8 @@ public interface IPersonalAccessTokenService
     Task<(PersonalAccessToken token, string plainTextToken)> GenerateTokenForPlayerAsync(
         long playerId,
         string name,
-        DateTime? expiresAt);
+        DateTimeOffset? expiresAt
+    );
 
     Task RevokeTokenAsync(long tokenId, long playerId);
     Task<List<PersonalAccessToken>> ListTokensForPlayerAsync(long playerId);
@@ -25,7 +25,8 @@ public class PersonalAccessTokenService(ApiDbContext dbContext, ILogger<Personal
     public async Task<(PersonalAccessToken token, string plainTextToken)> GenerateTokenForPlayerAsync(
         long playerId,
         string name,
-        DateTime? expiresAt)
+        DateTimeOffset? expiresAt
+    )
     {
         var plainTextToken = GenerateRandomToken();
         var tokenHash = HashToken(plainTextToken);
@@ -35,7 +36,7 @@ public class PersonalAccessTokenService(ApiDbContext dbContext, ILogger<Personal
             PlayerId = playerId,
             TokenHash = tokenHash,
             Name = name,
-            ExpiresAt = expiresAt,
+            ExpiresAt = expiresAt?.UtcDateTime,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -57,9 +58,9 @@ public class PersonalAccessTokenService(ApiDbContext dbContext, ILogger<Personal
         {
             throw new InvalidOperationException("Token not found or does not belong to player");
         }
-        
+
         dbContext.PersonalAccessTokens.Remove(token);
-        
+
         await dbContext.SaveChangesAsync();
 
         logger.LogInformation("Revoked PAT {TokenId} for player {PlayerId}", tokenId, playerId);

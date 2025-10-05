@@ -55,13 +55,20 @@ public class PersonalAccessTokenAuthenticationHandler(
             return AuthenticateResult.Fail("Token expired");
         }
 
+        var identityUserId = personalAccessToken.Player?.IdentityUserId;
+        if (identityUserId is null)
+        {
+            // TODO: We should handle this in a better way
+            return AuthenticateResult.Fail("Token player is not linked to an identity user");
+        }
+
         personalAccessToken.LastUsedAt = DateTime.UtcNow;
         await dbContext.SaveChangesAsync();
 
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, personalAccessToken.PlayerId.ToString()),
-            new Claim("sub", personalAccessToken.PlayerId.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, identityUserId),
+            new Claim("sub", identityUserId),
             new Claim("auth_method", "pat"),
             new Claim("pat_id", personalAccessToken.Id.ToString())
         };

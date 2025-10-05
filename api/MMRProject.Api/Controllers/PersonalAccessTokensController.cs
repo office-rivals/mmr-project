@@ -24,14 +24,17 @@ public class PersonalAccessTokensController(
         var (token, plainTextToken) = await tokenService.GenerateTokenForPlayerAsync(
             currentUser.Id,
             request.Name,
-            request.ExpiresAt);
+            request.ExpiresAt
+        );
 
-        return new CreatePersonalAccessTokenResponse(
-            token.Id,
-            token.Name,
-            plainTextToken,
-            token.ExpiresAt,
-            token.CreatedAt);
+        return new CreatePersonalAccessTokenResponse
+        {
+            Id = token.Id,
+            Name = token.Name,
+            Token = plainTextToken,
+            ExpiresAt = token.ExpiresAt,
+            CreatedAt = token.CreatedAt
+        };
     }
 
     [HttpGet]
@@ -45,12 +48,14 @@ public class PersonalAccessTokensController(
 
         var tokens = await tokenService.ListTokensForPlayerAsync(currentUser.Id);
 
-        return tokens.Select(t => new PersonalAccessTokenResponse(
-            t.Id,
-            t.Name,
-            t.LastUsedAt,
-            t.ExpiresAt,
-            t.CreatedAt)).ToList();
+        return tokens.Select(t => new PersonalAccessTokenResponse
+        {
+            Id = t.Id,
+            Name = t.Name,
+            LastUsedAt = t.LastUsedAt,
+            ExpiresAt = t.ExpiresAt,
+            CreatedAt = t.CreatedAt
+        }).ToList();
     }
 
     [HttpDelete("{tokenId:long}")]

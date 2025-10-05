@@ -24,19 +24,19 @@ export interface CreatePersonalAccessTokenResponse {
      * @type {number}
      * @memberof CreatePersonalAccessTokenResponse
      */
-    id?: number;
+    id: number;
     /**
      * 
      * @type {string}
      * @memberof CreatePersonalAccessTokenResponse
      */
-    name?: string;
+    name: string;
     /**
      * 
      * @type {string}
      * @memberof CreatePersonalAccessTokenResponse
      */
-    token?: string;
+    token: string;
     /**
      * 
      * @type {Date}
@@ -55,6 +55,9 @@ export interface CreatePersonalAccessTokenResponse {
  * Check if a given object implements the CreatePersonalAccessTokenResponse interface.
  */
 export function instanceOfCreatePersonalAccessTokenResponse(value: object): boolean {
+    if (!('id' in value)) return false;
+    if (!('name' in value)) return false;
+    if (!('token' in value)) return false;
     return true;
 }
 
@@ -68,9 +71,9 @@ export function CreatePersonalAccessTokenResponseFromJSONTyped(json: any, ignore
     }
     return {
         
-        'id': json['id'] == null ? undefined : json['id'],
-        'name': json['name'] == null ? undefined : json['name'],
-        'token': json['token'] == null ? undefined : json['token'],
+        'id': json['id'],
+        'name': json['name'],
+        'token': json['token'],
         'expiresAt': json['expiresAt'] == null ? undefined : (new Date(json['expiresAt'])),
         'createdAt': json['createdAt'] == null ? undefined : (new Date(json['createdAt'])),
     };

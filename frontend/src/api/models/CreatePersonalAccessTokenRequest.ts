@@ -24,7 +24,7 @@ export interface CreatePersonalAccessTokenRequest {
      * @type {string}
      * @memberof CreatePersonalAccessTokenRequest
      */
-    name?: string;
+    name: string;
     /**
      * 
      * @type {Date}
@@ -37,6 +37,7 @@ export interface CreatePersonalAccessTokenRequest {
  * Check if a given object implements the CreatePersonalAccessTokenRequest interface.
  */
 export function instanceOfCreatePersonalAccessTokenRequest(value: object): boolean {
+    if (!('name' in value)) return false;
     return true;
 }
 
@@ -50,7 +51,7 @@ export function CreatePersonalAccessTokenRequestFromJSONTyped(json: any, ignoreD
     }
     return {
         
-        'name': json['name'] == null ? undefined : json['name'],
+        'name': json['name'],
         'expiresAt': json['expiresAt'] == null ? undefined : (new Date(json['expiresAt'])),
     };
 }

@@ -2,10 +2,10 @@
   import { enhance } from '$app/forms';
   import PageTitle from '$lib/components/page-title.svelte';
   import Button from '$lib/components/ui/button/button.svelte';
-  import Card from '$lib/components/ui/card/card.svelte';
   import CardContent from '$lib/components/ui/card/card-content.svelte';
   import CardHeader from '$lib/components/ui/card/card-header.svelte';
   import CardTitle from '$lib/components/ui/card/card-title.svelte';
+  import Card from '$lib/components/ui/card/card.svelte';
   import { AlertCircle, Copy, Plus, Trash2 } from 'lucide-svelte';
   import type { ActionData, PageServerData } from './$types';
 
@@ -22,13 +22,12 @@
     navigator.clipboard.writeText(text);
   }
 
-  function formatDate(date: string | null | undefined) {
-    if (!date) return 'Never';
-    return new Date(date).toLocaleString();
-  }
-
   function handleDeleteClick(event: Event) {
-    if (!confirm('Are you sure you want to revoke this token? This action cannot be undone.')) {
+    if (
+      !confirm(
+        'Are you sure you want to revoke this token? This action cannot be undone.'
+      )
+    ) {
       event.preventDefault();
     }
   }
@@ -44,26 +43,35 @@
     <CardContent>
       <div class="flex flex-col gap-4">
         <p class="text-muted-foreground text-sm">
-          Personal access tokens allow you to authenticate with the API programmatically. Keep your
-          tokens secure and never share them.
+          Personal access tokens allow you to authenticate with the API
+          programmatically. Keep your tokens secure and never share them.
         </p>
 
-        {#if form?.createdToken}
-          <div class="border-primary flex flex-col gap-3 rounded-lg border border-l-4 bg-green-950/20 p-4">
+        {#if form?.createdToken != null}
+          <div
+            class="border-primary flex flex-col gap-3 rounded-lg border border-l-4 bg-green-950/20 p-4"
+          >
             <div class="flex items-start gap-2">
               <AlertCircle class="text-primary mt-0.5 shrink-0" size={20} />
               <div class="flex-1">
                 <p class="text-primary font-semibold">Save your token now!</p>
                 <p class="text-muted-foreground text-sm">
-                  You won't be able to see this token again. Copy it now and store it securely.
+                  You won't be able to see this token again. Copy it now and
+                  store it securely.
                 </p>
               </div>
             </div>
             <div class="flex gap-2">
-              <code class="bg-muted flex-1 overflow-x-auto rounded px-3 py-2 font-mono text-sm">
+              <code
+                class="bg-muted flex-1 overflow-x-auto rounded px-3 py-2 font-mono text-sm"
+              >
                 {form.createdToken.token}
               </code>
-              <Button variant="outline" size="sm" onclick={() => copyToClipboard(form.createdToken!.token)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onclick={() => copyToClipboard(form.createdToken.token)}
+              >
                 <Copy size={16} />
               </Button>
             </div>
@@ -71,7 +79,9 @@
         {/if}
 
         {#if form?.error}
-          <div class="border-red-500 flex items-start gap-2 rounded-lg border border-l-4 bg-red-950/20 p-4">
+          <div
+            class="flex items-start gap-2 rounded-lg border border-l-4 border-red-500 bg-red-950/20 p-4"
+          >
             <AlertCircle class="mt-0.5 shrink-0 text-red-500" size={20} />
             <p class="text-sm text-red-500">{form.error}</p>
           </div>
@@ -97,7 +107,9 @@
             }}
           >
             <div class="flex flex-col gap-2">
-              <label for="token-name" class="text-sm font-medium">Token Name</label>
+              <label for="token-name" class="text-sm font-medium"
+                >Token Name</label
+              >
               <input
                 id="token-name"
                 name="name"
@@ -143,21 +155,40 @@
               <thead class="bg-muted/50 border-muted border-b">
                 <tr>
                   <th class="px-4 py-3 text-left text-sm font-medium">Name</th>
-                  <th class="px-4 py-3 text-left text-sm font-medium">Last Used</th>
-                  <th class="px-4 py-3 text-left text-sm font-medium">Expires</th>
-                  <th class="px-4 py-3 text-left text-sm font-medium">Created</th>
-                  <th class="px-4 py-3 text-right text-sm font-medium">Actions</th>
+                  <th class="px-4 py-3 text-left text-sm font-medium"
+                    >Last Used</th
+                  >
+                  <th class="px-4 py-3 text-left text-sm font-medium"
+                    >Expires</th
+                  >
+                  <th class="px-4 py-3 text-left text-sm font-medium"
+                    >Created</th
+                  >
+                  <th class="px-4 py-3 text-right text-sm font-medium"
+                    >Actions</th
+                  >
                 </tr>
               </thead>
               <tbody>
                 {#each data.tokens as token}
                   <tr class="border-muted border-b last:border-0">
                     <td class="px-4 py-3 font-medium">{token.name}</td>
-                    <td class="px-4 py-3 text-sm text-gray-400">{formatDate(token.lastUsedAt)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-400">{formatDate(token.expiresAt)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-400">{formatDate(token.createdAt)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-400"
+                      >{token.lastUsedAt?.toLocaleDateString()}</td
+                    >
+                    <td class="px-4 py-3 text-sm text-gray-400"
+                      >{token.expiresAt?.toLocaleDateString()}</td
+                    >
+                    <td class="px-4 py-3 text-sm text-gray-400"
+                      >{token.createdAt?.toLocaleDateString()}</td
+                    >
                     <td class="px-4 py-3 text-right">
-                      <form method="post" action="?/delete" class="inline" use:enhance>
+                      <form
+                        method="post"
+                        action="?/delete"
+                        class="inline"
+                        use:enhance
+                      >
                         <input type="hidden" name="tokenId" value={token.id} />
                         <Button
                           type="submit"
@@ -177,7 +208,8 @@
           </div>
         {:else if !showCreateDialog && !form?.createdToken}
           <p class="text-muted-foreground text-sm">
-            You don't have any personal access tokens yet. Create one to get started.
+            You don't have any personal access tokens yet. Create one to get
+            started.
           </p>
         {/if}
       </div>
