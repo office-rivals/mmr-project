@@ -53,8 +53,8 @@
     <PageTitle>{data.user?.name}{profileSuffix}</PageTitle>
   {/if}
   {#if data.isCurrentUser}
-    <div class="flex gap-2">
-      <Button href="/profile/settings" variant="outline">
+    <div class="flex justify-end gap-2">
+      <Button href="/profile/settings" class="gap-2" variant="outline">
         <Settings size={16} />
         Settings
       </Button>

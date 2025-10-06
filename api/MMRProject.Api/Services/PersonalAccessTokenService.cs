@@ -17,6 +17,7 @@ public interface IPersonalAccessTokenService
 
     Task RevokeTokenAsync(long tokenId, long playerId);
     Task<List<PersonalAccessToken>> ListTokensForPlayerAsync(long playerId);
+    Task<PersonalAccessToken?> UseTokenAsync(string token);
 }
 
 public class PersonalAccessTokenService(ApiDbContext dbContext, ILogger<PersonalAccessTokenService> logger)
@@ -72,6 +73,31 @@ public class PersonalAccessTokenService(ApiDbContext dbContext, ILogger<Personal
             .Where(t => t.PlayerId == playerId)
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync();
+    }
+
+    public async Task<PersonalAccessToken?> UseTokenAsync(string token)
+    {
+        var tokenHash = HashToken(token);
+        var personalAccessToken = await dbContext.PersonalAccessTokens
+            .Include(p => p.Player)
+            .FirstOrDefaultAsync(p => p.TokenHash == tokenHash);
+
+        if (personalAccessToken == null)
+        {
+            logger.LogInformation("Token {TokenHash} not found", tokenHash);
+            return null;
+        }
+
+        if (personalAccessToken.ExpiresAt.HasValue && personalAccessToken.ExpiresAt.Value < DateTime.UtcNow)
+        {
+            logger.LogInformation("Token {TokenId} expired", personalAccessToken.Id);
+            return null;
+        }
+
+        personalAccessToken.LastUsedAt = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync();
+
+        return personalAccessToken;
     }
 
     private static string GenerateRandomToken()

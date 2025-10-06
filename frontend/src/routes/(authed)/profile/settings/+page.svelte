@@ -194,6 +194,7 @@
                           type="submit"
                           variant="ghost"
                           size="sm"
+                          class="gap-2"
                           onclick={handleDeleteClick}
                         >
                           <Trash2 size={16} />

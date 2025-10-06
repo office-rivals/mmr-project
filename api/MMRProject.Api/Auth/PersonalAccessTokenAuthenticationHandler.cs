@@ -1,23 +1,19 @@
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using MMRProject.Api.Data;
+using MMRProject.Api.Services;
 
 namespace MMRProject.Api.Auth;
 
-public class PersonalAccessTokenAuthenticationOptions : AuthenticationSchemeOptions
-{
-}
+public class PersonalAccessTokenAuthenticationOptions : AuthenticationSchemeOptions;
 
 public class PersonalAccessTokenAuthenticationHandler(
     IOptionsMonitor<PersonalAccessTokenAuthenticationOptions> options,
     ILoggerFactory logger,
     UrlEncoder encoder,
-    ApiDbContext dbContext)
+    IPersonalAccessTokenService personalAccessTokenService
+)
     : AuthenticationHandler<PersonalAccessTokenAuthenticationOptions>(options, logger, encoder)
 {
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -40,19 +36,11 @@ public class PersonalAccessTokenAuthenticationHandler(
             return AuthenticateResult.NoResult();
         }
 
-        var tokenHash = HashToken(token);
-        var personalAccessToken = await dbContext.PersonalAccessTokens
-            .Include(p => p.Player)
-            .FirstOrDefaultAsync(p => p.TokenHash == tokenHash);
+        var personalAccessToken = await personalAccessTokenService.UseTokenAsync(token);
 
-        if (personalAccessToken == null)
+        if (personalAccessToken is null)
         {
-            return AuthenticateResult.Fail("Invalid token");
-        }
-
-        if (personalAccessToken.ExpiresAt.HasValue && personalAccessToken.ExpiresAt.Value < DateTime.UtcNow)
-        {
-            return AuthenticateResult.Fail("Token expired");
+            return AuthenticateResult.Fail("Invalid or expired personal access token");
         }
 
         var identityUserId = personalAccessToken.Player?.IdentityUserId;
@@ -61,9 +49,6 @@ public class PersonalAccessTokenAuthenticationHandler(
             // TODO: We should handle this in a better way
             return AuthenticateResult.Fail("Token player is not linked to an identity user");
         }
-
-        personalAccessToken.LastUsedAt = DateTime.UtcNow;
-        await dbContext.SaveChangesAsync();
 
         var claims = new[]
         {
@@ -78,10 +63,5 @@ public class PersonalAccessTokenAuthenticationHandler(
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
         return AuthenticateResult.Success(ticket);
-    }
-
-    private static byte[] HashToken(string token)
-    {
-        return SHA256.HashData(Encoding.UTF8.GetBytes(token));
     }
 }

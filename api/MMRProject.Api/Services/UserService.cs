@@ -56,6 +56,7 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
     public Task<Player?> GetCurrentAuthenticatedUserAsync()
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
+        
         return dbContext.Players.FirstOrDefaultAsync(x => x.IdentityUserId == identityUserId);
     }
 

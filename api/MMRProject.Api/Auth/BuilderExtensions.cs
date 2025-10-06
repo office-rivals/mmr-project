@@ -29,6 +29,7 @@ public static class BuilderExtensions
                     {
                         return PatScheme;
                     }
+
                     return JwtBearerScheme;
                 };
             })
