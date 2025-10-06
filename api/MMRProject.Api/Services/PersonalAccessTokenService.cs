@@ -84,7 +84,7 @@ public class PersonalAccessTokenService(ApiDbContext dbContext, ILogger<Personal
 
         if (personalAccessToken == null)
         {
-            var truncatedHash = Convert.ToHexString(tokenHash).Substring(0, 8);
+            var truncatedHash = Convert.ToHexString(tokenHash)[..8];
             logger.LogInformation("Token with hash prefix {TokenHashPrefix} not found", truncatedHash);
             return null;
         }
