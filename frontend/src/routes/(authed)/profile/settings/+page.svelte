@@ -6,7 +6,7 @@
   import CardHeader from '$lib/components/ui/card/card-header.svelte';
   import CardTitle from '$lib/components/ui/card/card-title.svelte';
   import Card from '$lib/components/ui/card/card.svelte';
-  import { AlertCircle, Copy, Plus, Trash2 } from 'lucide-svelte';
+  import { AlertCircle, Check, Copy, Plus, Trash2 } from 'lucide-svelte';
   import type { ActionData, PageServerData } from './$types';
 
   interface Props {
@@ -17,9 +17,17 @@
   let { data, form }: Props = $props();
   let showCreateDialog = $state(false);
   let isCreating = $state(false);
+  let copySuccess = $state(false);
 
-  function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text);
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      copySuccess = true;
+      setTimeout(() => (copySuccess = false), 2000);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      alert('Failed to copy to clipboard. Please copy manually.');
+    }
   }
 
   function handleDeleteClick(event: Event) {
@@ -72,7 +80,11 @@
                 size="sm"
                 onclick={() => copyToClipboard(form.createdToken.token)}
               >
-                <Copy size={16} />
+                {#if copySuccess}
+                  <Check size={16} />
+                {:else}
+                  <Copy size={16} />
+                {/if}
               </Button>
             </div>
           </div>
