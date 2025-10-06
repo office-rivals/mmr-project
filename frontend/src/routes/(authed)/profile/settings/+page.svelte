@@ -185,13 +185,17 @@
                 {#each data.tokens as token}
                   <tr class="border-muted border-b last:border-0">
                     <td class="px-4 py-3 font-medium">{token.name}</td>
-                    <td class="px-4 py-3 text-sm text-gray-400"
-                      >{token.lastUsedAt?.toLocaleDateString()}</td
+                    <td class="px-4 py-3 text-muted-foreground text-sm"
+                      >{token.lastUsedAt
+                        ? token.lastUsedAt.toLocaleDateString()
+                        : 'Never'}</td
                     >
-                    <td class="px-4 py-3 text-sm text-gray-400"
-                      >{token.expiresAt?.toLocaleDateString()}</td
+                    <td class="px-4 py-3 text-muted-foreground text-sm"
+                      >{token.expiresAt
+                        ? token.expiresAt.toLocaleDateString()
+                        : 'Never'}</td
                     >
-                    <td class="px-4 py-3 text-sm text-gray-400"
+                    <td class="px-4 py-3 text-muted-foreground text-sm"
                       >{token.createdAt?.toLocaleDateString()}</td
                     >
                     <td class="px-4 py-3 text-right">
