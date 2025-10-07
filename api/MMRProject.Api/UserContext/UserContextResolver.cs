@@ -7,6 +7,7 @@ public interface IUserContextResolver
 {
     ClaimsPrincipal GetUserIdentity();
     string GetIdentityUserId();
+    bool IsPatAuthentication();
 }
 
 public class UserContextResolver : IUserContextResolver
@@ -27,4 +28,9 @@ public class UserContextResolver : IUserContextResolver
     public ClaimsPrincipal GetUserIdentity() => _user;
 
     public string GetIdentityUserId() => _userId.Value;
+
+    public bool IsPatAuthentication()
+    {
+        return _user.FindFirstValue("auth_method") == "pat";
+    }
 }

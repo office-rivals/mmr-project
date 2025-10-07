@@ -1,18 +1,39 @@
 using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
 namespace MMRProject.Api.Auth;
 
 public static class BuilderExtensions
 {
+    private const string JwtBearerScheme = JwtBearerDefaults.AuthenticationScheme;
+    private const string PatScheme = "PersonalAccessToken";
+
     public static WebApplicationBuilder AddAuth(this WebApplicationBuilder builder)
     {
         var supabaseSignatureKey = GetSupabaseSecurityKey(builder.Configuration);
         // var validIssuer =
         //     builder.Configuration.GetValue<string>("Supabase:Issuer")!; // TODO: Move all this to a configuration class
 
-        builder.Services.AddAuthentication()
-            .AddJwtBearer(o =>
+        builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = "MultiAuth";
+                options.DefaultChallengeScheme = "MultiAuth";
+            })
+            .AddPolicyScheme("MultiAuth", "Multi-Authentication Scheme", options =>
+            {
+                options.ForwardDefaultSelector = context =>
+                {
+                    var authHeader = context.Request.Headers.Authorization.ToString();
+                    if (authHeader.StartsWith("Bearer pat_", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return PatScheme;
+                    }
+
+                    return JwtBearerScheme;
+                };
+            })
+            .AddJwtBearer(JwtBearerScheme, o =>
             {
                 o.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -23,7 +44,9 @@ public static class BuilderExtensions
                     ValidAudiences = ["authenticated"],
                     // ValidIssuer = validIssuer
                 };
-            });
+            })
+            .AddScheme<PersonalAccessTokenAuthenticationOptions, PersonalAccessTokenAuthenticationHandler>(
+                PatScheme, options => { });
 
         return builder;
     }

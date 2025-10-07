@@ -32,6 +32,8 @@ public partial class ApiDbContext : DbContext
 
     public virtual DbSet<ActiveMatch> ActiveMatches { get; set; }
 
+    public virtual DbSet<PersonalAccessToken> PersonalAccessTokens { get; set; }
+
 //     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 // #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
 //         => optionsBuilder.UseNpgsql("Host=localhost;Database=mmr_project;Username=postgres;Password=this_is_a_hard_password1337");
@@ -194,6 +196,11 @@ public partial class ApiDbContext : DbContext
             entity.HasQueryFilter(e =>
                 e.TeamOnePlayerOne.DeletedAt == null && e.TeamOnePlayerTwo.DeletedAt == null &&
                 e.TeamTwoPlayerOne.DeletedAt == null && e.TeamTwoPlayerTwo.DeletedAt == null);
+        });
+
+        modelBuilder.Entity<PersonalAccessToken>(entity =>
+        {
+            entity.HasQueryFilter(e => e.Player!.DeletedAt == null);
         });
     }
 }

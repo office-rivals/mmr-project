@@ -28,6 +28,7 @@ builder.Services.AddScoped<IMatchMakingService, MatchMakingService>();
 builder.Services.AddScoped<ISeasonService, SeasonService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IPersonalAccessTokenService, PersonalAccessTokenService>();
 
 // Background services
 builder.Services.AddHostedService<MatchMakingBackgroundService>();

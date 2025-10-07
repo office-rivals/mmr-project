@@ -30,6 +30,12 @@ export interface SeasonDto {
      * @type {Date}
      * @memberof SeasonDto
      */
+    startsAt?: Date;
+    /**
+     * 
+     * @type {Date}
+     * @memberof SeasonDto
+     */
     createdAt?: Date;
 }
 
@@ -52,6 +58,7 @@ export function SeasonDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean):
     return {
         
         'id': json['id'],
+        'startsAt': json['startsAt'] == null ? undefined : (new Date(json['startsAt'])),
         'createdAt': json['createdAt'] == null ? undefined : (new Date(json['createdAt'])),
     };
 }
@@ -63,6 +70,7 @@ export function SeasonDtoToJSON(value?: SeasonDto | null): any {
     return {
         
         'id': value['id'],
+        'startsAt': value['startsAt'] == null ? undefined : ((value['startsAt'] as any).toISOString()),
         'createdAt': value['createdAt'] == null ? undefined : ((value['createdAt'] as any).toISOString()),
     };
 }

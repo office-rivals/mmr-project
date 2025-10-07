@@ -7,7 +7,7 @@
   import * as Card from '$lib/components/ui/card';
   import LineChart from '$lib/components/ui/line-chart/line-chart.svelte';
   import * as Table from '$lib/components/ui/table';
-  import { Handshake, Swords, X } from 'lucide-svelte';
+  import { Handshake, Settings, Swords, X } from 'lucide-svelte';
   import type { PageData } from './$types';
   import Filter from './components/filter.svelte';
 
@@ -53,9 +53,15 @@
     <PageTitle>{data.user?.name}{profileSuffix}</PageTitle>
   {/if}
   {#if data.isCurrentUser}
-    <form method="post" action="/signout" class="contents">
-      <Button type="submit" variant="secondary">Logout</Button>
-    </form>
+    <div class="flex justify-end gap-2">
+      <Button href="/profile/settings" class="gap-2" variant="outline">
+        <Settings size={16} />
+        Settings
+      </Button>
+      <form method="post" action="/signout" class="contents">
+        <Button type="submit" variant="secondary">Logout</Button>
+      </form>
+    </div>
   {/if}
 
   {#if data.seasons != null && data.seasons.length > 1}
