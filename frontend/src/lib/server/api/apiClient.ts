@@ -10,14 +10,27 @@ import {
 } from '$api';
 import { env } from '$env/dynamic/private';
 
-export const createConfiguration = (token: string) =>
+export const createConfiguration = (getToken: () => Promise<string | null>) =>
   new Configuration({
     basePath: env.API_BASE_PATH,
-    headers: { Authorization: `Bearer ${token}` },
+    middleware: [
+      {
+        pre: async (context) => {
+          const token = await getToken();
+          if (token) {
+            context.init.headers = {
+              ...context.init.headers,
+              Authorization: `Bearer ${token}`,
+            };
+          }
+          return context;
+        },
+      },
+    ],
   });
 
-export const createApiClient = (token: string) => {
-  const configuration = createConfiguration(token);
+export const createApiClient = (getToken: () => Promise<string | null>) => {
+  const configuration = createConfiguration(getToken);
   return {
     mmrApi: new MMRV2Api(configuration),
     profileApi: new ProfileApi(configuration),

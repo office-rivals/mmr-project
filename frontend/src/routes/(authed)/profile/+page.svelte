@@ -2,6 +2,7 @@
   import PageTitle from '$lib/components/page-title.svelte';
   import Button from '$lib/components/ui/button/button.svelte';
   import { Info } from 'lucide-svelte';
+  import { SignOutButton } from 'svelte-clerk';
 </script>
 
 <div class="flex flex-col gap-3">
@@ -15,7 +16,7 @@
     </div>
   </div>
 
-  <form method="post" action="/signout" class="contents">
-    <Button type="submit" variant="secondary">Logout</Button>
-  </form>
+  <SignOutButton>
+    <Button variant="secondary">Logout</Button>
+  </SignOutButton>
 </div>
