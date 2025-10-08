@@ -8,6 +8,7 @@
   import LineChart from '$lib/components/ui/line-chart/line-chart.svelte';
   import * as Table from '$lib/components/ui/table';
   import { Handshake, Settings, Swords, X } from 'lucide-svelte';
+  import { SignOutButton } from 'svelte-clerk';
   import type { PageData } from './$types';
   import Filter from './components/filter.svelte';
 
@@ -58,9 +59,9 @@
         <Settings size={16} />
         Settings
       </Button>
-      <form method="post" action="/signout" class="contents">
-        <Button type="submit" variant="secondary">Logout</Button>
-      </form>
+      <SignOutButton>
+        <Button variant="secondary">Logout</Button>
+      </SignOutButton>
     </div>
   {/if}
 
