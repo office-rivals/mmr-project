@@ -53,11 +53,43 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
         return await dbContext.Players.FindAsync(userId);
     }
 
-    public Task<Player?> GetCurrentAuthenticatedUserAsync()
+    public async Task<Player?> GetCurrentAuthenticatedUserAsync()
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
-        
-        return dbContext.Players.FirstOrDefaultAsync(x => x.IdentityUserId == identityUserId);
+
+        var player = await dbContext.Players.FirstOrDefaultAsync(x => x.IdentityUserId == identityUserId);
+
+        if (player != null)
+        {
+            return player;
+        }
+
+        var email = userContextResolver.GetEmail();
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return null;
+        }
+
+        player = await dbContext.Players.FirstOrDefaultAsync(x =>
+            x.Email == email &&
+            x.MigratedAt == null);
+
+        if (player == null)
+        {
+            return null;
+        }
+
+        logger.LogInformation(
+            "Auto-linking Player {PlayerId} (email: {Email}) to identity user {IdentityUserId}",
+            player.Id, email, identityUserId);
+
+        player.IdentityUserId = identityUserId;
+        player.MigratedAt = DateTime.UtcNow;
+        player.UpdatedAt = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync();
+
+        return player;
     }
 
     public async Task<Player> ClaimUserForCurrentAuthenticatedUserAsync(long userId)
