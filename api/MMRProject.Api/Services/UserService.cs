@@ -81,8 +81,8 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
         }
 
         logger.LogInformation(
-            "Auto-linking Player {PlayerId} (email: {Email}) to identity user {IdentityUserId}",
-            player.Id, email, identityUserId);
+            "Auto-linking Player {PlayerId} to identity user {IdentityUserId}",
+            player.Id, identityUserId);
 
         player.IdentityUserId = identityUserId;
         player.MigratedAt = DateTime.UtcNow;
