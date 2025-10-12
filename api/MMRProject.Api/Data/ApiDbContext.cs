@@ -177,11 +177,15 @@ public partial class ApiDbContext : DbContext
 
             entity.HasIndex(e => e.Id, "players_id_key").IsUnique();
 
+            entity.HasIndex(e => e.Email, "idx_players_email");
+
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
             entity.Property(e => e.DisplayName).HasColumnName("display_name");
             entity.Property(e => e.IdentityUserId).HasColumnName("identity_user_id");
+            entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(128);
+            entity.Property(e => e.MigratedAt).HasColumnName("migrated_at");
             entity.Property(e => e.Mmr).HasColumnName("mmr");
             entity.Property(e => e.Mu).HasColumnName("mu");
             entity.Property(e => e.Name).HasColumnName("name");

@@ -24,6 +24,7 @@ public interface IMatchMakingService
 public class MatchMakingService(
     ILogger<MatchMakingService> logger,
     IUserContextResolver userContextResolver,
+    IUserService userService,
     ApiDbContext dbContext,
     IMatchesService matchesService,
     ISeasonService seasonService
@@ -31,10 +32,7 @@ public class MatchMakingService(
 {
     public async Task AddPlayerToQueueAsync()
     {
-        var identityUserId = userContextResolver.GetIdentityUserId();
-
-        var currentUser = await dbContext.Players
-            .FirstOrDefaultAsync(x => x.IdentityUserId == identityUserId);
+        var currentUser = await userService.GetCurrentAuthenticatedUserAsync();
 
         if (currentUser is null)
         {
@@ -47,7 +45,7 @@ public class MatchMakingService(
 
         if (currentQueuedPlayer is not null)
         {
-            logger.LogInformation("User {IdentityUserId} already in queue", identityUserId);
+            logger.LogInformation("Player {PlayerId} already in queue", currentUser.Id);
             return;
         }
 
