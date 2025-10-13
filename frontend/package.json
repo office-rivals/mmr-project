@@ -42,7 +42,7 @@
   "dependencies": {
     "@carbon/charts-svelte": "^1.22.18",
     "@supabase/ssr": "^0.3.0",
-    "@supabase/supabase-js": "^2.43.4",
+    "@supabase/supabase-js": "^2.75.0",
     "bits-ui": "^1.0.0",
     "clsx": "^2.1.1",
     "d3": "^7.9.0",
