@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { RedirectToSignIn, SignIn } from 'svelte-clerk';
+  import { RedirectToSignIn } from 'svelte-clerk';
 </script>
 
 <RedirectToSignIn />

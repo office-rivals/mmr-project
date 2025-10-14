@@ -39,7 +39,7 @@ The application uses Clerk for authentication. Follow these steps to get started
    ```
 3. Configure environment variables:
    - Frontend (.env):
-     ```
+     ```bash
      PUBLIC_CLERK_PUBLISHABLE_KEY=<your_clerk_publishable_key>
      CLERK_SECRET_KEY=<your_clerk_secret_key>
      API_BASE_PATH=http://localhost:8081
@@ -69,7 +69,7 @@ The application uses Clerk for authentication. Follow these steps to get started
      ```
      Note: The Clerk issuer URL can be found in your Clerk Dashboard under API Keys (e.g., `https://your-app.clerk.accounts.dev`)
    - MMR API (.env):
-     ```
+     ```bash
      ADMIN_SECRET=<your_admin_secret>
      ```
 

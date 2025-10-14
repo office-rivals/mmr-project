@@ -32,6 +32,12 @@ public static class BuilderExtensions
             .AddJwtBearer(JwtBearerScheme, o =>
             {
                 var issuer = builder.Configuration.GetValue<string>("Authorization:Issuer");
+                if (string.IsNullOrEmpty(issuer))
+                {
+                    // TODO: Better exception
+                    throw new Exception("Missing Authorization:Issuer configuration");
+                }
+                
                 o.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
