@@ -123,7 +123,7 @@
     }
 
     showingResult = false;
-    countdown = 5;
+    countdown = 3;
     countdownTimer = setInterval(() => {
       if (countdown !== null && countdown > 0) {
         countdown--;
@@ -188,17 +188,17 @@
 </script>
 
 <style>
-  @keyframes subtle-scale {
+  @keyframes pulse-scale {
     0%, 100% {
       transform: translate(-50%, -50%) scale(1);
     }
     50% {
-      transform: translate(-50%, -50%) scale(1.1);
+      transform: translate(-50%, -50%) scale(1.15);
     }
   }
 
-  .subtle-animate {
-    animation: subtle-scale 2s ease-in-out infinite;
+  .pulse-scale {
+    animation: pulse-scale 1.5s ease-in-out infinite;
   }
 </style>
 
@@ -272,32 +272,31 @@
     {:else}
       <div class="flex flex-col gap-4">
         <p class="text-sm text-muted-foreground text-center">
-          Place your fingers on the screen. After 5 seconds, 2 fingers will be white team and 2 will be brown team.
+          Place your fingers on the screen. After 3 seconds, 2 fingers will be white team and 2 will be brown team.
         </p>
 
         <div
-          class="relative w-full h-[60vh] bg-muted rounded-lg overflow-hidden touch-none select-none"
+          class="relative w-full min-h-screen bg-muted touch-none select-none"
           ontouchstart={handleTouchStart}
           ontouchmove={handleTouchMove}
           ontouchend={handleTouchEnd}
         >
           {#each touches as touch (touch.identifier)}
             <div
-              class="absolute w-24 h-24 rounded-full flex items-center justify-center text-4xl transition-colors duration-500"
-              class:subtle-animate={countdown !== null}
-              class:bg-white={touch.color === 'white'}
-              class:text-black={touch.color === 'white'}
-              class:border-4={touch.color === 'white'}
-              class:border-black={touch.color === 'white'}
-              class:bg-amber-800={touch.color === 'brown'}
-              class:text-white={touch.color === 'brown'}
-              class:bg-gray-400={touch.color === null}
-              class:text-gray-700={touch.color === null}
+              class="absolute w-24 h-24 rounded-full transition-colors duration-500 shadow-lg border-4 flex items-center justify-center"
+              class:pulse-scale={countdown !== null}
+              class:border-white={touch.color === 'white'}
+              class:border-amber-900={touch.color === 'brown'}
+              class:border-gray-300={touch.color === null}
               style="left: {touch.x}px; top: {touch.y}px; transform: translate(-50%, -50%);"
             >
-              {#if touch.color}
-                {touch.color === 'white' ? '⚪' : '🟤'}
-              {/if}
+              <div
+                class="rounded-full transition-colors duration-500"
+                class:bg-white={touch.color === 'white'}
+                class:bg-amber-900={touch.color === 'brown'}
+                class:bg-gray-300={touch.color === null}
+                style="width: 72px; height: 72px;"
+              ></div>
             </div>
           {/each}
         </div>
