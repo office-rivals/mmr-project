@@ -78,7 +78,9 @@
       });
     }
 
-    resetCountdown();
+    if (touches.length >= 4) {
+      resetCountdown();
+    }
   }
 
   function handleTouchMove(event: TouchEvent) {
@@ -110,6 +112,14 @@
       if (index !== -1) {
         touches.splice(index, 1);
       }
+    }
+
+    if (touches.length < 4) {
+      if (countdownTimer !== null) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+      }
+      countdown = null;
     }
   }
 
