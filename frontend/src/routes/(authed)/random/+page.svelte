@@ -13,6 +13,11 @@
 
   let { data }: Props = $props();
 
+  const REQUIRED_TOUCHES = 4;
+  const COUNTDOWN_SECONDS = 3;
+  const RESULT_DISPLAY_MS = 5000;
+  const TEAM_SIZE = 2;
+
   type Tab = 'names' | 'touch';
   let activeTab = $state<Tab>('names');
 
@@ -56,6 +61,17 @@
     }
   });
 
+  $effect(() => {
+    return () => {
+      if (countdownTimer !== null) {
+        clearInterval(countdownTimer);
+      }
+      if (resetTimer !== null) {
+        clearTimeout(resetTimer);
+      }
+    };
+  });
+
   function handleTouchStart(event: TouchEvent) {
     event.preventDefault();
 
@@ -78,7 +94,7 @@
       });
     }
 
-    if (touches.length >= 4) {
+    if (touches.length >= REQUIRED_TOUCHES) {
       resetCountdown();
     }
   }
@@ -114,7 +130,7 @@
       }
     }
 
-    if (touches.length < 4) {
+    if (touches.length < REQUIRED_TOUCHES) {
       if (countdownTimer !== null) {
         clearInterval(countdownTimer);
         countdownTimer = null;
@@ -133,8 +149,8 @@
     }
 
     showingResult = false;
-    countdown = 3;
-    countdownTimer = setInterval(() => {
+    countdown = COUNTDOWN_SECONDS;
+    countdownTimer = window.setInterval(() => {
       if (countdown !== null && countdown > 0) {
         countdown--;
         if (countdown === 0) {
@@ -144,22 +160,23 @@
           }
         }
       }
-    }, 1000) as unknown as number;
+    }, 1000);
   }
 
   function assignColors() {
     const touchCount = touches.length;
 
-    if (touchCount === 0) {
+    if (touchCount < REQUIRED_TOUCHES) {
       countdown = null;
+      showingResult = false;
       return;
     }
 
     const indices = touches.map((_, i) => i);
     const shuffled = indices.sort(() => Math.random() - 0.5);
 
-    const whiteCount = Math.min(2, touchCount);
-    const brownCount = Math.min(2, Math.max(0, touchCount - 2));
+    const whiteCount = Math.min(TEAM_SIZE, touchCount);
+    const brownCount = Math.min(TEAM_SIZE, Math.max(0, touchCount - TEAM_SIZE));
 
     for (let i = 0; i < whiteCount; i++) {
       touches[shuffled[i]].color = 'white';
@@ -177,9 +194,9 @@
     if (resetTimer !== null) {
       clearTimeout(resetTimer);
     }
-    resetTimer = setTimeout(() => {
+    resetTimer = window.setTimeout(() => {
       resetTouchRandomizer();
-    }, 5000) as unknown as number;
+    }, RESULT_DISPLAY_MS);
   }
 
   function resetTouchRandomizer() {
@@ -282,7 +299,7 @@
     {:else}
       <div class="flex flex-col gap-4">
         <p class="text-sm text-muted-foreground text-center">
-          Place your fingers on the screen. After 3 seconds, 2 fingers will be white team and 2 will be brown team.
+          Place {REQUIRED_TOUCHES} fingers on the screen. After a {COUNTDOWN_SECONDS} second countdown, {TEAM_SIZE} fingers will be white team and {TEAM_SIZE} will be brown team.
         </p>
 
         <div
@@ -291,6 +308,14 @@
           ontouchmove={handleTouchMove}
           ontouchend={handleTouchEnd}
         >
+          {#if countdown !== null && countdown > 0}
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <div class="text-9xl font-bold text-primary animate-pulse">
+                {countdown}
+              </div>
+            </div>
+          {/if}
+
           {#each touches as touch (touch.identifier)}
             <div
               class="absolute w-24 h-24 rounded-full transition-colors duration-500 shadow-lg border-4 flex items-center justify-center"
