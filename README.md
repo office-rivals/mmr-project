@@ -14,8 +14,7 @@ This repository contains a matchmaking and rating system split into three main c
 ├── api/               # ASP.NET Core API service
 ├── mmr-api/           # Go MMR calculation service
 ├── local-development/ # Local development setup
-├── api-collection/    # API test collection
-└── supabase/         # Database configuration
+└── api-collection/    # API test collection
 ```
 
 ## Getting Started
@@ -30,18 +29,19 @@ This repository contains a matchmaking and rating system split into three main c
 
 ### Local Development
 
-Since we are using Supabase for authentication you will need to start Supabase locally. Follow these steps to get started:
+The application uses Clerk for authentication. Follow these steps to get started:
 
-1. Install the Supabase CLI ([install guide](https://supabase.com/docs/guides/cli/getting-started))
-2. Start Supabase:
+1. Set up a Clerk account at [clerk.com](https://clerk.com) and create an application
+2. Start local PostgreSQL database:
    ```bash
-   supabase start
+   cd local-development
+   docker-compose up
    ```
 3. Configure environment variables:
    - Frontend (.env):
-     ```
-     PUBLIC_SUPABASE_URL=<your_supabase_project_url>
-     PUBLIC_SUPABASE_ANON_KEY=<your_supabase_anon_key>
+     ```bash
+     PUBLIC_CLERK_PUBLISHABLE_KEY=<your_clerk_publishable_key>
+     CLERK_SECRET_KEY=<your_clerk_secret_key>
      API_BASE_PATH=http://localhost:8081
      ```
    - API (appsettings.Development.json):
@@ -49,9 +49,6 @@ Since we are using Supabase for authentication you will need to start Supabase l
      {
        "ConnectionStrings": {
          "ApiDbContext": "Host=localhost;Database=mmr_project;Username=postgres;Password=<your_db_password>"
-       },
-       "Supabase": {
-         "SignatureKey": "<your_jwt_signature_key>"
        },
        "Admin": {
          "Secret": "<your_admin_secret>"
@@ -65,12 +62,16 @@ Since we are using Supabase for authentication you will need to start Supabase l
        }
      }
      ```
-   - MMR API (.env):
+   - API (user-secrets - required for Clerk):
+     ```bash
+     cd api/MMRProject.Api
+     dotnet user-secrets set "Authorization:Issuer" "<your_clerk_issuer_url>"
      ```
+     Note: The Clerk issuer URL can be found in your Clerk Dashboard under API Keys (e.g., `https://your-app.clerk.accounts.dev`)
+   - MMR API (.env):
+     ```bash
      ADMIN_SECRET=<your_admin_secret>
      ```
-
-You can now visit your local Supabase Dashboard at [http://localhost:54323/](http://localhost:54323/).
 
 ### Starting the Services
 

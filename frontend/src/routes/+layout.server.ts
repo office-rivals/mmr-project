@@ -1,7 +1,8 @@
+import { buildClerkProps } from 'svelte-clerk/server';
 import type { LayoutServerLoad } from './$types';
 
-export const load = (async ({ locals: { session } }) => {
+export const load: LayoutServerLoad = ({ locals }) => {
   return {
-    session,
+    ...buildClerkProps(locals.auth()),
   };
-}) satisfies LayoutServerLoad;
+};

@@ -29,5 +29,5 @@ jobs:
           containerAppName: ${{ secrets.UI_CONTAINER_APP_NAME }}
           resourceGroup: ${{ secrets.RESOURCE_GROUP }}
           buildArguments: |
-            "PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}" "PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"
+            "PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}"
           targetPort: 3000

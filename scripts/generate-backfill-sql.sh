@@ -20,12 +20,12 @@ tail -n +2 "$CSV_FILE" | while IFS=, read -r identity_user_id email; do
 
     email=$(echo "$email" | sed "s/'/''/g")
 
-    echo "UPDATE players SET email = '$email', updated_at = NOW() WHERE identity_user_id = '$identity_user_id' AND email IS NULL;" >> "$OUTPUT_FILE"
+    echo "UPDATE \"Players\" SET email = '$email', updated_at = NOW() WHERE identity_user_id = '$identity_user_id' AND email IS NULL;" >> "$OUTPUT_FILE"
 done
 
 echo "" >> "$OUTPUT_FILE"
 echo "-- Validation query:" >> "$OUTPUT_FILE"
 echo "-- SELECT COUNT(*) as total, COUNT(email) as with_email, COUNT(*) - COUNT(email) as missing_email" >> "$OUTPUT_FILE"
-echo "-- FROM players WHERE deleted_at IS NULL AND identity_user_id IS NOT NULL;" >> "$OUTPUT_FILE"
+echo "-- FROM \"Players\" WHERE deleted_at IS NULL AND identity_user_id IS NOT NULL;" >> "$OUTPUT_FILE"
 
 echo "Generated SQL file: $OUTPUT_FILE"
