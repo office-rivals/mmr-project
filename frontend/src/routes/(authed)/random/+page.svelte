@@ -21,6 +21,15 @@
   type Tab = 'names' | 'touch';
   let activeTab = $state<Tab>('names');
 
+  function fisherYatesShuffle<T>(array: T[]): T[] {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
   let players = $state([
     data.players[0] ?? '',
     data.players[1] ?? '',
@@ -30,7 +39,7 @@
 
   var teams: string[][] = $state(data.teams);
   function generateTeams() {
-    const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+    const shuffledPlayers = fisherYatesShuffle(players);
     teams = [shuffledPlayers.slice(0, 2), shuffledPlayers.slice(2, 4)];
 
     if (browser) {
@@ -41,17 +50,17 @@
     }
   }
 
-  interface Touch {
+  interface TouchMarker {
     identifier: number;
     x: number;
     y: number;
     color: 'white' | 'brown' | null;
   }
 
-  let touches = $state<Touch[]>([]);
+  let touches = $state<TouchMarker[]>([]);
   let countdown = $state<number | null>(null);
-  let countdownTimer: number | null = null;
-  let resetTimer: number | null = null;
+  let countdownTimer: ReturnType<typeof setInterval> | null = null;
+  let resetTimer: ReturnType<typeof setTimeout> | null = null;
   let showingResult = $state(false);
   let isMobile = $state(false);
 
@@ -150,7 +159,7 @@
 
     showingResult = false;
     countdown = COUNTDOWN_SECONDS;
-    countdownTimer = window.setInterval(() => {
+    countdownTimer = setInterval(() => {
       if (countdown !== null && countdown > 0) {
         countdown--;
         if (countdown === 0) {
@@ -173,7 +182,7 @@
     }
 
     const indices = touches.map((_, i) => i);
-    const shuffled = indices.sort(() => Math.random() - 0.5);
+    const shuffled = fisherYatesShuffle(indices);
 
     const whiteCount = Math.min(TEAM_SIZE, touchCount);
     const brownCount = Math.min(TEAM_SIZE, Math.max(0, touchCount - TEAM_SIZE));
@@ -194,7 +203,7 @@
     if (resetTimer !== null) {
       clearTimeout(resetTimer);
     }
-    resetTimer = window.setTimeout(() => {
+    resetTimer = setTimeout(() => {
       resetTouchRandomizer();
     }, RESULT_DISPLAY_MS);
   }
@@ -232,8 +241,10 @@
 <div class="flex flex-col gap-8">
   <PageTitle>Random Team Generator</PageTitle>
 
-  <div class="flex gap-2 border-b">
+  <div class="flex gap-2 border-b" role="tablist" aria-label="Randomizer mode">
     <button
+      role="tab"
+      aria-selected={activeTab === 'names'}
       class="px-4 py-2 transition-colors {activeTab === 'names'
         ? 'border-b-2 border-primary font-semibold'
         : 'text-muted-foreground hover:text-foreground'}"
@@ -242,6 +253,8 @@
       Names
     </button>
     <button
+      role="tab"
+      aria-selected={activeTab === 'touch'}
       class="px-4 py-2 transition-colors {activeTab === 'touch'
         ? 'border-b-2 border-primary font-semibold'
         : 'text-muted-foreground hover:text-foreground'}"
@@ -275,7 +288,7 @@
             {/each}
           </ul>
         </div>
-        <div class="flex-s bg-border min-h-full w-px"></div>
+        <div class="self-stretch bg-border min-h-full w-px"></div>
         <div class="flex flex-1 flex-col">
           <h3 class="text-2xl">Team 2</h3>
           <ul>
@@ -307,6 +320,7 @@
           ontouchstart={handleTouchStart}
           ontouchmove={handleTouchMove}
           ontouchend={handleTouchEnd}
+          ontouchcancel={handleTouchEnd}
         >
           {#if countdown !== null && countdown > 0}
             <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
