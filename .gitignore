@@ -5,3 +5,6 @@ postgres_dump/
 # Cline
 .clinerules
 memory-bank/
+
+# Ignore CLAUDE.md since we use AGENTS.md
+CLAUDE.md
