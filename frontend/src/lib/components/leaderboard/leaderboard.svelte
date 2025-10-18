@@ -49,7 +49,9 @@
             (user) => user.userId == userId
           )?.displayName}
           <Table.Row
-            class="cursor-pointer"
+            class={cn('cursor-pointer', {
+              'text-primary': currentUserId === userId,
+            })}
             tabindex={0}
             onclick={() => {
               const user = users?.find((user) => user.userId == userId);
@@ -62,11 +64,7 @@
               >{mmr != null ? rank : '•'}</Table.Cell
             >
             <Table.Cell class="max-w-[230px]">
-              <div
-                class={cn('flex flex-col items-start', {
-                  'text-primary': currentUserId === userId,
-                })}
-              >
+              <div class="flex flex-col items-start">
                 {#if userDisplayName != null}
                   <span class="hidden w-full truncate sm:block">
                     {userDisplayName}
