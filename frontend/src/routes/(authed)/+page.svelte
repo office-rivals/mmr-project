@@ -101,6 +101,7 @@
       selectedUser = user;
     }}
     {statisticsPromise}
+    currentUserId={profile?.userId}
   />
 </div>
 <ActiveMatches activeMatches={activeMatches ?? []} users={users ?? []} />
