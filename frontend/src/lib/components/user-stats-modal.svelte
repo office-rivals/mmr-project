@@ -54,11 +54,11 @@
 </script>
 
 <Dialog.Root {open} {onOpenChange}>
-  <Dialog.Content>
+  <Dialog.Content class="max-h-screen overflow-y-scroll">
     <Dialog.Title class="flex gap-2">
       {user.displayName ?? user.name}
     </Dialog.Title>
-    <Dialog.Description class="flex flex-col gap-4">
+    <div class="flex flex-col gap-4">
       {#if leaderboardEntry != null}
         {@const totalGamesPlayed =
           (leaderboardEntry.wins ?? 0) + (leaderboardEntry.loses ?? 0)}
@@ -110,9 +110,14 @@
           {/if}
         </div>
       {/if}
+    </div>
+    <Dialog.Footer class="gap-2">
+      <Button variant="outline" onclick={() => onOpenChange(false)}
+        >Close</Button
+      >
       <Button href={withSeasonParam(`/player/${user.userId}`, seasonId)}
         >More details</Button
       >
-    </Dialog.Description>
+    </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
