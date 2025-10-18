@@ -39,9 +39,9 @@
       </Table.Header>
       <Table.Body>
         {#each data as { userId, loses, name, wins, mmr, winningStreak, losingStreak, rank }, index}
-          {#if mmr == null && data[index - 1]?.mmr != null}
+          {#if mmr == null && (index === 0 || data[index - 1]?.mmr != null)}
             <Table.Row class="">
-              <Table.Cell colspan={5} class="text-center">Placement</Table.Cell>
+              <Table.Cell colspan={5} class="text-center">Unranked</Table.Cell>
             </Table.Row>
           {/if}
 
