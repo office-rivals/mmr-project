@@ -153,7 +153,7 @@ namespace MMRProject.Api.Data.Migrations
 
             migrationBuilder.DropForeignKey(
                 name: "fk_player_histories_player",
-                table: "teams");
+                table: "player_histories");
 
             migrationBuilder.DropPrimaryKey(
                 name: "PK_Players",
