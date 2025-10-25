@@ -54,7 +54,7 @@
 </script>
 
 <Dialog.Root {open} {onOpenChange}>
-  <Dialog.Content class="max-h-screen overflow-y-scroll">
+  <Dialog.Content class="max-h-screen overflow-y-auto">
     <Dialog.Title class="flex gap-2">
       {user.displayName ?? user.name}
     </Dialog.Title>
