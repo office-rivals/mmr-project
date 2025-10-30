@@ -34,6 +34,12 @@ import {
 export interface MatchDetailsV2 {
     /**
      * 
+     * @type {number}
+     * @memberof MatchDetailsV2
+     */
+    matchId: number;
+    /**
+     * 
      * @type {Date}
      * @memberof MatchDetailsV2
      */
@@ -62,6 +68,7 @@ export interface MatchDetailsV2 {
  * Check if a given object implements the MatchDetailsV2 interface.
  */
 export function instanceOfMatchDetailsV2(value: object): boolean {
+    if (!('matchId' in value)) return false;
     if (!('date' in value)) return false;
     if (!('team1' in value)) return false;
     if (!('team2' in value)) return false;
@@ -78,6 +85,7 @@ export function MatchDetailsV2FromJSONTyped(json: any, ignoreDiscriminator: bool
     }
     return {
         
+        'matchId': json['matchId'],
         'date': (new Date(json['date'])),
         'team1': MatchTeamV2FromJSON(json['team1']),
         'team2': MatchTeamV2FromJSON(json['team2']),
@@ -91,6 +99,7 @@ export function MatchDetailsV2ToJSON(value?: MatchDetailsV2 | null): any {
     }
     return {
         
+        'matchId': value['matchId'],
         'date': ((value['date']).toISOString()),
         'team1': MatchTeamV2ToJSON(value['team1']),
         'team2': MatchTeamV2ToJSON(value['team2']),
