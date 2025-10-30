@@ -1,4 +1,5 @@
 import {
+  AdminApi,
   Configuration,
   MatchMakingApi,
   MMRV2Api,
@@ -33,6 +34,7 @@ export const createConfiguration = (getToken: () => Promise<string | null>) =>
 export const createApiClient = (getToken: () => Promise<string | null>) => {
   const configuration = createConfiguration(getToken);
   return {
+    adminApi: new AdminApi(configuration),
     mmrApi: new MMRV2Api(configuration),
     profileApi: new ProfileApi(configuration),
     statisticsApi: new StatisticsApi(configuration),

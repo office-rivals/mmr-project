@@ -5,6 +5,9 @@ namespace MMRProject.Api.DTOs;
 public record MatchDetailsV2
 {
     [Required]
+    public required long MatchId { get; set; }
+
+    [Required]
     public DateTimeOffset Date { get; set; }
 
     [Required]
