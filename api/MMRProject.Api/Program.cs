@@ -1,9 +1,13 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Auth;
+using MMRProject.Api.Authorization;
 using MMRProject.Api.BackgroundServices;
 using MMRProject.Api.Data;
+using MMRProject.Api.Data.Entities;
 using MMRProject.Api.Exceptions;
 using MMRProject.Api.MMRCalculationApi;
 using MMRProject.Api.Services;
@@ -21,6 +25,24 @@ builder.Services.AddDbContextPool<ApiDbContext>(opt =>
 
 builder.AddAuth();
 
+builder.Services.AddMemoryCache();
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthorizationPolicies.RequireOwnerRole, policy =>
+        policy.Requirements.Add(new PlayerRoleRequirement(PlayerRole.Owner)));
+
+    options.AddPolicy(AuthorizationPolicies.RequireModeratorRole, policy =>
+        policy.Requirements.Add(new PlayerRoleRequirement(PlayerRole.Moderator)));
+
+    options.AddPolicy(AuthorizationPolicies.RequireUserRole, policy =>
+        policy.Requirements.Add(new PlayerRoleRequirement(PlayerRole.User)));
+});
+
+builder.Services.AddSingleton<IAuthorizationHandler, PlayerRoleAuthorizationHandler>();
+
+builder.Services.AddScoped<IClaimsTransformation, RoleClaimsTransformation>();
+
 builder.Services.AddUserContextResolver();
 
 builder.Services.AddScoped<IMatchesService, MatchesService>();
@@ -29,6 +51,7 @@ builder.Services.AddScoped<ISeasonService, SeasonService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPersonalAccessTokenService, PersonalAccessTokenService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
 
 // Background services
 builder.Services.AddHostedService<MatchMakingBackgroundService>();
@@ -74,6 +97,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers().RequireAuthorization();
