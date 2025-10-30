@@ -6,6 +6,8 @@
 	import { Alert } from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import * as Dialog from '$lib/components/ui/dialog';
 	import {
 		Table,
 		TableBody,
@@ -14,20 +16,23 @@
 		TableHeader,
 		TableRow
 	} from '$lib/components/ui/table';
-	import { Users, CheckCircle, AlertCircle, Search } from 'lucide-svelte';
-	import type { PlayerRole } from '../../../api';
+	import { Users, CheckCircle, AlertCircle, Search, Pencil } from 'lucide-svelte';
+	import type { PlayerRole, UserDetails } from '../../../api';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
-	const { users } = data;
+
+	let users = $state<UserDetails[]>(data.users);
+	let userRoles = $state<Record<number, { role: PlayerRole; loading: boolean }>>({});
+	let filterText = $state('');
+	let editingUser = $state<UserDetails | null>(null);
+	let dialogOpen = $state(false);
+	let editForm = $state({ name: '', displayName: '', role: 'User' as PlayerRole });
 
 	const getRoleBadgeVariant = (role: PlayerRole) => {
 		if (role === 'Owner') return 'owner';
 		if (role === 'Moderator') return 'moderator';
 		return 'user';
 	};
-
-	let userRoles = $state<Record<number, { role: PlayerRole; loading: boolean }>>({});
-	let filterText = $state('');
 
 	const filteredUsers = $derived(
 		users.filter((user) => {
@@ -54,6 +59,12 @@
 		}
 	}
 
+	// Sync users when page data changes
+	$effect(() => {
+		users = data.users;
+	});
+
+	// Load roles for all users
 	$effect(() => {
 		users.forEach((user) => {
 			if (!userRoles[user.userId]) {
@@ -63,13 +74,36 @@
 		});
 	});
 
-	const handleRoleAssignment = ({ formData }: { formData: FormData }) => {
-		const playerId = Number(formData.get('playerId'));
-		const role = formData.get('role') as PlayerRole;
+	function openEditDialog(user: UserDetails) {
+		editingUser = user;
+		editForm = {
+			name: user.name,
+			displayName: user.displayName || '',
+			role: userRoles[user.userId]?.role || 'User'
+		};
+		dialogOpen = true;
+	}
 
+	const handleUpdateUser = () => {
 		return async ({ result, update }: { result: any; update: () => Promise<void> }) => {
-			if (result.type === 'success') {
-				userRoles[playerId] = { role, loading: false };
+			if (result.type === 'success' && editingUser) {
+				// Update users array with new object to trigger reactivity
+				users = users.map(u => {
+					if (u.userId === editingUser.userId) {
+						return {
+							...u,
+							name: editForm.name,
+							displayName: editForm.displayName || null
+						};
+					}
+					return u;
+				});
+
+				// Update role
+				userRoles[editingUser.userId] = { role: editForm.role, loading: false };
+
+				dialogOpen = false;
+				editingUser = null;
 			}
 			await update();
 		};
@@ -78,8 +112,8 @@
 
 <div class="space-y-6">
 	<div>
-		<h1 class="text-3xl font-bold tracking-tight">Role Management</h1>
-		<p class="text-muted-foreground">Manage user roles and permissions. Only Owners can assign roles.</p>
+		<h1 class="text-3xl font-bold tracking-tight">User Management</h1>
+		<p class="text-muted-foreground">Manage user details and roles. Only Owners can edit users.</p>
 	</div>
 
 	<div class="relative">
@@ -153,18 +187,10 @@
 								{/if}
 							</TableCell>
 							<TableCell class="text-right">
-								<form method="POST" action="?/assignRole" use:enhance={handleRoleAssignment} class="flex items-center justify-end gap-2">
-									<input type="hidden" name="playerId" value={user.userId} />
-									<select
-										name="role"
-										class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-9 rounded-md border px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-									>
-										<option value="User" selected={roleInfo?.role === 'User'}>User</option>
-										<option value="Moderator" selected={roleInfo?.role === 'Moderator'}>Moderator</option>
-										<option value="Owner" selected={roleInfo?.role === 'Owner'}>Owner</option>
-									</select>
-									<Button type="submit" size="sm">Assign</Button>
-								</form>
+								<Button size="sm" variant="outline" onclick={() => openEditDialog(user)}>
+									<Pencil class="h-4 w-4 mr-2" />
+									Edit
+								</Button>
 							</TableCell>
 						</TableRow>
 					{/each}
@@ -173,3 +199,68 @@
 		</CardContent>
 	</Card>
 </div>
+
+{#if editingUser}
+	<Dialog.Root bind:open={dialogOpen}>
+		<Dialog.Content>
+			<Dialog.Header>
+				<Dialog.Title>Edit User</Dialog.Title>
+				<Dialog.Description>
+					Update user details and role. All fields are required.
+				</Dialog.Description>
+			</Dialog.Header>
+
+			<form method="POST" action="?/updateUser" use:enhance={handleUpdateUser}>
+				<input type="hidden" name="userId" value={editingUser.userId} />
+				<input type="hidden" name="originalName" value={editingUser.name} />
+				<input type="hidden" name="originalDisplayName" value={editingUser.displayName || ''} />
+				<input type="hidden" name="originalRole" value={userRoles[editingUser.userId]?.role || 'User'} />
+
+				<div class="space-y-4 py-4">
+					<div class="space-y-2">
+						<Label for="edit-name">Name</Label>
+						<Input
+							id="edit-name"
+							name="name"
+							bind:value={editForm.name}
+							placeholder="Enter name"
+							required
+						/>
+					</div>
+
+					<div class="space-y-2">
+						<Label for="edit-displayName">Display Name</Label>
+						<Input
+							id="edit-displayName"
+							name="displayName"
+							bind:value={editForm.displayName}
+							placeholder="Enter display name (optional)"
+						/>
+					</div>
+
+					<div class="space-y-2">
+						<Label for="edit-role">Role</Label>
+						<select
+							id="edit-role"
+							name="role"
+							bind:value={editForm.role}
+							class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+							required
+						>
+							<option value="User">User</option>
+							<option value="Moderator">Moderator</option>
+							<option value="Owner">Owner</option>
+						</select>
+					</div>
+				</div>
+
+				<Dialog.Footer class="gap-2">
+					<Button type="button" variant="outline" onclick={() => (dialogOpen = false)}>
+						Cancel
+					</Button>
+					<Button type="submit">Save Changes</Button>
+				</Dialog.Footer>
+			</form>
+		</Dialog.Content>
+	</Dialog.Root>
+{/if}

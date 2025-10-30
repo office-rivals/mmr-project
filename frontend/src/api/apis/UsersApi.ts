@@ -16,11 +16,14 @@
 import * as runtime from '../runtime';
 import type {
   CreateUserRequest,
+  UpdateUserRequest,
   UserDetails,
 } from '../models/index';
 import {
     CreateUserRequestFromJSON,
     CreateUserRequestToJSON,
+    UpdateUserRequestFromJSON,
+    UpdateUserRequestToJSON,
     UserDetailsFromJSON,
     UserDetailsToJSON,
 } from '../models/index';
@@ -35,6 +38,11 @@ export interface UsersGetUserRequest {
 
 export interface UsersSearchUserRequest {
     query?: string;
+}
+
+export interface UsersUpdateUserRequest {
+    userId: number;
+    updateUserRequest: UpdateUserRequest;
 }
 
 /**
@@ -156,6 +164,47 @@ export class UsersApi extends runtime.BaseAPI {
      */
     async usersSearchUser(requestParameters: UsersSearchUserRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<UserDetails>> {
         const response = await this.usersSearchUserRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async usersUpdateUserRaw(requestParameters: UsersUpdateUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserDetails>> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling usersUpdateUser().'
+            );
+        }
+
+        if (requestParameters['updateUserRequest'] == null) {
+            throw new runtime.RequiredError(
+                'updateUserRequest',
+                'Required parameter "updateUserRequest" was null or undefined when calling usersUpdateUser().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        const response = await this.request({
+            path: `/api/v1/users/{userId}`.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId']))),
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateUserRequestToJSON(requestParameters['updateUserRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => UserDetailsFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async usersUpdateUser(requestParameters: UsersUpdateUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserDetails> {
+        const response = await this.usersUpdateUserRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
