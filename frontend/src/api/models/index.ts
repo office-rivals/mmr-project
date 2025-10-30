@@ -3,6 +3,7 @@
 export * from './ActiveMatchDto';
 export * from './ActiveMatchSubmitRequest';
 export * from './ActiveMatchTeamDto';
+export * from './AssignRoleRequest';
 export * from './ClaimProfileRequest';
 export * from './CreatePersonalAccessTokenRequest';
 export * from './CreatePersonalAccessTokenResponse';
@@ -18,6 +19,8 @@ export * from './PendingMatchDto';
 export * from './PendingMatchStatus';
 export * from './PersonalAccessTokenResponse';
 export * from './PlayerHistoryDetails';
+export * from './PlayerRole';
+export * from './PlayerRoleResponse';
 export * from './ProfileDetails';
 export * from './SeasonDto';
 export * from './SubmitMatchV2Request';

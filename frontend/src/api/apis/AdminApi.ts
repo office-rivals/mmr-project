@@ -17,7 +17,6 @@ import * as runtime from '../runtime';
 
 export interface AdminRecalculateMatchesRequest {
     fromMatchId?: number;
-    xAPIKEY?: string;
 }
 
 /**
@@ -35,10 +34,6 @@ export class AdminApi extends runtime.BaseAPI {
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
-
-        if (requestParameters['xAPIKEY'] != null) {
-            headerParameters['X-API-KEY'] = String(requestParameters['xAPIKEY']);
-        }
 
         const response = await this.request({
             path: `/api/v1/admin/recalculate`,
