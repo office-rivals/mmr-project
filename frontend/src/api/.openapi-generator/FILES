@@ -34,6 +34,7 @@ models/ProfileDetails.ts
 models/SeasonDto.ts
 models/SubmitMatchV2Request.ts
 models/TimeStatisticsEntry.ts
+models/UpdateUserRequest.ts
 models/UserDetails.ts
 models/index.ts
 runtime.ts

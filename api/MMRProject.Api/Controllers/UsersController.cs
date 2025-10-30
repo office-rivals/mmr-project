@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MMRProject.Api.Authorization;
 using MMRProject.Api.DTOs;
 using MMRProject.Api.Mappers;
 using MMRProject.Api.Services;
@@ -40,6 +42,19 @@ public class UsersController(IUserService userService) : ControllerBase
             return NotFound("User not found");
         }
 
+        return UserMapper.MapUserToUserDetails(user);
+    }
+
+    [HttpPatch("{userId:long}")]
+    [Authorize(Policy = AuthorizationPolicies.RequireOwnerRole)]
+    public async Task<ActionResult<UserDetails>> UpdateUser(long userId, [FromBody, Required] UpdateUserRequest request)
+    {
+        if (request.Name is null && request.DisplayName is null)
+        {
+            return BadRequest("At least one field (Name or DisplayName) must be provided");
+        }
+
+        var user = await userService.UpdateUserAsync(userId, request.Name, request.DisplayName);
         return UserMapper.MapUserToUserDetails(user);
     }
 }

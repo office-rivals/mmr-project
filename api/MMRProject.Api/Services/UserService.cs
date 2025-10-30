@@ -13,6 +13,7 @@ public interface IUserService
     Task<Player?> GetUserAsync(long userId);
     Task<Player?> GetCurrentAuthenticatedUserAsync();
     Task<Player> ClaimUserForCurrentAuthenticatedUserAsync(long userId);
+    Task<Player> UpdateUserAsync(long userId, string? name, string? displayName);
     Task<(PlayerHistory history, long seasonId)?> LatestPlayerHistoryAsync(long userId);
     Task<List<(PlayerHistory history, long seasonId)>> LatestPlayerHistoriesAsync(List<long> userIds);
 }
@@ -44,6 +45,30 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
             UpdatedAt = DateTime.UtcNow
         };
         dbContext.Players.Add(user);
+        await dbContext.SaveChangesAsync();
+        return user;
+    }
+
+    public async Task<Player> UpdateUserAsync(long userId, string? name, string? displayName)
+    {
+        var user = await dbContext.Players.FindAsync(userId);
+        if (user is null)
+        {
+            throw new InvalidArgumentException("User not found");
+        }
+
+        if (name is not null)
+        {
+            user.Name = name;
+        }
+
+        if (displayName is not null)
+        {
+            user.DisplayName = displayName;
+        }
+
+        user.UpdatedAt = DateTime.UtcNow;
+
         await dbContext.SaveChangesAsync();
         return user;
     }

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { LayoutData } from './$types';
 	import { page } from '$app/stores';
-	import { LayoutDashboard, ClipboardList, Shield, ArrowLeft } from 'lucide-svelte';
+	import { LayoutDashboard, ClipboardList, Users, ArrowLeft } from 'lucide-svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import '../../app.pcss';
 
@@ -14,7 +14,7 @@
 	];
 
 	if (userRole === 'Owner') {
-		navItems.push({ href: '/admin/roles', label: 'Role Management', icon: Shield });
+		navItems.push({ href: '/admin/roles', label: 'User Management', icon: Users });
 	}
 
 	const isActive = (href: string) => {
