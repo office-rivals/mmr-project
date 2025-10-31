@@ -26,6 +26,14 @@ public class Player
 
     public DateTime? MigratedAt { get; set; }
 
+    public PlayerRole Role { get; set; } = PlayerRole.User;
+
+    public long? RoleAssignedById { get; set; }
+
+    public DateTime? RoleAssignedAt { get; set; }
+
+    public virtual Player? RoleAssignedBy { get; set; }
+
     public virtual ICollection<PlayerHistory> PlayerHistories { get; set; } = new List<PlayerHistory>();
 
     public virtual ICollection<Team> TeamPlayerOnes { get; set; } = new List<Team>();

@@ -270,6 +270,15 @@ namespace MMRProject.Api.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("name");
 
+                    b.Property<int>("Role")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("RoleAssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("RoleAssignedById")
+                        .HasColumnType("bigint");
+
                     b.Property<decimal?>("Sigma")
                         .HasColumnType("numeric")
                         .HasColumnName("sigma");
@@ -279,6 +288,8 @@ namespace MMRProject.Api.Data.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RoleAssignedById");
 
                     b.HasIndex(new[] { "DeletedAt" }, "idx_players_deleted_at");
 
@@ -545,6 +556,15 @@ namespace MMRProject.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.Player", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.Player", "RoleAssignedBy")
+                        .WithMany()
+                        .HasForeignKey("RoleAssignedById");
+
+                    b.Navigation("RoleAssignedBy");
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.PlayerHistory", b =>

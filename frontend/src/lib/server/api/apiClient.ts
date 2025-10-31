@@ -1,9 +1,11 @@
 import {
+  AdminApi,
   Configuration,
   MatchMakingApi,
   MMRV2Api,
   PersonalAccessTokensApi,
   ProfileApi,
+  RolesApi,
   SeasonsApi,
   StatisticsApi,
   UsersApi,
@@ -32,6 +34,7 @@ export const createConfiguration = (getToken: () => Promise<string | null>) =>
 export const createApiClient = (getToken: () => Promise<string | null>) => {
   const configuration = createConfiguration(getToken);
   return {
+    adminApi: new AdminApi(configuration),
     mmrApi: new MMRV2Api(configuration),
     profileApi: new ProfileApi(configuration),
     statisticsApi: new StatisticsApi(configuration),
@@ -39,6 +42,7 @@ export const createApiClient = (getToken: () => Promise<string | null>) => {
     matchmakingApi: new MatchMakingApi(configuration),
     seasonsApi: new SeasonsApi(configuration),
     personalAccessTokensApi: new PersonalAccessTokensApi(configuration),
+    rolesApi: new RolesApi(configuration),
   };
 };
 

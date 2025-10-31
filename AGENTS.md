@@ -62,6 +62,10 @@ docker-compose up
 - API: JWT bearer token validation configured in `Program.cs` via `builder.AddAuth()`
 - Protected routes in frontend under `routes/(authed)/`
 - User context resolved via `IUserContextResolver` in API
+- **RBAC**: Three-tier role hierarchy (User, Moderator, Owner)
+  - Role checks in `routes/admin/+layout.server.ts` redirect unauthenticated users to `/`
+  - Admin routes accessible to Moderator and Owner roles
+  - Role management page restricted to Owner role only
 
 ### Frontend Architecture
 
@@ -69,9 +73,17 @@ docker-compose up
 - **API Client Generation**: TypeScript clients generated from API's OpenAPI spec using `openapi-generator-cli`
 - **API Client Creation**: `lib/server/api/apiClient.ts` creates typed API clients with automatic JWT token injection
 - **Route Structure**:
-  - `routes/(authed)/` - Protected routes requiring authentication
+  - `routes/(authed)/` - Protected routes requiring authentication with shared layout (navbar, queue indicator)
+  - `routes/admin/` - Admin panel routes (separate from authed group, uses dark mode)
   - `routes/login/` - Login page
 - **Auth Hooks**: `hooks.server.ts` sequence handles Clerk auth, auth guards, and API client injection into `event.locals`
+- **UI Components**:
+  - Component library: `bits-ui` for headless components + custom styled components in `lib/components/ui/`
+  - Icons: `lucide-svelte` for all icons
+  - Styling: TailwindCSS with HSL color variables for theming
+  - Dark mode: Applied via `dark` class on root element (admin UI uses dark mode)
+  - Reusable components: Button, Card, Input, Label, Table, Badge, Alert, etc.
+  - Admin UI: Icon-based sidebar navigation, stat cards, professional dark theme
 
 ### API Architecture
 
