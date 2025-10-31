@@ -10,8 +10,7 @@ namespace MMRProject.Api.Controllers;
 [Authorize(Policy = AuthorizationPolicies.RequireModeratorRole)]
 public class AdminController(
     ISeasonService seasonService,
-    IMatchesService matchesService,
-    ILogger<AdminController> logger
+    IMatchesService matchesService
 ) : ControllerBase
 {
     [HttpPost("recalculate")]

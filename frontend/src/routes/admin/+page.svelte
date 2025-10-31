@@ -2,7 +2,7 @@
 	import type { PageData } from './$types';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
-	import { Calendar, Activity, CheckCircle, Calculator, Shield } from 'lucide-svelte';
+	import { Calendar, Activity, CheckCircle, ClipboardList, Users, Shield } from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
 	const { currentSeason, userRole } = data;
@@ -67,14 +67,14 @@
 		</CardHeader>
 		<CardContent>
 			<div class="flex flex-wrap gap-3">
-				<Button href="/admin/calculations" class="gap-2">
-					<Calculator class="h-4 w-4" />
-					Recalculate MMR
+				<Button href="/admin/matches" class="gap-2">
+					<ClipboardList class="h-4 w-4" />
+					Match Management
 				</Button>
 				{#if userRole === 'Owner'}
-					<Button href="/admin/roles" variant="secondary" class="gap-2">
-						<Shield class="h-4 w-4" />
-						Manage Roles
+					<Button href="/admin/users" variant="secondary" class="gap-2">
+						<Users class="h-4 w-4" />
+						User Management
 					</Button>
 				{/if}
 			</div>
