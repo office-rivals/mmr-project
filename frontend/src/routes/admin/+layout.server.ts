@@ -14,7 +14,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   const roleResponse = await apiClient.rolesApi.rolesGetMyRole();
   const userRole = roleResponse.role;
 
-  if (userRole === 'User') {
+  if (!userRole || userRole === 'User') {
     error(403, {
       message: 'Access denied. Admin privileges required.',
     });

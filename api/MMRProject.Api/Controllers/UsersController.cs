@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MMRProject.Api.Authorization;
 using MMRProject.Api.DTOs;
+using MMRProject.Api.Exceptions;
 using MMRProject.Api.Mappers;
 using MMRProject.Api.Services;
 
@@ -49,12 +50,15 @@ public class UsersController(IUserService userService) : ControllerBase
     [Authorize(Policy = AuthorizationPolicies.RequireOwnerRole)]
     public async Task<ActionResult<UserDetails>> UpdateUser(long userId, [FromBody, Required] UpdateUserRequest request)
     {
-        if (request.Name is null && request.DisplayName is null)
+        try
         {
-            return BadRequest("At least one field (Name or DisplayName) must be provided");
-        }
+            var user = await userService.UpdateUserAsync(userId, request.Name, request.DisplayName);
 
-        var user = await userService.UpdateUserAsync(userId, request.Name, request.DisplayName);
-        return UserMapper.MapUserToUserDetails(user);
+            return UserMapper.MapUserToUserDetails(user);
+        }
+        catch (InvalidArgumentException exception)
+        {
+            return BadRequest(exception.Message);
+        }
     }
 }

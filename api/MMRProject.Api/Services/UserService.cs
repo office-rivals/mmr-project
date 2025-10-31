@@ -59,11 +59,19 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
 
         if (name is not null)
         {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new InvalidArgumentException($"{nameof(name)} cannot be empty or whitespace");
+            }
             user.Name = name;
         }
 
         if (displayName is not null)
         {
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                throw new InvalidArgumentException($"{nameof(displayName)} cannot be empty or whitespace");
+            }
             user.DisplayName = displayName;
         }
 

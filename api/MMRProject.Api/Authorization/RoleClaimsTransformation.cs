@@ -28,9 +28,6 @@ public class RoleClaimsTransformation : IClaimsTransformation
         if (principal.Identity?.IsAuthenticated != true)
             return principal;
 
-        if (principal.FindFirst("player_role") != null)
-            return principal;
-
         var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? principal.FindFirst("sub")?.Value;
 
@@ -59,8 +56,17 @@ public class RoleClaimsTransformation : IClaimsTransformation
             }
         }
 
-        var identity = (ClaimsIdentity)principal.Identity;
-        identity.AddClaim(new Claim("player_role", role.ToString()));
+        var identity = principal.Identity as ClaimsIdentity;
+        if (identity != null)
+        {
+            var existingRoleClaims = identity.FindAll("player_role").ToList();
+            foreach (var claim in existingRoleClaims)
+            {
+                identity.RemoveClaim(claim);
+            }
+
+            identity.AddClaim(new Claim("player_role", role.ToString()));
+        }
 
         return principal;
     }
