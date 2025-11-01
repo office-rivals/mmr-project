@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Data;
 using MMRProject.Api.DTOs;
@@ -13,78 +14,130 @@ public interface IStatisticsService
     Task<IEnumerable<TimeStatisticsEntry>> GetTimeDistributionAsync(long seasonId);
 }
 
-public class StatisticsService(ApiDbContext dbContext, IUserService userService) : IStatisticsService
+public class StatisticsService(ApiDbContext dbContext, ILogger<StatisticsService> logger) : IStatisticsService
 {
     public async Task<IEnumerable<LeaderboardEntry>> GetLeaderboardAsync(long seasonId)
     {
-        var sql = """
-                      WITH MatchResults AS (
-                          SELECT
-                              u.Id AS UserId,
-                              u.Name,
-                              m.Id AS MatchId,
-                              CASE
-                                  WHEN t.Winner = true THEN 1
-                                  ELSE 0
-                              END AS IsWin,
-                              ROW_NUMBER() OVER (PARTITION BY u.Id ORDER BY m.Id DESC) AS RowNum
-                          FROM "Players" u
-                          LEFT JOIN teams t ON u.Id = t.player_one_id OR u.Id = t.player_two_id
-                          LEFT JOIN matches m ON t.Id = m.team_one_id OR t.Id = m.team_two_id
-                          WHERE m.season_id = {0}
-                      ),
-                      Streaks AS (
-                          SELECT
-                              UserId,
-                              Name,
-                              IsWin,
-                              RowNum,
-                              ROW_NUMBER() OVER (PARTITION BY UserId ORDER BY RowNum) -
-                              ROW_NUMBER() OVER (PARTITION BY UserId, IsWin ORDER BY RowNum) AS StreakGroup
-                          FROM MatchResults
-                      ),
-                      CurrentStreak AS (
-                          SELECT
-                              UserId,
-                              Name,
-                              COUNT(*) AS StreakLength,
-                              IsWin
-                          FROM Streaks
-                          WHERE StreakGroup = (
-                              SELECT StreakGroup
-                              FROM Streaks
-                              WHERE RowNum = 1 AND UserId = Streaks.UserId
-                              LIMIT 1
-                          )
-                          GROUP BY UserId, Name, IsWin
-                      )
-                      SELECT
-                          u.Id AS UserId,
-                          u.Name,
-                          SUM(CASE WHEN t.Winner = true AND m.season_id = {0} THEN 1 ELSE 0 END) AS Wins,
-                          SUM(CASE WHEN t.Winner = false AND m.season_id = {0} THEN 1 ELSE 0 END) AS Loses,
-                          COALESCE(cs.StreakLength, 0) AS StreakLength,
-                          cs.IsWin AS StreakTypeIsWin,
-                          (
-                              SELECT ph.Mmr
-                              FROM player_histories ph
-                              LEFT JOIN matches m ON ph.match_id = m.id
-                              WHERE ph.player_id = u.id AND m.season_id = {0}
-                              ORDER BY ph.match_id DESC
-                              LIMIT 1
-                          ) AS MMR
-                      FROM "Players" u
-                      LEFT JOIN teams t ON u.Id = t.player_one_id OR u.Id = t.player_two_id
-                      LEFT JOIN matches m ON t.Id = m.team_one_id OR t.Id = m.team_two_id
-                      LEFT JOIN CurrentStreak cs ON u.Id = cs.UserId
-                      GROUP BY u.Id, u.Name, cs.StreakLength, cs.IsWin
-                      HAVING SUM(CASE WHEN t.Winner = true AND m.season_id = {0} THEN 1 ELSE 0 END) +
-                             SUM(CASE WHEN t.Winner = false AND m.season_id = {0} THEN 1 ELSE 0 END) > 0
-                  """;
+        var stopwatch = Stopwatch.StartNew();
+
+        const string sql = """
+                               WITH SeasonMatches AS (
+                                   SELECT id, team_one_id, team_two_id
+                                   FROM matches
+                                   WHERE season_id = {0}
+                                     AND deleted_at IS NULL
+                               ),
+                               TeamOnePlayerMatches AS (
+                                   SELECT
+                                       t.player_one_id AS player_id,
+                                       sm.id AS match_id,
+                                       t.winner AS is_win
+                                   FROM SeasonMatches sm
+                                   INNER JOIN teams t ON sm.team_one_id = t.id
+                                   WHERE t.player_one_id IS NOT NULL
+                                     AND t.deleted_at IS NULL
+
+                                   UNION ALL
+
+                                   SELECT
+                                       t.player_two_id AS player_id,
+                                       sm.id AS match_id,
+                                       t.winner AS is_win
+                                   FROM SeasonMatches sm
+                                   INNER JOIN teams t ON sm.team_one_id = t.id
+                                   WHERE t.player_two_id IS NOT NULL
+                                     AND t.deleted_at IS NULL
+                               ),
+                               TeamTwoPlayerMatches AS (
+                                   SELECT
+                                       t.player_one_id AS player_id,
+                                       sm.id AS match_id,
+                                       t.winner AS is_win
+                                   FROM SeasonMatches sm
+                                   INNER JOIN teams t ON sm.team_two_id = t.id
+                                   WHERE t.player_one_id IS NOT NULL
+                                     AND t.deleted_at IS NULL
+
+                                   UNION ALL
+
+                                   SELECT
+                                       t.player_two_id AS player_id,
+                                       sm.id AS match_id,
+                                       t.winner AS is_win
+                                   FROM SeasonMatches sm
+                                   INNER JOIN teams t ON sm.team_two_id = t.id
+                                   WHERE t.player_two_id IS NOT NULL
+                                     AND t.deleted_at IS NULL
+                               ),
+                               AllPlayerMatches AS (
+                                   SELECT * FROM TeamOnePlayerMatches
+                                   UNION ALL
+                                   SELECT * FROM TeamTwoPlayerMatches
+                               ),
+                               LatestPlayerMMR AS (
+                                   SELECT DISTINCT ON (ph.player_id)
+                                       ph.player_id,
+                                       ph.mmr
+                                   FROM player_histories ph
+                                   WHERE ph.match_id IN (SELECT id FROM SeasonMatches)
+                                     AND ph.deleted_at IS NULL
+                                   ORDER BY ph.player_id, ph.match_id DESC
+                               ),
+                               OrderedPlayerMatches AS (
+                                   SELECT
+                                       player_id,
+                                       match_id,
+                                       CASE WHEN is_win THEN 1 ELSE 0 END AS is_win_int,
+                                       ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY match_id DESC) AS match_seq
+                                   FROM AllPlayerMatches
+                               ),
+                               StreakGroups AS (
+                                   SELECT
+                                       player_id,
+                                       is_win_int,
+                                       match_seq,
+                                       match_seq - ROW_NUMBER() OVER (PARTITION BY player_id, is_win_int ORDER BY match_seq) AS streak_group_id
+                                   FROM OrderedPlayerMatches
+                               ),
+                               CurrentStreaks AS (
+                                   SELECT
+                                       player_id,
+                                       is_win_int,
+                                       COUNT(*) AS streak_length
+                                   FROM StreakGroups
+                                   WHERE streak_group_id = (
+                                       SELECT streak_group_id
+                                       FROM StreakGroups sg2
+                                       WHERE sg2.player_id = StreakGroups.player_id
+                                         AND sg2.match_seq = 1
+                                       LIMIT 1
+                                   )
+                                   GROUP BY player_id, is_win_int
+                               )
+                               SELECT
+                                   p.id AS UserId,
+                                   p.name AS Name,
+                                   COUNT(CASE WHEN apm.is_win THEN 1 END)::int AS Wins,
+                                   COUNT(CASE WHEN NOT apm.is_win THEN 1 END)::int AS Loses,
+                                   COALESCE(cs.streak_length, 0)::int AS StreakLength,
+                                   COALESCE(cs.is_win_int, 0)::int AS StreakTypeIsWin,
+                                   lpm.mmr AS MMR
+                               FROM "Players" p
+                               INNER JOIN AllPlayerMatches apm ON p.id = apm.player_id
+                               LEFT JOIN LatestPlayerMMR lpm ON p.id = lpm.player_id
+                               LEFT JOIN CurrentStreaks cs ON p.id = cs.player_id
+                               WHERE p.deleted_at IS NULL
+                               GROUP BY p.id, p.name, cs.streak_length, cs.is_win_int, lpm.mmr
+                               ORDER BY lpm.mmr DESC NULLS LAST
+                           """;
 
         var leaderboardEntries = await dbContext.Database
             .SqlQueryRaw<LeaderboardQuery>(sql, seasonId)
             .ToListAsync();
+
+        stopwatch.Stop();
+        logger.LogInformation("Leaderboard query for season {SeasonId} took {ElapsedMs}ms", seasonId,
+            stopwatch.ElapsedMilliseconds);
 
         return leaderboardEntries
             .Select(x => new LeaderboardEntry
@@ -97,41 +150,6 @@ public class StatisticsService(ApiDbContext dbContext, IUserService userService)
                 LosingStreak = x.StreakTypeIsWin == 0 ? x.StreakLength : 0,
                 MMR = x.Wins + x.Loses >= 10 ? x.MMR : null
             });
-    }
-
-    private sealed record WinOrLoss(int Count, bool IsWin);
-
-    private sealed class TeamCounts
-    {
-        public int Wins { get; set; }
-        public int Losses { get; set; }
-        public int WinningStreak { get; set; }
-        public int LosingStreak { get; set; }
-    }
-
-    private static (int Streak, bool isWinning) CalculateStreak(List<WinOrLoss> winOrLosses)
-    {
-        if (winOrLosses.Count == 0)
-        {
-            return (0, true);
-        }
-
-        var firstWinOrLoss = winOrLosses.First();
-        var currentStreak = firstWinOrLoss.Count;
-        var isWinning = firstWinOrLoss.IsWin;
-        foreach (var winOrLoss in winOrLosses.Skip(1))
-        {
-            if (winOrLoss.IsWin == isWinning)
-            {
-                currentStreak += winOrLoss.Count;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        return (currentStreak, isWinning);
     }
 
     public async Task<IEnumerable<PlayerHistoryDetails>> GetPlayerHistoryAsync(long seasonId, long? userId)
