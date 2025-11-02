@@ -2,6 +2,7 @@
   import * as Card from '$lib/components/ui/card';
   import * as Table from '$lib/components/ui/table';
   import { SHOW_STREAK_THRESHOLD } from '$lib/constants';
+  import { cn } from '$lib/utils';
   import type { PlayerHistoryDetails, UserDetails } from '../../../api';
   import Sparkline from '../ui/sparkline/sparkline.svelte';
   import type { RankedLeaderboardEntry } from './leader-board-entry';
@@ -11,9 +12,11 @@
     users: UserDetails[] | null | undefined;
     onSelectedUser: (user: UserDetails) => void;
     statisticsPromise: Promise<PlayerHistoryDetails[]> | undefined;
+    currentUserId: number | undefined;
   }
 
-  let { data, users, onSelectedUser, statisticsPromise }: Props = $props();
+  let { data, users, onSelectedUser, statisticsPromise, currentUserId }: Props =
+    $props();
 </script>
 
 <Card.Root>
@@ -35,12 +38,20 @@
         </Table.Row>
       </Table.Header>
       <Table.Body>
-        {#each data as { userId, loses, name, wins, mmr, winningStreak, losingStreak, rank }}
+        {#each data as { userId, loses, name, wins, mmr, winningStreak, losingStreak, rank }, index}
+          {#if mmr == null && (index === 0 || data[index - 1]?.mmr != null)}
+            <Table.Row class="">
+              <Table.Cell colspan={5} class="text-center">Unranked</Table.Cell>
+            </Table.Row>
+          {/if}
+
           {@const userDisplayName = users?.find(
             (user) => user.userId == userId
           )?.displayName}
           <Table.Row
-            class="cursor-pointer"
+            class={cn('cursor-pointer', {
+              'text-primary': currentUserId === userId,
+            })}
             tabindex={0}
             onclick={() => {
               const user = users?.find((user) => user.userId == userId);
@@ -49,7 +60,9 @@
               }
             }}
           >
-            <Table.Cell class="max-w-[3ch] font-bold">{rank}</Table.Cell>
+            <Table.Cell class="max-w-[3ch] font-bold"
+              >{mmr != null ? rank : '•'}</Table.Cell
+            >
             <Table.Cell class="max-w-[230px]">
               <div class="flex flex-col items-start">
                 {#if userDisplayName != null}
@@ -75,7 +88,8 @@
                 {loses}
                 {#if losingStreak && losingStreak >= SHOW_STREAK_THRESHOLD}
                   <span class="text-nowrap text-xs" title="Losing streak">
-                    {losingStreak >= 7 ? '⛈️' : '🌧️'} <span class="hidden sm:inline">{losingStreak}</span>
+                    {losingStreak >= 7 ? '⛈️' : '🌧️'}
+                    <span class="hidden sm:inline">{losingStreak}</span>
                   </span>
                 {/if}
               </div>
