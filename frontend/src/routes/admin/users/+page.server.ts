@@ -1,9 +1,10 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { PlayerRole } from '../../../api';
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
   const parentData = await parent();
-  if (parentData.userRole !== 'Owner' && parentData.userRole !== 'Moderator') {
+  if (parentData.userRole !== PlayerRole.Owner && parentData.userRole !== PlayerRole.Moderator) {
     error(403, 'Only moderators and owners can manage users');
   }
 
@@ -57,8 +58,8 @@ export const actions = {
 
     // Validate role
     if (roleChanged) {
-      const validRoles = ['User', 'Moderator', 'Owner'];
-      if (!validRoles.includes(role)) {
+      const validRoles = Object.values(PlayerRole);
+      if (!validRoles.includes(role as PlayerRole)) {
         return fail(400, {
           success: false,
           message: `Invalid role. Must be one of: ${validRoles.join(', ')}`,
@@ -81,7 +82,7 @@ export const actions = {
             ? displayName || undefined
             : undefined,
           role: roleChanged
-            ? (role as 'User' | 'Moderator' | 'Owner')
+            ? (role as PlayerRole)
             : undefined,
         },
       });

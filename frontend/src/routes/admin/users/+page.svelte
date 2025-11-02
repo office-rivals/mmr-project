@@ -28,7 +28,8 @@
     Search,
     Users,
   } from 'lucide-svelte';
-  import type { AdminUserDetailsResponse, PlayerRole } from '../../../api';
+  import { PlayerRole } from '../../../api';
+  import type { AdminUserDetailsResponse } from '../../../api';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -37,15 +38,19 @@
   let filterText = $state('');
   let editingUser = $state<AdminUserDetailsResponse | null>(null);
   let dialogOpen = $state(false);
-  let editForm = $state({
+  let editForm = $state<{
+    name: string;
+    displayName: string;
+    role: PlayerRole;
+  }>({
     name: '',
     displayName: '',
-    role: 'User' as PlayerRole,
+    role: PlayerRole.User,
   });
 
   const getRoleBadgeVariant = (role: PlayerRole) => {
-    if (role === 'Owner') return 'owner';
-    if (role === 'Moderator') return 'moderator';
+    if (role === PlayerRole.Owner) return 'owner';
+    if (role === PlayerRole.Moderator) return 'moderator';
     return 'user';
   };
 
@@ -72,7 +77,7 @@
     editForm = {
       name: user.name || '',
       displayName: user.displayName || '',
-      role: user.role || 'User',
+      role: user.role || PlayerRole.User,
     };
     dialogOpen = true;
   }
@@ -181,8 +186,8 @@
               <TableCell class="font-medium">{user.name}</TableCell>
               <TableCell>{user.displayName || '-'}</TableCell>
               <TableCell>
-                <Badge variant={getRoleBadgeVariant(user.role || 'User')}
-                  >{user.role || 'User'}</Badge
+                <Badge variant={getRoleBadgeVariant(user.role || PlayerRole.User)}
+                  >{user.role || PlayerRole.User}</Badge
                 >
               </TableCell>
               <TableCell class="text-right">
@@ -209,7 +214,7 @@
       <Dialog.Header>
         <Dialog.Title>Edit User</Dialog.Title>
         <Dialog.Description>
-          {#if data.userRole === 'Moderator'}
+          {#if data.userRole === PlayerRole.Moderator}
             Update user name and display name.
           {:else}
             Update user details and role. All fields are required.
@@ -228,7 +233,7 @@
         <input
           type="hidden"
           name="originalRole"
-          value={editingUser.role || 'User'}
+          value={editingUser.role || PlayerRole.User}
         />
 
         <div class="space-y-4 py-4">
@@ -255,7 +260,7 @@
 
           <div class="space-y-2">
             <Label for="edit-role">Role</Label>
-            {#if data.userRole === 'Moderator'}
+            {#if data.userRole === PlayerRole.Moderator}
               <select
                 id="edit-role"
                 name="role"
@@ -264,9 +269,9 @@
                 disabled
                 required
               >
-                <option value="User">User</option>
-                <option value="Moderator">Moderator</option>
-                <option value="Owner">Owner</option>
+                <option value={PlayerRole.User}>User</option>
+                <option value={PlayerRole.Moderator}>Moderator</option>
+                <option value={PlayerRole.Owner}>Owner</option>
               </select>
               <p class="text-muted-foreground text-xs">Only Owners can change user roles</p>
             {:else}
@@ -277,9 +282,9 @@
                 class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                 required
               >
-                <option value="User">User</option>
-                <option value="Moderator">Moderator</option>
-                <option value="Owner">Owner</option>
+                <option value={PlayerRole.User}>User</option>
+                <option value={PlayerRole.Moderator}>Moderator</option>
+                <option value={PlayerRole.Owner}>Owner</option>
               </select>
             {/if}
           </div>

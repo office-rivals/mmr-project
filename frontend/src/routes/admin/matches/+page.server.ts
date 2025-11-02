@@ -45,7 +45,7 @@ export const actions = {
     }
 
     try {
-      await apiClient.adminApi.adminRecalculateMatches({
+      await apiClient.adminMmrApi.adminMMRRecalculateMMR({
         fromMatchId,
       });
       return {

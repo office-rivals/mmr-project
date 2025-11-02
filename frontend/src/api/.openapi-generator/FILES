@@ -1,4 +1,4 @@
-apis/AdminApi.ts
+apis/AdminMMRApi.ts
 apis/AdminUsersApi.ts
 apis/MMRV2Api.ts
 apis/MatchMakingApi.ts

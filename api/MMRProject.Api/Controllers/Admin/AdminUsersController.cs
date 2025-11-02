@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using MMRProject.Api.Authorization;
 using MMRProject.Api.DTOs;
 using MMRProject.Api.DTOs.Admin;
-using MMRProject.Api.Exceptions;
 using MMRProject.Api.Services;
 
 namespace MMRProject.Api.Controllers.Admin;

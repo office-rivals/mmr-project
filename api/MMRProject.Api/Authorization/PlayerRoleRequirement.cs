@@ -3,12 +3,7 @@ using MMRProject.Api.Data.Entities;
 
 namespace MMRProject.Api.Authorization;
 
-public class PlayerRoleRequirement : IAuthorizationRequirement
+public class PlayerRoleRequirement(PlayerRole minimumRole) : IAuthorizationRequirement
 {
-    public PlayerRole MinimumRole { get; }
-
-    public PlayerRoleRequirement(PlayerRole minimumRole)
-    {
-        MinimumRole = minimumRole;
-    }
+    public PlayerRole MinimumRole { get; } = minimumRole;
 }

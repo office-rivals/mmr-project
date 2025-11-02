@@ -3,6 +3,7 @@
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Calendar, Activity, CheckCircle, ClipboardList, Users, Shield } from 'lucide-svelte';
+	import { PlayerRole } from '../../api';
 
 	let { data }: { data: PageData } = $props();
 	const { currentSeason, userRole } = data;
@@ -71,7 +72,7 @@
 					<ClipboardList class="h-4 w-4" />
 					Match Management
 				</Button>
-				{#if userRole === 'Owner'}
+				{#if userRole === PlayerRole.Owner}
 					<Button href="/admin/users" variant="secondary" class="gap-2">
 						<Users class="h-4 w-4" />
 						User Management

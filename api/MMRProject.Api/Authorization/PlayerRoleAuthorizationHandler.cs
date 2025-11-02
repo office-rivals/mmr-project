@@ -11,13 +11,15 @@ public class PlayerRoleAuthorizationHandler : AuthorizationHandler<PlayerRoleReq
         PlayerRoleRequirement requirement)
     {
         var roleClaim = context.User.FindFirst("player_role");
-        if (roleClaim == null) return Task.CompletedTask;
-
-        if (!Enum.TryParse<PlayerRole>(roleClaim.Value, out var userRole))
+        if (roleClaim == null || !Enum.TryParse<PlayerRole>(roleClaim.Value, out var userRole))
+        {
             return Task.CompletedTask;
+        }
 
         if (userRole >= requirement.MinimumRole)
+        {
             context.Succeed(requirement);
+        }
 
         return Task.CompletedTask;
     }

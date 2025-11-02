@@ -9,6 +9,7 @@
   } from 'lucide-svelte';
   import '../../app.pcss';
   import type { LayoutData } from './$types';
+  import { PlayerRole } from '../../api';
 
   let { data, children }: { data: LayoutData; children: any } = $props();
   const { userRole } = data;
@@ -18,7 +19,7 @@
     { href: '/admin/matches', label: 'Match Management', icon: ClipboardList },
   ];
 
-  if (userRole === 'Owner' || userRole === 'Moderator') {
+  if (userRole === PlayerRole.Owner || userRole === PlayerRole.Moderator) {
     navItems.push({
       href: '/admin/users',
       label: 'User Management',
@@ -31,8 +32,8 @@
   };
 
   const getRoleBadgeVariant = (role: string) => {
-    if (role === 'Owner') return 'owner';
-    if (role === 'Moderator') return 'moderator';
+    if (role === PlayerRole.Owner) return 'owner';
+    if (role === PlayerRole.Moderator) return 'moderator';
     return 'user';
   };
 </script>
@@ -64,8 +65,8 @@
     <div class="border-border space-y-4 border-t p-4">
       <div class="flex items-center justify-between">
         <span class="text-muted-foreground text-sm">Role:</span>
-        <Badge variant={getRoleBadgeVariant(userRole || 'User')}
-          >{userRole || 'User'}</Badge
+        <Badge variant={getRoleBadgeVariant(userRole || PlayerRole.User)}
+          >{userRole || PlayerRole.User}</Badge
         >
       </div>
       <a

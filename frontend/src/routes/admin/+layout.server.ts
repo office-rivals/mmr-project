@@ -1,5 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
+import { PlayerRole } from '../../api';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
   // Check authentication first
@@ -14,7 +15,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   const roleResponse = await apiClient.rolesApi.rolesGetMyRole();
   const userRole = roleResponse.role;
 
-  if (!userRole || userRole === 'User') {
+  if (!userRole || userRole === PlayerRole.User) {
     error(403, {
       message: 'Access denied. Admin privileges required.',
     });

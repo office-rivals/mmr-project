@@ -7,22 +7,12 @@ using MMRProject.Api.Data.Entities;
 
 namespace MMRProject.Api.Authorization;
 
-public class RoleClaimsTransformation : IClaimsTransformation
+public class RoleClaimsTransformation(
+    ApiDbContext context,
+    IMemoryCache cache,
+    ILogger<RoleClaimsTransformation> logger)
+    : IClaimsTransformation
 {
-    private readonly ApiDbContext _context;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<RoleClaimsTransformation> _logger;
-
-    public RoleClaimsTransformation(
-        ApiDbContext context,
-        IMemoryCache cache,
-        ILogger<RoleClaimsTransformation> logger)
-    {
-        _context = context;
-        _cache = cache;
-        _logger = logger;
-    }
-
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
     {
         if (principal.Identity?.IsAuthenticated != true)
@@ -36,9 +26,9 @@ public class RoleClaimsTransformation : IClaimsTransformation
 
         var cacheKey = $"player_role:{userId}";
 
-        if (!_cache.TryGetValue(cacheKey, out PlayerRole role))
+        if (!cache.TryGetValue(cacheKey, out PlayerRole role))
         {
-            var player = await _context.Players
+            var player = await context.Players
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.IdentityUserId == userId);
 
@@ -47,8 +37,8 @@ public class RoleClaimsTransformation : IClaimsTransformation
                 role = player.Role;
                 var cacheOptions = new MemoryCacheEntryOptions()
                     .SetSlidingExpiration(TimeSpan.FromMinutes(5));
-                _cache.Set(cacheKey, role, cacheOptions);
-                _logger.LogDebug("Cached role {Role} for user {UserId}", role, userId);
+                cache.Set(cacheKey, role, cacheOptions);
+                logger.LogDebug("Cached role {Role} for user {UserId}", role, userId);
             }
             else
             {
@@ -56,8 +46,7 @@ public class RoleClaimsTransformation : IClaimsTransformation
             }
         }
 
-        var identity = principal.Identity as ClaimsIdentity;
-        if (identity != null)
+        if (principal.Identity is ClaimsIdentity identity)
         {
             var existingRoleClaims = identity.FindAll("player_role").ToList();
             foreach (var claim in existingRoleClaims)
