@@ -28,17 +28,14 @@
     Search,
     Users,
   } from 'lucide-svelte';
-  import type { PlayerRole, UserDetails } from '../../../api';
+  import type { AdminUserDetailsResponse, PlayerRole } from '../../../api';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
-  let users = $state<UserDetails[]>(data.users);
-  let userRoles = $state<
-    Record<number, { role: PlayerRole; loading: boolean }>
-  >({});
+  let users = $state<AdminUserDetailsResponse[]>(data.users);
   let filterText = $state('');
-  let editingUser = $state<UserDetails | null>(null);
+  let editingUser = $state<AdminUserDetailsResponse | null>(null);
   let dialogOpen = $state(false);
   let editForm = $state({
     name: '',
@@ -53,51 +50,29 @@
   };
 
   const filteredUsers = $derived(
-    users.filter((user) => {
-      if (!filterText) return true;
-      const searchTerm = filterText.toLowerCase();
-      return (
-        user.name?.toLowerCase().includes(searchTerm) ||
-        user.displayName?.toLowerCase().includes(searchTerm)
-      );
-    })
+    users
+      .filter((user) => {
+        if (!filterText) return true;
+        const searchTerm = filterText.toLowerCase();
+        return (
+          user.name?.toLowerCase().includes(searchTerm) ||
+          user.displayName?.toLowerCase().includes(searchTerm)
+        );
+      })
+      .sort((a, b) => a.name!.localeCompare(b.name!))
   );
-
-  async function loadUserRole(userId: number) {
-    try {
-      const response = await fetch(`/api/roles/${userId}`);
-      if (response.ok) {
-        const data = await response.json();
-        userRoles[userId] = { role: data.role || 'User', loading: false };
-      } else {
-        userRoles[userId] = { role: 'User', loading: false };
-      }
-    } catch {
-      userRoles[userId] = { role: 'User', loading: false };
-    }
-  }
 
   // Sync users when page data changes
   $effect(() => {
     users = data.users;
   });
 
-  // Load roles for all users
-  $effect(() => {
-    users.forEach((user) => {
-      if (!userRoles[user.userId]) {
-        userRoles[user.userId] = { role: 'User', loading: true };
-        loadUserRole(user.userId);
-      }
-    });
-  });
-
-  function openEditDialog(user: UserDetails) {
+  function openEditDialog(user: AdminUserDetailsResponse) {
     editingUser = user;
     editForm = {
-      name: user.name,
+      name: user.name || '',
       displayName: user.displayName || '',
-      role: userRoles[user.userId]?.role || 'User',
+      role: user.role || 'User',
     };
     dialogOpen = true;
   }
@@ -114,18 +89,16 @@
       if (result.type === 'success' && user != null) {
         // Update users array with new object to trigger reactivity
         users = users.map((u) => {
-          if (u.userId === user.userId) {
+          if (u.id === user.id) {
             return {
               ...u,
               name: editForm.name,
               displayName: editForm.displayName,
+              role: editForm.role,
             };
           }
           return u;
         });
-
-        // Update role
-        userRoles[user.userId] = { role: editForm.role, loading: false };
 
         dialogOpen = false;
         editingUser = null;
@@ -139,7 +112,7 @@
   <div>
     <h1 class="text-3xl font-bold tracking-tight">User Management</h1>
     <p class="text-muted-foreground">
-      Manage user details and roles. Only Owners can edit users.
+      Manage user details and roles. Moderators can edit names. Only Owners can change roles.
     </p>
   </div>
 
@@ -203,21 +176,14 @@
         </TableHeader>
         <TableBody>
           {#each filteredUsers as user}
-            {@const roleInfo = userRoles[user.userId]}
             <TableRow>
-              <TableCell class="font-mono text-sm">{user.userId}</TableCell>
+              <TableCell class="font-mono text-sm">{user.id}</TableCell>
               <TableCell class="font-medium">{user.name}</TableCell>
               <TableCell>{user.displayName || '-'}</TableCell>
               <TableCell>
-                {#if roleInfo?.loading}
-                  <span class="text-muted-foreground text-sm">Loading...</span>
-                {:else if roleInfo?.role}
-                  <Badge variant={getRoleBadgeVariant(roleInfo.role)}
-                    >{roleInfo.role}</Badge
-                  >
-                {:else}
-                  <Badge variant="user">User</Badge>
-                {/if}
+                <Badge variant={getRoleBadgeVariant(user.role || 'User')}
+                  >{user.role || 'User'}</Badge
+                >
               </TableCell>
               <TableCell class="text-right">
                 <Button
@@ -243,12 +209,16 @@
       <Dialog.Header>
         <Dialog.Title>Edit User</Dialog.Title>
         <Dialog.Description>
-          Update user details and role. All fields are required.
+          {#if data.userRole === 'Moderator'}
+            Update user name and display name.
+          {:else}
+            Update user details and role. All fields are required.
+          {/if}
         </Dialog.Description>
       </Dialog.Header>
 
       <form method="POST" action="?/updateUser" use:enhance={handleUpdateUser}>
-        <input type="hidden" name="userId" value={editingUser.userId} />
+        <input type="hidden" name="userId" value={editingUser.id} />
         <input type="hidden" name="originalName" value={editingUser.name} />
         <input
           type="hidden"
@@ -258,7 +228,7 @@
         <input
           type="hidden"
           name="originalRole"
-          value={userRoles[editingUser.userId]?.role || 'User'}
+          value={editingUser.role || 'User'}
         />
 
         <div class="space-y-4 py-4">
@@ -285,17 +255,33 @@
 
           <div class="space-y-2">
             <Label for="edit-role">Role</Label>
-            <select
-              id="edit-role"
-              name="role"
-              bind:value={editForm.role}
-              class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-              required
-            >
-              <option value="User">User</option>
-              <option value="Moderator">Moderator</option>
-              <option value="Owner">Owner</option>
-            </select>
+            {#if data.userRole === 'Moderator'}
+              <select
+                id="edit-role"
+                name="role"
+                bind:value={editForm.role}
+                class="border-input bg-muted ring-offset-background flex h-10 w-full rounded-md border px-3 py-2 text-sm opacity-60 cursor-not-allowed"
+                disabled
+                required
+              >
+                <option value="User">User</option>
+                <option value="Moderator">Moderator</option>
+                <option value="Owner">Owner</option>
+              </select>
+              <p class="text-muted-foreground text-xs">Only Owners can change user roles</p>
+            {:else}
+              <select
+                id="edit-role"
+                name="role"
+                bind:value={editForm.role}
+                class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                required
+              >
+                <option value="User">User</option>
+                <option value="Moderator">Moderator</option>
+                <option value="Owner">Owner</option>
+              </select>
+            {/if}
           </div>
         </div>
 

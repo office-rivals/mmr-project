@@ -72,6 +72,30 @@ export class AdminUsersApi extends runtime.BaseAPI {
 
     /**
      */
+    async adminUsersGetUsersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<AdminUserDetailsResponse>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/api/v1/admin/users`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(AdminUserDetailsResponseFromJSON));
+    }
+
+    /**
+     */
+    async adminUsersGetUsers(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AdminUserDetailsResponse>> {
+        const response = await this.adminUsersGetUsersRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
     async adminUsersUpdateUserRaw(requestParameters: AdminUsersUpdateUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminUserDetailsResponse>> {
         if (requestParameters['userId'] == null) {
             throw new runtime.RequiredError(

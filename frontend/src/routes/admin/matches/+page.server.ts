@@ -31,11 +31,22 @@ export const actions = {
   recalculate: async ({ request, locals }) => {
     const apiClient = locals.apiClient;
     const formData = await request.formData();
-    const fromMatchId = formData.get('fromMatchId');
+    const fromMatchIdRaw = formData.get('fromMatchId');
+
+    let fromMatchId: number | undefined = undefined;
+    if (fromMatchIdRaw && typeof fromMatchIdRaw === 'string') {
+      const trimmed = fromMatchIdRaw.trim();
+      if (trimmed.length > 0 && /^\d+$/.test(trimmed)) {
+        const parsed = parseInt(trimmed, 10);
+        if (Number.isInteger(parsed) && parsed > 0) {
+          fromMatchId = parsed;
+        }
+      }
+    }
 
     try {
       await apiClient.adminApi.adminRecalculateMatches({
-        fromMatchId: fromMatchId ? Number(fromMatchId) : undefined,
+        fromMatchId,
       });
       return {
         success: true,

@@ -18,7 +18,7 @@
     { href: '/admin/matches', label: 'Match Management', icon: ClipboardList },
   ];
 
-  if (userRole === 'Owner') {
+  if (userRole === 'Owner' || userRole === 'Moderator') {
     navItems.push({
       href: '/admin/users',
       label: 'User Management',

@@ -14,6 +14,28 @@ namespace MMRProject.Api.Controllers.Admin;
 [Authorize(Policy = AuthorizationPolicies.RequireModeratorRole)]
 public class AdminUsersController(IUserService userService) : ControllerBase
 {
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<AdminUserDetailsResponse>>> GetUsers()
+    {
+        var users = await userService.AllUsersAsync();
+        return Ok(users.Select(user => new AdminUserDetailsResponse
+        {
+            Id = user.Id,
+            IdentityUserId = user.IdentityUserId,
+            Email = user.Email,
+            Name = user.Name,
+            DisplayName = user.DisplayName,
+            Mmr = user.Mmr,
+            Sigma = user.Sigma,
+            Role = user.Role,
+            RoleAssignedById = user.RoleAssignedById,
+            RoleAssignedAt = user.RoleAssignedAt,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt,
+            DeletedAt = user.DeletedAt
+        }));
+    }
+
     [HttpGet("{userId:long}")]
     public async Task<ActionResult<AdminUserDetailsResponse>> GetUser(long userId)
     {

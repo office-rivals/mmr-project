@@ -3,15 +3,15 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
   const parentData = await parent();
-  if (parentData.userRole !== 'Owner') {
-    error(403, 'Only owners can manage roles');
+  if (parentData.userRole !== 'Owner' && parentData.userRole !== 'Moderator') {
+    error(403, 'Only moderators and owners can manage users');
   }
 
   const apiClient = locals.apiClient;
 
   try {
-    const users = await apiClient.usersApi.usersGetUsers();
-    return { users };
+    const users = await apiClient.adminUsersApi.adminUsersGetUsers();
+    return { users, userRole: parentData.userRole };
   } catch (err) {
     console.error('Failed to load users', err);
     throw error(500, 'Failed to load users');
@@ -21,6 +21,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 export const actions = {
   updateUser: async ({ request, locals }) => {
     const apiClient = locals.apiClient;
+
     const formData = await request.formData();
 
     const userId = Number(formData.get('userId'));
@@ -28,8 +29,15 @@ export const actions = {
     const displayName = formData.get('displayName') as string | null;
     const role = formData.get('role') as string;
     const originalName = formData.get('originalName') as string;
-    const originalDisplayName = formData.get('originalDisplayName') as string | null;
+    const originalDisplayName = formData.get('originalDisplayName') as
+      | string
+      | null;
     const originalRole = formData.get('originalRole') as string;
+
+    const nameChanged = name !== originalName;
+    const displayNameChanged =
+      (displayName || '') !== (originalDisplayName || '');
+    const roleChanged = role !== null && role !== originalRole;
 
     // Validate userId
     if (!userId || userId <= 0 || isNaN(userId)) {
@@ -48,17 +56,15 @@ export const actions = {
     }
 
     // Validate role
-    const validRoles = ['User', 'Moderator', 'Owner'];
-    if (!validRoles.includes(role)) {
-      return fail(400, {
-        success: false,
-        message: `Invalid role. Must be one of: ${validRoles.join(', ')}`,
-      });
+    if (roleChanged) {
+      const validRoles = ['User', 'Moderator', 'Owner'];
+      if (!validRoles.includes(role)) {
+        return fail(400, {
+          success: false,
+          message: `Invalid role. Must be one of: ${validRoles.join(', ')}`,
+        });
+      }
     }
-
-    const nameChanged = name !== originalName;
-    const displayNameChanged = (displayName || '') !== (originalDisplayName || '');
-    const roleChanged = role !== originalRole;
 
     // If nothing changed, return early
     if (!nameChanged && !displayNameChanged && !roleChanged) {
@@ -71,8 +77,12 @@ export const actions = {
         userId,
         updateUserRequest: {
           name: nameChanged ? name : undefined,
-          displayName: displayNameChanged ? (displayName || undefined) : undefined,
-          role: roleChanged ? (role as 'User' | 'Moderator' | 'Owner') : undefined,
+          displayName: displayNameChanged
+            ? displayName || undefined
+            : undefined,
+          role: roleChanged
+            ? (role as 'User' | 'Moderator' | 'Owner')
+            : undefined,
         },
       });
 
@@ -114,7 +124,8 @@ export const actions = {
       }
 
       // Generic error handling
-      const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+      const message =
+        err instanceof Error ? err.message : 'An unexpected error occurred';
       return fail(500, {
         success: false,
         message: `Failed to update user: ${message}`,

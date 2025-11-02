@@ -92,17 +92,14 @@ public class UserService(
                 throw new ForbiddenException("Only owners can assign roles");
             }
 
-            var assignerPlayer = await dbContext.Players
-                .FirstOrDefaultAsync(p => p.IdentityUserId == currentUserId);
-
             var oldRole = user.Role;
 
             logger.LogWarning(
                 "Role assignment: Player {PlayerId} ({Email}) from {OldRole} to {NewRole} by Owner {OwnerId} ({OwnerEmail})",
-                userId, user.Email, oldRole, role.Value, assignerPlayer?.Id, assignerPlayer?.Email);
+                userId, user.Email, oldRole, role.Value, currentUser.Id, currentUser.Email);
 
             user.Role = role.Value;
-            user.RoleAssignedById = assignerPlayer?.Id;
+            user.RoleAssignedById = currentUser.Id;
             user.RoleAssignedAt = DateTime.UtcNow;
 
             if (!string.IsNullOrEmpty(user.IdentityUserId))
