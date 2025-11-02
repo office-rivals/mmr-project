@@ -6,8 +6,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
   try {
     const apiClient = locals.apiClient;
-    const roleResponse = await apiClient.rolesApi.rolesGetPlayerRole({ playerId: userId });
-    return json({ role: roleResponse.role || 'User' });
+    const userDetails = await apiClient.adminUsersApi.adminUsersGetUser({ userId });
+    return json({ role: userDetails.role || 'User' });
   } catch {
     return json({ role: 'User' });
   }

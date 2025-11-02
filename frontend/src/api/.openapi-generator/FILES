@@ -1,4 +1,5 @@
 apis/AdminApi.ts
+apis/AdminUsersApi.ts
 apis/MMRV2Api.ts
 apis/MatchMakingApi.ts
 apis/PersonalAccessTokensApi.ts
@@ -12,7 +13,7 @@ index.ts
 models/ActiveMatchDto.ts
 models/ActiveMatchSubmitRequest.ts
 models/ActiveMatchTeamDto.ts
-models/AssignRoleRequest.ts
+models/AdminUserDetailsResponse.ts
 models/ClaimProfileRequest.ts
 models/CreatePersonalAccessTokenRequest.ts
 models/CreatePersonalAccessTokenResponse.ts

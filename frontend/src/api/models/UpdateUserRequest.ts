@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { PlayerRole } from './PlayerRole';
+import {
+    PlayerRoleFromJSON,
+    PlayerRoleFromJSONTyped,
+    PlayerRoleToJSON,
+} from './PlayerRole';
+
 /**
  * 
  * @export
@@ -31,6 +38,12 @@ export interface UpdateUserRequest {
      * @memberof UpdateUserRequest
      */
     displayName?: string;
+    /**
+     * 
+     * @type {PlayerRole}
+     * @memberof UpdateUserRequest
+     */
+    role?: PlayerRole;
 }
 
 /**
@@ -52,6 +65,7 @@ export function UpdateUserRequestFromJSONTyped(json: any, ignoreDiscriminator: b
         
         'name': json['name'] == null ? undefined : json['name'],
         'displayName': json['displayName'] == null ? undefined : json['displayName'],
+        'role': json['role'] == null ? undefined : PlayerRoleFromJSON(json['role']),
     };
 }
 
@@ -63,6 +77,7 @@ export function UpdateUserRequestToJSON(value?: UpdateUserRequest | null): any {
         
         'name': value['name'],
         'displayName': value['displayName'],
+        'role': PlayerRoleToJSON(value['role']),
     };
 }
 
