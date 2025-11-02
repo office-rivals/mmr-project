@@ -1,0 +1,79 @@
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using MMRProject.Api.Authorization;
+using MMRProject.Api.DTOs;
+using MMRProject.Api.DTOs.Admin;
+using MMRProject.Api.Exceptions;
+using MMRProject.Api.Services;
+
+namespace MMRProject.Api.Controllers.Admin;
+
+[ApiController]
+[Route("api/v1/admin/users")]
+[Authorize(Policy = AuthorizationPolicies.RequireModeratorRole)]
+public class AdminUsersController(IUserService userService) : ControllerBase
+{
+    [HttpGet("{userId:long}")]
+    public async Task<ActionResult<AdminUserDetailsResponse>> GetUser(long userId)
+    {
+        var user = await userService.GetUserAsync(userId);
+        if (user is null)
+        {
+            return NotFound($"User with ID {userId} not found");
+        }
+
+        return Ok(new AdminUserDetailsResponse
+        {
+            Id = user.Id,
+            IdentityUserId = user.IdentityUserId,
+            Email = user.Email,
+            Name = user.Name,
+            DisplayName = user.DisplayName,
+            Mmr = user.Mmr,
+            Sigma = user.Sigma,
+            Role = user.Role,
+            RoleAssignedById = user.RoleAssignedById,
+            RoleAssignedAt = user.RoleAssignedAt,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt,
+            DeletedAt = user.DeletedAt
+        });
+    }
+
+    [HttpPatch("{userId:long}")]
+    public async Task<ActionResult<AdminUserDetailsResponse>> UpdateUser(
+        long userId,
+        [FromBody, Required] UpdateUserRequest request)
+    {
+        try
+        {
+            var user = await userService.UpdateUserAsync(userId, request.Name, request.DisplayName, request.Role);
+
+            return Ok(new AdminUserDetailsResponse
+            {
+                Id = user.Id,
+                IdentityUserId = user.IdentityUserId,
+                Email = user.Email,
+                Name = user.Name,
+                DisplayName = user.DisplayName,
+                Mmr = user.Mmr,
+                Sigma = user.Sigma,
+                Role = user.Role,
+                RoleAssignedById = user.RoleAssignedById,
+                RoleAssignedAt = user.RoleAssignedAt,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt,
+                DeletedAt = user.DeletedAt
+            });
+        }
+        catch (InvalidArgumentException exception)
+        {
+            return BadRequest(exception.Message);
+        }
+        catch (ForbiddenException exception)
+        {
+            return Forbid(exception.Message);
+        }
+    }
+}

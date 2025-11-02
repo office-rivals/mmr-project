@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities;
 using MMRProject.Api.Exceptions;
@@ -13,12 +14,16 @@ public interface IUserService
     Task<Player?> GetUserAsync(long userId);
     Task<Player?> GetCurrentAuthenticatedUserAsync();
     Task<Player> ClaimUserForCurrentAuthenticatedUserAsync(long userId);
-    Task<Player> UpdateUserAsync(long userId, string? name, string? displayName);
+    Task<Player> UpdateUserAsync(long userId, string? name, string? displayName, PlayerRole? role = null);
     Task<(PlayerHistory history, long seasonId)?> LatestPlayerHistoryAsync(long userId);
     Task<List<(PlayerHistory history, long seasonId)>> LatestPlayerHistoriesAsync(List<long> userIds);
 }
 
-public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IUserContextResolver userContextResolver)
+public class UserService(
+    ILogger<UserService> logger,
+    ApiDbContext dbContext,
+    IUserContextResolver userContextResolver,
+    IMemoryCache cache)
     : IUserService
 {
     public async Task<List<Player>> AllUsersAsync(string? searchQuery = default)
@@ -49,7 +54,7 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
         return user;
     }
 
-    public async Task<Player> UpdateUserAsync(long userId, string? name, string? displayName)
+    public async Task<Player> UpdateUserAsync(long userId, string? name, string? displayName, PlayerRole? role = null)
     {
         var user = await dbContext.Players.FindAsync(userId);
         if (user is null)
@@ -73,6 +78,39 @@ public class UserService(ILogger<UserService> logger, ApiDbContext dbContext, IU
                 throw new InvalidArgumentException($"{nameof(displayName)} cannot be empty or whitespace");
             }
             user.DisplayName = displayName;
+        }
+
+        if (role.HasValue)
+        {
+            var currentUserId = userContextResolver.GetIdentityUserId();
+            var currentUser = await dbContext.Players
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.IdentityUserId == currentUserId);
+
+            if (currentUser?.Role != PlayerRole.Owner)
+            {
+                throw new ForbiddenException("Only owners can assign roles");
+            }
+
+            var assignerPlayer = await dbContext.Players
+                .FirstOrDefaultAsync(p => p.IdentityUserId == currentUserId);
+
+            var oldRole = user.Role;
+
+            logger.LogWarning(
+                "Role assignment: Player {PlayerId} ({Email}) from {OldRole} to {NewRole} by Owner {OwnerId} ({OwnerEmail})",
+                userId, user.Email, oldRole, role.Value, assignerPlayer?.Id, assignerPlayer?.Email);
+
+            user.Role = role.Value;
+            user.RoleAssignedById = assignerPlayer?.Id;
+            user.RoleAssignedAt = DateTime.UtcNow;
+
+            if (!string.IsNullOrEmpty(user.IdentityUserId))
+            {
+                var cacheKey = $"player_role:{user.IdentityUserId}";
+                cache.Remove(cacheKey);
+                logger.LogDebug("Invalidated role cache for user {IdentityUserId}", user.IdentityUserId);
+            }
         }
 
         user.UpdatedAt = DateTime.UtcNow;

@@ -1,9 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MMRProject.Api.Authorization;
 using MMRProject.Api.DTOs;
-using MMRProject.Api.Exceptions;
 using MMRProject.Api.Mappers;
 using MMRProject.Api.Services;
 
@@ -44,21 +41,5 @@ public class UsersController(IUserService userService) : ControllerBase
         }
 
         return UserMapper.MapUserToUserDetails(user);
-    }
-
-    [HttpPatch("{userId:long}")]
-    [Authorize(Policy = AuthorizationPolicies.RequireOwnerRole)]
-    public async Task<ActionResult<UserDetails>> UpdateUser(long userId, [FromBody, Required] UpdateUserRequest request)
-    {
-        try
-        {
-            var user = await userService.UpdateUserAsync(userId, request.Name, request.DisplayName);
-
-            return UserMapper.MapUserToUserDetails(user);
-        }
-        catch (InvalidArgumentException exception)
-        {
-            return BadRequest(exception.Message);
-        }
     }
 }
