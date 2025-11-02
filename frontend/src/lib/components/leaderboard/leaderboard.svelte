@@ -118,7 +118,7 @@
                   </div>
                 {/if}
                 <span>
-                  {mmr ?? `🐣`}
+                  {mmr ?? '🐣'}
                 </span>
               </div>
             </Table.Cell>
