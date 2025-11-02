@@ -72,7 +72,7 @@
 					<ClipboardList class="h-4 w-4" />
 					Match Management
 				</Button>
-				{#if userRole === PlayerRole.Owner}
+				{#if userRole === PlayerRole.Owner || userRole === PlayerRole.Moderator}
 					<Button href="/admin/users" variant="secondary" class="gap-2">
 						<Users class="h-4 w-4" />
 						User Management
