@@ -59,7 +59,7 @@ public class UserService(
         var user = await dbContext.Players.FindAsync(userId);
         if (user is null)
         {
-            throw new InvalidArgumentException("User not found");
+            throw new NotFoundException($"User with ID {userId} not found");
         }
 
         if (name is not null)

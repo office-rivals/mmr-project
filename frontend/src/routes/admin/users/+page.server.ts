@@ -8,9 +8,14 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   }
 
   const apiClient = locals.apiClient;
-  const users = await apiClient.usersApi.usersGetUsers();
 
-  return { users };
+  try {
+    const users = await apiClient.usersApi.usersGetUsers();
+    return { users };
+  } catch (err) {
+    console.error('Failed to load users', err);
+    throw error(500, 'Failed to load users');
+  }
 };
 
 export const actions = {
@@ -31,6 +36,14 @@ export const actions = {
       return fail(400, {
         success: false,
         message: 'Invalid user ID. Must be a positive number.',
+      });
+    }
+
+    // Validate name
+    if (!name?.trim()) {
+      return fail(400, {
+        success: false,
+        message: 'Name is required and cannot be empty',
       });
     }
 

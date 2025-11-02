@@ -46,34 +46,23 @@ public class AdminUsersController(IUserService userService) : ControllerBase
         long userId,
         [FromBody, Required] UpdateUserRequest request)
     {
-        try
-        {
-            var user = await userService.UpdateUserAsync(userId, request.Name, request.DisplayName, request.Role);
+        var user = await userService.UpdateUserAsync(userId, request.Name, request.DisplayName, request.Role);
 
-            return Ok(new AdminUserDetailsResponse
-            {
-                Id = user.Id,
-                IdentityUserId = user.IdentityUserId,
-                Email = user.Email,
-                Name = user.Name,
-                DisplayName = user.DisplayName,
-                Mmr = user.Mmr,
-                Sigma = user.Sigma,
-                Role = user.Role,
-                RoleAssignedById = user.RoleAssignedById,
-                RoleAssignedAt = user.RoleAssignedAt,
-                CreatedAt = user.CreatedAt,
-                UpdatedAt = user.UpdatedAt,
-                DeletedAt = user.DeletedAt
-            });
-        }
-        catch (InvalidArgumentException exception)
+        return Ok(new AdminUserDetailsResponse
         {
-            return BadRequest(exception.Message);
-        }
-        catch (ForbiddenException exception)
-        {
-            return Forbid(exception.Message);
-        }
+            Id = user.Id,
+            IdentityUserId = user.IdentityUserId,
+            Email = user.Email,
+            Name = user.Name,
+            DisplayName = user.DisplayName,
+            Mmr = user.Mmr,
+            Sigma = user.Sigma,
+            Role = user.Role,
+            RoleAssignedById = user.RoleAssignedById,
+            RoleAssignedAt = user.RoleAssignedAt,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt,
+            DeletedAt = user.DeletedAt
+        });
     }
 }

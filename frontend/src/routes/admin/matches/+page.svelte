@@ -15,10 +15,12 @@
 	let showConfirmDialog = $state(false);
 	let formElement: HTMLFormElement;
 
-	const users: MatchUser[] = data.users.map(user => ({
-		userId: user.userId ?? 0,
-		name: user.displayName ?? 'Unknown'
-	}));
+	const users: MatchUser[] = data.users
+		.filter(user => user.userId)
+		.map(user => ({
+			userId: user.userId,
+			name: user.displayName ?? 'Unknown'
+		}));
 
 	function handleConfirm() {
 		showConfirmDialog = false;
