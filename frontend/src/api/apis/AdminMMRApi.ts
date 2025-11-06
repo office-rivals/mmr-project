@@ -15,19 +15,18 @@
 
 import * as runtime from '../runtime';
 
-export interface AdminRecalculateMatchesRequest {
+export interface AdminMMRRecalculateMMRRequest {
     fromMatchId?: number;
-    xAPIKEY?: string;
 }
 
 /**
  * 
  */
-export class AdminApi extends runtime.BaseAPI {
+export class AdminMMRApi extends runtime.BaseAPI {
 
     /**
      */
-    async adminRecalculateMatchesRaw(requestParameters: AdminRecalculateMatchesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async adminMMRRecalculateMMRRaw(requestParameters: AdminMMRRecalculateMMRRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         const queryParameters: any = {};
 
         if (requestParameters['fromMatchId'] != null) {
@@ -36,12 +35,8 @@ export class AdminApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
-        if (requestParameters['xAPIKEY'] != null) {
-            headerParameters['X-API-KEY'] = String(requestParameters['xAPIKEY']);
-        }
-
         const response = await this.request({
-            path: `/api/v1/admin/recalculate`,
+            path: `/api/v1/admin/mmr/recalculate`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
@@ -52,8 +47,8 @@ export class AdminApi extends runtime.BaseAPI {
 
     /**
      */
-    async adminRecalculateMatches(requestParameters: AdminRecalculateMatchesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.adminRecalculateMatchesRaw(requestParameters, initOverrides);
+    async adminMMRRecalculateMMR(requestParameters: AdminMMRRecalculateMMRRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.adminMMRRecalculateMMRRaw(requestParameters, initOverrides);
     }
 
 }

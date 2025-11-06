@@ -22,6 +22,7 @@ public static class MatchMapper
 
         return new MatchDetailsV2
         {
+            MatchId = match.Id,
             Date = match.CreatedAt.Value,
             Team1 = team1,
             Team2 = team2,

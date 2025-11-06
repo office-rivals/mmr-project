@@ -283,7 +283,7 @@
     {#if isMatchCardVisible}
       <div id="submit-step" class="flex flex-col gap-4" transition:fade>
         <h2 class="text-center text-4xl">Submit?</h2>
-        <MatchCard match={$formData} {users} showMmr={false} />
+        <MatchCard match={{ ...$formData, matchId: 0 }} {users} showMmr={false} />
         <Form.Button>Submit the match</Form.Button>
       </div>
     {/if}
