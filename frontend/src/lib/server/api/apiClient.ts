@@ -1,4 +1,5 @@
 import {
+  AdminMatchApi,
   AdminMMRApi,
   AdminUsersApi,
   Configuration,
@@ -35,6 +36,7 @@ export const createConfiguration = (getToken: () => Promise<string | null>) =>
 export const createApiClient = (getToken: () => Promise<string | null>) => {
   const configuration = createConfiguration(getToken);
   return {
+    adminMatchApi: new AdminMatchApi(configuration),
     adminMmrApi: new AdminMMRApi(configuration),
     adminUsersApi: new AdminUsersApi(configuration),
     mmrApi: new MMRV2Api(configuration),

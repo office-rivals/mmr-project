@@ -1,4 +1,5 @@
 apis/AdminMMRApi.ts
+apis/AdminMatchApi.ts
 apis/AdminUsersApi.ts
 apis/MMRV2Api.ts
 apis/MatchMakingApi.ts
@@ -35,6 +36,7 @@ models/ProfileDetails.ts
 models/SeasonDto.ts
 models/SubmitMatchV2Request.ts
 models/TimeStatisticsEntry.ts
+models/UpdateMatchRequest.ts
 models/UpdateUserRequest.ts
 models/UserDetails.ts
 models/index.ts

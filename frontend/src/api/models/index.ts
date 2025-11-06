@@ -25,5 +25,6 @@ export * from './ProfileDetails';
 export * from './SeasonDto';
 export * from './SubmitMatchV2Request';
 export * from './TimeStatisticsEntry';
+export * from './UpdateMatchRequest';
 export * from './UpdateUserRequest';
 export * from './UserDetails';

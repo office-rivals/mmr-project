@@ -17,6 +17,10 @@ public interface IMatchesService
     Task SubmitMatch(long seasonId, SubmitMatchV2Request request);
 
     Task RecalculateMMRForMatchesInSeason(long seasonId, long? fromMatchId = null);
+
+    Task<Match> UpdateMatch(long matchId, UpdateMatchRequest request);
+
+    Task DeleteMatch(long matchId);
 }
 
 public class MatchesService(
@@ -493,7 +497,10 @@ public class MatchesService(
 
     private async Task ClearMMRCalculations(long seasonId, long? fromMatchId)
     {
-        var playerHistoryQuery = dbContext.PlayerHistories.Where(x => x.Match!.SeasonId == seasonId);
+        var playerHistoryQuery = dbContext.PlayerHistories
+            .IgnoreQueryFilters()
+            .Where(x => x.Match!.SeasonId == seasonId)
+            .Where(x => x.DeletedAt == null);
         if (fromMatchId.HasValue)
         {
             playerHistoryQuery = playerHistoryQuery.Where(x => x.MatchId >= fromMatchId.Value);
@@ -505,7 +512,10 @@ public class MatchesService(
             playerHistory.DeletedAt = DateTime.UtcNow;
         }
 
-        var mmrCalculationsQuery = dbContext.MmrCalculations.Where(x => x.Match!.SeasonId == seasonId);
+        var mmrCalculationsQuery = dbContext.MmrCalculations
+            .IgnoreQueryFilters()
+            .Where(x => x.Match!.SeasonId == seasonId)
+            .Where(x => x.DeletedAt == null);
         if (fromMatchId.HasValue)
         {
             mmrCalculationsQuery = mmrCalculationsQuery.Where(x => x.MatchId >= fromMatchId.Value);
@@ -516,6 +526,93 @@ public class MatchesService(
         {
             mmrCalculation.DeletedAt = DateTime.UtcNow;
         }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<Match> UpdateMatch(long matchId, UpdateMatchRequest request)
+    {
+        var latestSeason = await dbContext.Seasons.OrderByDescending(x => x.Id).FirstOrDefaultAsync();
+        if (latestSeason?.Id != request.SeasonId)
+        {
+            throw new InvalidArgumentException("Only matches in the current season can be edited");
+        }
+
+        var match = await dbContext.Matches
+            .Include(x => x.TeamOne)
+            .Include(x => x.TeamTwo)
+            .FirstOrDefaultAsync(x => x.Id == matchId);
+
+        if (match == null)
+        {
+            throw new InvalidArgumentException("Match not found");
+        }
+
+        if (match.SeasonId != request.SeasonId)
+        {
+            throw new InvalidArgumentException("Cannot change match season");
+        }
+
+        var uniquePlayers = new HashSet<long>
+        {
+            request.Team1.Member1,
+            request.Team1.Member2,
+            request.Team2.Member1,
+            request.Team2.Member2
+        };
+
+        if (uniquePlayers.Count != 4)
+        {
+            throw new InvalidArgumentException("Players must be unique");
+        }
+
+        var players = await dbContext.Players.Where(x => uniquePlayers.Contains(x.Id)).ToListAsync();
+
+        if (players.Count != uniquePlayers.Count)
+        {
+            throw new InvalidArgumentException("Not all players were found");
+        }
+
+        match.TeamOne!.PlayerOneId = request.Team1.Member1;
+        match.TeamOne.PlayerTwoId = request.Team1.Member2;
+        match.TeamOne.Score = request.Team1.Score;
+        match.TeamOne.Winner = request.Team1.Score > request.Team2.Score;
+        match.TeamOne.UpdatedAt = DateTime.UtcNow;
+
+        match.TeamTwo!.PlayerOneId = request.Team2.Member1;
+        match.TeamTwo.PlayerTwoId = request.Team2.Member2;
+        match.TeamTwo.Score = request.Team2.Score;
+        match.TeamTwo.Winner = request.Team2.Score > request.Team1.Score;
+        match.TeamTwo.UpdatedAt = DateTime.UtcNow;
+
+        match.UpdatedAt = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync();
+
+        return match;
+    }
+
+    public async Task DeleteMatch(long matchId)
+    {
+        var match = await dbContext.Matches
+            .Include(x => x.TeamOne)
+            .Include(x => x.TeamTwo)
+            .FirstOrDefaultAsync(x => x.Id == matchId);
+
+        if (match == null)
+        {
+            throw new InvalidArgumentException("Match not found");
+        }
+
+        var latestSeason = await dbContext.Seasons.OrderByDescending(x => x.Id).FirstOrDefaultAsync();
+        if (latestSeason?.Id != match.SeasonId)
+        {
+            throw new InvalidArgumentException("Only matches in the current season can be deleted");
+        }
+
+        match.DeletedAt = DateTime.UtcNow;
+        match.TeamOne!.DeletedAt = DateTime.UtcNow;
+        match.TeamTwo!.DeletedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync();
     }
