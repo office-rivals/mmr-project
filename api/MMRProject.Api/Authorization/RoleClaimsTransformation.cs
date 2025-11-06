@@ -48,7 +48,7 @@ public class RoleClaimsTransformation(
         }
         else
         {
-            logger.LogInformation("Using cached role {Role} for user {UserId}", role, userId);
+            logger.LogDebug("Using cached role {Role} for user {UserId}", role, userId);
         }
 
         if (principal.Identity is ClaimsIdentity identity)
