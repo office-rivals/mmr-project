@@ -38,12 +38,17 @@ public class RoleClaimsTransformation(
                 var cacheOptions = new MemoryCacheEntryOptions()
                     .SetSlidingExpiration(TimeSpan.FromMinutes(5));
                 cache.Set(cacheKey, role, cacheOptions);
-                logger.LogDebug("Cached role {Role} for user {UserId}", role, userId);
+                logger.LogInformation("Cached role {Role} for user {UserId} (player ID: {PlayerId})", role, userId, player.Id);
             }
             else
             {
                 role = PlayerRole.User;
+                logger.LogWarning("Player not found for user {UserId}, defaulting to User role", userId);
             }
+        }
+        else
+        {
+            logger.LogInformation("Using cached role {Role} for user {UserId}", role, userId);
         }
 
         if (principal.Identity is ClaimsIdentity identity)
