@@ -532,12 +532,6 @@ public class MatchesService(
 
     public async Task<Match> UpdateMatch(long matchId, UpdateMatchRequest request)
     {
-        var latestSeason = await dbContext.Seasons.OrderByDescending(x => x.Id).FirstOrDefaultAsync();
-        if (latestSeason?.Id != request.SeasonId)
-        {
-            throw new InvalidArgumentException("Only matches in the current season can be edited");
-        }
-
         var match = await dbContext.Matches
             .Include(x => x.TeamOne)
             .Include(x => x.TeamTwo)
@@ -546,6 +540,12 @@ public class MatchesService(
         if (match == null)
         {
             throw new InvalidArgumentException("Match not found");
+        }
+
+        var latestSeason = await dbContext.Seasons.OrderByDescending(x => x.Id).FirstOrDefaultAsync();
+        if (latestSeason?.Id != request.SeasonId)
+        {
+            throw new InvalidArgumentException("Only matches in the current season can be edited");
         }
 
         if (match.SeasonId != request.SeasonId)

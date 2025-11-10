@@ -15,11 +15,15 @@ public class AdminMatchController(
 ) : ControllerBase
 {
     [HttpPut("{matchId}")]
-    public async Task<IActionResult> UpdateMatch([FromRoute] long matchId, [FromBody] UpdateMatchRequest request)
+    public async Task<ActionResult<MatchDetailsV2>> UpdateMatch([FromRoute] long matchId, [FromBody] UpdateMatchRequest request)
     {
         var match = await matchesService.UpdateMatch(matchId, request);
         var matchDetails = MatchMapper.MapMatchToMatchDetails(match);
-        return Ok(matchDetails);
+        if (matchDetails is null)
+        {
+            return Problem("Match could not be returned");
+        }
+        return matchDetails;
     }
 
     [HttpDelete("{matchId}")]

@@ -141,7 +141,7 @@
 										size="sm"
 										variant="secondary"
 										class="h-8 w-8 p-0"
-										onclick={(e) => {
+										onclick={(e: MouseEvent) => {
 											e.stopPropagation();
 											handleEditMatch(match);
 										}}
@@ -152,7 +152,7 @@
 										size="sm"
 										variant="destructive"
 										class="h-8 w-8 p-0"
-										onclick={(e) => {
+										onclick={(e: MouseEvent) => {
 											e.stopPropagation();
 											handleDeleteMatch(match);
 										}}
