@@ -24,6 +24,7 @@
 	let deleteFormElement: HTMLFormElement;
 	let isEditingMatch = $state(false);
 	let isDeletingMatch = $state(false);
+	let deleteErrorMessage = $state<string | null>(null);
 
 	let team1Player1 = $state<number>(0);
 	let team1Player2 = $state<number>(0);
@@ -59,12 +60,11 @@
 
 	function handleDeleteMatch(match: MatchDetailsV2) {
 		editingMatch = match;
+		deleteErrorMessage = null;
 		showDeleteDialog = true;
 	}
 
 	function handleDeleteConfirm() {
-		isDeletingMatch = true;
-		showDeleteDialog = false;
 		deleteFormElement?.requestSubmit();
 	}
 
@@ -401,12 +401,25 @@
 				Are you sure you want to delete Match #{editingMatch?.matchId}? This action will automatically recalculate all subsequent matches.
 			</Dialog.Description>
 		</Dialog.Header>
+		{#if deleteErrorMessage}
+			<Alert variant="destructive" class="mt-4">
+				<div class="flex items-center gap-2">
+					<AlertCircle class="h-4 w-4" />
+					<span class="font-medium">{deleteErrorMessage}</span>
+				</div>
+			</Alert>
+		{/if}
 		<form bind:this={deleteFormElement} method="POST" action="?/deleteMatch" use:enhance={() => {
+			isDeletingMatch = true;
+			deleteErrorMessage = null;
 			return async ({ result, update }) => {
 				await update();
 				isDeletingMatch = false;
 				if (result.type === 'success') {
+					showDeleteDialog = false;
 					window.location.reload();
+				} else if (result.type === 'failure') {
+					deleteErrorMessage = form?.message ?? 'Failed to delete match';
 				}
 			};
 		}}>
