@@ -2,11 +2,11 @@
 	import type { PageData } from './$types';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
-	import { Calendar, Activity, CheckCircle, ClipboardList, Users, Shield } from 'lucide-svelte';
+	import { Calendar, Activity, CheckCircle, ClipboardList, Users, Shield, Flag } from 'lucide-svelte';
 	import { PlayerRole } from '../../api';
 
 	let { data }: { data: PageData } = $props();
-	const { currentSeason, userRole } = data;
+	const { currentSeason, userRole, pendingFlagsCount } = data;
 </script>
 
 <div class="space-y-8">
@@ -15,7 +15,7 @@
 		<p class="text-muted-foreground">Welcome to the admin panel</p>
 	</div>
 
-	<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+	<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
 		<Card>
 			<CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
 				<CardTitle class="text-sm font-medium">Current Season</CardTitle>
@@ -59,6 +59,19 @@
 				<p class="text-xs text-muted-foreground mt-1">Admin access level</p>
 			</CardContent>
 		</Card>
+
+		<a href="/admin/match-flags" class="block transition-transform hover:scale-[1.02]">
+			<Card class="h-full cursor-pointer hover:bg-accent/50">
+				<CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+					<CardTitle class="text-sm font-medium">Open Match Flags</CardTitle>
+					<Flag class="h-4 w-4 text-muted-foreground" />
+				</CardHeader>
+				<CardContent>
+					<div class="text-2xl font-bold">{pendingFlagsCount}</div>
+					<p class="text-xs text-muted-foreground mt-1">Pending review</p>
+				</CardContent>
+			</Card>
+		</a>
 	</div>
 
 	<Card>

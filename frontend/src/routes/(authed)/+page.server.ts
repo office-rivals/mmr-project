@@ -1,7 +1,7 @@
 import type { LeaderboardEntry } from '$api/models/LeaderboardEntry';
 import type { RankedLeaderboardEntry } from '$lib/components/leaderboard/leader-board-entry';
 import { fail } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
   try {
@@ -66,4 +66,30 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
       message: 'Failed to load leaderboard',
     });
   }
+};
+
+export const actions: Actions = {
+  flagMatch: async ({ request, locals: { apiClient } }) => {
+    const data = await request.formData();
+    const matchId = data.get('matchId');
+    const reason = data.get('reason');
+
+    if (!matchId || !reason) {
+      return fail(400, { success: false, message: 'Match ID and reason are required' });
+    }
+
+    try {
+      await apiClient.matchesApi.matchesCreateFlag({
+        matchId: Number(matchId),
+        createMatchFlagRequest: {
+          reason: reason.toString(),
+        },
+      });
+
+      return { success: true, message: 'Match flagged successfully' };
+    } catch (error) {
+      console.error('Error flagging match:', error);
+      return fail(500, { success: false, message: 'Failed to flag match' });
+    }
+  },
 };
