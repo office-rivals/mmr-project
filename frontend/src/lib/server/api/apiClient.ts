@@ -1,8 +1,10 @@
 import {
   AdminMatchApi,
+  AdminMatchFlagsApi,
   AdminMMRApi,
   AdminUsersApi,
   Configuration,
+  MatchesApi,
   MatchMakingApi,
   MMRV2Api,
   PersonalAccessTokensApi,
@@ -37,8 +39,10 @@ export const createApiClient = (getToken: () => Promise<string | null>) => {
   const configuration = createConfiguration(getToken);
   return {
     adminMatchApi: new AdminMatchApi(configuration),
+    adminMatchFlagsApi: new AdminMatchFlagsApi(configuration),
     adminMmrApi: new AdminMMRApi(configuration),
     adminUsersApi: new AdminUsersApi(configuration),
+    matchesApi: new MatchesApi(configuration),
     mmrApi: new MMRV2Api(configuration),
     profileApi: new ProfileApi(configuration),
     statisticsApi: new StatisticsApi(configuration),

@@ -4,6 +4,7 @@
   import {
     ArrowLeft,
     ClipboardList,
+    Flag,
     LayoutDashboard,
     Users,
   } from 'lucide-svelte';
@@ -17,6 +18,7 @@
   const navItems = [
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/matches', label: 'Match Management', icon: ClipboardList },
+    { href: '/admin/match-flags', label: 'Flagged Matches', icon: Flag },
   ];
 
   if (userRole === PlayerRole.Owner || userRole === PlayerRole.Moderator) {

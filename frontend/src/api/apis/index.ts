@@ -2,9 +2,11 @@
 /* eslint-disable */
 export * from './AdminMMRApi';
 export * from './AdminMatchApi';
+export * from './AdminMatchFlagsApi';
 export * from './AdminUsersApi';
 export * from './MMRV2Api';
 export * from './MatchMakingApi';
+export * from './MatchesApi';
 export * from './PersonalAccessTokensApi';
 export * from './ProfileApi';
 export * from './RolesApi';
