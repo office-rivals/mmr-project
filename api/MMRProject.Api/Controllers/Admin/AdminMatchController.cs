@@ -14,6 +14,13 @@ public class AdminMatchController(
     IMatchesService matchesService
 ) : ControllerBase
 {
+    [HttpGet("count")]
+    public async Task<ActionResult<int>> GetMatchCount()
+    {
+        var count = await matchesService.GetMatchCountForCurrentSeasonAsync();
+        return Ok(count);
+    }
+
     [HttpPut("{matchId}")]
     public async Task<ActionResult<MatchDetailsV2>> UpdateMatch([FromRoute] long matchId, [FromBody] UpdateMatchRequest request)
     {

@@ -53,7 +53,7 @@
 						reason = '';
 						errorMessage = '';
 					} else if (result.type === 'failure') {
-						errorMessage = result.data?.message || 'Failed to flag match';
+						errorMessage = (result.data?.message as string) || 'Failed to flag match';
 					} else {
 						await update();
 					}
