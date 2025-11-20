@@ -71,6 +71,34 @@ export class AdminMatchApi extends runtime.BaseAPI {
 
     /**
      */
+    async adminMatchGetMatchCountRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/api/v1/admin/matches/count`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<number>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     */
+    async adminMatchGetMatchCount(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number> {
+        const response = await this.adminMatchGetMatchCountRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
     async adminMatchUpdateMatchRaw(requestParameters: AdminMatchUpdateMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MatchDetailsV2>> {
         if (requestParameters['matchId'] == null) {
             throw new runtime.RequiredError(
