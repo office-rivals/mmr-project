@@ -24,7 +24,7 @@
       <p class="min-w-[1.5ch] text-4xl font-extrabold">
         {match.team1.score === 0 ? '🥚' : match.team1.score}
       </p>
-      <div class="flex flex-1 flex-col">
+      <div class="flex flex-1 flex-col items-start">
         <TeamMember {users} {match} {showMmr} team="team1" member="member1" />
         <TeamMember {users} {match} {showMmr} team="team1" member="member2" />
       </div>

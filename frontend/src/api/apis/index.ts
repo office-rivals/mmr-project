@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './AdminMMRApi';
+export * from './AdminMatchApi';
 export * from './AdminUsersApi';
 export * from './MMRV2Api';
 export * from './MatchMakingApi';
