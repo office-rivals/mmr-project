@@ -15,9 +15,12 @@
 
 import * as runtime from '../runtime';
 import type {
+  MatchDetailsV2,
   UpdateMatchRequest,
 } from '../models/index';
 import {
+    MatchDetailsV2FromJSON,
+    MatchDetailsV2ToJSON,
     UpdateMatchRequestFromJSON,
     UpdateMatchRequestToJSON,
 } from '../models/index';
@@ -68,7 +71,7 @@ export class AdminMatchApi extends runtime.BaseAPI {
 
     /**
      */
-    async adminMatchUpdateMatchRaw(requestParameters: AdminMatchUpdateMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async adminMatchUpdateMatchRaw(requestParameters: AdminMatchUpdateMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MatchDetailsV2>> {
         if (requestParameters['matchId'] == null) {
             throw new runtime.RequiredError(
                 'matchId',
@@ -90,13 +93,14 @@ export class AdminMatchApi extends runtime.BaseAPI {
             body: UpdateMatchRequestToJSON(requestParameters['updateMatchRequest']),
         }, initOverrides);
 
-        return new runtime.VoidApiResponse(response);
+        return new runtime.JSONApiResponse(response, (jsonValue) => MatchDetailsV2FromJSON(jsonValue));
     }
 
     /**
      */
-    async adminMatchUpdateMatch(requestParameters: AdminMatchUpdateMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.adminMatchUpdateMatchRaw(requestParameters, initOverrides);
+    async adminMatchUpdateMatch(requestParameters: AdminMatchUpdateMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MatchDetailsV2> {
+        const response = await this.adminMatchUpdateMatchRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
 }

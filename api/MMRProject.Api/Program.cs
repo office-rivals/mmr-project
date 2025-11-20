@@ -52,6 +52,7 @@ builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPersonalAccessTokenService, PersonalAccessTokenService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IMatchFlagService, MatchFlagService>();
 
 // Background services
 builder.Services.AddHostedService<MatchMakingBackgroundService>();
