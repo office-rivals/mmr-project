@@ -7,16 +7,19 @@
 	import { Alert } from '$lib/components/ui/alert';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Label } from '$lib/components/ui/label';
-	import { Flag, CheckCircle, AlertCircle } from 'lucide-svelte';
+	import { Flag, CheckCircle, AlertCircle, Edit } from 'lucide-svelte';
 	import { MatchCard } from '$lib/components/match-card';
 	import type { MatchUser } from '$lib/components/match-card/match-user';
 	import type { MatchFlagDetails } from '../../../api';
+	import EditMatchDialog from '$lib/components/admin/edit-match-dialog.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let selectedFlag = $state<MatchFlagDetails | null>(null);
 	let dialogOpen = $state(false);
 	let resolutionNote = $state('');
+	let showEditDialog = $state(false);
+	let editingFlag = $state<MatchFlagDetails | null>(null);
 
 	const users: MatchUser[] = data.users
 		.filter(user => user.userId)
@@ -27,6 +30,18 @@
 
 	function handleResolve(flag: MatchFlagDetails) {
 		selectedFlag = flag;
+		resolutionNote = '';
+		dialogOpen = true;
+	}
+
+	function handleEditMatch(flag: MatchFlagDetails) {
+		editingFlag = flag;
+		showEditDialog = true;
+	}
+
+	function handleEditSuccess() {
+		showEditDialog = false;
+		selectedFlag = editingFlag;
 		resolutionNote = '';
 		dialogOpen = true;
 	}
@@ -100,10 +115,16 @@
 										<p class="text-sm">{flag.reason}</p>
 									</div>
 								</div>
-								<Button size="sm" onclick={() => handleResolve(flag)}>
-									<CheckCircle class="mr-2 h-4 w-4" />
-									Resolve
-								</Button>
+								<div class="flex gap-2">
+									<Button size="sm" variant="outline" onclick={() => handleEditMatch(flag)}>
+										<Edit class="mr-2 h-4 w-4" />
+										Edit Match
+									</Button>
+									<Button size="sm" onclick={() => handleResolve(flag)}>
+										<CheckCircle class="mr-2 h-4 w-4" />
+										Resolve
+									</Button>
+								</div>
 							</div>
 							<div class="pt-2 border-t border-border">
 								<p class="text-sm font-medium text-muted-foreground mb-2">Match Details:</p>
@@ -117,12 +138,26 @@
 	</Card>
 </div>
 
+<EditMatchDialog
+	match={editingFlag?.match ?? null}
+	users={data.users}
+	bind:open={showEditDialog}
+	seasonId={data.seasonId ?? 0}
+	formAction="?/editMatch"
+	errorMessage={form?.success === false ? form.message : ''}
+	onSuccess={handleEditSuccess}
+/>
+
 <Dialog.Root bind:open={dialogOpen}>
 	<Dialog.Content>
 		<Dialog.Header>
 			<Dialog.Title>Resolve Match Flag</Dialog.Title>
 			<Dialog.Description>
-				You are about to mark this flag as resolved. You can optionally add a resolution note.
+				{#if selectedFlag && editingFlag && selectedFlag.id === editingFlag.id}
+					Match has been updated successfully. You can now resolve this flag with an optional note explaining the changes.
+				{:else}
+					You are about to mark this flag as resolved. You can optionally add a resolution note.
+				{/if}
 			</Dialog.Description>
 		</Dialog.Header>
 

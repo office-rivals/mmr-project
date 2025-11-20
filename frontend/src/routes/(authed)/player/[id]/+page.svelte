@@ -5,18 +5,20 @@
   import SeasonPicker from '$lib/components/season-picker.svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
+  import { Alert } from '$lib/components/ui/alert';
   import LineChart from '$lib/components/ui/line-chart/line-chart.svelte';
   import * as Table from '$lib/components/ui/table';
-  import { Handshake, Settings, Swords, X } from 'lucide-svelte';
+  import { Handshake, Settings, Swords, X, CheckCircle, AlertCircle } from 'lucide-svelte';
   import { SignOutButton } from 'svelte-clerk';
-  import type { PageData } from './$types';
+  import type { ActionData, PageData } from './$types';
   import Filter from './components/filter.svelte';
 
   interface Props {
     data: PageData;
+    form: ActionData;
   }
 
-  let { data }: Props = $props();
+  let { data, form }: Props = $props();
 
   const winRateFormatter = new Intl.NumberFormat(undefined, {
     style: 'percent',
@@ -53,6 +55,23 @@
   {:else}
     <PageTitle>{data.user?.name}{profileSuffix}</PageTitle>
   {/if}
+
+  {#if form?.success}
+    <Alert variant="success">
+      <div class="flex items-center gap-2">
+        <CheckCircle class="h-4 w-4" />
+        <span class="font-medium">{form.message}</span>
+      </div>
+    </Alert>
+  {:else if form?.success === false}
+    <Alert variant="destructive">
+      <div class="flex items-center gap-2">
+        <AlertCircle class="h-4 w-4" />
+        <span class="font-medium">{form.message}</span>
+      </div>
+    </Alert>
+  {/if}
+
   {#if data.isCurrentUser}
     <div class="flex justify-end gap-2">
       <Button href="/profile/settings" class="gap-2" variant="outline">
@@ -264,7 +283,7 @@
           <p>No matches found</p>
         {/if}
         {#each matches as match (match.date)}
-          <MatchCard users={data.users ?? []} {match} showMmr />
+          <MatchCard users={data.users ?? []} {match} showMmr showFlagButton={data.profile?.userId != null} />
         {/each}
       </div>
     </div>

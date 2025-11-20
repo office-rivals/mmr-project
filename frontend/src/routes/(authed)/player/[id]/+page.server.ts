@@ -1,7 +1,8 @@
 import type { MatchTeamV2 } from '../../../../api';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 import type { MemberLeaderboardEntry } from './types';
 import { movePlayerToMember1 } from './utils';
+import { fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({
   params,
@@ -136,6 +137,7 @@ export const load: PageServerLoad = async ({
 
   return {
     isCurrentUser: playerId === currentUserPlayerId,
+    profile: userProfile,
     matches,
     users,
     user,
@@ -160,3 +162,29 @@ const isOnTeam = (team: MatchTeamV2, playerId: number) => {
 };
 
 const millisecondsToDays = (ms: number) => Math.round(ms / 1000 / 60 / 60 / 24);
+
+export const actions: Actions = {
+  flagMatch: async ({ request, locals: { apiClient } }) => {
+    const data = await request.formData();
+    const matchId = data.get('matchId');
+    const reason = data.get('reason');
+
+    if (!matchId || !reason) {
+      return fail(400, { success: false, message: 'Match ID and reason are required' });
+    }
+
+    try {
+      await apiClient.matchesApi.matchesCreateFlag({
+        matchId: Number(matchId),
+        createMatchFlagRequest: {
+          reason: reason.toString(),
+        },
+      });
+
+      return { success: true, message: 'Match flagged successfully' };
+    } catch (error) {
+      console.error('Error flagging match:', error);
+      return fail(500, { success: false, message: 'Failed to flag match' });
+    }
+  },
+};

@@ -1,8 +1,11 @@
 <script lang="ts">
   import * as Card from '$lib/components/ui/card';
+  import { Button } from '$lib/components/ui/button';
+  import { Flag } from 'lucide-svelte';
   import type { MatchDetailsV2 } from '../../../api';
   import type { MatchUser } from './match-user';
   import TeamMember from './team-member.svelte';
+  import FlagMatchDialog from '../flag-match-dialog.svelte';
 
   interface Props {
     users: MatchUser[];
@@ -10,9 +13,12 @@
       date?: Date | string;
     };
     showMmr: boolean;
+    showFlagButton?: boolean;
   }
 
-  let { users, match, showMmr }: Props = $props();
+  let { users, match, showMmr, showFlagButton = false }: Props = $props();
+
+  let dialogOpen = $state(false);
 </script>
 
 <Card.Root>
@@ -55,5 +61,21 @@
         {match.team2.score === 0 ? '🥚' : match.team2.score}
       </p>
     </div>
+    {#if showFlagButton}
+      <div class="ml-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onclick={() => (dialogOpen = true)}
+          title="Flag this match"
+        >
+          <Flag class="h-4 w-4" />
+        </Button>
+      </div>
+    {/if}
   </div>
 </Card.Root>
+
+{#if showFlagButton}
+  <FlagMatchDialog {match} bind:open={dialogOpen} />
+{/if}
