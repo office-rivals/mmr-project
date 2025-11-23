@@ -2,11 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MMRProject.Api.DTOs;
 
-public record CreateMatchFlagRequest
+public record UpdateMatchFlagReasonRequest
 {
-    [Required]
-    public required long MatchId { get; set; }
-
     [Required]
     [StringLength(500, MinimumLength = 1)]
     public required string Reason { get; set; }

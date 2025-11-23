@@ -3,8 +3,8 @@ apis/AdminMatchApi.ts
 apis/AdminMatchFlagsApi.ts
 apis/AdminUsersApi.ts
 apis/MMRV2Api.ts
+apis/MatchFlagsApi.ts
 apis/MatchMakingApi.ts
-apis/MatchesApi.ts
 apis/PersonalAccessTokensApi.ts
 apis/ProfileApi.ts
 apis/RolesApi.ts
@@ -41,9 +41,11 @@ models/ProfileDetails.ts
 models/SeasonDto.ts
 models/SubmitMatchV2Request.ts
 models/TimeStatisticsEntry.ts
+models/UpdateMatchFlagReasonRequest.ts
 models/UpdateMatchFlagRequest.ts
 models/UpdateMatchRequest.ts
 models/UpdateUserRequest.ts
 models/UserDetails.ts
+models/UserMatchFlag.ts
 models/index.ts
 runtime.ts

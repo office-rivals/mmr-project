@@ -12,6 +12,9 @@ public interface IMatchFlagService
     Task<MatchFlag> CreateFlagAsync(long matchId, long playerId, string reason);
     Task<List<MatchFlagDetails>> GetPendingFlagsAsync();
     Task<MatchFlag> ResolveFlagAsync(long flagId, long resolvedById, string? note);
+    Task<List<MatchFlag>> GetUserPendingFlagsAsync(long playerId);
+    Task<MatchFlag> UpdateFlagReasonAsync(long flagId, long playerId, string newReason);
+    Task DeleteFlagAsync(long flagId, long playerId);
 }
 
 public class MatchFlagService(
@@ -128,5 +131,59 @@ public class MatchFlagService(
         logger.LogInformation("Flag {FlagId} resolved by player {PlayerId}", flagId, resolvedById);
 
         return flag;
+    }
+
+    public async Task<List<MatchFlag>> GetUserPendingFlagsAsync(long playerId)
+    {
+        var flags = await dbContext.MatchFlags
+            .Where(f => f.FlaggedById == playerId && f.Status == MatchFlagStatus.Pending)
+            .OrderByDescending(f => f.CreatedAt)
+            .ToListAsync();
+
+        return flags;
+    }
+
+    public async Task<MatchFlag> UpdateFlagReasonAsync(long flagId, long playerId, string newReason)
+    {
+        var flag = await dbContext.MatchFlags.FindAsync(flagId);
+
+        if (flag == null || flag.FlaggedById != playerId)
+        {
+            throw new InvalidArgumentException("Flag not found");
+        }
+
+        if (flag.Status != MatchFlagStatus.Pending)
+        {
+            throw new InvalidArgumentException("Cannot update a resolved flag");
+        }
+
+        flag.Reason = newReason;
+        flag.UpdatedAt = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync();
+
+        logger.LogInformation("Flag {FlagId} reason updated by player {PlayerId}", flagId, playerId);
+
+        return flag;
+    }
+
+    public async Task DeleteFlagAsync(long flagId, long playerId)
+    {
+        var flag = await dbContext.MatchFlags.FindAsync(flagId);
+
+        if (flag == null || flag.FlaggedById != playerId)
+        {
+            throw new InvalidArgumentException("Flag not found");
+        }
+
+        if (flag.Status != MatchFlagStatus.Pending)
+        {
+            throw new InvalidArgumentException("Cannot delete a resolved flag");
+        }
+
+        dbContext.MatchFlags.Remove(flag);
+        await dbContext.SaveChangesAsync();
+
+        logger.LogInformation("Flag {FlagId} deleted by player {PlayerId}", flagId, playerId);
     }
 }

@@ -21,6 +21,12 @@ import { mapValues } from '../runtime';
 export interface CreateMatchFlagRequest {
     /**
      * 
+     * @type {number}
+     * @memberof CreateMatchFlagRequest
+     */
+    matchId: number;
+    /**
+     * 
      * @type {string}
      * @memberof CreateMatchFlagRequest
      */
@@ -31,6 +37,7 @@ export interface CreateMatchFlagRequest {
  * Check if a given object implements the CreateMatchFlagRequest interface.
  */
 export function instanceOfCreateMatchFlagRequest(value: object): boolean {
+    if (!('matchId' in value)) return false;
     if (!('reason' in value)) return false;
     return true;
 }
@@ -45,6 +52,7 @@ export function CreateMatchFlagRequestFromJSONTyped(json: any, ignoreDiscriminat
     }
     return {
         
+        'matchId': json['matchId'],
         'reason': json['reason'],
     };
 }
@@ -55,6 +63,7 @@ export function CreateMatchFlagRequestToJSON(value?: CreateMatchFlagRequest | nu
     }
     return {
         
+        'matchId': value['matchId'],
         'reason': value['reason'],
     };
 }

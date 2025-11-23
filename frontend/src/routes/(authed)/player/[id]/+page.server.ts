@@ -174,9 +174,9 @@ export const actions: Actions = {
     }
 
     try {
-      await apiClient.matchesApi.matchesCreateFlag({
-        matchId: Number(matchId),
+      await apiClient.matchFlagsApi.matchFlagsCreateFlag({
         createMatchFlagRequest: {
+          matchId: Number(matchId),
           reason: reason.toString(),
         },
       });
