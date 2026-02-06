@@ -29,7 +29,12 @@
     profile,
     seasons,
     currentSeason,
+    userFlags,
   } = $derived(data);
+
+  const flagMap = $derived(
+    new Map((userFlags ?? []).map((flag) => [flag.matchId, flag]))
+  );
 
   let selectedUser: UserDetails | null | undefined = $state();
   let leaderboardEntry = $derived(
@@ -109,7 +114,13 @@
   </div>
   <div class="flex flex-1 flex-col items-stretch gap-2">
     {#each recentMatches ?? [] as match}
-      <MatchCard users={users ?? []} {match} showMmr={$showMmr} showFlagButton={profile?.userId != null} />
+      <MatchCard
+        users={users ?? []}
+        {match}
+        showMmr={$showMmr}
+        showFlagButton={profile?.userId != null}
+        userFlag={flagMap.get(match.matchId) ?? null}
+      />
     {/each}
   </div>
   <h2 class="text-2xl md:text-4xl">Leaderboard</h2>

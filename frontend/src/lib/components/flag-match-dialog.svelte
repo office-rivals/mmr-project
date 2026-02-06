@@ -4,30 +4,45 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
 	import { Alert } from '$lib/components/ui/alert';
-	import { Flag, AlertCircle } from 'lucide-svelte';
-	import type { MatchDetailsV2 } from '../../api';
+	import { Flag, AlertCircle, Trash2 } from 'lucide-svelte';
+	import type { MatchDetailsV2, UserMatchFlag } from '../../api';
 
 	interface Props {
 		match: Omit<MatchDetailsV2, 'date'> & {
 			date?: Date | string;
 		};
+		existingFlag?: UserMatchFlag;
 		open?: boolean;
 		onOpenChange?: (open: boolean) => void;
 	}
 
-	let { match, open = $bindable(false), onOpenChange }: Props = $props();
+	let { match, existingFlag, open = $bindable(false), onOpenChange }: Props = $props();
 
 	let reason = $state('');
 	let isSubmitting = $state(false);
 	let errorMessage = $state('');
+	let showDeleteConfirm = $state(false);
+
+	$effect(() => {
+		if (existingFlag && open) {
+			reason = existingFlag.reason || '';
+		} else if (!open) {
+			reason = '';
+			showDeleteConfirm = false;
+		}
+	});
+
+	const isEditMode = $derived(!!existingFlag);
 </script>
 
 <Dialog.Root bind:open {onOpenChange}>
 	<Dialog.Content>
 		<Dialog.Header>
-			<Dialog.Title>Flag Match</Dialog.Title>
+			<Dialog.Title>{isEditMode ? 'Edit Flag' : 'Flag Match'}</Dialog.Title>
 			<Dialog.Description>
-				Report an issue with this match result. A moderator will review your submission.
+				{isEditMode
+					? 'Update or delete your flag for this match.'
+					: 'Report an issue with this match result. A moderator will review your submission.'}
 			</Dialog.Description>
 		</Dialog.Header>
 
@@ -42,7 +57,7 @@
 
 		<form
 			method="POST"
-			action="?/flagMatch"
+			action={isEditMode ? '?/updateFlag' : '?/flagMatch'}
 			use:enhance={() => {
 				isSubmitting = true;
 				errorMessage = '';
@@ -53,14 +68,20 @@
 						reason = '';
 						errorMessage = '';
 					} else if (result.type === 'failure') {
-						errorMessage = (result.data?.message as string) || 'Failed to flag match';
+						errorMessage =
+							(result.data?.message as string) ||
+							`Failed to ${isEditMode ? 'update' : 'create'} flag`;
 					} else {
 						await update();
 					}
 				};
 			}}
 		>
-			<input type="hidden" name="matchId" value={match.matchId} />
+			{#if isEditMode && existingFlag}
+				<input type="hidden" name="flagId" value={existingFlag.id} />
+			{:else}
+				<input type="hidden" name="matchId" value={match.matchId} />
+			{/if}
 
 			<div class="space-y-4 py-4">
 				<div class="space-y-2">
@@ -81,6 +102,17 @@
 			</div>
 
 			<Dialog.Footer class="gap-2">
+				{#if isEditMode}
+					<Button
+						type="button"
+						variant="destructive"
+						onclick={() => (showDeleteConfirm = true)}
+						disabled={isSubmitting}
+					>
+						<Trash2 class="mr-2 h-4 w-4" />
+						Delete Flag
+					</Button>
+				{/if}
 				<Button
 					type="button"
 					variant="outline"
@@ -95,9 +127,64 @@
 				</Button>
 				<Button type="submit" disabled={isSubmitting || !reason.trim()}>
 					<Flag class="mr-2 h-4 w-4" />
-					{isSubmitting ? 'Submitting...' : 'Submit Flag'}
+					{isSubmitting
+						? isEditMode
+							? 'Updating...'
+							: 'Submitting...'
+						: isEditMode
+							? 'Update Flag'
+							: 'Submit Flag'}
 				</Button>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>
 </Dialog.Root>
+
+{#if isEditMode && existingFlag}
+	<Dialog.Root bind:open={showDeleteConfirm}>
+		<Dialog.Content>
+			<Dialog.Header>
+				<Dialog.Title>Delete Flag</Dialog.Title>
+				<Dialog.Description>
+					Are you sure you want to delete this flag? This action cannot be undone.
+				</Dialog.Description>
+			</Dialog.Header>
+			<form
+				method="POST"
+				action="?/deleteFlag"
+				use:enhance={() => {
+					isSubmitting = true;
+					return async ({ result, update }) => {
+						isSubmitting = false;
+						if (result.type === 'success') {
+							showDeleteConfirm = false;
+							open = false;
+							reason = '';
+							errorMessage = '';
+						} else if (result.type === 'failure') {
+							errorMessage = (result.data?.message as string) || 'Failed to delete flag';
+							showDeleteConfirm = false;
+						} else {
+							await update();
+						}
+					};
+				}}
+			>
+				<input type="hidden" name="flagId" value={existingFlag.id} />
+				<Dialog.Footer class="gap-2">
+					<Button
+						type="button"
+						variant="outline"
+						onclick={() => (showDeleteConfirm = false)}
+						disabled={isSubmitting}
+					>
+						Cancel
+					</Button>
+					<Button type="submit" variant="destructive" disabled={isSubmitting}>
+						{isSubmitting ? 'Deleting...' : 'Delete'}
+					</Button>
+				</Dialog.Footer>
+			</form>
+		</Dialog.Content>
+	</Dialog.Root>
+{/if}

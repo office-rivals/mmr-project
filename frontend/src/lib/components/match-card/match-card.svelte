@@ -2,7 +2,7 @@
   import * as Card from '$lib/components/ui/card';
   import { Button } from '$lib/components/ui/button';
   import { Flag } from 'lucide-svelte';
-  import type { MatchDetailsV2 } from '../../../api';
+  import type { MatchDetailsV2, UserMatchFlag } from '../../../api';
   import type { MatchUser } from './match-user';
   import TeamMember from './team-member.svelte';
   import FlagMatchDialog from '../flag-match-dialog.svelte';
@@ -14,11 +14,14 @@
     };
     showMmr: boolean;
     showFlagButton?: boolean;
+    userFlag?: UserMatchFlag | null;
   }
 
-  let { users, match, showMmr, showFlagButton = false }: Props = $props();
+  let { users, match, showMmr, showFlagButton = false, userFlag }: Props = $props();
 
   let dialogOpen = $state(false);
+
+  const isFlagged = $derived(!!userFlag);
 </script>
 
 <Card.Root>
@@ -67,9 +70,10 @@
           variant="ghost"
           size="sm"
           onclick={() => (dialogOpen = true)}
-          title="Flag this match"
+          title={isFlagged ? 'Edit flag' : 'Flag this match'}
+          class={isFlagged ? 'text-red-600 hover:text-red-700' : ''}
         >
-          <Flag class="h-4 w-4" />
+          <Flag class="h-4 w-4" fill={isFlagged ? 'currentColor' : 'none'} />
         </Button>
       </div>
     {/if}
@@ -77,5 +81,5 @@
 </Card.Root>
 
 {#if showFlagButton}
-  <FlagMatchDialog {match} bind:open={dialogOpen} />
+  <FlagMatchDialog {match} existingFlag={userFlag ?? undefined} bind:open={dialogOpen} />
 {/if}

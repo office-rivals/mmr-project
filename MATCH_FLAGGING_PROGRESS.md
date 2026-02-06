@@ -140,7 +140,7 @@
 
 ---
 
-## Phase 5: Backend - User Flag Management API ⬜
+## Phase 5: Backend - User Flag Management API ✅
 
 **Goal:** Add backend API endpoints for users to view, edit, and delete their own pending flags.
 

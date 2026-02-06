@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
         seasonId,
       });
 
-    const [entries, matches, users, activeMatches, profile, seasons] =
+    const [entries, matches, users, activeMatches, profile, seasons, userFlags] =
       await Promise.all([
         apiClient.statisticsApi.statisticsGetLeaderboard({ seasonId }),
         apiClient.mmrApi.mMRV2GetMatches({
@@ -28,6 +28,7 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
         apiClient.matchmakingApi.matchMakingGetActiveMatches(),
         apiClient.profileApi.profileGetProfile(),
         apiClient.seasonsApi.seasonsGetSeasons(),
+        apiClient.matchFlagsApi.matchFlagsGetMyPendingFlags(),
       ]);
 
     const leaderboardEntries = entries
@@ -60,6 +61,7 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
       profile,
       seasons,
       currentSeason: seasons[0],
+      userFlags: userFlags ?? [],
     };
   } catch (error) {
     fail(500, {
@@ -90,6 +92,50 @@ export const actions: Actions = {
     } catch (error) {
       console.error('Error flagging match:', error);
       return fail(500, { success: false, message: 'Failed to flag match' });
+    }
+  },
+
+  updateFlag: async ({ request, locals: { apiClient } }) => {
+    const data = await request.formData();
+    const flagId = data.get('flagId');
+    const reason = data.get('reason');
+
+    if (!flagId || !reason) {
+      return fail(400, { success: false, message: 'Flag ID and reason are required' });
+    }
+
+    try {
+      await apiClient.matchFlagsApi.matchFlagsUpdateFlag({
+        id: Number(flagId),
+        updateMatchFlagReasonRequest: {
+          reason: reason.toString(),
+        },
+      });
+
+      return { success: true, message: 'Flag updated successfully' };
+    } catch (error) {
+      console.error('Error updating flag:', error);
+      return fail(500, { success: false, message: 'Failed to update flag' });
+    }
+  },
+
+  deleteFlag: async ({ request, locals: { apiClient } }) => {
+    const data = await request.formData();
+    const flagId = data.get('flagId');
+
+    if (!flagId) {
+      return fail(400, { success: false, message: 'Flag ID is required' });
+    }
+
+    try {
+      await apiClient.matchFlagsApi.matchFlagsDeleteFlag({
+        id: Number(flagId),
+      });
+
+      return { success: true, message: 'Flag deleted successfully' };
+    } catch (error) {
+      console.error('Error deleting flag:', error);
+      return fail(500, { success: false, message: 'Failed to delete flag' });
     }
   },
 };

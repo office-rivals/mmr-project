@@ -25,6 +25,10 @@
     maximumFractionDigits: 0,
   });
 
+  const flagMap = $derived(
+    new Map((data.userFlags ?? []).map((flag) => [flag.matchId, flag]))
+  );
+
   let filteredUsers: number[] = $state([]);
   let matches = $derived(
     (data.matches ?? []).filter((match) => {
@@ -283,7 +287,13 @@
           <p>No matches found</p>
         {/if}
         {#each matches as match (match.date)}
-          <MatchCard users={data.users ?? []} {match} showMmr showFlagButton={data.profile?.userId != null} />
+          <MatchCard
+            users={data.users ?? []}
+            {match}
+            showMmr
+            showFlagButton={data.profile?.userId != null}
+            userFlag={flagMap.get(match.matchId) ?? null}
+          />
         {/each}
       </div>
     </div>
