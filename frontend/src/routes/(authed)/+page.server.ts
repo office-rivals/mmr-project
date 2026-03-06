@@ -61,6 +61,7 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
       profile,
       seasons,
       currentSeason: seasons[0],
+      isCurrentSeason: seasonId == null || seasonId === seasons[0]?.id,
       userFlags: userFlags ?? [],
     };
   } catch (error) {

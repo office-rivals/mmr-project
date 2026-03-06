@@ -155,6 +155,7 @@ export const load: PageServerLoad = async ({
     opponents,
     seasons,
     currentSeason: seasons[0],
+    isCurrentSeason: seasonId == null || seasonId === seasons[0]?.id,
     userFlags: userFlags ?? [],
   };
 };

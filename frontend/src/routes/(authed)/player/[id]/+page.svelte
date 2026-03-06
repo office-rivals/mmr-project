@@ -253,7 +253,7 @@
     <div class="flex flex-col gap-3">
       <div class="flex items-center gap-3">
         <h2 class="text-2xl md:text-4xl">Matches</h2>
-        {#if data.profile?.userId != null}
+        {#if data.profile?.userId != null && data.isCurrentSeason}
           <Button variant="outline" size="sm" onclick={() => (reportModalOpen = true)}>
             <Flag class="mr-1.5 h-4 w-4" />
             Report match
@@ -305,7 +305,7 @@
   {/if}
 </div>
 
-{#if data.profile?.userId != null}
+{#if data.profile?.userId != null && data.isCurrentSeason}
   <ReportMatchModal
     bind:open={reportModalOpen}
     users={(data.users ?? []).filter((u) => u.userId != null).map((u) => ({ userId: u.userId!, name: u.name ?? 'Unknown' }))}

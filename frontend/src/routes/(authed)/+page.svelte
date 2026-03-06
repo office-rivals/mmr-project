@@ -32,6 +32,7 @@
     seasons,
     currentSeason,
     userFlags,
+    isCurrentSeason,
   } = $derived(data);
 
   let reportModalOpen = $state(false);
@@ -96,7 +97,7 @@
   <div class="flex">
     <div class="flex flex-1 items-center gap-3">
       <h2 class="text-2xl md:text-4xl">Recent Matches</h2>
-      {#if profile?.userId != null}
+      {#if profile?.userId != null && isCurrentSeason}
         <Button variant="outline" size="sm" onclick={() => (reportModalOpen = true)}>
           <Flag class="mr-1.5 h-4 w-4" />
           Report match
@@ -156,7 +157,7 @@
   />
 {/if}
 
-{#if profile?.userId != null}
+{#if profile?.userId != null && isCurrentSeason}
   <ReportMatchModal
     bind:open={reportModalOpen}
     users={(users ?? []).filter((u) => u.userId != null).map((u) => ({ userId: u.userId!, name: u.name ?? 'Unknown' }))}
