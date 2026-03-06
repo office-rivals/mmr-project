@@ -6,28 +6,19 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
   await parent();
   const apiClient = locals.apiClient;
 
-  try {
-    const [flags, users, seasons] = await Promise.all([
-      apiClient.adminMatchFlagsApi.adminMatchFlagsGetPendingFlags(),
-      apiClient.usersApi.usersGetUsers(),
-      apiClient.seasonsApi.seasonsGetSeasons(),
-    ]);
+  const [flags, users, seasons] = await Promise.all([
+    apiClient.adminMatchFlagsApi.adminMatchFlagsGetPendingFlags(),
+    apiClient.usersApi.usersGetUsers(),
+    apiClient.seasonsApi.seasonsGetSeasons(),
+  ]);
 
-    const currentSeason = seasons?.[0];
+  const currentSeason = seasons?.[0];
 
-    return {
-      flags: flags ?? [],
-      users: users ?? [],
-      seasonId: currentSeason?.id ?? null,
-    };
-  } catch (error) {
-    console.error('Failed to load match flags:', error);
-    return {
-      flags: [],
-      users: [],
-      seasonId: null,
-    };
-  }
+  return {
+    flags: flags ?? [],
+    users: users ?? [],
+    seasonId: currentSeason?.id ?? null,
+  };
 };
 
 export const actions = {

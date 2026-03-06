@@ -219,6 +219,7 @@
 	seasonId={data.seasonId ?? 0}
 	formAction="?/editMatch"
 	errorMessage={form?.success === false ? form.message : ''}
+	warningMessage={form?.warning ?? ''}
 	onSuccess={handleEditSuccess}
 />
 

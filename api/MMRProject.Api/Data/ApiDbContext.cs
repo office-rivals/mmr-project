@@ -212,6 +212,11 @@ public partial class ApiDbContext : DbContext
         modelBuilder.Entity<MatchFlag>(entity =>
         {
             entity.HasQueryFilter(e => e.DeletedAt == null);
+
+            entity.HasIndex(e => new { e.MatchId, e.FlaggedById })
+                .IsUnique()
+                .HasFilter("\"Status\" = 0 AND \"DeletedAt\" IS NULL")
+                .HasDatabaseName("IX_MatchFlags_MatchId_FlaggedById_Pending");
         });
     }
 }

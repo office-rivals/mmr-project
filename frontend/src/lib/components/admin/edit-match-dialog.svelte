@@ -5,7 +5,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Alert } from '$lib/components/ui/alert';
-	import { AlertCircle } from 'lucide-svelte';
+	import { AlertCircle, AlertTriangle } from 'lucide-svelte';
 	import type { MatchDetailsV2, UserDetails } from '../../../api';
 
 	interface Props {
@@ -15,6 +15,7 @@
 		seasonId: number;
 		formAction?: string;
 		errorMessage?: string;
+		warningMessage?: string;
 		onOpenChange?: (open: boolean) => void;
 		onSuccess?: () => void;
 	}
@@ -26,6 +27,7 @@
 		seasonId,
 		formAction = '?/editMatch',
 		errorMessage = '',
+		warningMessage = '',
 		onOpenChange,
 		onSuccess
 	}: Props = $props();
@@ -86,7 +88,7 @@
 				return async ({ result, update }) => {
 					await update();
 					isEditingMatch = false;
-					if (result.type === 'success') {
+					if (result.type === 'success' && !result.data?.warning) {
 						open = false;
 						if (onSuccess) {
 							onSuccess();
@@ -103,6 +105,15 @@
 					<div class="flex items-center gap-2">
 						<AlertCircle class="h-4 w-4" />
 						<span class="font-medium">{errorMessage}</span>
+					</div>
+				</Alert>
+			{/if}
+
+			{#if warningMessage}
+				<Alert variant="warning" class="mt-4">
+					<div class="flex items-center gap-2">
+						<AlertTriangle class="h-4 w-4" />
+						<span class="font-medium">{warningMessage}</span>
 					</div>
 				</Alert>
 			{/if}

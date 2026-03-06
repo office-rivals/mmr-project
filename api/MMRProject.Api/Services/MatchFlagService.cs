@@ -4,6 +4,7 @@ using MMRProject.Api.Data.Entities;
 using MMRProject.Api.DTOs;
 using MMRProject.Api.Exceptions;
 using MMRProject.Api.Mappers;
+using Npgsql;
 
 namespace MMRProject.Api.Services;
 
@@ -49,7 +50,15 @@ public class MatchFlagService(
         };
 
         dbContext.MatchFlags.Add(flag);
-        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
+        {
+            throw new InvalidArgumentException("You have already flagged this match");
+        }
 
         logger.LogInformation("Match {MatchId} flagged by player {PlayerId}", matchId, playerId);
 
