@@ -65,13 +65,7 @@
 		}
 	});
 
-	$effect(() => {
-		if (open) {
-			isEditFormValid = validateEditForm();
-		}
-	});
-
-	let isEditFormValid = $state(false);
+	let isEditFormValid = $derived(validateEditForm());
 </script>
 
 <Dialog.Root {open} {onOpenChange}>

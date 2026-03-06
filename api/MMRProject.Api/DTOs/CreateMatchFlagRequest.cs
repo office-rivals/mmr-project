@@ -4,7 +4,7 @@ namespace MMRProject.Api.DTOs;
 
 public record CreateMatchFlagRequest
 {
-    [Required]
+    [Range(1, long.MaxValue)]
     public required long MatchId { get; set; }
 
     [Required]

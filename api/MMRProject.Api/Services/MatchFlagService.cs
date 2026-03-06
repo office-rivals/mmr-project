@@ -118,6 +118,7 @@ public class MatchFlagService(
         if (flag.Status == MatchFlagStatus.Resolved)
         {
             logger.LogWarning("Flag {FlagId} is already resolved", flagId);
+            return flag;
         }
 
         flag.Status = MatchFlagStatus.Resolved;
