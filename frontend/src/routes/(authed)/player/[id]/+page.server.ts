@@ -20,7 +20,7 @@ export const load: PageServerLoad = async ({
   }
   const [userProfile, rawMatches, users, mmrHistory, seasons, userFlags] =
     await Promise.all([
-      apiClient.profileApi.profileGetProfile(),
+      apiClient.profileApi.profileGetProfile().catch(() => undefined),
       apiClient.mmrApi.mMRV2GetMatches({
         userId: playerId,
         limit: 1000,
@@ -33,14 +33,14 @@ export const load: PageServerLoad = async ({
         seasonId,
       }),
       apiClient.seasonsApi.seasonsGetSeasons(),
-      apiClient.matchFlagsApi.matchFlagsGetMyPendingFlags(),
+      apiClient.matchFlagsApi.matchFlagsGetMyPendingFlags().catch(() => []),
     ]);
 
   const matches = rawMatches.map((match) =>
     movePlayerToMember1(match, playerId)
   );
 
-  const { userId: currentUserPlayerId } = userProfile;
+  const currentUserPlayerId = userProfile?.userId;
 
   const user = users.find((user) => user.userId === playerId);
   if (!user) {

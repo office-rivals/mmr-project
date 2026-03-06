@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
         seasonId,
       });
 
-    const [entries, matches, users, activeMatches, profile, seasons, userFlags] =
+    const [entries, matches, users, activeMatches, seasons, profile, userFlags] =
       await Promise.all([
         apiClient.statisticsApi.statisticsGetLeaderboard({ seasonId }),
         apiClient.mmrApi.mMRV2GetMatches({
@@ -26,9 +26,9 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
         }),
         apiClient.usersApi.usersGetUsers(),
         apiClient.matchmakingApi.matchMakingGetActiveMatches(),
-        apiClient.profileApi.profileGetProfile(),
         apiClient.seasonsApi.seasonsGetSeasons(),
-        apiClient.matchFlagsApi.matchFlagsGetMyPendingFlags(),
+        apiClient.profileApi.profileGetProfile().catch(() => undefined),
+        apiClient.matchFlagsApi.matchFlagsGetMyPendingFlags().catch(() => []),
       ]);
 
     const leaderboardEntries = entries
