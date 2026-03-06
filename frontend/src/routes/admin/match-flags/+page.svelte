@@ -1,15 +1,12 @@
 <script lang="ts">
 	import type { ActionData, PageData } from './$types';
 	import { enhance } from '$app/forms';
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '$lib/components/ui/table';
 	import { Button } from '$lib/components/ui/button';
 	import { Alert } from '$lib/components/ui/alert';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Label } from '$lib/components/ui/label';
+	import * as Table from '$lib/components/ui/table';
 	import { Flag, CheckCircle, AlertCircle, Edit } from 'lucide-svelte';
-	import { MatchCard } from '$lib/components/match-card';
-	import type { MatchUser } from '$lib/components/match-card/match-user';
 	import type { MatchFlagDetails } from '../../../api';
 	import EditMatchDialog from '$lib/components/admin/edit-match-dialog.svelte';
 
@@ -21,12 +18,18 @@
 	let showEditDialog = $state(false);
 	let editingFlag = $state<MatchFlagDetails | null>(null);
 
-	const users: MatchUser[] = data.users
-		.filter(user => user.userId)
-		.map(user => ({
-			userId: user.userId,
-			name: user.name ?? 'Unknown'
-		}));
+	function playerName(userId: number): string {
+		return data.users.find((u) => u.userId === userId)?.name ?? 'Unknown';
+	}
+
+	function matchSummary(flag: MatchFlagDetails): string {
+		const m = flag.match;
+		const t1p1 = playerName(m.team1.member1);
+		const t1p2 = playerName(m.team1.member2);
+		const t2p1 = playerName(m.team2.member1);
+		const t2p2 = playerName(m.team2.member2);
+		return `${t1p1} + ${t1p2} vs ${t2p1} + ${t2p2} (${m.team1.score}-${m.team2.score})`;
+	}
 
 	function handleResolve(flag: MatchFlagDetails) {
 		selectedFlag = flag;
@@ -51,9 +54,11 @@
 			year: 'numeric',
 			month: 'short',
 			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit',
 		});
+	}
+
+	function truncate(text: string, max: number): string {
+		return text.length > max ? text.slice(0, max) + '...' : text;
 	}
 </script>
 
@@ -79,63 +84,61 @@
 		</Alert>
 	{/if}
 
-	<Card>
-		<CardHeader>
-			<div class="flex items-center gap-2">
-				<Flag class="h-5 w-5 text-primary" />
-				<CardTitle>Pending Flags</CardTitle>
-			</div>
-			<CardDescription>
-				Match flags are reports from users about potential issues with match results.
-			</CardDescription>
-		</CardHeader>
-		<CardContent>
-			{#if data.flags.length === 0}
-				<div class="flex flex-col items-center justify-center py-12 text-center">
-					<CheckCircle class="mb-4 h-12 w-12 text-muted-foreground" />
-					<h3 class="text-lg font-medium">No pending flags</h3>
-					<p class="text-sm text-muted-foreground">All match flags have been resolved</p>
-				</div>
-			{:else}
-				<div class="space-y-4">
-					{#each data.flags as flag}
-						<div class="rounded-lg border border-border p-4 space-y-3">
-							<div class="flex items-start justify-between gap-4">
-								<div class="flex-1 space-y-2">
-									<div class="flex items-center gap-2">
-										<span class="text-sm font-medium text-muted-foreground">Flagged by:</span>
-										<span class="text-sm">{flag.flaggedByName}</span>
-									</div>
-									<div class="flex items-center gap-2">
-										<span class="text-sm font-medium text-muted-foreground">Date:</span>
-										<span class="text-sm">{formatDate(flag.createdAt)}</span>
-									</div>
-									<div class="space-y-1">
-										<span class="text-sm font-medium text-muted-foreground">Reason:</span>
-										<p class="text-sm">{flag.reason}</p>
-									</div>
-								</div>
-								<div class="flex gap-2">
+	{#if data.flags.length === 0}
+		<div class="flex flex-col items-center justify-center rounded-lg border border-border py-12 text-center">
+			<CheckCircle class="mb-4 h-12 w-12 text-muted-foreground" />
+			<h3 class="text-lg font-medium">No pending flags</h3>
+			<p class="text-sm text-muted-foreground">All match flags have been resolved</p>
+		</div>
+	{:else}
+		<div class="rounded-lg border border-border">
+			<Table.Root>
+				<Table.Header>
+					<Table.Row>
+						<Table.Head>Flagged By</Table.Head>
+						<Table.Head>Match</Table.Head>
+						<Table.Head>Reason</Table.Head>
+						<Table.Head>Date</Table.Head>
+						<Table.Head class="text-right">Actions</Table.Head>
+					</Table.Row>
+				</Table.Header>
+				<Table.Body>
+					{#each data.flags as flag (flag.id)}
+						<Table.Row>
+							<Table.Cell class="whitespace-nowrap font-medium">
+								{flag.flaggedByName}
+							</Table.Cell>
+							<Table.Cell class="max-w-[300px]">
+								<span class="text-sm" title={matchSummary(flag)}>
+									{truncate(matchSummary(flag), 50)}
+								</span>
+							</Table.Cell>
+							<Table.Cell class="max-w-[250px]">
+								<span class="text-sm" title={flag.reason}>
+									{truncate(flag.reason, 80)}
+								</span>
+							</Table.Cell>
+							<Table.Cell class="whitespace-nowrap text-sm">
+								{formatDate(flag.createdAt)}
+							</Table.Cell>
+							<Table.Cell class="text-right">
+								<div class="flex justify-end gap-2">
 									<Button size="sm" variant="outline" onclick={() => handleEditMatch(flag)}>
-										<Edit class="mr-2 h-4 w-4" />
-										Edit Match
+										<Edit class="mr-1 h-3.5 w-3.5" />
+										Edit
 									</Button>
 									<Button size="sm" onclick={() => handleResolve(flag)}>
-										<CheckCircle class="mr-2 h-4 w-4" />
+										<CheckCircle class="mr-1 h-3.5 w-3.5" />
 										Resolve
 									</Button>
 								</div>
-							</div>
-							<div class="pt-2 border-t border-border">
-								<p class="text-sm font-medium text-muted-foreground mb-2">Match Details:</p>
-								<MatchCard {users} match={flag.match} showMmr={true} />
-							</div>
-						</div>
+							</Table.Cell>
+						</Table.Row>
 					{/each}
-				</div>
-			{/if}
-		</CardContent>
-	</Card>
+				</Table.Body>
+			</Table.Root>
+		</div>
+	{/if}
 </div>
 
 <EditMatchDialog

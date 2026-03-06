@@ -8,7 +8,8 @@
   import { Alert } from '$lib/components/ui/alert';
   import LineChart from '$lib/components/ui/line-chart/line-chart.svelte';
   import * as Table from '$lib/components/ui/table';
-  import { Handshake, Settings, Swords, X, CheckCircle, AlertCircle } from 'lucide-svelte';
+  import ReportMatchModal from '$lib/components/report-match-modal.svelte';
+  import { Handshake, Settings, Swords, X, CheckCircle, AlertCircle, Flag } from 'lucide-svelte';
   import { SignOutButton } from 'svelte-clerk';
   import type { ActionData, PageData } from './$types';
   import Filter from './components/filter.svelte';
@@ -25,9 +26,7 @@
     maximumFractionDigits: 0,
   });
 
-  const flagMap = $derived(
-    new Map((data.userFlags ?? []).map((flag) => [flag.matchId, flag]))
-  );
+  let reportModalOpen = $state(false);
 
   let filteredUsers: number[] = $state([]);
   let matches = $derived(
@@ -252,7 +251,15 @@
 
   {#if data.matches.length > 0}
     <div class="flex flex-col gap-3">
-      <h2 class="text-2xl md:text-4xl">Matches</h2>
+      <div class="flex items-center gap-3">
+        <h2 class="text-2xl md:text-4xl">Matches</h2>
+        {#if data.profile?.userId != null}
+          <Button variant="outline" size="sm" onclick={() => (reportModalOpen = true)}>
+            <Flag class="mr-1.5 h-4 w-4" />
+            Report match
+          </Button>
+        {/if}
+      </div>
       <div class="flex flex-col space-y-2">
         <Filter
           users={data.users ?? []}
@@ -291,11 +298,19 @@
             users={data.users ?? []}
             {match}
             showMmr
-            showFlagButton={data.profile?.userId != null}
-            userFlag={flagMap.get(match.matchId) ?? null}
           />
         {/each}
       </div>
     </div>
   {/if}
 </div>
+
+{#if data.profile?.userId != null}
+  <ReportMatchModal
+    bind:open={reportModalOpen}
+    users={(data.users ?? []).filter((u) => u.userId != null).map((u) => ({ userId: u.userId!, name: u.name ?? 'Unknown' }))}
+    seasonId={data.currentSeason?.id}
+    userId={data.user?.userId}
+    userFlags={data.userFlags ?? []}
+  />
+{/if}

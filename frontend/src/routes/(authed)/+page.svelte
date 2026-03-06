@@ -5,9 +5,11 @@
   import SeasonPicker from '$lib/components/season-picker.svelte';
   import Label from '$lib/components/ui/label/label.svelte';
   import { Alert } from '$lib/components/ui/alert';
+  import { Button } from '$lib/components/ui/button';
   import UserStatsModal from '$lib/components/user-stats-modal.svelte';
+  import ReportMatchModal from '$lib/components/report-match-modal.svelte';
   import { Checkbox } from 'bits-ui';
-  import { Check, Minus, CheckCircle, AlertCircle } from 'lucide-svelte';
+  import { Check, Minus, CheckCircle, AlertCircle, Flag } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import type { ActiveMatchDto, UserDetails } from '../../api';
   import { showMmr } from '../../stores/show-mmr';
@@ -32,9 +34,7 @@
     userFlags,
   } = $derived(data);
 
-  const flagMap = $derived(
-    new Map((userFlags ?? []).map((flag) => [flag.matchId, flag]))
-  );
+  let reportModalOpen = $state(false);
 
   let selectedUser: UserDetails | null | undefined = $state();
   let leaderboardEntry = $derived(
@@ -94,7 +94,15 @@
     currentPlayerId={profile?.userId}
   />
   <div class="flex">
-    <h2 class="flex-1 text-2xl md:text-4xl">Recent Matches</h2>
+    <div class="flex flex-1 items-center gap-3">
+      <h2 class="text-2xl md:text-4xl">Recent Matches</h2>
+      {#if profile?.userId != null}
+        <Button variant="outline" size="sm" onclick={() => (reportModalOpen = true)}>
+          <Flag class="mr-1.5 h-4 w-4" />
+          Report match
+        </Button>
+      {/if}
+    </div>
     <div class="flex items-center space-x-3 self-center">
       <Label id="show-mmr-label" for="show-mmr">MMR:</Label>
       <Checkbox.Root
@@ -118,8 +126,6 @@
         users={users ?? []}
         {match}
         showMmr={$showMmr}
-        showFlagButton={profile?.userId != null}
-        userFlag={flagMap.get(match.matchId) ?? null}
       />
     {/each}
   </div>
@@ -147,5 +153,14 @@
         selectedUser = null;
       }
     }}
+  />
+{/if}
+
+{#if profile?.userId != null}
+  <ReportMatchModal
+    bind:open={reportModalOpen}
+    users={(users ?? []).filter((u) => u.userId != null).map((u) => ({ userId: u.userId!, name: u.name ?? 'Unknown' }))}
+    seasonId={currentSeason?.id}
+    userFlags={userFlags ?? []}
   />
 {/if}
