@@ -11,7 +11,7 @@
   let { matchMakingState, onLeaveQueue }: Props = $props();
 </script>
 
-<div class="fixed bottom-20 left-0 right-0 mx-auto max-w-screen-sm px-4">
+<div class="fixed left-0 right-0 mx-auto max-w-screen-sm px-4" style="bottom: calc(5rem + env(safe-area-inset-bottom))">
   <div
     class="animate-border w-full rounded-2xl border border border-transparent p-5 [background:linear-gradient(60deg,#001003,theme(colors.orange.950)_60%,#001003)_padding-box,conic-gradient(from_var(--border-angle),theme(colors.orange.600/.58)_80%,_theme(colors.orange.300)_94%,_theme(colors.orange.600/.58))_border-box]"
   >
