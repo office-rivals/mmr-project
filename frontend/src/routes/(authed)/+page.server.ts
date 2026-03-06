@@ -64,7 +64,7 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
       userFlags: userFlags ?? [],
     };
   } catch (error) {
-    fail(500, {
+    return fail(500, {
       message: 'Failed to load leaderboard',
     });
   }
