@@ -32,6 +32,7 @@
 	let step = $state<Step>('browse');
 	let matches = $state<MatchDetailsV2[]>([]);
 	let loading = $state(false);
+	let fetchError = $state(false);
 	let page = $state(0);
 	let hasMore = $state(false);
 	let selectedMatch = $state<MatchDetailsV2 | null>(null);
@@ -62,6 +63,7 @@
 
 	async function fetchMatches(pageNum: number) {
 		loading = true;
+		fetchError = false;
 		try {
 			const params = new URLSearchParams();
 			if (seasonId != null) params.set('seasonId', String(seasonId));
@@ -76,9 +78,11 @@
 			hasMore = data.length > PAGE_SIZE;
 			matches = data.slice(0, PAGE_SIZE);
 			page = pageNum;
-		} catch {
+		} catch (error) {
+			console.error('Failed to fetch matches:', error);
 			matches = [];
 			hasMore = false;
+			fetchError = true;
 		} finally {
 			loading = false;
 		}
@@ -120,6 +124,12 @@
 				{#if loading}
 					<div class="flex items-center justify-center py-8">
 						<Loader2 class="h-6 w-6 animate-spin text-muted-foreground" />
+					</div>
+				{:else if fetchError}
+					<div class="flex flex-col items-center gap-2 py-8 text-center">
+						<AlertCircle class="h-6 w-6 text-destructive" />
+						<p class="text-sm text-muted-foreground">Failed to load matches. Please try again.</p>
+						<Button variant="outline" size="sm" onclick={() => fetchMatches(page)}>Retry</Button>
 					</div>
 				{:else if matches.length === 0}
 					<p class="py-8 text-center text-muted-foreground">No matches found</p>
