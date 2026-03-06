@@ -198,6 +198,7 @@
 						return async ({ result, update }) => {
 							isSubmitting = false;
 							if (result.type === 'success') {
+								await update();
 								open = false;
 							} else if (result.type === 'failure') {
 								errorMessage =
@@ -288,6 +289,7 @@
 					return async ({ result, update }) => {
 						isSubmitting = false;
 						if (result.type === 'success') {
+							await update();
 							showDeleteConfirm = false;
 							open = false;
 						} else if (result.type === 'failure') {
