@@ -176,10 +176,15 @@ export const actions: Actions = {
       return fail(400, { success: false, message: 'Match ID and reason are required' });
     }
 
+    const parsedMatchId = Number(matchId);
+    if (!Number.isInteger(parsedMatchId) || parsedMatchId <= 0) {
+      return fail(400, { success: false, message: 'Valid match ID is required' });
+    }
+
     try {
       await apiClient.matchFlagsApi.matchFlagsCreateFlag({
         createMatchFlagRequest: {
-          matchId: Number(matchId),
+          matchId: parsedMatchId,
           reason: reason.toString(),
         },
       });
@@ -200,9 +205,14 @@ export const actions: Actions = {
       return fail(400, { success: false, message: 'Flag ID and reason are required' });
     }
 
+    const parsedFlagId = Number(flagId);
+    if (!Number.isInteger(parsedFlagId) || parsedFlagId <= 0) {
+      return fail(400, { success: false, message: 'Valid flag ID is required' });
+    }
+
     try {
       await apiClient.matchFlagsApi.matchFlagsUpdateFlag({
-        id: Number(flagId),
+        id: parsedFlagId,
         updateMatchFlagReasonRequest: {
           reason: reason.toString(),
         },
@@ -223,9 +233,14 @@ export const actions: Actions = {
       return fail(400, { success: false, message: 'Flag ID is required' });
     }
 
+    const parsedFlagId = Number(flagId);
+    if (!Number.isInteger(parsedFlagId) || parsedFlagId <= 0) {
+      return fail(400, { success: false, message: 'Valid flag ID is required' });
+    }
+
     try {
       await apiClient.matchFlagsApi.matchFlagsDeleteFlag({
-        id: Number(flagId),
+        id: parsedFlagId,
       });
 
       return { success: true, message: 'Flag deleted successfully' };

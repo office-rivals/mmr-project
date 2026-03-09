@@ -41,6 +41,7 @@
 	let isSubmitting = $state(false);
 	let errorMessage = $state('');
 	let showDeleteConfirm = $state(false);
+	let fetchRequestId = 0;
 
 	const PAGE_SIZE = 10;
 
@@ -62,6 +63,7 @@
 	});
 
 	async function fetchMatches(pageNum: number) {
+		const requestId = ++fetchRequestId;
 		loading = true;
 		fetchError = false;
 		try {
@@ -75,16 +77,18 @@
 			if (!response.ok) throw new Error('Failed to fetch matches');
 
 			const data: MatchDetailsV2[] = await response.json();
+			if (requestId !== fetchRequestId) return;
 			hasMore = data.length > PAGE_SIZE;
 			matches = data.slice(0, PAGE_SIZE);
 			page = pageNum;
 		} catch (error) {
+			if (requestId !== fetchRequestId) return;
 			console.error('Failed to fetch matches:', error);
 			matches = [];
 			hasMore = false;
 			fetchError = true;
 		} finally {
-			loading = false;
+			if (requestId === fetchRequestId) loading = false;
 		}
 	}
 
