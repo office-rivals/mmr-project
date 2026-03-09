@@ -1,5 +1,6 @@
 import type { LeaderboardEntry } from '$api/models/LeaderboardEntry';
 import type { RankedLeaderboardEntry } from '$lib/components/leaderboard/leader-board-entry';
+import { createMatchFlagActions } from '$lib/server/actions/matchFlagActions';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -73,85 +74,15 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
 
 export const actions: Actions = {
   flagMatch: async ({ request, locals: { apiClient } }) => {
-    const data = await request.formData();
-    const matchId = data.get('matchId');
-    const reason = data.get('reason');
-
-    if (!matchId || !reason) {
-      return fail(400, { success: false, message: 'Match ID and reason are required' });
-    }
-
-    const parsedMatchId = Number(matchId);
-    if (!Number.isInteger(parsedMatchId) || parsedMatchId <= 0) {
-      return fail(400, { success: false, message: 'Valid match ID is required' });
-    }
-
-    try {
-      await apiClient.matchFlagsApi.matchFlagsCreateFlag({
-        createMatchFlagRequest: {
-          matchId: parsedMatchId,
-          reason: reason.toString(),
-        },
-      });
-
-      return { success: true, message: 'Match flagged successfully' };
-    } catch (error) {
-      console.error('Error flagging match:', error);
-      return fail(500, { success: false, message: 'Failed to flag match' });
-    }
+    const actions = createMatchFlagActions(apiClient);
+    return actions.flagMatch(await request.formData());
   },
-
   updateFlag: async ({ request, locals: { apiClient } }) => {
-    const data = await request.formData();
-    const flagId = data.get('flagId');
-    const reason = data.get('reason');
-
-    if (!flagId || !reason) {
-      return fail(400, { success: false, message: 'Flag ID and reason are required' });
-    }
-
-    const parsedFlagId = Number(flagId);
-    if (!Number.isInteger(parsedFlagId) || parsedFlagId <= 0) {
-      return fail(400, { success: false, message: 'Valid flag ID is required' });
-    }
-
-    try {
-      await apiClient.matchFlagsApi.matchFlagsUpdateFlag({
-        id: parsedFlagId,
-        updateMatchFlagReasonRequest: {
-          reason: reason.toString(),
-        },
-      });
-
-      return { success: true, message: 'Flag updated successfully' };
-    } catch (error) {
-      console.error('Error updating flag:', error);
-      return fail(500, { success: false, message: 'Failed to update flag' });
-    }
+    const actions = createMatchFlagActions(apiClient);
+    return actions.updateFlag(await request.formData());
   },
-
   deleteFlag: async ({ request, locals: { apiClient } }) => {
-    const data = await request.formData();
-    const flagId = data.get('flagId');
-
-    if (!flagId) {
-      return fail(400, { success: false, message: 'Flag ID is required' });
-    }
-
-    const parsedFlagId = Number(flagId);
-    if (!Number.isInteger(parsedFlagId) || parsedFlagId <= 0) {
-      return fail(400, { success: false, message: 'Valid flag ID is required' });
-    }
-
-    try {
-      await apiClient.matchFlagsApi.matchFlagsDeleteFlag({
-        id: parsedFlagId,
-      });
-
-      return { success: true, message: 'Flag deleted successfully' };
-    } catch (error) {
-      console.error('Error deleting flag:', error);
-      return fail(500, { success: false, message: 'Failed to delete flag' });
-    }
+    const actions = createMatchFlagActions(apiClient);
+    return actions.deleteFlag(await request.formData());
   },
 };
