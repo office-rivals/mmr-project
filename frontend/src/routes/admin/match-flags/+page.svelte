@@ -68,11 +68,18 @@
 		<p class="text-muted-foreground">Review and resolve match flags reported by users</p>
 	</div>
 
-	{#if form?.success}
+	{#if form?.success && form.message}
 		<Alert variant="success">
 			<div class="flex items-center gap-2">
 				<CheckCircle class="h-4 w-4" />
 				<span class="font-medium">{form.message}</span>
+			</div>
+		</Alert>
+	{:else if form?.success && form.warning}
+		<Alert variant="warning">
+			<div class="flex items-center gap-2">
+				<AlertCircle class="h-4 w-4" />
+				<span class="font-medium">{form.warning}</span>
 			</div>
 		</Alert>
 	{:else if form?.success === false}

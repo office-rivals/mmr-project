@@ -20,6 +20,7 @@ public interface IMatchFlagService
 
 public class MatchFlagService(
     ApiDbContext dbContext,
+    ISeasonService seasonService,
     ILogger<MatchFlagService> logger) : IMatchFlagService
 {
     public async Task<MatchFlag> CreateFlagAsync(long matchId, long playerId, string reason)
@@ -28,6 +29,12 @@ public class MatchFlagService(
         if (match == null)
         {
             throw new InvalidArgumentException("Match not found");
+        }
+
+        var currentSeasonId = await seasonService.CurrentSeasonIdAsync();
+        if (match.SeasonId != currentSeasonId)
+        {
+            throw new InvalidArgumentException("Only matches from the current season can be flagged");
         }
 
         var existingFlag = await dbContext.MatchFlags
