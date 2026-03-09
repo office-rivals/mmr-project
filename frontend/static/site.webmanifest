@@ -1,6 +1,10 @@
 {
     "name": "MMR Project",
     "short_name": "MMR Project",
+    "id": "/",
+    "start_url": "/",
+    "scope": "/",
+    "orientation": "portrait",
     "icons": [
         {
             "src": "/android-chrome-192x192.png",

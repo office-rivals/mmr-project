@@ -14,7 +14,7 @@
 </script>
 
 {#if activeMatches.length > 0}
-  <div class="fixed bottom-20 right-4">
+  <div class="fixed right-4" style="bottom: calc(5rem + env(safe-area-inset-bottom))">
     {#if !isExpanded}
       <button
         class="bg-background flex items-center gap-4 rounded-md border p-4 shadow-md"

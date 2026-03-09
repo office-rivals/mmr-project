@@ -6,6 +6,7 @@
 
 <nav
   class="bg-card fixed bottom-0 left-0 right-0 flex w-screen flex-row justify-center border-t"
+  style="padding-bottom: env(safe-area-inset-bottom)"
 >
   <div
     class="flex w-full max-w-screen-sm flex-row items-center justify-stretch"
