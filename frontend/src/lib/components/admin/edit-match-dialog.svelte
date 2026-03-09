@@ -14,8 +14,6 @@
 		open?: boolean;
 		seasonId: number;
 		formAction?: string;
-		errorMessage?: string;
-		warningMessage?: string;
 		onOpenChange?: (open: boolean) => void;
 		onSuccess?: () => void;
 	}
@@ -26,11 +24,12 @@
 		open = $bindable(false),
 		seasonId,
 		formAction = '?/editMatch',
-		errorMessage = '',
-		warningMessage = '',
 		onOpenChange,
 		onSuccess
 	}: Props = $props();
+
+	let errorMessage = $state('');
+	let warningMessage = $state('');
 
 	let team1Player1 = $state<number>(0);
 	let team1Player2 = $state<number>(0);
@@ -64,6 +63,8 @@
 			team2Player1 = match.team2.member1;
 			team2Player2 = match.team2.member2;
 			team2Score = String(match.team2.score);
+			errorMessage = '';
+			warningMessage = '';
 		}
 	});
 
@@ -85,6 +86,8 @@
 			action={formAction}
 			use:enhance={() => {
 				isEditingMatch = true;
+				errorMessage = '';
+				warningMessage = '';
 				return async ({ result, update }) => {
 					await update();
 					isEditingMatch = false;
@@ -93,6 +96,10 @@
 						if (onSuccess) {
 							onSuccess();
 						}
+					} else if (result.type === 'success' && result.data?.warning) {
+						warningMessage = result.data.warning as string;
+					} else if (result.type === 'failure') {
+						errorMessage = (result.data?.message as string) || 'Failed to update match';
 					}
 				};
 			}}
