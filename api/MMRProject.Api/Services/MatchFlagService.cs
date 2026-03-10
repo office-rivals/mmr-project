@@ -25,7 +25,7 @@ public class MatchFlagService(
 {
     public async Task<MatchFlag> CreateFlagAsync(long matchId, long playerId, string reason)
     {
-        var match = await dbContext.Matches.FindAsync(matchId);
+        var match = await dbContext.Matches.FirstOrDefaultAsync(m => m.Id == matchId);
         if (match == null)
         {
             throw new InvalidArgumentException("Match not found");
@@ -125,7 +125,7 @@ public class MatchFlagService(
 
     public async Task<MatchFlag> ResolveFlagAsync(long flagId, long resolvedById, string? note)
     {
-        var flag = await dbContext.MatchFlags.FindAsync(flagId);
+        var flag = await dbContext.MatchFlags.FirstOrDefaultAsync(f => f.Id == flagId);
         if (flag == null)
         {
             throw new InvalidArgumentException("Flag not found");
@@ -162,7 +162,7 @@ public class MatchFlagService(
 
     public async Task<MatchFlag> UpdateFlagReasonAsync(long flagId, long playerId, string newReason)
     {
-        var flag = await dbContext.MatchFlags.FindAsync(flagId);
+        var flag = await dbContext.MatchFlags.FirstOrDefaultAsync(f => f.Id == flagId);
 
         if (flag == null || flag.FlaggedById != playerId)
         {
@@ -186,7 +186,7 @@ public class MatchFlagService(
 
     public async Task DeleteFlagAsync(long flagId, long playerId)
     {
-        var flag = await dbContext.MatchFlags.FindAsync(flagId);
+        var flag = await dbContext.MatchFlags.FirstOrDefaultAsync(f => f.Id == flagId);
 
         if (flag == null || flag.FlaggedById != playerId)
         {
@@ -198,7 +198,8 @@ public class MatchFlagService(
             throw new InvalidArgumentException("Cannot delete a resolved flag");
         }
 
-        dbContext.MatchFlags.Remove(flag);
+        flag.DeletedAt = DateTime.UtcNow;
+        flag.UpdatedAt = DateTime.UtcNow;
         await dbContext.SaveChangesAsync();
 
         logger.LogInformation("Flag {FlagId} deleted by player {PlayerId}", flagId, playerId);

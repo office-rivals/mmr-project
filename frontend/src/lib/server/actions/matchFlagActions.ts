@@ -5,7 +5,7 @@ export function createMatchFlagActions(apiClient: ApiClient) {
   return {
     flagMatch: async (data: FormData) => {
       const matchId = data.get('matchId');
-      const reason = data.get('reason');
+      const reason = (data.get('reason') as string | null)?.trim();
 
       if (!matchId || !reason) {
         return fail(400, { success: false, message: 'Match ID and reason are required' });
@@ -20,7 +20,7 @@ export function createMatchFlagActions(apiClient: ApiClient) {
         await apiClient.matchFlagsApi.matchFlagsCreateFlag({
           createMatchFlagRequest: {
             matchId: parsedMatchId,
-            reason: reason as string,
+            reason,
           },
         });
 
@@ -33,7 +33,7 @@ export function createMatchFlagActions(apiClient: ApiClient) {
 
     updateFlag: async (data: FormData) => {
       const flagId = data.get('flagId');
-      const reason = data.get('reason');
+      const reason = (data.get('reason') as string | null)?.trim();
 
       if (!flagId || !reason) {
         return fail(400, { success: false, message: 'Flag ID and reason are required' });
@@ -48,7 +48,7 @@ export function createMatchFlagActions(apiClient: ApiClient) {
         await apiClient.matchFlagsApi.matchFlagsUpdateFlag({
           id: parsedFlagId,
           updateMatchFlagReasonRequest: {
-            reason: reason as string,
+            reason,
           },
         });
 

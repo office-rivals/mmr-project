@@ -21,7 +21,7 @@ public class AdminMatchFlagsController(
     }
 
     [HttpPatch("{id}")]
-    public async Task<IActionResult> UpdateFlag(long id, [FromBody] UpdateMatchFlagRequest request)
+    public async Task<ActionResult<UserMatchFlag>> UpdateFlag(long id, [FromBody] UpdateMatchFlagRequest request)
     {
         var currentUser = await userService.GetCurrentAuthenticatedUserAsync();
         if (currentUser == null)
@@ -30,6 +30,12 @@ public class AdminMatchFlagsController(
         }
 
         var flag = await matchFlagService.ResolveFlagAsync(id, currentUser.Id, request.Note);
-        return Ok(flag);
+        return Ok(new UserMatchFlag
+        {
+            Id = flag.Id,
+            MatchId = flag.MatchId,
+            Reason = flag.Reason,
+            CreatedAt = flag.CreatedAt
+        });
     }
 }
