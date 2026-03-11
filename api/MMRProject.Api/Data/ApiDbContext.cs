@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Data.Entities;
+using MMRProject.Api.Data.Entities.V3;
 
 namespace MMRProject.Api.Data;
 
@@ -35,6 +36,42 @@ public partial class ApiDbContext : DbContext
     public virtual DbSet<PersonalAccessToken> PersonalAccessTokens { get; set; }
 
     public virtual DbSet<MatchFlag> MatchFlags { get; set; }
+
+    public virtual DbSet<User> V3Users { get; set; }
+
+    public virtual DbSet<Organization> Organizations { get; set; }
+
+    public virtual DbSet<OrganizationMembership> OrganizationMemberships { get; set; }
+
+    public virtual DbSet<League> Leagues { get; set; }
+
+    public virtual DbSet<LeaguePlayer> LeaguePlayers { get; set; }
+
+    public virtual DbSet<V3Season> V3Seasons { get; set; }
+
+    public virtual DbSet<V3Match> V3Matches { get; set; }
+
+    public virtual DbSet<MatchTeam> MatchTeams { get; set; }
+
+    public virtual DbSet<MatchTeamPlayer> MatchTeamPlayers { get; set; }
+
+    public virtual DbSet<V3PendingMatch> V3PendingMatches { get; set; }
+
+    public virtual DbSet<PendingMatchTeam> PendingMatchTeams { get; set; }
+
+    public virtual DbSet<PendingMatchTeamPlayer> PendingMatchTeamPlayers { get; set; }
+
+    public virtual DbSet<PendingMatchAcceptance> PendingMatchAcceptances { get; set; }
+
+    public virtual DbSet<V3ActiveMatch> V3ActiveMatches { get; set; }
+
+    public virtual DbSet<QueueEntry> QueueEntries { get; set; }
+
+    public virtual DbSet<RatingHistory> RatingHistories { get; set; }
+
+    public virtual DbSet<V3PersonalAccessToken> V3PersonalAccessTokens { get; set; }
+
+    public virtual DbSet<V3MatchFlag> V3MatchFlags { get; set; }
 
 //     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 // #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -218,5 +255,7 @@ public partial class ApiDbContext : DbContext
                 .HasFilter("\"Status\" = 0 AND \"DeletedAt\" IS NULL")
                 .HasDatabaseName("IX_MatchFlags_MatchId_FlaggedById_Pending");
         });
+
+        ConfigureV3Entities(modelBuilder);
     }
 }

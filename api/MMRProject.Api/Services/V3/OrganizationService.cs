@@ -1,0 +1,239 @@
+using Microsoft.EntityFrameworkCore;
+using MMRProject.Api.Data;
+using MMRProject.Api.Data.Entities.V3;
+using MMRProject.Api.DTOs.V3;
+using MMRProject.Api.Exceptions;
+using MMRProject.Api.UserContext;
+
+namespace MMRProject.Api.Services.V3;
+
+public interface IOrganizationService
+{
+    Task<OrganizationResponse> CreateOrganizationAsync(CreateOrganizationRequest request);
+    Task<OrganizationResponse> GetOrganizationAsync(Guid orgId);
+    Task<OrganizationResponse?> GetOrganizationBySlugAsync(string slug);
+    Task<OrganizationResponse> UpdateOrganizationAsync(Guid orgId, UpdateOrganizationRequest request);
+    Task<List<OrganizationMemberResponse>> ListMembersAsync(Guid orgId);
+    Task<OrganizationMemberResponse> InviteMemberAsync(Guid orgId, InviteMemberRequest request);
+    Task<OrganizationMemberResponse> UpdateMemberRoleAsync(Guid orgId, Guid membershipId, UpdateMemberRoleRequest request);
+    Task RemoveMemberAsync(Guid orgId, Guid membershipId);
+    Task<OrganizationMembership?> GetMembershipForCurrentUserAsync(Guid orgId);
+}
+
+public class OrganizationService(
+    ApiDbContext dbContext,
+    IUserContextResolver userContextResolver,
+    IV3UserService userService) : IOrganizationService
+{
+    private static readonly HashSet<string> ReservedSlugs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "submit", "player", "admin", "statistics", "matchmaking",
+        "random", "profile", "login", "api", "new-player", "active-match"
+    };
+
+    public async Task<OrganizationResponse> CreateOrganizationAsync(CreateOrganizationRequest request)
+    {
+        ValidateSlug(request.Slug);
+
+        var existingOrg = await dbContext.Organizations
+            .FirstOrDefaultAsync(o => o.Slug == request.Slug);
+        if (existingOrg != null)
+            throw new InvalidArgumentException($"An organization with slug '{request.Slug}' already exists");
+
+        var identityUserId = userContextResolver.GetIdentityUserId();
+        var email = userContextResolver.GetEmail()
+                    ?? throw new InvalidArgumentException("Email claim is required");
+        var user = await userService.EnsureUserAsync(identityUserId, email, null, null);
+
+        var org = new Organization
+        {
+            Name = request.Name,
+            Slug = request.Slug
+        };
+        dbContext.Organizations.Add(org);
+
+        var membership = new OrganizationMembership
+        {
+            OrganizationId = org.Id,
+            UserId = user.Id,
+            DisplayName = user.DisplayName,
+            Username = user.Username,
+            Role = OrganizationRole.Owner,
+            Status = MembershipStatus.Active,
+            ClaimedAt = DateTimeOffset.UtcNow
+        };
+        dbContext.OrganizationMemberships.Add(membership);
+
+        await dbContext.SaveChangesAsync();
+
+        return MapToResponse(org);
+    }
+
+    public async Task<OrganizationResponse> GetOrganizationAsync(Guid orgId)
+    {
+        var org = await dbContext.Organizations.FindAsync(orgId)
+                  ?? throw new NotFoundException($"Organization with ID '{orgId}' not found");
+
+        return MapToResponse(org);
+    }
+
+    public async Task<OrganizationResponse?> GetOrganizationBySlugAsync(string slug)
+    {
+        var org = await dbContext.Organizations
+            .FirstOrDefaultAsync(o => o.Slug == slug);
+
+        return org == null ? null : MapToResponse(org);
+    }
+
+    public async Task<OrganizationResponse> UpdateOrganizationAsync(Guid orgId, UpdateOrganizationRequest request)
+    {
+        var org = await dbContext.Organizations.FindAsync(orgId)
+                  ?? throw new NotFoundException($"Organization with ID '{orgId}' not found");
+
+        if (request.Name != null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+                throw new InvalidArgumentException("Name cannot be empty");
+            org.Name = request.Name;
+        }
+
+        if (request.Slug != null)
+        {
+            ValidateSlug(request.Slug);
+
+            var existingOrg = await dbContext.Organizations
+                .FirstOrDefaultAsync(o => o.Slug == request.Slug && o.Id != orgId);
+            if (existingOrg != null)
+                throw new InvalidArgumentException($"An organization with slug '{request.Slug}' already exists");
+
+            org.Slug = request.Slug;
+        }
+
+        await dbContext.SaveChangesAsync();
+
+        return MapToResponse(org);
+    }
+
+    public async Task<List<OrganizationMemberResponse>> ListMembersAsync(Guid orgId)
+    {
+        var members = await dbContext.OrganizationMemberships
+            .Include(m => m.User)
+            .Where(m => m.OrganizationId == orgId)
+            .ToListAsync();
+
+        return members.Select(MapToMemberResponse).ToList();
+    }
+
+    public async Task<OrganizationMemberResponse> InviteMemberAsync(Guid orgId, InviteMemberRequest request)
+    {
+        var existing = await dbContext.OrganizationMemberships
+            .Include(m => m.User)
+            .FirstOrDefaultAsync(m => m.OrganizationId == orgId && m.InviteEmail == request.Email);
+
+        if (existing != null)
+            throw new InvalidArgumentException($"A member with email '{request.Email}' has already been invited");
+
+        var existingByUser = await dbContext.OrganizationMemberships
+            .Include(m => m.User)
+            .FirstOrDefaultAsync(m => m.OrganizationId == orgId
+                                      && m.User != null
+                                      && m.User.Email == request.Email);
+
+        if (existingByUser != null)
+            throw new InvalidArgumentException($"A member with email '{request.Email}' already exists in this organization");
+
+        var membership = new OrganizationMembership
+        {
+            OrganizationId = orgId,
+            InviteEmail = request.Email,
+            Role = request.Role,
+            Status = MembershipStatus.Invited
+        };
+
+        dbContext.OrganizationMemberships.Add(membership);
+        await dbContext.SaveChangesAsync();
+
+        return MapToMemberResponse(membership);
+    }
+
+    public async Task<OrganizationMemberResponse> UpdateMemberRoleAsync(
+        Guid orgId, Guid membershipId, UpdateMemberRoleRequest request)
+    {
+        var membership = await dbContext.OrganizationMemberships
+            .Include(m => m.User)
+            .FirstOrDefaultAsync(m => m.Id == membershipId && m.OrganizationId == orgId)
+            ?? throw new NotFoundException($"Membership with ID '{membershipId}' not found");
+
+        var currentUserMembership = await GetMembershipForCurrentUserAsync(orgId)
+            ?? throw new ForbiddenException("You are not a member of this organization");
+
+        membership.Role = request.Role;
+        membership.RoleAssignedByMembershipId = currentUserMembership.Id;
+        membership.RoleAssignedAt = DateTimeOffset.UtcNow;
+
+        await dbContext.SaveChangesAsync();
+
+        return MapToMemberResponse(membership);
+    }
+
+    public async Task RemoveMemberAsync(Guid orgId, Guid membershipId)
+    {
+        var membership = await dbContext.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.Id == membershipId && m.OrganizationId == orgId)
+            ?? throw new NotFoundException($"Membership with ID '{membershipId}' not found");
+
+        dbContext.OrganizationMemberships.Remove(membership);
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<OrganizationMembership?> GetMembershipForCurrentUserAsync(Guid orgId)
+    {
+        var identityUserId = userContextResolver.GetIdentityUserId();
+        var user = await dbContext.V3Users
+            .FirstOrDefaultAsync(u => u.IdentityUserId == identityUserId);
+
+        if (user == null)
+            return null;
+
+        return await dbContext.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.OrganizationId == orgId
+                                      && m.UserId == user.Id
+                                      && m.Status == MembershipStatus.Active);
+    }
+
+    private static void ValidateSlug(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+            throw new InvalidArgumentException("Slug cannot be empty");
+
+        if (ReservedSlugs.Contains(slug))
+            throw new InvalidArgumentException($"The slug '{slug}' is reserved and cannot be used");
+    }
+
+    private static OrganizationResponse MapToResponse(Organization org)
+    {
+        return new OrganizationResponse
+        {
+            Id = org.Id,
+            Name = org.Name,
+            Slug = org.Slug,
+            CreatedAt = org.CreatedAt
+        };
+    }
+
+    private static OrganizationMemberResponse MapToMemberResponse(OrganizationMembership membership)
+    {
+        return new OrganizationMemberResponse
+        {
+            Id = membership.Id,
+            UserId = membership.UserId,
+            Email = membership.User?.Email ?? membership.InviteEmail,
+            DisplayName = membership.DisplayName ?? membership.User?.DisplayName,
+            Username = membership.Username ?? membership.User?.Username,
+            Role = membership.Role,
+            Status = membership.Status,
+            ClaimedAt = membership.ClaimedAt,
+            CreatedAt = membership.CreatedAt
+        };
+    }
+}

@@ -11,6 +11,7 @@
     "lint": "prettier --check . && eslint .",
     "format": "prettier --write .",
     "generate-api": "openapi-generator-cli generate -i http://localhost:8081/swagger/v1/swagger.json -g typescript-fetch -o src/api --additional-properties=supportsES6=true --skip-validate-spec",
+    "generate-api-v3": "openapi-generator-cli generate -i http://localhost:8081/swagger/v3/swagger.json -g typescript-fetch -o src/api-v3 --additional-properties=supportsES6=true --skip-validate-spec",
     "start": "node -r dotenv/config build"
   },
   "devDependencies": {
