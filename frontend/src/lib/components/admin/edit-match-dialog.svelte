@@ -14,7 +14,6 @@
 		open?: boolean;
 		seasonId: number;
 		formAction?: string;
-		onOpenChange?: (open: boolean) => void;
 		onSuccess?: () => void;
 	}
 
@@ -24,7 +23,6 @@
 		open = $bindable(false),
 		seasonId,
 		formAction = '?/editMatch',
-		onOpenChange,
 		onSuccess
 	}: Props = $props();
 
@@ -71,7 +69,7 @@
 	let isEditFormValid = $derived(validateEditForm());
 </script>
 
-<Dialog.Root {open} {onOpenChange}>
+<Dialog.Root bind:open>
 	<Dialog.Content class="max-w-2xl max-h-[90vh] overflow-y-auto">
 		<Dialog.Header>
 			<Dialog.Title>Edit Match #{match?.matchId}</Dialog.Title>
