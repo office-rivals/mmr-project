@@ -141,6 +141,16 @@ public class V3MatchesService(
         if (match == null)
             throw new NotFoundException("Match not found");
 
+        var ratingHistories = await dbContext.RatingHistories
+            .Where(rh => rh.MatchId == matchId)
+            .ToListAsync();
+        dbContext.RatingHistories.RemoveRange(ratingHistories);
+
+        foreach (var team in match.Teams)
+        {
+            dbContext.Set<MatchTeamPlayer>().RemoveRange(team.Players);
+        }
+        dbContext.Set<MatchTeam>().RemoveRange(match.Teams);
         dbContext.Set<V3Match>().Remove(match);
         await dbContext.SaveChangesAsync();
     }

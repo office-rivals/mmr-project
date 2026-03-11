@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using MMRProject.Api.BackgroundServices;
 using MMRProject.Api.Data;
 using MMRProject.Api.MMRCalculationApi;
 using MMRProject.Api.MMRCalculationApi.Models;
@@ -26,6 +28,8 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Migration:Enabled", "false");
+        builder.UseSetting("Authorization:Issuer", "https://test-issuer.example.com");
+        builder.UseSetting("ASPNETCORE_URLS", "http://+:80");
 
         builder.ConfigureTestServices(services =>
         {
@@ -42,6 +46,16 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
                     o => o.SetPostgresVersion(13, 0)
                 )
             );
+
+            var bgServices = services
+                .Where(d => d.ServiceType == typeof(IHostedService) &&
+                            (d.ImplementationType == typeof(MatchMakingBackgroundService) ||
+                             d.ImplementationType == typeof(V3MatchMakingBackgroundService)))
+                .ToList();
+            foreach (var svc in bgServices)
+            {
+                services.Remove(svc);
+            }
 
             services.AddAuthentication("TestScheme")
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("TestScheme", _ => { });

@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -35,14 +34,14 @@ public class MatchFlagTests(PostgresFixture postgres) : IntegrationTestBase(post
                 ]
             });
         matchResponse.EnsureSuccessStatusCode();
-        var match = await matchResponse.Content.ReadFromJsonAsync<MatchResponse>();
+        var match = await ReadJsonAsync<MatchResponse>(matchResponse);
 
         var flagResponse = await Client.PostAsJsonAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/match-flags",
             new CreateMatchFlagRequest { MatchId = match!.Id, Reason = "Wrong score" });
 
         Assert.Equal(HttpStatusCode.Created, flagResponse.StatusCode);
-        var flag = await flagResponse.Content.ReadFromJsonAsync<MatchFlagResponse>();
+        var flag = await ReadJsonAsync<MatchFlagResponse>(flagResponse);
         Assert.NotNull(flag);
         Assert.Equal(MatchFlagStatus.Open, flag.Status);
         Assert.Equal("Wrong score", flag.Reason);
@@ -50,7 +49,7 @@ public class MatchFlagTests(PostgresFixture postgres) : IntegrationTestBase(post
         var listResponse = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/match-flags");
         Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
-        var flags = await listResponse.Content.ReadFromJsonAsync<List<MatchFlagResponse>>();
+        var flags = await ReadJsonAsync<List<MatchFlagResponse>>(listResponse);
         Assert.NotNull(flags);
         Assert.Single(flags);
     }
@@ -81,13 +80,13 @@ public class MatchFlagTests(PostgresFixture postgres) : IntegrationTestBase(post
                 ]
             });
         matchResponse.EnsureSuccessStatusCode();
-        var match = await matchResponse.Content.ReadFromJsonAsync<MatchResponse>();
+        var match = await ReadJsonAsync<MatchResponse>(matchResponse);
 
         var flagResponse = await Client.PostAsJsonAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/match-flags",
             new CreateMatchFlagRequest { MatchId = match!.Id, Reason = "Wrong score" });
         flagResponse.EnsureSuccessStatusCode();
-        var flag = await flagResponse.Content.ReadFromJsonAsync<MatchFlagResponse>();
+        var flag = await ReadJsonAsync<MatchFlagResponse>(flagResponse);
 
         var resolveResponse = await Client.PatchAsJsonAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/admin/match-flags/{flag!.Id}/resolve",
@@ -95,7 +94,7 @@ public class MatchFlagTests(PostgresFixture postgres) : IntegrationTestBase(post
                 { Status = MatchFlagStatus.Resolved, ResolutionNote = "Score corrected" });
 
         Assert.Equal(HttpStatusCode.OK, resolveResponse.StatusCode);
-        var resolved = await resolveResponse.Content.ReadFromJsonAsync<MatchFlagResponse>();
+        var resolved = await ReadJsonAsync<MatchFlagResponse>(resolveResponse);
         Assert.NotNull(resolved);
         Assert.Equal(MatchFlagStatus.Resolved, resolved.Status);
         Assert.Equal("Score corrected", resolved.ResolutionNote);

@@ -1,9 +1,12 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
 using Npgsql;
 using Respawn;
+using Respawn.Graph;
 using Xunit;
 
 namespace MMRProject.Api.IntegrationTests;
@@ -13,6 +16,12 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 {
     private readonly PostgresFixture _postgresFixture;
     private Respawner _respawner = null!;
+
+    protected static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     protected IntegrationTestFactory Factory { get; }
     protected HttpClient Client { get; private set; } = null!;
@@ -35,6 +44,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         {
             DbAdapter = DbAdapter.Postgres,
             SchemasToInclude = ["public"],
+            TablesToIgnore = [new Table("__EFMigrationsHistory")],
         });
 
         await ResetDatabaseAsync();
@@ -175,13 +185,18 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         return user;
     }
 
-    protected void AuthenticateAs(string identityUserId, OrganizationRole? orgRole = null)
+    protected void AuthenticateAs(string identityUserId, OrganizationRole? orgRole = null, string? email = null)
     {
-        Factory.ClaimsProvider.SetUser(identityUserId);
+        Factory.ClaimsProvider.SetUser(identityUserId, email ?? $"{identityUserId}@test.com");
         if (orgRole.HasValue)
         {
             Factory.ClaimsProvider.AddClaim("org_role", orgRole.Value.ToString());
         }
+    }
+
+    protected static async Task<T?> ReadJsonAsync<T>(HttpResponseMessage response)
+    {
+        return await response.Content.ReadFromJsonAsync<T>(JsonOptions);
     }
 
     protected async Task<V3Season> CreateSeason(Guid organizationId, Guid leagueId,

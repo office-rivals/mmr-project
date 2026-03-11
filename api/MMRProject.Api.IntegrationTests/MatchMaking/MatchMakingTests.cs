@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -24,7 +23,7 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
         var statusResponse = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/queue");
         Assert.Equal(HttpStatusCode.OK, statusResponse.StatusCode);
-        var status = await statusResponse.Content.ReadFromJsonAsync<QueueStatusResponse>();
+        var status = await ReadJsonAsync<QueueStatusResponse>(statusResponse);
         Assert.NotNull(status);
         Assert.Single(status.QueuedPlayers);
     }
@@ -50,7 +49,7 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
         AuthenticateAs("p1");
         var statusResponse = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/queue");
-        var status = await statusResponse.Content.ReadFromJsonAsync<QueueStatusResponse>();
+        var status = await ReadJsonAsync<QueueStatusResponse>(statusResponse);
         Assert.NotNull(status);
         Assert.NotNull(status.PendingMatch);
         Assert.Equal(AcceptanceStatus.Pending, status.PendingMatch.Status);
@@ -78,7 +77,7 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
         AuthenticateAs("p1");
         var statusResponse = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/queue");
-        var status = await statusResponse.Content.ReadFromJsonAsync<QueueStatusResponse>();
+        var status = await ReadJsonAsync<QueueStatusResponse>(statusResponse);
         var pendingMatchId = status!.PendingMatch!.Id;
 
         // p1 accepts
@@ -98,7 +97,7 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
         AuthenticateAs("p1");
         var matchStatus = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/pending-matches/{pendingMatchId}");
-        var matchResult = await matchStatus.Content.ReadFromJsonAsync<PendingMatchResponse>();
+        var matchResult = await ReadJsonAsync<PendingMatchResponse>(matchStatus);
         Assert.NotNull(matchResult);
         Assert.Equal(AcceptanceStatus.Declined, matchResult.Status);
     }

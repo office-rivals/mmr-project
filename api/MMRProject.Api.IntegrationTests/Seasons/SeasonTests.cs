@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -24,7 +23,7 @@ public class SeasonTests(PostgresFixture postgres) : IntegrationTestBase(postgre
             new CreateSeasonRequest { StartsAt = startsAt });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var season = await response.Content.ReadFromJsonAsync<SeasonResponse>();
+        var season = await ReadJsonAsync<SeasonResponse>(response);
         Assert.NotNull(season);
         Assert.Equal(league.Id, season.LeagueId);
     }
@@ -45,7 +44,7 @@ public class SeasonTests(PostgresFixture postgres) : IntegrationTestBase(postgre
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/seasons/current");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var current = await response.Content.ReadFromJsonAsync<SeasonResponse>();
+        var current = await ReadJsonAsync<SeasonResponse>(response);
         Assert.NotNull(current);
         Assert.Equal(newer.Id, current.Id);
     }

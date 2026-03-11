@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -82,7 +81,7 @@ public class AuthorizationTests(PostgresFixture postgres) : IntegrationTestBase(
                 ]
             });
         submitResponse.EnsureSuccessStatusCode();
-        var match = await submitResponse.Content.ReadFromJsonAsync<MatchResponse>();
+        var match = await ReadJsonAsync<MatchResponse>(submitResponse);
 
         AuthenticateAs("member-1");
         var deleteResponse = await Client.DeleteAsync(

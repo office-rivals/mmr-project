@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -20,7 +19,7 @@ public class LeagueTests(PostgresFixture postgres) : IntegrationTestBase(postgre
             new CreateLeagueRequest { Name = "Foosball", Slug = "foosball", QueueSize = 4 });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var league = await response.Content.ReadFromJsonAsync<LeagueResponse>();
+        var league = await ReadJsonAsync<LeagueResponse>(response);
         Assert.NotNull(league);
         Assert.Equal("Foosball", league.Name);
         Assert.Equal("foosball", league.Slug);
@@ -56,7 +55,7 @@ public class LeagueTests(PostgresFixture postgres) : IntegrationTestBase(postgre
         var response = await Client.GetAsync($"api/v3/organizations/{org1.Id}/leagues");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var leagues = await response.Content.ReadFromJsonAsync<List<LeagueResponse>>();
+        var leagues = await ReadJsonAsync<List<LeagueResponse>>(response);
         Assert.NotNull(leagues);
         Assert.Equal(2, leagues.Count);
         Assert.All(leagues, l => Assert.Equal(org1.Id, l.OrganizationId));

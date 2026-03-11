@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -19,7 +18,7 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
             new CreateOrganizationRequest { Name = "My Org", Slug = "my-org" });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var org = await response.Content.ReadFromJsonAsync<OrganizationResponse>();
+        var org = await ReadJsonAsync<OrganizationResponse>(response);
         Assert.NotNull(org);
         Assert.Equal("My Org", org.Name);
         Assert.Equal("my-org", org.Slug);
@@ -48,7 +47,7 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
         var response = await Client.GetAsync($"api/v3/organizations/{org.Id}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<OrganizationResponse>();
+        var result = await ReadJsonAsync<OrganizationResponse>(response);
         Assert.NotNull(result);
         Assert.Equal("Get Org", result.Name);
         Assert.Equal("get-org", result.Slug);
@@ -65,7 +64,7 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
             new UpdateOrganizationRequest { Name = "New Name" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<OrganizationResponse>();
+        var result = await ReadJsonAsync<OrganizationResponse>(response);
         Assert.NotNull(result);
         Assert.Equal("New Name", result.Name);
     }
@@ -81,7 +80,7 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
             new InviteMemberRequest { Email = "newmember@test.com", Role = OrganizationRole.Member });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var member = await response.Content.ReadFromJsonAsync<OrganizationMemberResponse>();
+        var member = await ReadJsonAsync<OrganizationMemberResponse>(response);
         Assert.NotNull(member);
         Assert.Equal(OrganizationRole.Member, member.Role);
         Assert.Equal(MembershipStatus.Invited, member.Status);
@@ -97,14 +96,14 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
         var inviteResponse = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/members",
             new InviteMemberRequest { Email = "member@test.com", Role = OrganizationRole.Member });
         inviteResponse.EnsureSuccessStatusCode();
-        var invited = await inviteResponse.Content.ReadFromJsonAsync<OrganizationMemberResponse>();
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
 
         var response = await Client.PatchAsJsonAsync(
             $"api/v3/organizations/{org.Id}/members/{invited!.Id}",
             new UpdateMemberRoleRequest { Role = OrganizationRole.Moderator });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var updated = await response.Content.ReadFromJsonAsync<OrganizationMemberResponse>();
+        var updated = await ReadJsonAsync<OrganizationMemberResponse>(response);
         Assert.NotNull(updated);
         Assert.Equal(OrganizationRole.Moderator, updated.Role);
     }

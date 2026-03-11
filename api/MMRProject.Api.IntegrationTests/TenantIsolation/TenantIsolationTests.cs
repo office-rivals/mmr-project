@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -32,7 +31,7 @@ public class TenantIsolationTests(PostgresFixture postgres) : IntegrationTestBas
         var leaderboardA = await Client.GetAsync(
             $"api/v3/organizations/{orgA.Id}/leagues/{leagueA.Id}/leaderboard");
         Assert.Equal(HttpStatusCode.OK, leaderboardA.StatusCode);
-        var lbA = await leaderboardA.Content.ReadFromJsonAsync<LeaderboardResponse>();
+        var lbA = await ReadJsonAsync<LeaderboardResponse>(leaderboardA);
         Assert.NotNull(lbA);
         Assert.Equal(2, lbA.Entries.Count);
     }
@@ -76,14 +75,14 @@ public class TenantIsolationTests(PostgresFixture postgres) : IntegrationTestBas
         var league2Matches = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league2.Id}/matches");
         Assert.Equal(HttpStatusCode.OK, league2Matches.StatusCode);
-        var matches = await league2Matches.Content.ReadFromJsonAsync<List<MatchResponse>>();
+        var matches = await ReadJsonAsync<List<MatchResponse>>(league2Matches);
         Assert.NotNull(matches);
         Assert.Empty(matches);
 
         // League2's leaderboard should only have one player
         var league2Lb = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league2.Id}/leaderboard");
-        var lb = await league2Lb.Content.ReadFromJsonAsync<LeaderboardResponse>();
+        var lb = await ReadJsonAsync<LeaderboardResponse>(league2Lb);
         Assert.NotNull(lb);
         Assert.Single(lb.Entries);
     }

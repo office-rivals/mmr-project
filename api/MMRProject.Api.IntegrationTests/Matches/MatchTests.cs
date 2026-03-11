@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -38,7 +37,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
             });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var match = await response.Content.ReadFromJsonAsync<MatchResponse>();
+        var match = await ReadJsonAsync<MatchResponse>(response);
         Assert.NotNull(match);
         Assert.Equal(2, match.Teams.Count);
         Assert.Equal(MatchSource.Manual, match.Source);
@@ -79,14 +78,14 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
             $"api/v3/organizations/{org.Id}/leagues/{league1.Id}/matches");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var matches = await response.Content.ReadFromJsonAsync<List<MatchResponse>>();
+        var matches = await ReadJsonAsync<List<MatchResponse>>(response);
         Assert.NotNull(matches);
         Assert.Single(matches);
         Assert.Equal(league1.Id, matches[0].LeagueId);
 
         var emptyResponse = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league2.Id}/matches");
-        var emptyMatches = await emptyResponse.Content.ReadFromJsonAsync<List<MatchResponse>>();
+        var emptyMatches = await ReadJsonAsync<List<MatchResponse>>(emptyResponse);
         Assert.NotNull(emptyMatches);
         Assert.Empty(emptyMatches);
     }
@@ -117,7 +116,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                 ]
             });
         submitResponse.EnsureSuccessStatusCode();
-        var match = await submitResponse.Content.ReadFromJsonAsync<MatchResponse>();
+        var match = await ReadJsonAsync<MatchResponse>(submitResponse);
 
         var deleteResponse = await Client.DeleteAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{match!.Id}");

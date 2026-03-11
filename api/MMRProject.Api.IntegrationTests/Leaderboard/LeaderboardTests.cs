@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -25,7 +24,7 @@ public class LeaderboardTests(PostgresFixture postgres) : IntegrationTestBase(po
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/leaderboard");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var leaderboard = await response.Content.ReadFromJsonAsync<LeaderboardResponse>();
+        var leaderboard = await ReadJsonAsync<LeaderboardResponse>(response);
         Assert.NotNull(leaderboard);
         Assert.Equal(3, leaderboard.Entries.Count);
         Assert.All(leaderboard.Entries, e => Assert.True(e.Rank > 0));
@@ -47,7 +46,7 @@ public class LeaderboardTests(PostgresFixture postgres) : IntegrationTestBase(po
 
         var response1 = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league1.Id}/leaderboard");
-        var lb1 = await response1.Content.ReadFromJsonAsync<LeaderboardResponse>();
+        var lb1 = await ReadJsonAsync<LeaderboardResponse>(response1);
         Assert.NotNull(lb1);
         Assert.Equal(2, lb1.Entries.Count);
 
@@ -55,7 +54,7 @@ public class LeaderboardTests(PostgresFixture postgres) : IntegrationTestBase(po
 
         var response2 = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league2.Id}/leaderboard");
-        var lb2 = await response2.Content.ReadFromJsonAsync<LeaderboardResponse>();
+        var lb2 = await ReadJsonAsync<LeaderboardResponse>(response2);
         Assert.NotNull(lb2);
         Assert.Single(lb2.Entries);
     }
