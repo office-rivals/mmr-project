@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import type { ApiClient } from '$lib/server/api/apiClient';
+import { ResponseError } from '$api/runtime';
 
 export function createMatchFlagActions(apiClient: ApiClient) {
   return {
@@ -27,6 +28,9 @@ export function createMatchFlagActions(apiClient: ApiClient) {
         return { success: true, message: 'Match flagged successfully' };
       } catch (error) {
         console.error('Error flagging match:', error);
+        if (error instanceof ResponseError && error.response.status < 500) {
+          return fail(error.response.status, { success: false, message: await error.response.text() });
+        }
         return fail(500, { success: false, message: 'Failed to flag match' });
       }
     },
@@ -55,6 +59,9 @@ export function createMatchFlagActions(apiClient: ApiClient) {
         return { success: true, message: 'Flag updated successfully' };
       } catch (error) {
         console.error('Error updating flag:', error);
+        if (error instanceof ResponseError && error.response.status < 500) {
+          return fail(error.response.status, { success: false, message: await error.response.text() });
+        }
         return fail(500, { success: false, message: 'Failed to update flag' });
       }
     },
@@ -79,6 +86,9 @@ export function createMatchFlagActions(apiClient: ApiClient) {
         return { success: true, message: 'Flag deleted successfully' };
       } catch (error) {
         console.error('Error deleting flag:', error);
+        if (error instanceof ResponseError && error.response.status < 500) {
+          return fail(error.response.status, { success: false, message: await error.response.text() });
+        }
         return fail(500, { success: false, message: 'Failed to delete flag' });
       }
     },

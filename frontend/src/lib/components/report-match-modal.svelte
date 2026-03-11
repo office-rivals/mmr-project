@@ -42,6 +42,7 @@
 	let errorMessage = $state('');
 	let showDeleteConfirm = $state(false);
 	let fetchRequestId = 0;
+	let requestedPage = $state(0);
 
 	const PAGE_SIZE = 10;
 
@@ -53,6 +54,7 @@
 		if (open) {
 			step = 'browse';
 			page = 0;
+			requestedPage = 0;
 			selectedMatch = null;
 			existingFlag = undefined;
 			reason = '';
@@ -64,6 +66,7 @@
 
 	async function fetchMatches(pageNum: number) {
 		const requestId = ++fetchRequestId;
+		requestedPage = pageNum;
 		loading = true;
 		fetchError = false;
 		try {
@@ -133,7 +136,7 @@
 					<div class="flex flex-col items-center gap-2 py-8 text-center">
 						<AlertCircle class="h-6 w-6 text-destructive" />
 						<p class="text-sm text-muted-foreground">Failed to load matches. Please try again.</p>
-						<Button variant="outline" size="sm" onclick={() => fetchMatches(page)}>Retry</Button>
+						<Button variant="outline" size="sm" onclick={() => fetchMatches(requestedPage)}>Retry</Button>
 					</div>
 				{:else if matches.length === 0}
 					<p class="py-8 text-center text-muted-foreground">No matches found</p>
