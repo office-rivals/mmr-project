@@ -1,7 +1,8 @@
 import type { LeaderboardEntry } from '$api/models/LeaderboardEntry';
 import type { RankedLeaderboardEntry } from '$lib/components/leaderboard/leader-board-entry';
+import { createMatchFlagActions } from '$lib/server/actions/matchFlagActions';
 import { fail } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
   try {
@@ -16,7 +17,7 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
         seasonId,
       });
 
-    const [entries, matches, users, activeMatches, profile, seasons] =
+    const [entries, matches, users, activeMatches, seasons, profile, userFlags] =
       await Promise.all([
         apiClient.statisticsApi.statisticsGetLeaderboard({ seasonId }),
         apiClient.mmrApi.mMRV2GetMatches({
@@ -26,8 +27,9 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
         }),
         apiClient.usersApi.usersGetUsers(),
         apiClient.matchmakingApi.matchMakingGetActiveMatches(),
-        apiClient.profileApi.profileGetProfile(),
         apiClient.seasonsApi.seasonsGetSeasons(),
+        apiClient.profileApi.profileGetProfile().catch(() => undefined),
+        apiClient.matchFlagsApi.matchFlagsGetMyPendingFlags().catch(() => []),
       ]);
 
     const leaderboardEntries = entries
@@ -60,10 +62,27 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
       profile,
       seasons,
       currentSeason: seasons[0],
+      isCurrentSeason: seasonId == null || seasonId === seasons[0]?.id,
+      userFlags: userFlags ?? [],
     };
   } catch (error) {
-    fail(500, {
+    return fail(500, {
       message: 'Failed to load leaderboard',
     });
   }
+};
+
+export const actions: Actions = {
+  flagMatch: async ({ request, locals: { apiClient } }) => {
+    const actions = createMatchFlagActions(apiClient);
+    return actions.flagMatch(await request.formData());
+  },
+  updateFlag: async ({ request, locals: { apiClient } }) => {
+    const actions = createMatchFlagActions(apiClient);
+    return actions.updateFlag(await request.formData());
+  },
+  deleteFlag: async ({ request, locals: { apiClient } }) => {
+    const actions = createMatchFlagActions(apiClient);
+    return actions.deleteFlag(await request.formData());
+  },
 };

@@ -1,7 +1,9 @@
 apis/AdminMMRApi.ts
 apis/AdminMatchApi.ts
+apis/AdminMatchFlagsApi.ts
 apis/AdminUsersApi.ts
 apis/MMRV2Api.ts
+apis/MatchFlagsApi.ts
 apis/MatchMakingApi.ts
 apis/PersonalAccessTokensApi.ts
 apis/ProfileApi.ts
@@ -16,11 +18,14 @@ models/ActiveMatchSubmitRequest.ts
 models/ActiveMatchTeamDto.ts
 models/AdminUserDetailsResponse.ts
 models/ClaimProfileRequest.ts
+models/CreateMatchFlagRequest.ts
 models/CreatePersonalAccessTokenRequest.ts
 models/CreatePersonalAccessTokenResponse.ts
 models/CreateUserRequest.ts
 models/LeaderboardEntry.ts
 models/MatchDetailsV2.ts
+models/MatchFlagDetails.ts
+models/MatchFlagStatus.ts
 models/MatchMMRCalculationDetails.ts
 models/MatchMMRCalculationTeam.ts
 models/MatchMakingQueueStatus.ts
@@ -36,8 +41,11 @@ models/ProfileDetails.ts
 models/SeasonDto.ts
 models/SubmitMatchV2Request.ts
 models/TimeStatisticsEntry.ts
+models/UpdateMatchFlagReasonRequest.ts
+models/UpdateMatchFlagRequest.ts
 models/UpdateMatchRequest.ts
 models/UpdateUserRequest.ts
 models/UserDetails.ts
+models/UserMatchFlag.ts
 models/index.ts
 runtime.ts

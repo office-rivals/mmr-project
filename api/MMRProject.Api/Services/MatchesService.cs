@@ -21,12 +21,15 @@ public interface IMatchesService
     Task<Match> UpdateMatch(long matchId, UpdateMatchRequest request);
 
     Task DeleteMatch(long matchId);
+
+    Task<int> GetMatchCountForCurrentSeasonAsync();
 }
 
 public class MatchesService(
     ApiDbContext dbContext,
     IUserService userService,
     IMMRCalculationApiClient mmrCalculationApiClient,
+    ISeasonService seasonService,
     ILogger<MatchesService> logger) : IMatchesService
 {
     public async Task<IEnumerable<Match>> GetMatchesForSeason(long seasonId, int limit, int offset,
@@ -615,5 +618,19 @@ public class MatchesService(
         match.TeamTwo!.DeletedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<int> GetMatchCountForCurrentSeasonAsync()
+    {
+        var currentSeasonId = await seasonService.CurrentSeasonIdAsync();
+
+        if (!currentSeasonId.HasValue)
+        {
+            return 0;
+        }
+
+        return await dbContext.Matches
+            .Where(x => x.SeasonId == currentSeasonId.Value)
+            .CountAsync();
     }
 }

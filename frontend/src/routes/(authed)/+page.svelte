@@ -4,21 +4,25 @@
   import PageTitle from '$lib/components/page-title.svelte';
   import SeasonPicker from '$lib/components/season-picker.svelte';
   import Label from '$lib/components/ui/label/label.svelte';
+  import { Alert } from '$lib/components/ui/alert';
+  import { Button } from '$lib/components/ui/button';
   import UserStatsModal from '$lib/components/user-stats-modal.svelte';
+  import ReportMatchModal from '$lib/components/report-match-modal.svelte';
   import { Checkbox } from 'bits-ui';
-  import { Check, Minus } from 'lucide-svelte';
+  import { Check, Minus, CheckCircle, AlertCircle, Flag } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import type { ActiveMatchDto, UserDetails } from '../../api';
   import { showMmr } from '../../stores/show-mmr';
-  import type { PageData } from './$types';
+  import type { ActionData, PageData } from './$types';
   import ActiveMatches from './components/active-matches.svelte';
   import CurrentActiveMatch from './components/current-active-match.svelte';
 
   interface Props {
     data: PageData;
+    form: ActionData;
   }
 
-  let { data }: Props = $props();
+  let { data, form }: Props = $props();
   const {
     leaderboardEntries,
     recentMatches,
@@ -27,7 +31,11 @@
     profile,
     seasons,
     currentSeason,
+    userFlags,
+    isCurrentSeason,
   } = $derived(data);
+
+  let reportModalOpen = $state(false);
 
   let selectedUser: UserDetails | null | undefined = $state();
   let leaderboardEntry = $derived(
@@ -60,6 +68,23 @@
 
 <div class="flex flex-col gap-4">
   <PageTitle>Trifork Foosball</PageTitle>
+
+  {#if form?.success}
+    <Alert variant="success">
+      <div class="flex items-center gap-2">
+        <CheckCircle class="h-4 w-4" />
+        <span class="font-medium">{form.message}</span>
+      </div>
+    </Alert>
+  {:else if form?.success === false}
+    <Alert variant="destructive">
+      <div class="flex items-center gap-2">
+        <AlertCircle class="h-4 w-4" />
+        <span class="font-medium">{form.message}</span>
+      </div>
+    </Alert>
+  {/if}
+
   {#if seasons != null && seasons.length > 1}
     <div class="self-end"><SeasonPicker {seasons} {currentSeason} /></div>
   {/if}
@@ -70,7 +95,15 @@
     currentPlayerId={profile?.userId}
   />
   <div class="flex">
-    <h2 class="flex-1 text-2xl md:text-4xl">Recent Matches</h2>
+    <div class="flex flex-1 items-center gap-3">
+      <h2 class="text-2xl md:text-4xl">Recent Matches</h2>
+      {#if profile?.userId != null && isCurrentSeason}
+        <Button variant="outline" size="sm" onclick={() => (reportModalOpen = true)}>
+          <Flag class="mr-1.5 h-4 w-4" />
+          Report match
+        </Button>
+      {/if}
+    </div>
     <div class="flex items-center space-x-3 self-center">
       <Label id="show-mmr-label" for="show-mmr">MMR:</Label>
       <Checkbox.Root
@@ -90,7 +123,11 @@
   </div>
   <div class="flex flex-1 flex-col items-stretch gap-2">
     {#each recentMatches ?? [] as match}
-      <MatchCard users={users ?? []} {match} showMmr={$showMmr} />
+      <MatchCard
+        users={users ?? []}
+        {match}
+        showMmr={$showMmr}
+      />
     {/each}
   </div>
   <h2 class="text-2xl md:text-4xl">Leaderboard</h2>
@@ -117,5 +154,14 @@
         selectedUser = null;
       }
     }}
+  />
+{/if}
+
+{#if profile?.userId != null && isCurrentSeason}
+  <ReportMatchModal
+    bind:open={reportModalOpen}
+    users={(users ?? []).filter((u) => u.userId != null).map((u) => ({ userId: u.userId!, name: u.name ?? 'Unknown' }))}
+    seasonId={currentSeason?.id}
+    userFlags={userFlags ?? []}
   />
 {/if}

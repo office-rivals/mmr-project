@@ -1,7 +1,9 @@
 import type { MatchTeamV2 } from '../../../../api';
-import type { PageServerLoad } from './$types';
+import { createMatchFlagActions } from '$lib/server/actions/matchFlagActions';
+import type { Actions, PageServerLoad } from './$types';
 import type { MemberLeaderboardEntry } from './types';
 import { movePlayerToMember1 } from './utils';
+import { fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({
   params,
@@ -17,9 +19,9 @@ export const load: PageServerLoad = async ({
   if (Number.isNaN(playerId)) {
     throw new Error('Invalid player ID');
   }
-  const [userProfile, rawMatches, users, mmrHistory, seasons] =
+  const [userProfile, rawMatches, users, mmrHistory, seasons, userFlags] =
     await Promise.all([
-      apiClient.profileApi.profileGetProfile(),
+      apiClient.profileApi.profileGetProfile().catch(() => undefined),
       apiClient.mmrApi.mMRV2GetMatches({
         userId: playerId,
         limit: 1000,
@@ -32,13 +34,14 @@ export const load: PageServerLoad = async ({
         seasonId,
       }),
       apiClient.seasonsApi.seasonsGetSeasons(),
+      apiClient.matchFlagsApi.matchFlagsGetMyPendingFlags().catch(() => []),
     ]);
 
   const matches = rawMatches.map((match) =>
     movePlayerToMember1(match, playerId)
   );
 
-  const { userId: currentUserPlayerId } = userProfile;
+  const currentUserPlayerId = userProfile?.userId;
 
   const user = users.find((user) => user.userId === playerId);
   if (!user) {
@@ -136,6 +139,7 @@ export const load: PageServerLoad = async ({
 
   return {
     isCurrentUser: playerId === currentUserPlayerId,
+    profile: userProfile,
     matches,
     users,
     user,
@@ -152,6 +156,8 @@ export const load: PageServerLoad = async ({
     opponents,
     seasons,
     currentSeason: seasons[0],
+    isCurrentSeason: seasonId == null || seasonId === seasons[0]?.id,
+    userFlags: userFlags ?? [],
   };
 };
 
@@ -160,3 +166,18 @@ const isOnTeam = (team: MatchTeamV2, playerId: number) => {
 };
 
 const millisecondsToDays = (ms: number) => Math.round(ms / 1000 / 60 / 60 / 24);
+
+export const actions: Actions = {
+  flagMatch: async ({ request, locals: { apiClient } }) => {
+    const actions = createMatchFlagActions(apiClient);
+    return actions.flagMatch(await request.formData());
+  },
+  updateFlag: async ({ request, locals: { apiClient } }) => {
+    const actions = createMatchFlagActions(apiClient);
+    return actions.updateFlag(await request.formData());
+  },
+  deleteFlag: async ({ request, locals: { apiClient } }) => {
+    const actions = createMatchFlagActions(apiClient);
+    return actions.deleteFlag(await request.formData());
+  },
+};

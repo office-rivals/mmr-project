@@ -3,6 +3,7 @@ using System;
 using MMRProject.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MMRProject.Api.Data.Migrations
 {
     [DbContext(typeof(ApiDbContext))]
-    partial class ApiDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251110231223_AddMatchFlags")]
+    partial class AddMatchFlags
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -146,12 +149,9 @@ namespace MMRProject.Api.Data.Migrations
 
                     b.HasIndex("FlaggedById");
 
-                    b.HasIndex("ResolvedById");
+                    b.HasIndex("MatchId");
 
-                    b.HasIndex("MatchId", "FlaggedById")
-                        .IsUnique()
-                        .HasDatabaseName("IX_MatchFlags_MatchId_FlaggedById_Pending")
-                        .HasFilter("\"Status\" = 0 AND \"DeletedAt\" IS NULL");
+                    b.HasIndex("ResolvedById");
 
                     b.ToTable("MatchFlags");
                 });

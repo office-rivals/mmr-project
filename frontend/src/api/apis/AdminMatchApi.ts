@@ -15,9 +15,12 @@
 
 import * as runtime from '../runtime';
 import type {
+  MatchDetailsV2,
   UpdateMatchRequest,
 } from '../models/index';
 import {
+    MatchDetailsV2FromJSON,
+    MatchDetailsV2ToJSON,
     UpdateMatchRequestFromJSON,
     UpdateMatchRequestToJSON,
 } from '../models/index';
@@ -68,7 +71,35 @@ export class AdminMatchApi extends runtime.BaseAPI {
 
     /**
      */
-    async adminMatchUpdateMatchRaw(requestParameters: AdminMatchUpdateMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async adminMatchGetMatchCountRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<number>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/api/v1/admin/matches/count`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<number>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     */
+    async adminMatchGetMatchCount(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<number> {
+        const response = await this.adminMatchGetMatchCountRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     */
+    async adminMatchUpdateMatchRaw(requestParameters: AdminMatchUpdateMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MatchDetailsV2>> {
         if (requestParameters['matchId'] == null) {
             throw new runtime.RequiredError(
                 'matchId',
@@ -90,13 +121,14 @@ export class AdminMatchApi extends runtime.BaseAPI {
             body: UpdateMatchRequestToJSON(requestParameters['updateMatchRequest']),
         }, initOverrides);
 
-        return new runtime.VoidApiResponse(response);
+        return new runtime.JSONApiResponse(response, (jsonValue) => MatchDetailsV2FromJSON(jsonValue));
     }
 
     /**
      */
-    async adminMatchUpdateMatch(requestParameters: AdminMatchUpdateMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.adminMatchUpdateMatchRaw(requestParameters, initOverrides);
+    async adminMatchUpdateMatch(requestParameters: AdminMatchUpdateMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MatchDetailsV2> {
+        const response = await this.adminMatchUpdateMatchRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
 }
