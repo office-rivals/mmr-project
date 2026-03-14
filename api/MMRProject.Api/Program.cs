@@ -1,20 +1,15 @@
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using MMRProject.Api.Auth;
-using MMRProject.Api.Authorization;
 using MMRProject.Api.Authorization.V3;
 using MMRProject.Api.BackgroundServices;
 using MMRProject.Api.Data;
-using MMRProject.Api.Data.Entities;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.Exceptions;
 using MMRProject.Api.MMRCalculationApi;
-using MMRProject.Api.Services;
-using MMRProject.Api.Services.Adapters;
 using MMRProject.Api.Services.V3;
 using MMRProject.Api.UserContext;
 
@@ -34,15 +29,6 @@ builder.Services.AddMemoryCache();
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy(AuthorizationPolicies.RequireOwnerRole, policy =>
-        policy.Requirements.Add(new PlayerRoleRequirement(PlayerRole.Owner)));
-
-    options.AddPolicy(AuthorizationPolicies.RequireModeratorRole, policy =>
-        policy.Requirements.Add(new PlayerRoleRequirement(PlayerRole.Moderator)));
-
-    options.AddPolicy(AuthorizationPolicies.RequireUserRole, policy =>
-        policy.Requirements.Add(new PlayerRoleRequirement(PlayerRole.User)));
-
     options.AddPolicy(V3AuthorizationPolicies.RequireOrgOwner, policy =>
         policy.Requirements.Add(new OrganizationRoleRequirement(OrganizationRole.Owner)));
     options.AddPolicy(V3AuthorizationPolicies.RequireOrgModerator, policy =>
@@ -51,15 +37,11 @@ builder.Services.AddAuthorization(options =>
         policy.Requirements.Add(new OrganizationRoleRequirement(OrganizationRole.Member)));
 });
 
-builder.Services.AddSingleton<IAuthorizationHandler, PlayerRoleAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, OrganizationRoleAuthorizationHandler>();
 builder.Services.AddHttpContextAccessor();
 
-builder.Services.AddScoped<IClaimsTransformation, RoleClaimsTransformation>();
-
 builder.Services.AddUserContextResolver();
 
-// V3 Services (always registered, used by v3 controllers directly)
 builder.Services.AddScoped<IV3UserService, V3UserService>();
 builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
@@ -73,11 +55,6 @@ builder.Services.AddScoped<IV3MatchMakingService, V3MatchMakingService>();
 builder.Services.AddScoped<IV3PersonalAccessTokenService, V3PersonalAccessTokenService>();
 builder.Services.AddScoped<IV3MatchFlagService, V3MatchFlagService>();
 
-// Legacy services: either original implementations or v3-backed adapters
-builder.Services.AddServicesWithAdapterSupport(builder.Configuration);
-
-// Background services
-builder.Services.AddHostedService<MatchMakingBackgroundService>();
 builder.Services.AddHostedService<V3MatchMakingBackgroundService>();
 
 // External APIs
@@ -96,7 +73,6 @@ builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "MMR Project API", Version = "v1" });
     options.SwaggerDoc("v3", new OpenApiInfo { Title = "MMR Project API v3", Version = "v3" });
     options.CustomOperationIds(api =>
     {
@@ -106,11 +82,6 @@ builder.Services.AddSwaggerGen(options =>
         }
 
         return null;
-    });
-    options.DocInclusionPredicate((docName, apiDesc) =>
-    {
-        var groupName = apiDesc.GroupName ?? "v1";
-        return groupName == docName;
     });
 });
 
@@ -122,7 +93,6 @@ app.UseStatusCodePages();
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "MMR Project API v1");
     options.SwaggerEndpoint("/swagger/v3/swagger.json", "MMR Project API v3");
 });
 

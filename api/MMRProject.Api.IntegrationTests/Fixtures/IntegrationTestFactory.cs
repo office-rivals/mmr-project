@@ -49,8 +49,7 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
 
             var bgServices = services
                 .Where(d => d.ServiceType == typeof(IHostedService) &&
-                            (d.ImplementationType == typeof(MatchMakingBackgroundService) ||
-                             d.ImplementationType == typeof(V3MatchMakingBackgroundService)))
+                            d.ImplementationType == typeof(V3MatchMakingBackgroundService))
                 .ToList();
             foreach (var svc in bgServices)
             {
