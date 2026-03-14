@@ -29,4 +29,30 @@ public class V3MatchFlagsController(IV3MatchFlagService matchFlagService) : Cont
     {
         return await matchFlagService.GetFlagsAsync(orgId, leagueId, status);
     }
+
+    [HttpGet("me")]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    public async Task<ActionResult<List<MatchFlagResponse>>> GetMyFlags(
+        [FromRoute] Guid orgId, [FromRoute] Guid leagueId)
+    {
+        return await matchFlagService.GetMyFlagsAsync(orgId, leagueId);
+    }
+
+    [HttpPut("{flagId:guid}")]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    public async Task<ActionResult<MatchFlagResponse>> UpdateFlagReason(
+        [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromRoute] Guid flagId,
+        [FromBody] UpdateMatchFlagReasonRequest request)
+    {
+        return await matchFlagService.UpdateFlagReasonAsync(orgId, leagueId, flagId, request);
+    }
+
+    [HttpDelete("{flagId:guid}")]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    public async Task<ActionResult> DeleteFlag(
+        [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromRoute] Guid flagId)
+    {
+        await matchFlagService.DeleteFlagAsync(orgId, leagueId, flagId);
+        return NoContent();
+    }
 }

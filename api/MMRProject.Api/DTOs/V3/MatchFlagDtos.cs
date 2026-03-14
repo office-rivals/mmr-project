@@ -9,6 +9,12 @@ public record CreateMatchFlagRequest
     [Required] public required string Reason { get; init; }
 }
 
+public record UpdateMatchFlagReasonRequest
+{
+    [Required, StringLength(500, MinimumLength = 1)]
+    public required string Reason { get; init; }
+}
+
 public record ResolveMatchFlagRequest
 {
     [Required] public required MatchFlagStatus Status { get; init; }
@@ -28,4 +34,5 @@ public record MatchFlagResponse
     public string? ResolvedByDisplayName { get; init; }
     public DateTimeOffset? ResolvedAt { get; init; }
     [Required] public required DateTimeOffset CreatedAt { get; init; }
+    [Required] public required DateTimeOffset UpdatedAt { get; init; }
 }

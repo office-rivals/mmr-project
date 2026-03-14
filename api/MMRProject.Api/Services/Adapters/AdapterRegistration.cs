@@ -19,6 +19,7 @@ public static class AdapterRegistration
             services.AddScoped<IMatchMakingService, MatchMakingServiceAdapter>();
             services.AddScoped<IPersonalAccessTokenService, PersonalAccessTokenServiceAdapter>();
             services.AddScoped<IRoleService, RoleServiceAdapter>();
+            services.AddScoped<IMatchFlagService, MatchFlagServiceAdapter>();
         }
         else
         {
@@ -30,6 +31,7 @@ public static class AdapterRegistration
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IPersonalAccessTokenService, PersonalAccessTokenService>();
             services.AddScoped<IRoleService, RoleService>();
+            services.AddScoped<IMatchFlagService, MatchFlagService>();
         }
 
         return services;

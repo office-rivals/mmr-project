@@ -29,5 +29,6 @@ export const load: LayoutServerLoad = async ({ params, fetch }) => {
     leaguePlayerId: league.leaguePlayerId as string | undefined,
     orgSlug: params.orgSlug,
     leagueSlug: params.leagueSlug,
+    orgRole: org.role as string,
   };
 };

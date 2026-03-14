@@ -18,6 +18,8 @@ public class V3MatchFlag : TenantEntity
 
     public DateTimeOffset? ResolvedAt { get; set; }
 
+    public DateTimeOffset UpdatedAt { get; set; }
+
     public virtual V3Match Match { get; set; } = null!;
 
     public virtual OrganizationMembership FlaggedByMembership { get; set; } = null!;

@@ -407,8 +407,13 @@ public partial class ApiDbContext
             entity.Property(e => e.ResolutionNote).HasColumnName("resolution_note");
             entity.Property(e => e.ResolvedByMembershipId).HasColumnName("resolved_by_membership_id");
             entity.Property(e => e.ResolvedAt).HasColumnName("resolved_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
 
             entity.HasIndex(e => new { e.LeagueId, e.MatchId }, "ix_v3_match_flags_league_match");
+
+            entity.HasIndex(e => new { e.MatchId, e.FlaggedByMembershipId }, "ix_v3_match_flags_match_flagged_by_open")
+                .IsUnique()
+                .HasFilter("status = 0");
 
             entity.HasOne(e => e.Match).WithMany()
                 .HasForeignKey(e => e.MatchId)

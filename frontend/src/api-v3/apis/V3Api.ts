@@ -24,6 +24,7 @@ import type {
   ActiveMatchResponse,
   SubmitActiveMatchResultRequest,
   CreateMatchFlagRequest,
+  UpdateMatchFlagReasonRequest,
   ResolveMatchFlagRequest,
   MatchFlagResponse,
   CreateTokenRequest,
@@ -251,6 +252,20 @@ export class V3MatchFlagsApi extends runtime.BaseAPI {
     if (status) query['status'] = status;
     const response = await this.request({ path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/match-flags`, method: 'GET', headers: {}, query });
     return await response.json();
+  }
+
+  async getMyFlags(orgId: string, leagueId: string): Promise<MatchFlagResponse[]> {
+    const response = await this.request({ path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/match-flags/me`, method: 'GET', headers: {} });
+    return await response.json();
+  }
+
+  async updateFlagReason(orgId: string, leagueId: string, flagId: string, request: UpdateMatchFlagReasonRequest): Promise<MatchFlagResponse> {
+    const response = await this.request({ path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/match-flags/${flagId}`, method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: request });
+    return await response.json();
+  }
+
+  async deleteFlag(orgId: string, leagueId: string, flagId: string): Promise<void> {
+    await this.request({ path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/match-flags/${flagId}`, method: 'DELETE', headers: {} });
   }
 }
 

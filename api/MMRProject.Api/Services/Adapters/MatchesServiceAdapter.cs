@@ -98,6 +98,13 @@ public class MatchesServiceAdapter(
         throw new NotSupportedException("Match updates are not supported through the legacy adapter");
     }
 
+    public async Task<int> GetMatchCountForCurrentSeasonAsync()
+    {
+        var (orgId, leagueId) = await contextResolver.ResolveContextAsync();
+        var matches = await matchesService.GetMatchesAsync(orgId, leagueId, null, int.MaxValue, 0);
+        return matches.Count;
+    }
+
     public async Task DeleteMatch(long matchId)
     {
         var (orgId, leagueId) = await contextResolver.ResolveContextAsync();

@@ -278,6 +278,10 @@ export interface ResolveMatchFlagRequest {
   resolutionNote?: string;
 }
 
+export interface UpdateMatchFlagReasonRequest {
+  reason: string;
+}
+
 export interface MatchFlagResponse {
   id: string;
   matchId: string;
@@ -290,6 +294,7 @@ export interface MatchFlagResponse {
   resolvedByDisplayName?: string;
   resolvedAt?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 // PAT DTOs
