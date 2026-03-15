@@ -1,4 +1,4 @@
-import { fail } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent, fetch, url }) => {
@@ -47,6 +47,6 @@ export const load: PageServerLoad = async ({ parent, fetch, url }) => {
       currentSeason: seasons?.[0] ?? null,
     };
   } catch {
-    return fail(500, { message: 'Failed to load statistics' });
+    throw error(500, 'Failed to load statistics');
   }
 };

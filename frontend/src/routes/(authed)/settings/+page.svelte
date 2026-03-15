@@ -7,10 +7,10 @@
   import CardTitle from '$lib/components/ui/card/card-title.svelte';
   import Card from '$lib/components/ui/card/card.svelte';
   import { AlertCircle, Check, Copy, Plus, Trash2 } from 'lucide-svelte';
-  import type { ActionData, PageServerData } from './$types';
+  import type { ActionData, PageData } from './$types';
 
   interface Props {
-    data: PageServerData;
+    data: PageData;
     form: ActionData;
   }
 
@@ -19,13 +19,17 @@
   let isCreating = $state(false);
   let copySuccess = $state(false);
 
+  function formatDate(dateStr?: string): string {
+    if (!dateStr) return 'Never';
+    return new Date(dateStr).toLocaleDateString();
+  }
+
   async function copyToClipboard(text: string) {
     try {
       await navigator.clipboard.writeText(text);
       copySuccess = true;
       setTimeout(() => (copySuccess = false), 2000);
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
+    } catch {
       alert('Failed to copy to clipboard. Please copy manually.');
     }
   }
@@ -186,17 +190,13 @@
                   <tr class="border-muted border-b last:border-0">
                     <td class="px-4 py-3 font-medium">{token.name}</td>
                     <td class="px-4 py-3 text-muted-foreground text-sm"
-                      >{token.lastUsedAt
-                        ? token.lastUsedAt.toLocaleDateString()
-                        : 'Never'}</td
+                      >{formatDate(token.lastUsedAt)}</td
                     >
                     <td class="px-4 py-3 text-muted-foreground text-sm"
-                      >{token.expiresAt
-                        ? token.expiresAt.toLocaleDateString()
-                        : 'Never'}</td
+                      >{formatDate(token.expiresAt)}</td
                     >
                     <td class="px-4 py-3 text-muted-foreground text-sm"
-                      >{token.createdAt?.toLocaleDateString()}</td
+                      >{formatDate(token.createdAt)}</td
                     >
                     <td class="px-4 py-3 text-right">
                       <form
