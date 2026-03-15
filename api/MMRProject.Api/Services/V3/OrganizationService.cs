@@ -18,6 +18,7 @@ public interface IOrganizationService
     Task<OrganizationMemberResponse> UpdateMemberRoleAsync(Guid orgId, Guid membershipId, UpdateMemberRoleRequest request);
     Task RemoveMemberAsync(Guid orgId, Guid membershipId);
     Task<OrganizationMembership?> GetMembershipForCurrentUserAsync(Guid orgId);
+    Task<Guid> GetCurrentMembershipIdAsync(Guid orgId);
 }
 
 public class OrganizationService(
@@ -118,6 +119,7 @@ public class OrganizationService(
     public async Task<List<OrganizationMemberResponse>> ListMembersAsync(Guid orgId)
     {
         var members = await dbContext.OrganizationMemberships
+            .AsNoTracking()
             .Include(m => m.User)
             .Where(m => m.OrganizationId == orgId)
             .ToListAsync();
@@ -190,16 +192,17 @@ public class OrganizationService(
     public async Task<OrganizationMembership?> GetMembershipForCurrentUserAsync(Guid orgId)
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
-        var user = await dbContext.V3Users
-            .FirstOrDefaultAsync(u => u.IdentityUserId == identityUserId);
-
-        if (user == null)
-            return null;
-
         return await dbContext.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.OrganizationId == orgId
-                                      && m.UserId == user.Id
+                                      && m.User != null && m.User.IdentityUserId == identityUserId
                                       && m.Status == MembershipStatus.Active);
+    }
+
+    public async Task<Guid> GetCurrentMembershipIdAsync(Guid orgId)
+    {
+        var membership = await GetMembershipForCurrentUserAsync(orgId)
+            ?? throw new NotFoundException("You are not a member of this organization");
+        return membership.Id;
     }
 
     private static void ValidateSlug(string slug)

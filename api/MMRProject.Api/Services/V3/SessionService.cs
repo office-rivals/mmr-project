@@ -29,24 +29,6 @@ public class SessionService(
 
         await inviteLinkService.AutoClaimInvitesAsync(email, user.Id);
 
-        var memberships = await dbContext.OrganizationMemberships
-            .Include(m => m.Organization)
-            .Where(m => m.UserId == user.Id && m.Status == Data.Entities.V3.MembershipStatus.Active)
-            .ToListAsync();
-
-        var orgIds = memberships.Select(m => m.OrganizationId).ToList();
-        var membershipIds = memberships.Select(m => m.Id).ToList();
-
-        var leaguePlayers = await dbContext.LeaguePlayers
-            .Include(lp => lp.League)
-            .Where(lp => orgIds.Contains(lp.OrganizationId)
-                         && membershipIds.Contains(lp.OrganizationMembershipId))
-            .ToListAsync();
-
-        var leaguePlayersByOrg = leaguePlayers
-            .GroupBy(lp => lp.OrganizationId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
         return new MeResponse
         {
             Id = user.Id,
@@ -54,22 +36,7 @@ public class SessionService(
             Email = user.Email,
             Username = user.Username,
             DisplayName = user.DisplayName,
-            Organizations = memberships.Select(m => new MeOrganizationResponse
-            {
-                Id = m.Organization.Id,
-                Name = m.Organization.Name,
-                Slug = m.Organization.Slug,
-                Role = m.Role,
-                Leagues = leaguePlayersByOrg.TryGetValue(m.OrganizationId, out var lps)
-                    ? lps.Select(lp => new MeLeagueResponse
-                    {
-                        Id = lp.League.Id,
-                        Name = lp.League.Name,
-                        Slug = lp.League.Slug,
-                        LeaguePlayerId = lp.Id
-                    }).ToList()
-                    : []
-            }).ToList()
+            Organizations = await BuildOrganizationResponsesAsync(user.Id)
         };
     }
 
@@ -82,40 +49,7 @@ public class SessionService(
         if (user == null)
             return [];
 
-        var memberships = await dbContext.OrganizationMemberships
-            .Include(m => m.Organization)
-            .Where(m => m.UserId == user.Id && m.Status == Data.Entities.V3.MembershipStatus.Active)
-            .ToListAsync();
-
-        var orgIds = memberships.Select(m => m.OrganizationId).ToList();
-        var membershipIds = memberships.Select(m => m.Id).ToList();
-
-        var leaguePlayers = await dbContext.LeaguePlayers
-            .Include(lp => lp.League)
-            .Where(lp => orgIds.Contains(lp.OrganizationId)
-                         && membershipIds.Contains(lp.OrganizationMembershipId))
-            .ToListAsync();
-
-        var leaguePlayersByOrg = leaguePlayers
-            .GroupBy(lp => lp.OrganizationId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        return memberships.Select(m => new MeOrganizationResponse
-        {
-            Id = m.Organization.Id,
-            Name = m.Organization.Name,
-            Slug = m.Organization.Slug,
-            Role = m.Role,
-            Leagues = leaguePlayersByOrg.TryGetValue(m.OrganizationId, out var lps)
-                ? lps.Select(lp => new MeLeagueResponse
-                {
-                    Id = lp.League.Id,
-                    Name = lp.League.Name,
-                    Slug = lp.League.Slug,
-                    LeaguePlayerId = lp.Id
-                }).ToList()
-                : []
-        }).ToList();
+        return await BuildOrganizationResponsesAsync(user.Id);
     }
 
     public async Task<List<MeLeagueResponse>> GetMyLeaguesAsync(Guid organizationId)
@@ -141,12 +75,49 @@ public class SessionService(
                          && lp.OrganizationMembershipId == membership.Id)
             .ToListAsync();
 
-        return leaguePlayers.Select(lp => new MeLeagueResponse
+        return leaguePlayers.Select(MapToLeagueResponse).ToList();
+    }
+
+    private async Task<List<MeOrganizationResponse>> BuildOrganizationResponsesAsync(Guid userId)
+    {
+        var memberships = await dbContext.OrganizationMemberships
+            .Include(m => m.Organization)
+            .Where(m => m.UserId == userId && m.Status == Data.Entities.V3.MembershipStatus.Active)
+            .ToListAsync();
+
+        var orgIds = memberships.Select(m => m.OrganizationId).ToList();
+        var membershipIds = memberships.Select(m => m.Id).ToList();
+
+        var leaguePlayers = await dbContext.LeaguePlayers
+            .Include(lp => lp.League)
+            .Where(lp => orgIds.Contains(lp.OrganizationId)
+                         && membershipIds.Contains(lp.OrganizationMembershipId))
+            .ToListAsync();
+
+        var leaguePlayersByOrg = leaguePlayers
+            .GroupBy(lp => lp.OrganizationId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        return memberships.Select(m => new MeOrganizationResponse
+        {
+            Id = m.Organization.Id,
+            Name = m.Organization.Name,
+            Slug = m.Organization.Slug,
+            Role = m.Role,
+            Leagues = leaguePlayersByOrg.TryGetValue(m.OrganizationId, out var lps)
+                ? lps.Select(MapToLeagueResponse).ToList()
+                : []
+        }).ToList();
+    }
+
+    private static MeLeagueResponse MapToLeagueResponse(Data.Entities.V3.LeaguePlayer lp)
+    {
+        return new MeLeagueResponse
         {
             Id = lp.League.Id,
             Name = lp.League.Name,
             Slug = lp.League.Slug,
             LeaguePlayerId = lp.Id
-        }).ToList();
+        };
     }
 }

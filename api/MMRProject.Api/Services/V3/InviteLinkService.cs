@@ -162,22 +162,27 @@ public class InviteLinkService(
 
     public async Task AutoClaimInvitesAsync(string email, Guid userId)
     {
-        var user = await dbContext.V3Users.FindAsync(userId);
-        if (user == null)
-            return;
-
         var pendingInvites = await dbContext.OrganizationMemberships
             .Where(m => m.InviteEmail == email && m.Status == MembershipStatus.Invited)
             .ToListAsync();
 
+        if (pendingInvites.Count == 0)
+            return;
+
+        var user = await dbContext.V3Users.FindAsync(userId);
+        if (user == null)
+            return;
+
+        var orgIds = pendingInvites.Select(i => i.OrganizationId).Distinct().ToList();
+        var existingOrgIds = (await dbContext.OrganizationMemberships
+            .Where(m => m.UserId == userId && orgIds.Contains(m.OrganizationId) && m.Status == MembershipStatus.Active)
+            .Select(m => m.OrganizationId)
+            .ToListAsync())
+            .ToHashSet();
+
         foreach (var invite in pendingInvites)
         {
-            var alreadyMember = await dbContext.OrganizationMemberships
-                .AnyAsync(m => m.OrganizationId == invite.OrganizationId
-                               && m.UserId == userId
-                               && m.Status == MembershipStatus.Active);
-
-            if (alreadyMember)
+            if (existingOrgIds.Contains(invite.OrganizationId))
                 continue;
 
             invite.UserId = userId;

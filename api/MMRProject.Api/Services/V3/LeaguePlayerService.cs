@@ -62,6 +62,7 @@ public class LeaguePlayerService(
     public async Task<List<LeaguePlayerResponse>> GetLeaguePlayersAsync(Guid orgId, Guid leagueId)
     {
         var players = await dbContext.LeaguePlayers
+            .AsNoTracking()
             .Include(lp => lp.OrganizationMembership)
             .ThenInclude(m => m.User)
             .Where(lp => lp.LeagueId == leagueId && lp.OrganizationId == orgId)
@@ -86,25 +87,15 @@ public class LeaguePlayerService(
     public async Task<LeaguePlayerResponse?> GetMeAsync(Guid orgId, Guid leagueId)
     {
         var identityUserId = userContextResolver.GetIdentityUserId();
-        var user = await dbContext.V3Users
-            .FirstOrDefaultAsync(u => u.IdentityUserId == identityUserId);
-
-        if (user == null)
-            return null;
-
-        var membership = await dbContext.OrganizationMemberships
-            .FirstOrDefaultAsync(m => m.OrganizationId == orgId
-                                      && m.UserId == user.Id
-                                      && m.Status == MembershipStatus.Active);
-
-        if (membership == null)
-            return null;
 
         var player = await dbContext.LeaguePlayers
-            .FirstOrDefaultAsync(lp => lp.LeagueId == leagueId
-                                       && lp.OrganizationMembershipId == membership.Id);
+            .Include(lp => lp.OrganizationMembership)
+            .FirstOrDefaultAsync(lp => lp.OrganizationId == orgId
+                                       && lp.LeagueId == leagueId
+                                       && lp.OrganizationMembership.User!.IdentityUserId == identityUserId
+                                       && lp.OrganizationMembership.Status == MembershipStatus.Active);
 
-        return player == null ? null : MapToResponse(player, membership);
+        return player == null ? null : MapToResponse(player, player.OrganizationMembership);
     }
 
     private static LeaguePlayerResponse MapToResponse(LeaguePlayer player, OrganizationMembership membership)

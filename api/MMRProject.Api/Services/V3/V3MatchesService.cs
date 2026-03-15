@@ -5,7 +5,7 @@ using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.Exceptions;
 using MMRProject.Api.MMRCalculationApi;
 using MMRProject.Api.MMRCalculationApi.Models;
-using MMRProject.Api.UserContext;
+
 
 namespace MMRProject.Api.Services.V3;
 
@@ -21,7 +21,7 @@ public interface IV3MatchesService
 public class V3MatchesService(
     ApiDbContext dbContext,
     IMMRCalculationApiClient mmrCalculationApiClient,
-    IUserContextResolver userContextResolver,
+    IOrganizationService organizationService,
     IV3SeasonService seasonService,
     ILogger<V3MatchesService> logger) : IV3MatchesService
 {
@@ -31,7 +31,7 @@ public class V3MatchesService(
         var currentSeason = await seasonService.GetCurrentSeasonAsync(orgId, leagueId)
             ?? throw new InvalidArgumentException("No active season found for this league");
 
-        var membershipId = await GetCurrentMembershipId(orgId);
+        var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
 
         var allPlayerIds = request.Teams.SelectMany(t => t.Players).ToList();
         var uniquePlayerIds = allPlayerIds.Distinct().ToList();
@@ -99,6 +99,7 @@ public class V3MatchesService(
     public async Task<List<MatchResponse>> GetMatchesAsync(Guid orgId, Guid leagueId, Guid? seasonId, int limit = 50, int offset = 0)
     {
         var query = dbContext.Set<V3Match>()
+            .AsNoTracking()
             .Include(m => m.Teams)
                 .ThenInclude(t => t.Players)
                     .ThenInclude(p => p.LeaguePlayer)
@@ -267,18 +268,6 @@ public class V3MatchesService(
         }
 
         await dbContext.SaveChangesAsync();
-    }
-
-    private async Task<Guid> GetCurrentMembershipId(Guid orgId)
-    {
-        var identityUserId = userContextResolver.GetIdentityUserId();
-        var membership = await dbContext.Set<OrganizationMembership>()
-            .FirstOrDefaultAsync(m => m.OrganizationId == orgId && m.User != null && m.User.IdentityUserId == identityUserId);
-
-        if (membership == null)
-            throw new NotFoundException("You are not a member of this organization");
-
-        return membership.Id;
     }
 
     private static MatchResponse MapToResponse(V3Match match, Dictionary<Guid, RatingHistory>? ratingHistories)

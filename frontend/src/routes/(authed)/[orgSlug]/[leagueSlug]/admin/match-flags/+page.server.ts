@@ -1,5 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
+import { resolveOrgAndLeague } from '$lib/server/resolveIds';
 
 export const load: PageServerLoad = async ({ parent, fetch, url }) => {
   const { orgId, leagueId } = await parent();
@@ -38,14 +39,10 @@ export const actions = {
       return fail(400, { success: false, message: 'Flag ID is required' });
     }
 
-    const meRes = await fetch('/api/v3/me');
-    const me = await meRes.json();
-    const org = me.organizations?.find((o: { slug: string }) => o.slug === params.orgSlug);
-    const league = org?.leagues?.find((l: { slug: string }) => l.slug === params.leagueSlug);
-    if (!org || !league) return fail(404, { success: false, message: 'Not found' });
+    const resolved = await resolveOrgAndLeague(fetch, params);
 
     const res = await fetch(
-      `/api/v3/organizations/${org.id}/leagues/${league.id}/admin/match-flags/${flagId}/resolve`,
+      `${resolved.base}/admin/match-flags/${flagId}/resolve`,
       {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

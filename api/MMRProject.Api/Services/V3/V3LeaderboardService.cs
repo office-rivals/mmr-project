@@ -31,6 +31,7 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
     private async Task<List<LeaderboardEntryResponse>> GetAllTimeLeaderboardAsync(Guid orgId, Guid leagueId)
     {
         var players = await dbContext.Set<LeaguePlayer>()
+            .AsNoTracking()
             .Include(lp => lp.OrganizationMembership)
             .Where(lp => lp.OrganizationId == orgId && lp.LeagueId == leagueId)
             .OrderByDescending(lp => lp.Mmr)
@@ -52,6 +53,7 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
     {
         // Get the latest rating history per player for matches in this season
         var playerRatings = await dbContext.Set<RatingHistory>()
+            .AsNoTracking()
             .Include(rh => rh.LeaguePlayer)
                 .ThenInclude(lp => lp.OrganizationMembership)
             .Include(rh => rh.Match)

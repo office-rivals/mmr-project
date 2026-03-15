@@ -1,13 +1,14 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { resolveOrgAndLeague } from '$lib/server/resolveIds';
 
 export const load: PageServerLoad = async ({ parent, fetch }) => {
   const { orgId, leagueId, leaguePlayerId } = await parent();
   const base = `/api/v3/organizations/${orgId}/leagues/${leagueId}`;
 
   const [queueRes, activeMatchesRes] = await Promise.all([
-    fetch(`${base}/matchmaking/queue`),
-    fetch(`${base}/matchmaking/active`),
+    fetch(`${base}/queue`),
+    fetch(`${base}/active-matches`),
   ]);
 
   const queueStatus = queueRes.ok ? await queueRes.json() : null;
@@ -24,20 +25,9 @@ export const load: PageServerLoad = async ({ parent, fetch }) => {
 
 export const actions: Actions = {
   join: async ({ fetch, params }) => {
-    const meResponse = await fetch('/api/v3/me');
-    const me = await meResponse.json();
-    const org = me.organizations?.find(
-      (o: { slug: string }) => o.slug === params.orgSlug
-    );
-    const league = org?.leagues?.find(
-      (l: { slug: string }) => l.slug === params.leagueSlug
-    );
-    if (!org || !league) {
-      return fail(404, { message: 'Organization or league not found' });
-    }
+    const resolved = await resolveOrgAndLeague(fetch, params);
 
-    const base = `/api/v3/organizations/${org.id}/leagues/${league.id}`;
-    const response = await fetch(`${base}/matchmaking/queue`, {
+    const response = await fetch(`${resolved.base}/queue`, {
       method: 'POST',
     });
 
@@ -50,20 +40,9 @@ export const actions: Actions = {
   },
 
   leave: async ({ fetch, params }) => {
-    const meResponse = await fetch('/api/v3/me');
-    const me = await meResponse.json();
-    const org = me.organizations?.find(
-      (o: { slug: string }) => o.slug === params.orgSlug
-    );
-    const league = org?.leagues?.find(
-      (l: { slug: string }) => l.slug === params.leagueSlug
-    );
-    if (!org || !league) {
-      return fail(404, { message: 'Organization or league not found' });
-    }
+    const resolved = await resolveOrgAndLeague(fetch, params);
 
-    const base = `/api/v3/organizations/${org.id}/leagues/${league.id}`;
-    const response = await fetch(`${base}/matchmaking/queue`, {
+    const response = await fetch(`${resolved.base}/queue`, {
       method: 'DELETE',
     });
 
@@ -79,21 +58,10 @@ export const actions: Actions = {
     const formData = await request.formData();
     const matchId = formData.get('matchId') as string;
 
-    const meResponse = await fetch('/api/v3/me');
-    const me = await meResponse.json();
-    const org = me.organizations?.find(
-      (o: { slug: string }) => o.slug === params.orgSlug
-    );
-    const league = org?.leagues?.find(
-      (l: { slug: string }) => l.slug === params.leagueSlug
-    );
-    if (!org || !league) {
-      return fail(404, { message: 'Organization or league not found' });
-    }
+    const resolved = await resolveOrgAndLeague(fetch, params);
 
-    const base = `/api/v3/organizations/${org.id}/leagues/${league.id}`;
     const response = await fetch(
-      `${base}/matchmaking/pending/${matchId}/accept`,
+      `${resolved.base}/pending-matches/${matchId}/accept`,
       { method: 'POST' }
     );
 
@@ -109,21 +77,10 @@ export const actions: Actions = {
     const formData = await request.formData();
     const matchId = formData.get('matchId') as string;
 
-    const meResponse = await fetch('/api/v3/me');
-    const me = await meResponse.json();
-    const org = me.organizations?.find(
-      (o: { slug: string }) => o.slug === params.orgSlug
-    );
-    const league = org?.leagues?.find(
-      (l: { slug: string }) => l.slug === params.leagueSlug
-    );
-    if (!org || !league) {
-      return fail(404, { message: 'Organization or league not found' });
-    }
+    const resolved = await resolveOrgAndLeague(fetch, params);
 
-    const base = `/api/v3/organizations/${org.id}/leagues/${league.id}`;
     const response = await fetch(
-      `${base}/matchmaking/pending/${matchId}/decline`,
+      `${resolved.base}/pending-matches/${matchId}/decline`,
       { method: 'POST' }
     );
 

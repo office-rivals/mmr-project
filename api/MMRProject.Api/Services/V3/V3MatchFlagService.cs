@@ -3,7 +3,7 @@ using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.Exceptions;
-using MMRProject.Api.UserContext;
+
 using Npgsql;
 
 namespace MMRProject.Api.Services.V3;
@@ -21,7 +21,7 @@ public interface IV3MatchFlagService
 
 public class V3MatchFlagService(
     ApiDbContext dbContext,
-    IUserContextResolver userContextResolver) : IV3MatchFlagService
+    IOrganizationService organizationService) : IV3MatchFlagService
 {
     public async Task<MatchFlagResponse> CreateFlagAsync(Guid orgId, Guid leagueId, CreateMatchFlagRequest request)
     {
@@ -31,15 +31,7 @@ public class V3MatchFlagService(
         if (!matchExists)
             throw new NotFoundException("Match not found");
 
-        var membershipId = await GetCurrentMembershipId(orgId);
-
-        var existingFlag = await dbContext.Set<V3MatchFlag>()
-            .AnyAsync(f => f.OrganizationId == orgId && f.LeagueId == leagueId
-                && f.MatchId == request.MatchId && f.FlaggedByMembershipId == membershipId
-                && f.Status == MatchFlagStatus.Open);
-
-        if (existingFlag)
-            throw new InvalidArgumentException("You have already flagged this match");
+        var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
 
         var now = DateTimeOffset.UtcNow;
         var flag = new V3MatchFlag
@@ -70,6 +62,7 @@ public class V3MatchFlagService(
     public async Task<List<MatchFlagResponse>> GetFlagsAsync(Guid orgId, Guid leagueId, MatchFlagStatus? status)
     {
         var query = dbContext.Set<V3MatchFlag>()
+            .AsNoTracking()
             .Include(f => f.FlaggedByMembership)
             .Include(f => f.ResolvedByMembership)
             .Where(f => f.OrganizationId == orgId && f.LeagueId == leagueId);
@@ -100,7 +93,7 @@ public class V3MatchFlagService(
         if (flag.Status != MatchFlagStatus.Open)
             throw new InvalidArgumentException("Flag is already resolved");
 
-        var membershipId = await GetCurrentMembershipId(orgId);
+        var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
 
         flag.Status = request.Status;
         flag.ResolutionNote = request.ResolutionNote;
@@ -115,9 +108,10 @@ public class V3MatchFlagService(
 
     public async Task<List<MatchFlagResponse>> GetMyFlagsAsync(Guid orgId, Guid leagueId)
     {
-        var membershipId = await GetCurrentMembershipId(orgId);
+        var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
 
         var flags = await dbContext.Set<V3MatchFlag>()
+            .AsNoTracking()
             .Include(f => f.FlaggedByMembership)
             .Include(f => f.ResolvedByMembership)
             .Where(f => f.OrganizationId == orgId && f.LeagueId == leagueId
@@ -136,7 +130,7 @@ public class V3MatchFlagService(
         if (flag == null)
             throw new NotFoundException("Match flag not found");
 
-        var membershipId = await GetCurrentMembershipId(orgId);
+        var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
 
         if (flag.FlaggedByMembershipId != membershipId)
             throw new ForbiddenException("You can only update your own flags");
@@ -160,7 +154,7 @@ public class V3MatchFlagService(
         if (flag == null)
             throw new NotFoundException("Match flag not found");
 
-        var membershipId = await GetCurrentMembershipId(orgId);
+        var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
 
         if (flag.FlaggedByMembershipId != membershipId)
             throw new ForbiddenException("You can only delete your own flags");
@@ -183,18 +177,6 @@ public class V3MatchFlagService(
             throw new NotFoundException("Match flag not found");
 
         return MapToResponse(flag);
-    }
-
-    private async Task<Guid> GetCurrentMembershipId(Guid orgId)
-    {
-        var identityUserId = userContextResolver.GetIdentityUserId();
-        var membership = await dbContext.Set<OrganizationMembership>()
-            .FirstOrDefaultAsync(m => m.OrganizationId == orgId && m.User != null && m.User.IdentityUserId == identityUserId);
-
-        if (membership == null)
-            throw new NotFoundException("You are not a member of this organization");
-
-        return membership.Id;
     }
 
     private static MatchFlagResponse MapToResponse(V3MatchFlag flag)

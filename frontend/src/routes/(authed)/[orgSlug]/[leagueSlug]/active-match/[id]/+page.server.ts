@@ -1,5 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { resolveOrgAndLeague } from '$lib/server/resolveIds';
 
 export const load: PageServerLoad = async ({ params, parent, fetch }) => {
   const { orgId, leagueId, leaguePlayerId, orgSlug, leagueSlug } =
@@ -7,7 +8,7 @@ export const load: PageServerLoad = async ({ params, parent, fetch }) => {
   const activeMatchId = params.id;
   const base = `/api/v3/organizations/${orgId}/leagues/${leagueId}`;
 
-  const activeMatchesResponse = await fetch(`${base}/matchmaking/active`);
+  const activeMatchesResponse = await fetch(`${base}/active-matches`);
   if (!activeMatchesResponse.ok) {
     throw error(500, 'Failed to load active matches');
   }
@@ -48,23 +49,12 @@ export const actions: Actions = {
     teams.push({ teamIndex: 0, score: team1Score });
     teams.push({ teamIndex: 1, score: team2Score });
 
-    const meResponse = await fetch('/api/v3/me');
-    const me = await meResponse.json();
-    const org = me.organizations?.find(
-      (o: { slug: string }) => o.slug === params.orgSlug
-    );
-    const league = org?.leagues?.find(
-      (l: { slug: string }) => l.slug === params.leagueSlug
-    );
+    const resolved = await resolveOrgAndLeague(fetch, params);
 
-    if (!org || !league) {
-      return fail(404, { message: 'Organization or league not found' });
-    }
-
-    const base = `/api/v3/organizations/${org.id}/leagues/${league.id}`;
+    const { base } = resolved;
 
     const response = await fetch(
-      `${base}/matchmaking/active/${params.id}/submit`,
+      `${base}/active-matches/${params.id}/submit`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
