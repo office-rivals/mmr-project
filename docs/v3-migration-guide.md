@@ -101,11 +101,19 @@ Matchmaking state (queue, pending matches, active matches) is **not migrated**. 
 
 ## Running the migration
 
-### 1. Deploy the API
+Run the entire migration during a **maintenance window** with no active users or matchmaking. This is a single-step cutover: schema rename, backfill, verify, then bring the API back online.
 
-Deploy the API with the new migration. On startup, EF Core will apply `RenameTablesRemoveV3Prefix` which renames all tables.
+### 1. Enter maintenance mode
 
-### 2. Run the backfill script
+Stop the API to ensure no new data is written during migration.
+
+### 2. Deploy the API (without starting it)
+
+Deploy the new API build. On first startup, EF Core will apply `RenameTablesRemoveV3Prefix` which renames all tables. You can either:
+- Start the API briefly to apply the migration, then stop it
+- Run `dotnet ef database update` directly
+
+### 3. Run the backfill script
 
 ```bash
 psql -h <host> -U <user> -d <db> -f scripts/backfill-legacy-data.sql
@@ -129,8 +137,6 @@ PATs:                  2
 =========================
 ```
 
-### 3. Verify
-
 Check that:
 - `Users created` ≈ number of claimed legacy players
 - `Memberships created` ≈ total legacy players (claimed + unclaimed)
@@ -140,9 +146,29 @@ Check that:
 - `Match team players` ≈ 4× matches (less if some matches had null player slots)
 - `Rating histories` ≈ 4× matches
 
-### 4. Re-run if needed
+### 4. Run the verification script
 
-The script is **idempotent** — it uses `NOT EXISTS` checks and `legacy_*_id` columns to skip already-migrated rows. Safe to re-run at any time (e.g., after a delta backfill for data created during the migration window).
+```bash
+psql -h <host> -U <user> -d <db> -f scripts/verify-migration.sql
+```
+
+This runs 17 checks covering:
+- Every legacy player has a user, membership, and league player
+- Every match is migrated with correct teams, scores, and player links
+- Every season is migrated
+- Rating history deltas and snapshots match source data
+- Role mapping and membership status are correct
+- All migrated entities belong to the default org
+
+All checks must pass before proceeding.
+
+### 5. Start the API
+
+Start the API. Matchmaking state (queue, pending matches, active matches) starts fresh.
+
+### Re-running the backfill
+
+The backfill script is **idempotent** — it uses `NOT EXISTS` checks and `legacy_*_id` columns to skip already-migrated rows. Safe to re-run at any time.
 
 ## Post-migration
 
