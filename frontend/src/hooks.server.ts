@@ -38,7 +38,7 @@ export const handle: Handle = sequence(
 
 export const handleFetch: HandleFetch = async ({ event, request, fetch }) => {
   if (request.url.startsWith(`${event.url.origin}/api/`)) {
-    const apiUrl = request.url.replace(event.url.origin, env.API_BASE_PATH);
+    const apiUrl = request.url.replace(event.url.origin, env.API_BASE_PATH!);
     const { getToken } = event.locals.auth();
     const token = await getToken();
     request = new Request(apiUrl, request);
