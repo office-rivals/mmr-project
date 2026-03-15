@@ -392,6 +392,32 @@ public partial class ApiDbContext
                 .HasConstraintName("fk_v3_personal_access_tokens_league");
         });
 
+        modelBuilder.Entity<OrganizationInviteLink>(entity =>
+        {
+            entity.ToTable("v3_organization_invite_links");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.OrganizationId).HasColumnName("organization_id");
+            entity.Property(e => e.Code).HasColumnName("code").HasMaxLength(6);
+            entity.Property(e => e.CreatedByMembershipId).HasColumnName("created_by_membership_id");
+            entity.Property(e => e.MaxUses).HasColumnName("max_uses");
+            entity.Property(e => e.UseCount).HasColumnName("use_count");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+
+            entity.HasIndex(e => e.Code, "ix_v3_organization_invite_links_code").IsUnique();
+
+            entity.HasOne(e => e.Organization).WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_v3_organization_invite_links_organization");
+
+            entity.HasOne(e => e.CreatedByMembership).WithMany()
+                .HasForeignKey(e => e.CreatedByMembershipId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_v3_organization_invite_links_created_by");
+        });
+
         modelBuilder.Entity<V3MatchFlag>(entity =>
         {
             entity.ToTable("v3_match_flags");

@@ -28,7 +28,8 @@ public class OrganizationService(
     private static readonly HashSet<string> ReservedSlugs = new(StringComparer.OrdinalIgnoreCase)
     {
         "submit", "player", "admin", "statistics", "matchmaking",
-        "random", "profile", "login", "api", "new-player", "active-match"
+        "random", "profile", "login", "api", "new-player", "active-match",
+        "join", "settings"
     };
 
     public async Task<OrganizationResponse> CreateOrganizationAsync(CreateOrganizationRequest request)

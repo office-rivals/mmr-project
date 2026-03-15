@@ -16,7 +16,8 @@ public interface ISessionService
 public class SessionService(
     ApiDbContext dbContext,
     IUserContextResolver userContextResolver,
-    IV3UserService userService) : ISessionService
+    IV3UserService userService,
+    IInviteLinkService inviteLinkService) : ISessionService
 {
     public async Task<MeResponse> GetMeAsync()
     {
@@ -25,6 +26,8 @@ public class SessionService(
                     ?? throw new InvalidArgumentException("Email claim is required");
 
         var user = await userService.EnsureUserAsync(identityUserId, email, null, null);
+
+        await inviteLinkService.AutoClaimInvitesAsync(email, user.Id);
 
         var memberships = await dbContext.OrganizationMemberships
             .Include(m => m.Organization)

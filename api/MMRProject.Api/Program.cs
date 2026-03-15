@@ -54,6 +54,7 @@ builder.Services.AddScoped<IV3RatingHistoryService, V3RatingHistoryService>();
 builder.Services.AddScoped<IV3MatchMakingService, V3MatchMakingService>();
 builder.Services.AddScoped<IV3PersonalAccessTokenService, V3PersonalAccessTokenService>();
 builder.Services.AddScoped<IV3MatchFlagService, V3MatchFlagService>();
+builder.Services.AddScoped<IInviteLinkService, InviteLinkService>();
 
 builder.Services.AddHostedService<V3MatchMakingBackgroundService>();
 

@@ -297,6 +297,36 @@ export interface MatchFlagResponse {
   updatedAt: string;
 }
 
+// Invite Link DTOs
+export interface CreateInviteLinkRequest {
+  maxUses?: number;
+  expiresAt?: string;
+}
+
+export interface InviteLinkResponse {
+  id: string;
+  code: string;
+  organizationId: string;
+  maxUses?: number;
+  useCount: number;
+  expiresAt?: string;
+  createdAt: string;
+}
+
+export interface InviteInfoResponse {
+  code: string;
+  organizationName: string;
+  organizationSlug: string;
+  isValid: boolean;
+}
+
+export interface JoinOrganizationResponse {
+  organizationId: string;
+  organizationName: string;
+  organizationSlug: string;
+  membershipId: string;
+}
+
 // PAT DTOs
 export interface CreateTokenRequest {
   name: string;

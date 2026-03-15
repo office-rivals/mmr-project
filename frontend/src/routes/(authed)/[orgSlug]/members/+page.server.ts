@@ -1,120 +1,108 @@
-import { error } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
-export const load: PageServerLoad = async ({ params, fetch }) => {
-  const { orgSlug } = params;
+export const load: PageServerLoad = async ({ params, locals: { apiClientV3 } }) => {
+  const me = await apiClientV3.meApi.getMe();
 
-  const meResponse = await fetch('/api/v3/me');
-  if (!meResponse.ok) {
-    throw error(500, 'Failed to load user profile');
-  }
-  const me = await meResponse.json();
-
-  const org = me.organizations?.find(
-    (o: { slug: string }) => o.slug === orgSlug
-  );
+  const org = me.organizations?.find((o) => o.slug === params.orgSlug);
   if (!org) {
-    throw error(404, `Organization '${orgSlug}' not found`);
+    throw error(404, `Organization '${params.orgSlug}' not found`);
   }
 
-  const membersResponse = await fetch(
-    `/api/v3/organizations/${org.id}/members`
-  );
-  if (!membersResponse.ok) {
-    throw error(500, 'Failed to load members');
-  }
-  const members = await membersResponse.json();
+  const [members, inviteLinks] = await Promise.all([
+    apiClientV3.organizationMembersApi.listMembers(org.id),
+    (org.role === 'Owner' || org.role === 'Moderator')
+      ? apiClientV3.organizationInviteLinksApi.listInviteLinks(org.id)
+      : Promise.resolve([]),
+  ]);
 
-  return {
-    org,
-    members,
-    me,
-  };
+  return { org, members, inviteLinks, me };
 };
 
 export const actions: Actions = {
-  invite: async ({ request, fetch, params }) => {
+  invite: async ({ request, params, locals: { apiClientV3 } }) => {
     const formData = await request.formData();
     const email = formData.get('email') as string;
     const role = formData.get('role') as string;
 
-    const meResponse = await fetch('/api/v3/me');
-    const me = await meResponse.json();
-    const org = me.organizations?.find(
-      (o: { slug: string }) => o.slug === params.orgSlug
-    );
-    if (!org) {
-      return { error: 'Organization not found' };
+    const me = await apiClientV3.meApi.getMe();
+    const org = me.organizations?.find((o) => o.slug === params.orgSlug);
+    if (!org) return fail(404, { error: 'Organization not found' });
+
+    try {
+      await apiClientV3.organizationMembersApi.inviteMember(org.id, { email, role: role as any });
+      return { success: 'Member invited successfully' };
+    } catch {
+      return fail(400, { error: 'Failed to invite member' });
     }
-
-    const response = await fetch(`/api/v3/organizations/${org.id}/members`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, role }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      return { error: errorBody.detail || 'Failed to invite member' };
-    }
-
-    return { success: 'Member invited successfully' };
   },
 
-  updateRole: async ({ request, fetch, params }) => {
+  updateRole: async ({ request, params, locals: { apiClientV3 } }) => {
     const formData = await request.formData();
     const membershipId = formData.get('membershipId') as string;
     const role = formData.get('role') as string;
 
-    const meResponse = await fetch('/api/v3/me');
-    const me = await meResponse.json();
-    const org = me.organizations?.find(
-      (o: { slug: string }) => o.slug === params.orgSlug
-    );
-    if (!org) {
-      return { error: 'Organization not found' };
+    const me = await apiClientV3.meApi.getMe();
+    const org = me.organizations?.find((o) => o.slug === params.orgSlug);
+    if (!org) return fail(404, { error: 'Organization not found' });
+
+    try {
+      await apiClientV3.organizationMembersApi.updateMemberRole(org.id, membershipId, { role: role as any });
+      return { success: 'Role updated successfully' };
+    } catch {
+      return fail(400, { error: 'Failed to update role' });
     }
-
-    const response = await fetch(
-      `/api/v3/organizations/${org.id}/members/${membershipId}`,
-      {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      return { error: errorBody.detail || 'Failed to update role' };
-    }
-
-    return { success: 'Role updated successfully' };
   },
 
-  remove: async ({ request, fetch, params }) => {
+  remove: async ({ request, params, locals: { apiClientV3 } }) => {
     const formData = await request.formData();
     const membershipId = formData.get('membershipId') as string;
 
-    const meResponse = await fetch('/api/v3/me');
-    const me = await meResponse.json();
-    const org = me.organizations?.find(
-      (o: { slug: string }) => o.slug === params.orgSlug
-    );
-    if (!org) {
-      return { error: 'Organization not found' };
+    const me = await apiClientV3.meApi.getMe();
+    const org = me.organizations?.find((o) => o.slug === params.orgSlug);
+    if (!org) return fail(404, { error: 'Organization not found' });
+
+    try {
+      await apiClientV3.organizationMembersApi.removeMember(org.id, membershipId);
+      return { success: 'Member removed successfully' };
+    } catch {
+      return fail(400, { error: 'Failed to remove member' });
     }
+  },
 
-    const response = await fetch(
-      `/api/v3/organizations/${org.id}/members/${membershipId}`,
-      { method: 'DELETE' }
-    );
+  createInviteLink: async ({ request, params, locals: { apiClientV3 } }) => {
+    const formData = await request.formData();
+    const maxUses = formData.get('maxUses') as string;
+    const expiresAt = formData.get('expiresAt') as string;
 
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      return { error: errorBody.detail || 'Failed to remove member' };
+    const me = await apiClientV3.meApi.getMe();
+    const org = me.organizations?.find((o) => o.slug === params.orgSlug);
+    if (!org) return fail(404, { error: 'Organization not found' });
+
+    try {
+      await apiClientV3.organizationInviteLinksApi.createInviteLink(org.id, {
+        maxUses: maxUses ? parseInt(maxUses) : undefined,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
+      });
+      return { success: 'Invite link created' };
+    } catch {
+      return fail(400, { error: 'Failed to create invite link' });
     }
+  },
 
-    return { success: 'Member removed successfully' };
+  deleteInviteLink: async ({ request, params, locals: { apiClientV3 } }) => {
+    const formData = await request.formData();
+    const linkId = formData.get('linkId') as string;
+
+    const me = await apiClientV3.meApi.getMe();
+    const org = me.organizations?.find((o) => o.slug === params.orgSlug);
+    if (!org) return fail(404, { error: 'Organization not found' });
+
+    try {
+      await apiClientV3.organizationInviteLinksApi.deleteInviteLink(org.id, linkId);
+      return { success: 'Invite link deleted' };
+    } catch {
+      return fail(400, { error: 'Failed to delete invite link' });
+    }
   },
 };

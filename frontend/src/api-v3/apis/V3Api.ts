@@ -2,6 +2,10 @@
 /* eslint-disable */
 import * as runtime from '../runtime';
 import type {
+  CreateInviteLinkRequest,
+  InviteLinkResponse,
+  InviteInfoResponse,
+  JoinOrganizationResponse,
   MeResponse,
   CreateOrganizationRequest,
   UpdateOrganizationRequest,
@@ -285,6 +289,36 @@ export class V3AdminMatchFlagsApi extends runtime.BaseAPI {
 
   async resolveFlag(orgId: string, leagueId: string, flagId: string, request: ResolveMatchFlagRequest): Promise<MatchFlagResponse> {
     const response = await this.request({ path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/admin/match-flags/${flagId}/resolve`, method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: request });
+    return await response.json();
+  }
+}
+
+// Organization Invite Links API
+export class OrganizationInviteLinksApi extends runtime.BaseAPI {
+  async listInviteLinks(orgId: string): Promise<InviteLinkResponse[]> {
+    const response = await this.request({ path: `/api/v3/organizations/${orgId}/invite-links`, method: 'GET', headers: {} });
+    return await response.json();
+  }
+
+  async createInviteLink(orgId: string, request: CreateInviteLinkRequest): Promise<InviteLinkResponse> {
+    const response = await this.request({ path: `/api/v3/organizations/${orgId}/invite-links`, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: request });
+    return await response.json();
+  }
+
+  async deleteInviteLink(orgId: string, linkId: string): Promise<void> {
+    await this.request({ path: `/api/v3/organizations/${orgId}/invite-links/${linkId}`, method: 'DELETE', headers: {} });
+  }
+}
+
+// Invites API (join flow)
+export class InvitesApi extends runtime.BaseAPI {
+  async getInviteInfo(code: string): Promise<InviteInfoResponse> {
+    const response = await this.request({ path: `/api/v3/invites/${code}`, method: 'GET', headers: {} });
+    return await response.json();
+  }
+
+  async joinOrganization(code: string): Promise<JoinOrganizationResponse> {
+    const response = await this.request({ path: `/api/v3/invites/${code}/join`, method: 'POST', headers: {} });
     return await response.json();
   }
 }

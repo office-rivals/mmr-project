@@ -15,6 +15,8 @@ import {
   V3MatchFlagsApi,
   V3AdminMatchFlagsApi,
   V3PersonalAccessTokensApi,
+  OrganizationInviteLinksApi,
+  InvitesApi,
 } from '$api3';
 import { env } from '$env/dynamic/private';
 
@@ -53,6 +55,8 @@ export const createApiClientV3 = (getToken: () => Promise<string | null>) => {
     matchFlagsApi: new V3MatchFlagsApi(configuration),
     adminMatchFlagsApi: new V3AdminMatchFlagsApi(configuration),
     personalAccessTokensApi: new V3PersonalAccessTokensApi(configuration),
+    organizationInviteLinksApi: new OrganizationInviteLinksApi(configuration),
+    invitesApi: new InvitesApi(configuration),
   };
 };
 

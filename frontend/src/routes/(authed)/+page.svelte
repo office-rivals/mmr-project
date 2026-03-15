@@ -1,7 +1,7 @@
 <script lang="ts">
   import PageTitle from '$lib/components/page-title.svelte';
   import { Button } from '$lib/components/ui/button';
-  import { Building2, Trophy } from 'lucide-svelte';
+  import { Building2, Ticket, Trophy } from 'lucide-svelte';
   import type { PageData } from './$types';
 
   interface Props {
@@ -17,9 +17,13 @@
     <div class="flex flex-col gap-2">
       <h1 class="text-3xl font-bold">Welcome to Office Rivals</h1>
       <p class="text-muted-foreground max-w-md">
-        You're not a member of any organizations yet. Create one to get started, or ask someone to invite you.
+        You're not a member of any organizations yet. Ask someone to invite you, or join with an invite code.
       </p>
     </div>
+    <Button href="/join" variant="outline" class="gap-2">
+      <Ticket class="h-4 w-4" />
+      Join with Invite Code
+    </Button>
   </div>
 {:else}
   <div class="flex flex-col gap-6">
