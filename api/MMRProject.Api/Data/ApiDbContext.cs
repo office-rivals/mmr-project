@@ -86,7 +86,7 @@ public partial class ApiDbContext : DbContext
             entity.HasQueryFilter(e => e.DeletedAt == null);
             entity.HasKey(e => e.Id).HasName("matches_pkey");
 
-            entity.ToTable("matches");
+            entity.ToTable("legacy_matches");
 
             entity.HasIndex(e => e.DeletedAt, "idx_matches_deleted_at");
 
@@ -100,15 +100,15 @@ public partial class ApiDbContext : DbContext
 
             entity.HasOne(d => d.Season).WithMany(p => p.Matches)
                 .HasForeignKey(d => d.SeasonId)
-                .HasConstraintName("fk_matches_season");
+                .HasConstraintName("fk_legacy_matches_season");
 
             entity.HasOne(d => d.TeamOne).WithMany(p => p.MatchTeamOnes)
                 .HasForeignKey(d => d.TeamOneId)
-                .HasConstraintName("fk_matches_team_one");
+                .HasConstraintName("fk_legacy_matches_team_one");
 
             entity.HasOne(d => d.TeamTwo).WithMany(p => p.MatchTeamTwos)
                 .HasForeignKey(d => d.TeamTwoId)
-                .HasConstraintName("fk_matches_team_two");
+                .HasConstraintName("fk_legacy_matches_team_two");
         });
 
         modelBuilder.Entity<MmrCalculation>(entity =>
@@ -116,7 +116,7 @@ public partial class ApiDbContext : DbContext
             entity.HasQueryFilter(e => e.DeletedAt == null);
             entity.HasKey(e => e.Id).HasName("mmr_calculations_pkey");
 
-            entity.ToTable("mmr_calculations");
+            entity.ToTable("legacy_mmr_calculations");
 
             entity.HasIndex(e => e.DeletedAt, "idx_mmr_calculations_deleted_at");
 
@@ -132,7 +132,7 @@ public partial class ApiDbContext : DbContext
 
             entity.HasOne(d => d.Match).WithMany(p => p.MmrCalculations)
                 .HasForeignKey(d => d.MatchId)
-                .HasConstraintName("fk_matches_mmr_calculations");
+                .HasConstraintName("fk_legacy_matches_mmr_calculations");
         });
 
         modelBuilder.Entity<PlayerHistory>(entity =>
@@ -140,7 +140,7 @@ public partial class ApiDbContext : DbContext
             entity.HasQueryFilter(e => e.DeletedAt == null);
             entity.HasKey(e => e.Id).HasName("player_histories_pkey");
 
-            entity.ToTable("player_histories");
+            entity.ToTable("legacy_player_histories");
 
             entity.HasIndex(e => e.DeletedAt, "idx_player_histories_deleted_at");
 
@@ -156,11 +156,11 @@ public partial class ApiDbContext : DbContext
 
             entity.HasOne(d => d.Match).WithMany(p => p.PlayerHistories)
                 .HasForeignKey(d => d.MatchId)
-                .HasConstraintName("fk_player_histories_match");
+                .HasConstraintName("fk_legacy_player_histories_match");
 
             entity.HasOne(d => d.Player).WithMany(p => p.PlayerHistories)
                 .HasForeignKey(d => d.PlayerId)
-                .HasConstraintName("fk_player_histories_player");
+                .HasConstraintName("fk_legacy_player_histories_player");
         });
 
         modelBuilder.Entity<Season>(entity =>
@@ -168,7 +168,7 @@ public partial class ApiDbContext : DbContext
             entity.HasQueryFilter(e => e.DeletedAt == null);
             entity.HasKey(e => e.Id).HasName("seasons_pkey");
 
-            entity.ToTable("seasons");
+            entity.ToTable("legacy_seasons");
 
             entity.HasIndex(e => e.DeletedAt, "idx_seasons_deleted_at");
 
@@ -184,7 +184,7 @@ public partial class ApiDbContext : DbContext
             entity.HasQueryFilter(e => e.DeletedAt == null);
             entity.HasKey(e => e.Id).HasName("teams_pkey");
 
-            entity.ToTable("teams");
+            entity.ToTable("legacy_teams");
 
             entity.HasIndex(e => e.DeletedAt, "idx_teams_deleted_at");
 
@@ -199,15 +199,16 @@ public partial class ApiDbContext : DbContext
 
             entity.HasOne(d => d.PlayerOne).WithMany(p => p.TeamPlayerOnes)
                 .HasForeignKey(d => d.PlayerOneId)
-                .HasConstraintName("fk_teams_player_one");
+                .HasConstraintName("fk_legacy_teams_player_one");
 
             entity.HasOne(d => d.PlayerTwo).WithMany(p => p.TeamPlayerTwos)
                 .HasForeignKey(d => d.PlayerTwoId)
-                .HasConstraintName("fk_teams_play_two");
+                .HasConstraintName("fk_legacy_teams_play_two");
         });
 
         modelBuilder.Entity<Player>(entity =>
         {
+            entity.ToTable("legacy_players");
             entity.HasQueryFilter(e => e.DeletedAt == null);
 
             entity.HasIndex(e => e.DeletedAt, "idx_players_deleted_at");
@@ -234,10 +235,20 @@ public partial class ApiDbContext : DbContext
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
         });
 
-        modelBuilder.Entity<QueuedPlayer>(entity => { entity.HasQueryFilter(e => e.Player.DeletedAt == null); });
+        modelBuilder.Entity<QueuedPlayer>(entity =>
+        {
+            entity.ToTable("legacy_queued_players");
+            entity.HasQueryFilter(e => e.Player.DeletedAt == null);
+        });
+
+        modelBuilder.Entity<PendingMatch>(entity =>
+        {
+            entity.ToTable("legacy_pending_matches");
+        });
 
         modelBuilder.Entity<ActiveMatch>(entity =>
         {
+            entity.ToTable("legacy_active_matches");
             entity.HasQueryFilter(e =>
                 e.TeamOnePlayerOne.DeletedAt == null && e.TeamOnePlayerTwo.DeletedAt == null &&
                 e.TeamTwoPlayerOne.DeletedAt == null && e.TeamTwoPlayerTwo.DeletedAt == null);
@@ -245,11 +256,13 @@ public partial class ApiDbContext : DbContext
 
         modelBuilder.Entity<PersonalAccessToken>(entity =>
         {
+            entity.ToTable("legacy_personal_access_tokens");
             entity.HasQueryFilter(e => e.Player!.DeletedAt == null);
         });
 
         modelBuilder.Entity<MatchFlag>(entity =>
         {
+            entity.ToTable("legacy_match_flags");
             entity.HasQueryFilter(e => e.DeletedAt == null);
 
             entity.HasIndex(e => new { e.MatchId, e.FlaggedById })

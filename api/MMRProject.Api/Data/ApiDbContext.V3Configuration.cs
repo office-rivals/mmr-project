@@ -9,7 +9,7 @@ public partial class ApiDbContext
     {
         modelBuilder.Entity<User>(entity =>
         {
-            entity.ToTable("v3_users");
+            entity.ToTable("users");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -19,25 +19,25 @@ public partial class ApiDbContext
             entity.Property(e => e.DisplayName).HasColumnName("display_name");
             entity.Property(e => e.LegacyPlayerId).HasColumnName("legacy_player_id");
 
-            entity.HasIndex(e => e.IdentityUserId, "ix_v3_users_identity_user_id").IsUnique();
-            entity.HasIndex(e => e.Email, "ix_v3_users_email");
+            entity.HasIndex(e => e.IdentityUserId, "ix_users_identity_user_id").IsUnique();
+            entity.HasIndex(e => e.Email, "ix_users_email");
         });
 
         modelBuilder.Entity<Organization>(entity =>
         {
-            entity.ToTable("v3_organizations");
+            entity.ToTable("organizations");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.Name).HasColumnName("name");
             entity.Property(e => e.Slug).HasColumnName("slug");
 
-            entity.HasIndex(e => e.Slug, "ix_v3_organizations_slug").IsUnique();
+            entity.HasIndex(e => e.Slug, "ix_organizations_slug").IsUnique();
         });
 
         modelBuilder.Entity<OrganizationMembership>(entity =>
         {
-            entity.ToTable("v3_organization_memberships");
+            entity.ToTable("organization_memberships");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -52,33 +52,33 @@ public partial class ApiDbContext
             entity.Property(e => e.RoleAssignedAt).HasColumnName("role_assigned_at");
             entity.Property(e => e.ClaimedAt).HasColumnName("claimed_at");
 
-            entity.HasIndex(e => new { e.OrganizationId, e.UserId }, "ix_v3_organization_memberships_org_user")
+            entity.HasIndex(e => new { e.OrganizationId, e.UserId }, "ix_organization_memberships_org_user")
                 .IsUnique()
                 .HasFilter("user_id IS NOT NULL");
 
-            entity.HasIndex(e => new { e.OrganizationId, e.InviteEmail }, "ix_v3_organization_memberships_org_invite_email")
+            entity.HasIndex(e => new { e.OrganizationId, e.InviteEmail }, "ix_organization_memberships_org_invite_email")
                 .IsUnique()
                 .HasFilter("invite_email IS NOT NULL");
 
             entity.HasOne(e => e.Organization).WithMany()
                 .HasForeignKey(e => e.OrganizationId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_organization_memberships_organization");
+                .HasConstraintName("fk_organization_memberships_organization");
 
             entity.HasOne(e => e.User).WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_organization_memberships_user");
+                .HasConstraintName("fk_organization_memberships_user");
 
             entity.HasOne(e => e.RoleAssignedByMembership).WithMany()
                 .HasForeignKey(e => e.RoleAssignedByMembershipId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_organization_memberships_role_assigned_by");
+                .HasConstraintName("fk_organization_memberships_role_assigned_by");
         });
 
         modelBuilder.Entity<League>(entity =>
         {
-            entity.ToTable("v3_leagues");
+            entity.ToTable("leagues");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -87,17 +87,17 @@ public partial class ApiDbContext
             entity.Property(e => e.Slug).HasColumnName("slug");
             entity.Property(e => e.QueueSize).HasColumnName("queue_size");
 
-            entity.HasIndex(e => new { e.OrganizationId, e.Slug }, "ix_v3_leagues_org_slug").IsUnique();
+            entity.HasIndex(e => new { e.OrganizationId, e.Slug }, "ix_leagues_org_slug").IsUnique();
 
             entity.HasOne(e => e.Organization).WithMany()
                 .HasForeignKey(e => e.OrganizationId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_leagues_organization");
+                .HasConstraintName("fk_leagues_organization");
         });
 
         modelBuilder.Entity<LeaguePlayer>(entity =>
         {
-            entity.ToTable("v3_league_players");
+            entity.ToTable("league_players");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -109,22 +109,22 @@ public partial class ApiDbContext
             entity.Property(e => e.Sigma).HasColumnName("sigma");
             entity.Property(e => e.LegacyPlayerId).HasColumnName("legacy_player_id");
 
-            entity.HasIndex(e => new { e.LeagueId, e.OrganizationMembershipId }, "ix_v3_league_players_league_membership").IsUnique();
+            entity.HasIndex(e => new { e.LeagueId, e.OrganizationMembershipId }, "ix_league_players_league_membership").IsUnique();
 
             entity.HasOne(e => e.League).WithMany()
                 .HasForeignKey(e => e.LeagueId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_league_players_league");
+                .HasConstraintName("fk_league_players_league");
 
             entity.HasOne(e => e.OrganizationMembership).WithMany()
                 .HasForeignKey(e => e.OrganizationMembershipId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_league_players_membership");
+                .HasConstraintName("fk_league_players_membership");
         });
 
         modelBuilder.Entity<V3Season>(entity =>
         {
-            entity.ToTable("v3_seasons");
+            entity.ToTable("seasons");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -133,17 +133,17 @@ public partial class ApiDbContext
             entity.Property(e => e.StartsAt).HasColumnName("starts_at");
             entity.Property(e => e.LegacySeasonId).HasColumnName("legacy_season_id");
 
-            entity.HasIndex(e => e.LeagueId, "ix_v3_seasons_league");
+            entity.HasIndex(e => e.LeagueId, "ix_seasons_league");
 
             entity.HasOne(e => e.League).WithMany()
                 .HasForeignKey(e => e.LeagueId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_seasons_league");
+                .HasConstraintName("fk_seasons_league");
         });
 
         modelBuilder.Entity<V3Match>(entity =>
         {
-            entity.ToTable("v3_matches");
+            entity.ToTable("matches");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -156,27 +156,27 @@ public partial class ApiDbContext
             entity.Property(e => e.RecordedAt).HasColumnName("recorded_at");
             entity.Property(e => e.LegacyMatchId).HasColumnName("legacy_match_id");
 
-            entity.HasIndex(e => new { e.LeagueId, e.SeasonId }, "ix_v3_matches_league_season");
+            entity.HasIndex(e => new { e.LeagueId, e.SeasonId }, "ix_matches_league_season");
 
             entity.HasOne(e => e.League).WithMany()
                 .HasForeignKey(e => e.LeagueId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_matches_league");
+                .HasConstraintName("fk_matches_league");
 
             entity.HasOne(e => e.Season).WithMany()
                 .HasForeignKey(e => e.SeasonId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_matches_season");
+                .HasConstraintName("fk_matches_season");
 
             entity.HasOne(e => e.CreatedByMembership).WithMany()
                 .HasForeignKey(e => e.CreatedByMembershipId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_matches_created_by");
+                .HasConstraintName("fk_matches_created_by");
         });
 
         modelBuilder.Entity<MatchTeam>(entity =>
         {
-            entity.ToTable("v3_match_teams");
+            entity.ToTable("match_teams");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -187,17 +187,17 @@ public partial class ApiDbContext
             entity.Property(e => e.Score).HasColumnName("score");
             entity.Property(e => e.IsWinner).HasColumnName("is_winner");
 
-            entity.HasIndex(e => e.MatchId, "ix_v3_match_teams_match");
+            entity.HasIndex(e => e.MatchId, "ix_match_teams_match");
 
             entity.HasOne(e => e.Match).WithMany(m => m.Teams)
                 .HasForeignKey(e => e.MatchId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_match_teams_match");
+                .HasConstraintName("fk_match_teams_match");
         });
 
         modelBuilder.Entity<MatchTeamPlayer>(entity =>
         {
-            entity.ToTable("v3_match_team_players");
+            entity.ToTable("match_team_players");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -210,17 +210,17 @@ public partial class ApiDbContext
             entity.HasOne(e => e.MatchTeam).WithMany(t => t.Players)
                 .HasForeignKey(e => e.MatchTeamId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_match_team_players_team");
+                .HasConstraintName("fk_match_team_players_team");
 
             entity.HasOne(e => e.LeaguePlayer).WithMany()
                 .HasForeignKey(e => e.LeaguePlayerId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_match_team_players_player");
+                .HasConstraintName("fk_match_team_players_player");
         });
 
         modelBuilder.Entity<V3PendingMatch>(entity =>
         {
-            entity.ToTable("v3_pending_matches");
+            entity.ToTable("pending_matches");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -232,7 +232,7 @@ public partial class ApiDbContext
 
         modelBuilder.Entity<PendingMatchTeam>(entity =>
         {
-            entity.ToTable("v3_pending_match_teams");
+            entity.ToTable("pending_match_teams");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -244,12 +244,12 @@ public partial class ApiDbContext
             entity.HasOne(e => e.PendingMatch).WithMany(pm => pm.Teams)
                 .HasForeignKey(e => e.PendingMatchId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_pending_match_teams_pending_match");
+                .HasConstraintName("fk_pending_match_teams_pending_match");
         });
 
         modelBuilder.Entity<PendingMatchTeamPlayer>(entity =>
         {
-            entity.ToTable("v3_pending_match_team_players");
+            entity.ToTable("pending_match_team_players");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -260,17 +260,17 @@ public partial class ApiDbContext
             entity.HasOne(e => e.PendingMatchTeam).WithMany(t => t.Players)
                 .HasForeignKey(e => e.PendingMatchTeamId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_pending_match_team_players_team");
+                .HasConstraintName("fk_pending_match_team_players_team");
 
             entity.HasOne(e => e.LeaguePlayer).WithMany()
                 .HasForeignKey(e => e.LeaguePlayerId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_pending_match_team_players_player");
+                .HasConstraintName("fk_pending_match_team_players_player");
         });
 
         modelBuilder.Entity<PendingMatchAcceptance>(entity =>
         {
-            entity.ToTable("v3_pending_match_acceptances");
+            entity.ToTable("pending_match_acceptances");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -282,17 +282,17 @@ public partial class ApiDbContext
             entity.HasOne(e => e.PendingMatch).WithMany(pm => pm.Acceptances)
                 .HasForeignKey(e => e.PendingMatchId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_pending_match_acceptances_pending_match");
+                .HasConstraintName("fk_pending_match_acceptances_pending_match");
 
             entity.HasOne(e => e.LeaguePlayer).WithMany()
                 .HasForeignKey(e => e.LeaguePlayerId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_pending_match_acceptances_player");
+                .HasConstraintName("fk_pending_match_acceptances_player");
         });
 
         modelBuilder.Entity<V3ActiveMatch>(entity =>
         {
-            entity.ToTable("v3_active_matches");
+            entity.ToTable("active_matches");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -304,12 +304,12 @@ public partial class ApiDbContext
             entity.HasOne(e => e.PendingMatch).WithMany()
                 .HasForeignKey(e => e.PendingMatchId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_active_matches_pending_match");
+                .HasConstraintName("fk_active_matches_pending_match");
         });
 
         modelBuilder.Entity<QueueEntry>(entity =>
         {
-            entity.ToTable("v3_queue_entries");
+            entity.ToTable("queue_entries");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -318,22 +318,22 @@ public partial class ApiDbContext
             entity.Property(e => e.LeaguePlayerId).HasColumnName("league_player_id");
             entity.Property(e => e.JoinedAt).HasColumnName("joined_at");
 
-            entity.HasIndex(e => new { e.LeagueId, e.LeaguePlayerId }, "ix_v3_queue_entries_league_player").IsUnique();
+            entity.HasIndex(e => new { e.LeagueId, e.LeaguePlayerId }, "ix_queue_entries_league_player").IsUnique();
 
             entity.HasOne(e => e.League).WithMany()
                 .HasForeignKey(e => e.LeagueId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_queue_entries_league");
+                .HasConstraintName("fk_queue_entries_league");
 
             entity.HasOne(e => e.LeaguePlayer).WithMany()
                 .HasForeignKey(e => e.LeaguePlayerId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_queue_entries_player");
+                .HasConstraintName("fk_queue_entries_player");
         });
 
         modelBuilder.Entity<RatingHistory>(entity =>
         {
-            entity.ToTable("v3_rating_histories");
+            entity.ToTable("rating_histories");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -345,22 +345,22 @@ public partial class ApiDbContext
             entity.Property(e => e.Sigma).HasColumnName("sigma");
             entity.Property(e => e.Delta).HasColumnName("delta");
 
-            entity.HasIndex(e => new { e.LeaguePlayerId, e.MatchId }, "ix_v3_rating_histories_player_match");
+            entity.HasIndex(e => new { e.LeaguePlayerId, e.MatchId }, "ix_rating_histories_player_match");
 
             entity.HasOne(e => e.LeaguePlayer).WithMany()
                 .HasForeignKey(e => e.LeaguePlayerId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_rating_histories_player");
+                .HasConstraintName("fk_rating_histories_player");
 
             entity.HasOne(e => e.Match).WithMany()
                 .HasForeignKey(e => e.MatchId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_rating_histories_match");
+                .HasConstraintName("fk_rating_histories_match");
         });
 
         modelBuilder.Entity<V3PersonalAccessToken>(entity =>
         {
-            entity.ToTable("v3_personal_access_tokens");
+            entity.ToTable("personal_access_tokens");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -374,27 +374,27 @@ public partial class ApiDbContext
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
             entity.Property(e => e.LegacyPatId).HasColumnName("legacy_pat_id");
 
-            entity.HasIndex(e => e.TokenHash, "ix_v3_personal_access_tokens_token_hash");
+            entity.HasIndex(e => e.TokenHash, "ix_personal_access_tokens_token_hash");
 
             entity.HasOne(e => e.User).WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_personal_access_tokens_user");
+                .HasConstraintName("fk_personal_access_tokens_user");
 
             entity.HasOne(e => e.Organization).WithMany()
                 .HasForeignKey(e => e.OrganizationId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_personal_access_tokens_organization");
+                .HasConstraintName("fk_personal_access_tokens_organization");
 
             entity.HasOne(e => e.League).WithMany()
                 .HasForeignKey(e => e.LeagueId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_personal_access_tokens_league");
+                .HasConstraintName("fk_personal_access_tokens_league");
         });
 
         modelBuilder.Entity<OrganizationInviteLink>(entity =>
         {
-            entity.ToTable("v3_organization_invite_links");
+            entity.ToTable("organization_invite_links");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -405,22 +405,22 @@ public partial class ApiDbContext
             entity.Property(e => e.UseCount).HasColumnName("use_count");
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
 
-            entity.HasIndex(e => e.Code, "ix_v3_organization_invite_links_code").IsUnique();
+            entity.HasIndex(e => e.Code, "ix_organization_invite_links_code").IsUnique();
 
             entity.HasOne(e => e.Organization).WithMany()
                 .HasForeignKey(e => e.OrganizationId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_organization_invite_links_organization");
+                .HasConstraintName("fk_organization_invite_links_organization");
 
             entity.HasOne(e => e.CreatedByMembership).WithMany()
                 .HasForeignKey(e => e.CreatedByMembershipId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_organization_invite_links_created_by");
+                .HasConstraintName("fk_organization_invite_links_created_by");
         });
 
         modelBuilder.Entity<V3MatchFlag>(entity =>
         {
-            entity.ToTable("v3_match_flags");
+            entity.ToTable("match_flags");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
@@ -435,26 +435,26 @@ public partial class ApiDbContext
             entity.Property(e => e.ResolvedAt).HasColumnName("resolved_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
 
-            entity.HasIndex(e => new { e.LeagueId, e.MatchId }, "ix_v3_match_flags_league_match");
+            entity.HasIndex(e => new { e.LeagueId, e.MatchId }, "ix_match_flags_league_match");
 
-            entity.HasIndex(e => new { e.MatchId, e.FlaggedByMembershipId }, "ix_v3_match_flags_match_flagged_by_open")
+            entity.HasIndex(e => new { e.MatchId, e.FlaggedByMembershipId }, "ix_match_flags_match_flagged_by_open")
                 .IsUnique()
                 .HasFilter("status = 0");
 
             entity.HasOne(e => e.Match).WithMany()
                 .HasForeignKey(e => e.MatchId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_match_flags_match");
+                .HasConstraintName("fk_match_flags_match");
 
             entity.HasOne(e => e.FlaggedByMembership).WithMany()
                 .HasForeignKey(e => e.FlaggedByMembershipId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_match_flags_flagged_by");
+                .HasConstraintName("fk_match_flags_flagged_by");
 
             entity.HasOne(e => e.ResolvedByMembership).WithMany()
                 .HasForeignKey(e => e.ResolvedByMembershipId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_v3_match_flags_resolved_by");
+                .HasConstraintName("fk_match_flags_resolved_by");
         });
     }
 }
