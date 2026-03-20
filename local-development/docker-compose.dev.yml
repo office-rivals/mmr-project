@@ -73,15 +73,12 @@ services:
     volumes:
       - ../frontend/src:/app/src
       - ../frontend/static:/app/static
-      - ../frontend/svelte.config.js:/app/svelte.config.js
-      - ../frontend/vite.config.ts:/app/vite.config.ts
-      - ../frontend/tsconfig.json:/app/tsconfig.json
     environment:
       API_BASE_PATH: http://api:8080
       PUBLIC_CLERK_PUBLISHABLE_KEY: ${PUBLIC_CLERK_PUBLISHABLE_KEY}
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     depends_on:
       api:
         condition: service_healthy
