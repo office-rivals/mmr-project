@@ -1,7 +1,7 @@
 import type { LeaderboardEntry } from '$api/models/LeaderboardEntry';
 import type { RankedLeaderboardEntry } from '$lib/components/leaderboard/leader-board-entry';
 import { createMatchFlagActions } from '$lib/server/actions/matchFlagActions';
-import { fail } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
     const statisticsPromise =
       apiClient.statisticsApi.statisticsGetPlayerHistory({
         seasonId,
-      });
+      }).catch(() => null);
 
     const [entries, matches, users, activeMatches, seasons, profile, userFlags] =
       await Promise.all([
@@ -65,10 +65,8 @@ export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
       isCurrentSeason: seasonId == null || seasonId === seasons[0]?.id,
       userFlags: userFlags ?? [],
     };
-  } catch (error) {
-    return fail(500, {
-      message: 'Failed to load leaderboard',
-    });
+  } catch (e) {
+    throw error(500, 'Failed to load leaderboard');
   }
 };
 

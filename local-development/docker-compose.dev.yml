@@ -1,0 +1,88 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: this_is_a_hard_password1337
+      POSTGRES_DB: mmr_project
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mmr-api:
+    image: cosmtrek/air:latest
+    working_dir: /app
+    restart: unless-stopped
+    volumes:
+      - ../mmr-api:/app
+    environment:
+      ADMIN_SECRET: super-secret-admin
+    ports:
+      - "8080:8080"
+    command: air
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  api:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    working_dir: /app
+    restart: unless-stopped
+    volumes:
+      - ../api/MMRProject.Api:/app
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__ApiDbContext: "Host=db;Database=mmr_project;Username=postgres;Password=this_is_a_hard_password1337"
+      Admin__Secret: super-secret-admin
+      DevelopmentData__Enabled: "false"
+      Migration__Enabled: "true"
+      MMRCalculationAPI__BaseUrl: http://mmr-api:8080
+      MMRCalculationAPI__ApiKey: super-secret-admin
+      Authorization__Issuer: ${Authorization__Issuer}
+    ports:
+      - "8081:8080"
+    command: dotnet watch run --no-launch-profile
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -sf http://localhost:8080/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      db:
+        condition: service_healthy
+      mmr-api:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../frontend/src:/app/src
+      - ../frontend/static:/app/static
+      - ../frontend/svelte.config.js:/app/svelte.config.js
+      - ../frontend/vite.config.ts:/app/vite.config.ts
+      - ../frontend/tsconfig.json:/app/tsconfig.json
+    environment:
+      API_BASE_PATH: http://api:8080
+      PUBLIC_CLERK_PUBLISHABLE_KEY: ${PUBLIC_CLERK_PUBLISHABLE_KEY}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+    ports:
+      - "5173:5173"
+    depends_on:
+      api:
+        condition: service_healthy
+
