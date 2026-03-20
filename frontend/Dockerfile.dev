@@ -3,6 +3,6 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-RUN npx svelte-kit sync
+RUN npx svelte-kit sync && npx vite optimize
 EXPOSE 5173
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["sh", "-c", "npx svelte-kit sync && npx vite optimize && npm run dev -- --host 0.0.0.0"]

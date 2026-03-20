@@ -18,6 +18,13 @@ const config = {
       $api: './src/api',
     },
   },
+
+  vitePlugin: {
+    // Disable pre-bundling of Svelte libraries in Docker dev to prevent
+    // vite-plugin-svelte from setting optimizeDeps.force=true on metadata change,
+    // which kills esbuild's service process mid-request.
+    prebundleSvelteLibraries: false,
+  },
 };
 
 export default config;
