@@ -21,17 +21,15 @@ jobs:
       - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
+          cache: npm
           node-version: 22
       - name: Install
-        run: npm install
-        working-directory: ./frontend
+        run: npm ci
       - name: Build
-        run: npm run build
-        working-directory: ./frontend
+        run: npm run build --workspace frontend
         env:
           PUBLIC_CLERK_PUBLISHABLE_KEY: ""
       - name: Svelte Check
-        run: npm run check
-        working-directory: ./frontend
+        run: npm run check --workspace frontend
         env:
           PUBLIC_CLERK_PUBLISHABLE_KEY: ""

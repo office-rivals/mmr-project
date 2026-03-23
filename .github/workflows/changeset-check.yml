@@ -1,0 +1,43 @@
+name: Changeset Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changeset-check:
+    if: github.event.pull_request.head.ref != 'changeset-release/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require changeset for releaseable changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels) }}
+        run: |
+          if echo "$PR_LABELS" | jq -e '.[] | select(.name == "no-release")' >/dev/null; then
+            exit 0
+          fi
+
+          changed_files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+
+          if ! echo "$changed_files" | rg -q '^(frontend/|api/|mmr-api/)'; then
+            exit 0
+          fi
+
+          if echo "$changed_files" | rg -q '^\.changeset/.+\.md$' && ! echo "$changed_files" | rg -q '^\.changeset/README\.md$'; then
+            exit 0
+          fi
+
+          echo "This pull request changes a releaseable component without a changeset."
+          echo "Add a changeset or apply the no-release label if no release is needed."
+          exit 1

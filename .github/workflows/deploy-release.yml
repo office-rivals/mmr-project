@@ -1,0 +1,73 @@
+name: Deploy Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Component to deploy
+        required: true
+        type: choice
+        options:
+          - frontend
+          - api
+          - mmr-api
+      version:
+        description: Released version to deploy
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.component }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
+        run: gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy frontend release
+        if: inputs.component == 'frontend'
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}/frontend
+          acrName: ${{ secrets.ACR_NAME }}
+          buildArguments: |
+            "PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}"
+          containerAppName: ${{ secrets.UI_CONTAINER_APP_NAME }}
+          resourceGroup: ${{ secrets.RESOURCE_GROUP }}
+          targetPort: 3000
+
+      - name: Deploy api release
+        if: inputs.component == 'api'
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}/api/MMRProject.Api
+          acrName: ${{ secrets.ACR_NAME }}
+          containerAppName: ${{ secrets.API_CONTAINER_APP_NAME }}
+          resourceGroup: ${{ secrets.RESOURCE_GROUP }}
+
+      - name: Deploy mmr-api release
+        if: inputs.component == 'mmr-api'
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}/mmr-api
+          acrName: ${{ secrets.ACR_NAME }}
+          containerAppName: ${{ secrets.MMR_API_CONTAINER_APP_NAME }}
+          resourceGroup: ${{ secrets.RESOURCE_GROUP }}
