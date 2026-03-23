@@ -26,10 +26,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           cache: npm
+          cache-dependency-path: package-lock.json
           node-version: 22
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Create or update release PR
         uses: changesets/action@v1

@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 const components = [
   {
@@ -48,7 +49,7 @@ if (majors.size !== 1) {
   process.exit(1);
 }
 
-run(["npm", "install", "--package-lock-only", "--ignore-scripts"]);
+run(["npm", "install", "--package-lock-only", "--ignore-scripts", "--workspaces=false"]);
 
 function run(command) {
   const result = spawnSync(command[0], command.slice(1), {

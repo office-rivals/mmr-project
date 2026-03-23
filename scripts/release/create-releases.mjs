@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const [baseSha, headSha] = process.argv.slice(2);
 
@@ -10,7 +11,7 @@ if (!baseSha || !headSha) {
   process.exit(1);
 }
 
-const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const components = [
   { name: "frontend", packageJsonPath: "frontend/package.json", changelogPath: "frontend/CHANGELOG.md" },
   { name: "api", packageJsonPath: "api/package.json", changelogPath: "api/CHANGELOG.md" },
@@ -21,7 +22,11 @@ for (const component of components) {
   const currentPackage = readPackage(path.join(repoRoot, component.packageJsonPath));
   const previousPackage = readPackageFromGit(baseSha, component.packageJsonPath);
 
-  if (!previousPackage || previousPackage.version === currentPackage.version) {
+  if (!previousPackage) {
+    throw new Error(`Failed to read ${component.packageJsonPath} at base ref ${baseSha}.`);
+  }
+
+  if (previousPackage.version === currentPackage.version) {
     continue;
   }
 
@@ -92,7 +97,7 @@ function releaseExists(tag) {
 
 function extractReleaseNotes(changelogPath, version) {
   const changelog = fs.readFileSync(changelogPath, "utf8");
-  const escapedVersion = version.replace(/\./g, "\\.");
+  const escapedVersion = escapeRegExp(version);
   const matcher = new RegExp(`## ${escapedVersion}[\\s\\S]*?(?=\\n## |$)`);
   const match = changelog.match(matcher);
 
@@ -101,4 +106,8 @@ function extractReleaseNotes(changelogPath, version) {
   }
 
   return match[0].trim();
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

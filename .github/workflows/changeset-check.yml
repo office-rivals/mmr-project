@@ -34,7 +34,7 @@ jobs:
             exit 0
           fi
 
-          if echo "$changed_files" | rg -q '^\.changeset/.+\.md$' && ! echo "$changed_files" | rg -q '^\.changeset/README\.md$'; then
+          if echo "$changed_files" | rg '^\.changeset/.+\.md$' | rg -vq '^\.changeset/README\.md$'; then
             exit 0
           fi
 

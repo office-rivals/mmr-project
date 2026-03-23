@@ -12,6 +12,6 @@
     "create-github-releases": "node ./scripts/release/create-releases.mjs"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.7"
+    "@changesets/cli": "2.30.0"
   }
 }
