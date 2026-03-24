@@ -66,15 +66,24 @@ for (const file of changesetFiles) {
 }
 
 function parseFrontmatter(content) {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
   if (!match) {
-    return { bumps: {}, description: content.trim() };
+    throw new Error("Invalid changeset: missing frontmatter");
   }
 
   const bumps = {};
-  for (const line of match[1].split("\n")) {
-    const m = line.match(/^"([^"]+)":\s*(major|minor|patch)\s*$/);
-    if (m) bumps[m[1]] = m[2];
+  for (const line of match[1].split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const m = trimmed.match(/^"([^"]+)":\s*(major|minor|patch)\s*$/);
+    if (!m) {
+      throw new Error(`Invalid changeset frontmatter line: ${line}`);
+    }
+    bumps[m[1]] = m[2];
+  }
+
+  if (Object.keys(bumps).length === 0) {
+    throw new Error("Invalid changeset: no component bumps found");
   }
 
   const description = content.slice(match[0].length).trim();
@@ -100,9 +109,13 @@ function incrementVersion(version, bumpType) {
 }
 
 function updateChangelog(changelogPath, version, descriptions) {
+  const formatDescription = (description) => {
+    const [firstLine, ...rest] = description.split(/\r?\n/);
+    return [`- ${firstLine}`, ...rest.map((line) => `  ${line}`)].join("\n");
+  };
   const entry =
     descriptions.length > 0
-      ? `## ${version}\n\n${descriptions.map((d) => `- ${d}`).join("\n")}\n`
+      ? `## ${version}\n\n${descriptions.map(formatDescription).join("\n")}\n`
       : `## ${version}\n`;
 
   if (fs.existsSync(changelogPath)) {
