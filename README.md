@@ -75,12 +75,6 @@ The application uses Clerk for authentication. Follow these steps to get started
 
 ### Starting the Services
 
-Install frontend and release-tool dependencies from the repository root:
-
-```bash
-npm install
-```
-
 1. Start the MMR API:
 
    ```bash
@@ -98,6 +92,7 @@ npm install
 3. Start the frontend:
    ```bash
    cd frontend
+   npm install
    npm run dev
    ```
 
