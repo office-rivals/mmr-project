@@ -49,7 +49,7 @@ if (majors.size !== 1) {
   process.exit(1);
 }
 
-run(["npm", "install", "--package-lock-only", "--ignore-scripts", "--workspaces=false"]);
+run(["npm", "install", "--package-lock-only", "--ignore-scripts"]);
 
 function run(command) {
   const result = spawnSync(command[0], command.slice(1), {

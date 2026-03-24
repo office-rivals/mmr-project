@@ -1,11 +1,6 @@
 {
   "name": "mmr-project",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "api",
-    "mmr-api"
-  ],
   "scripts": {
     "changeset": "changeset",
     "version-packages": "node ./scripts/release/version.mjs",

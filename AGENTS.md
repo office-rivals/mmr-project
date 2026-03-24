@@ -13,8 +13,8 @@ Three-service matchmaking and rating system:
 ### Frontend (SvelteKit with Svelte 5)
 
 ```bash
-npm install              # Run from repository root (npm workspaces)
 cd frontend
+npm install
 npm run dev              # Start dev server on http://localhost:5173
 npm run build            # Production build
 npm run check            # Type checking with svelte-check
