@@ -13,8 +13,8 @@ Three-service matchmaking and rating system:
 ### Frontend (SvelteKit with Svelte 5)
 
 ```bash
+npm install              # Run from repository root (npm workspaces)
 cd frontend
-npm install
 npm run dev              # Start dev server on http://localhost:5173
 npm run build            # Production build
 npm run check            # Type checking with svelte-check
@@ -170,7 +170,7 @@ ADMIN_SECRET=<admin_secret>
 
 ## Deployment
 
-All services auto-deploy to Azure Container Apps on merges to main branch. Each service is containerized with Dockerfiles in their respective directories.
+Releases are managed through Changesets. Feature PRs include changesets, and merging to main triggers an automated release PR. Merging the release PR creates per-component GitHub Releases. Deployment to Azure Container Apps is manual via the `Deploy Release` workflow, selecting a component and version from an existing GitHub Release tag.
 
 ## Important Notes
 
