@@ -2,11 +2,7 @@
   "name": "mmr-project",
   "private": true,
   "scripts": {
-    "changeset": "changeset",
     "version-packages": "node ./scripts/release/version.mjs",
     "create-github-releases": "node ./scripts/release/create-releases.mjs"
-  },
-  "devDependencies": {
-    "@changesets/cli": "2.30.0"
   }
 }

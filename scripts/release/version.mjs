@@ -31,7 +31,7 @@ const components = [
   }
 ];
 
-run(["npx", "changeset", "version"]);
+run(["node", path.join(repoRoot, "scripts/release/apply-changesets.mjs")]);
 
 const versions = components.map((component) => {
   const packageJson = JSON.parse(fs.readFileSync(component.packageJsonPath, "utf8"));

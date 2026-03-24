@@ -128,7 +128,7 @@ The application uses Clerk for authentication. Follow these steps to get started
 
 ## Deployment
 
-- Releases are prepared through Changesets and collected in an automated release PR.
+- Releases are prepared through changeset files in `.changeset/` and collected in an automated release PR.
 - Merging the release PR creates per-component GitHub Releases such as `frontend@0.1.0`.
 - Azure deployment is manual and runs from an existing GitHub Release tag.
 - The deploy workflow still builds, pushes to ACR, and updates Azure Container Apps in one run.
