@@ -30,11 +30,11 @@ jobs:
 
           changed_files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
 
-          if ! echo "$changed_files" | rg -q '^(frontend/|api/|mmr-api/)'; then
+          if ! echo "$changed_files" | grep -qE '^(frontend/|api/|mmr-api/)'; then
             exit 0
           fi
 
-          if echo "$changed_files" | rg '^\.changeset/.+\.md$' | rg -vq '^\.changeset/README\.md$'; then
+          if echo "$changed_files" | grep -P '^\.changeset/.+\.md$' | grep -vq '^\.changeset/README\.md$'; then
             exit 0
           fi
 

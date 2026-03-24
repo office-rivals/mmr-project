@@ -22,11 +22,7 @@ for (const component of components) {
   const currentPackage = readPackage(path.join(repoRoot, component.packageJsonPath));
   const previousPackage = readPackageFromGit(baseSha, component.packageJsonPath);
 
-  if (!previousPackage) {
-    throw new Error(`Failed to read ${component.packageJsonPath} at base ref ${baseSha}.`);
-  }
-
-  if (previousPackage.version === currentPackage.version) {
+  if (previousPackage && previousPackage.version === currentPackage.version) {
     continue;
   }
 
