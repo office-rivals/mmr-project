@@ -50,14 +50,15 @@ for (const file of changesetFiles) {
 for (const [name, { bumpType, descriptions }] of Object.entries(aggregated)) {
   const pkgPath = path.join(repoRoot, components[name].packageJsonPath);
   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-  const newVersion = incrementVersion(pkg.version, bumpType);
+  const oldVersion = pkg.version;
+  const newVersion = incrementVersion(oldVersion, bumpType);
 
   pkg.version = newVersion;
   fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
 
   updateChangelog(path.join(repoRoot, components[name].changelogPath), newVersion, descriptions);
 
-  console.log(`${name}: ${pkg.version.replace(newVersion, "")}${newVersion} (${bumpType})`);
+  console.log(`${name}: ${oldVersion} → ${newVersion} (${bumpType})`);
 }
 
 for (const file of changesetFiles) {
@@ -81,7 +82,11 @@ function parseFrontmatter(content) {
 }
 
 function incrementVersion(version, bumpType) {
-  const [major, minor, patch] = version.split(".").map(Number);
+  const parts = version.split(".");
+  if (parts.length !== 3 || parts.some((p) => !/^\d+$/.test(p))) {
+    throw new Error(`Invalid semver version: ${version}`);
+  }
+  const [major, minor, patch] = parts.map(Number);
   switch (bumpType) {
     case "major":
       return `${major + 1}.0.0`;
