@@ -25,7 +25,12 @@ const bumpPriority = { major: 3, minor: 2, patch: 1 };
 const aggregated = {};
 
 for (const file of changesetFiles) {
-  const { bumps, description } = parseFrontmatter(fs.readFileSync(file, "utf8"));
+  let bumps, description;
+  try {
+    ({ bumps, description } = parseFrontmatter(fs.readFileSync(file, "utf8")));
+  } catch (err) {
+    throw new Error(`${err.message} in ${path.basename(file)}`);
+  }
 
   for (const [name, bumpType] of Object.entries(bumps)) {
     if (!components[name]) {
