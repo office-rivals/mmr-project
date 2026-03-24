@@ -1,5 +1,6 @@
 .env
 .DS_Store
+node_modules/
 postgres_dump/
 
 # Cline

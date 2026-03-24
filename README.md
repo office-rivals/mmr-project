@@ -21,9 +21,9 @@ This repository contains a matchmaking and rating system split into three main c
 
 ### Prerequisites
 
-- Node.js 18+ for frontend
-- .NET 7+ for API
-- Go 1.20+ for MMR API
+- Node.js 22+ for frontend and release tooling
+- .NET 8+ for API
+- Go 1.23+ for MMR API
 - Docker for local services
 - PostgreSQL client
 
@@ -128,32 +128,18 @@ The application uses Clerk for authentication. Follow these steps to get started
 
 ## Deployment
 
-### Frontend
+- Releases are prepared through Changesets and collected in an automated release PR.
+- Merging the release PR creates per-component GitHub Releases such as `frontend@0.1.0`.
+- Azure deployment is manual and runs from an existing GitHub Release tag.
+- The deploy workflow still builds, pushes to ACR, and updates Azure Container Apps in one run.
 
-- Auto-deploys to Azure Container Apps on merges to main
-- Containerized SvelteKit application
-- Zero-downtime updates
-- Auto-scaling enabled
-- Application monitoring
-- Environment configuration
+### Release Flow
 
-### API
-
-- Auto-deploys to Azure Container Apps on merges to main
-- Containerized service
-- Built-in auto-scaling
-- Zero-downtime updates
-- Health monitoring
-- Virtual network integration
-
-### MMR API
-
-- Auto-deploys to Azure Container Apps on merges to main
-- Containerized calculation service
-- Horizontal pod autoscaling
-- Application Insights integration
-- High availability
-- Resource governance
+1. Add a changeset in feature PRs that should ship.
+2. Merge feature PRs into `main`.
+3. Let the `Release PR` workflow create or update the release PR.
+4. Merge the release PR when you want to publish GitHub Releases.
+5. Run `Deploy Release` manually for the component and version you want in Azure.
 
 ## Database Management
 
