@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
+using MMRProject.Api.Exceptions;
 using MMRProject.Api.UserContext;
 
 namespace MMRProject.Api.Services.V3;
@@ -25,6 +26,30 @@ public class V3PersonalAccessTokenService(
     public async Task<CreateTokenResponse> GenerateTokenAsync(CreateTokenRequest request)
     {
         var user = await GetCurrentUserAsync();
+
+        if (request.OrganizationId.HasValue)
+        {
+            var isMember = await dbContext.OrganizationMemberships
+                .AnyAsync(m => m.OrganizationId == request.OrganizationId.Value
+                               && m.UserId == user.Id
+                               && m.Status == MembershipStatus.Active);
+
+            if (!isMember)
+                throw new ForbiddenException("You are not a member of the specified organization");
+        }
+
+        if (request.LeagueId.HasValue)
+        {
+            if (!request.OrganizationId.HasValue)
+                throw new InvalidArgumentException("OrganizationId is required when LeagueId is specified");
+
+            var leagueBelongsToOrg = await dbContext.Leagues
+                .AnyAsync(l => l.Id == request.LeagueId.Value
+                               && l.OrganizationId == request.OrganizationId.Value);
+
+            if (!leagueBelongsToOrg)
+                throw new InvalidArgumentException("The specified league does not belong to the specified organization");
+        }
 
         var plainTextToken = GenerateRandomToken();
         var tokenHash = HashToken(plainTextToken);

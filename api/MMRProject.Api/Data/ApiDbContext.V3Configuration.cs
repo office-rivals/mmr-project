@@ -301,6 +301,10 @@ public partial class ApiDbContext
             entity.Property(e => e.PendingMatchId).HasColumnName("pending_match_id");
             entity.Property(e => e.StartedAt).HasColumnName("started_at");
 
+            entity.HasIndex(e => e.PendingMatchId)
+                .IsUnique()
+                .HasDatabaseName("ix_active_matches_pending_match_id");
+
             entity.HasOne(e => e.PendingMatch).WithMany()
                 .HasForeignKey(e => e.PendingMatchId)
                 .OnDelete(DeleteBehavior.Restrict)
