@@ -25,18 +25,58 @@ jobs:
       - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
-          cache: npm
-          cache-dependency-path: package-lock.json
           node-version: 22
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Check for pending changesets
+        id: check
+        run: |
+          changeset_files=$(find .changeset -name '*.md' ! -name 'README.md' 2>/dev/null)
+          if [ -z "$changeset_files" ]; then
+            echo "has_changesets=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changesets=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Create or update release PR
-        uses: changesets/action@v1
-        with:
-          version: npm run version-packages
-          commit: Release
-          title: Release
+      - name: Apply changesets and create release PR
+        if: steps.check.outputs.has_changesets == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          BRANCH="changeset-release/main"
+          git checkout -B "$BRANCH"
+
+          npm run version-packages
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No version changes to commit"
+            exit 0
+          fi
+
+          git commit -m "Release"
+          git push --force origin "$BRANCH"
+
+          existing_pr=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[0].number' || true)
+          if [ -n "$existing_pr" ] && [ "$existing_pr" != "null" ]; then
+            echo "Release PR #$existing_pr updated"
+          else
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "Release" \
+              --body "This PR was automatically generated to apply pending changesets."
+          fi
+
+      - name: Clean up stale release PR
+        if: steps.check.outputs.has_changesets == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="changeset-release/main"
+          existing_pr=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[0].number' || true)
+          if [ -n "$existing_pr" ] && [ "$existing_pr" != "null" ]; then
+            gh pr close "$existing_pr" --delete-branch || true
+          fi

@@ -170,7 +170,7 @@ ADMIN_SECRET=<admin_secret>
 
 ## Deployment
 
-Releases are managed through Changesets. Feature PRs include changesets, and merging to main triggers an automated release PR. Merging the release PR creates per-component GitHub Releases. Deployment to Azure Container Apps is manual via the `Deploy Release` workflow, selecting a component and version from an existing GitHub Release tag.
+Releases are managed through lightweight changeset files in `.changeset/`. Feature PRs include a changeset markdown file specifying component bump types, and merging to main triggers an automated release PR. Merging the release PR creates per-component GitHub Releases. Deployment to Azure Container Apps is manual via the `Deploy Release` workflow, selecting a component and version from an existing GitHub Release tag.
 
 ## Important Notes
 
