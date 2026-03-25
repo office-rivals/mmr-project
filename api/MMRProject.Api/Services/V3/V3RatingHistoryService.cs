@@ -29,7 +29,7 @@ public class V3RatingHistoryService(ApiDbContext dbContext) : IV3RatingHistorySe
             query = query.Where(rh => rh.Match.SeasonId == seasonId.Value);
 
         var histories = await query
-            .OrderBy(rh => rh.Match.PlayedAt)
+            .OrderBy(rh => rh.Match.RecordedAt)
             .Select(rh => new RatingHistoryEntryResponse
             {
                 MatchId = rh.MatchId,

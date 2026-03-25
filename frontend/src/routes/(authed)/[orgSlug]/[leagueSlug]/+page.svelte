@@ -127,7 +127,7 @@
                   </a>
                 {/each}
                 {#if team.isWinner}
-                  <span class="text-xs font-semibold text-green-600"
+                  <span class="text-xs font-semibold text-green-500"
                     >Winner</span
                   >
                 {/if}

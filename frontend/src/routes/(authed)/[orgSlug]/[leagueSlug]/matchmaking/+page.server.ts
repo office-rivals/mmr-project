@@ -56,7 +56,10 @@ export const actions: Actions = {
 
   accept: async ({ fetch, params, request }) => {
     const formData = await request.formData();
-    const matchId = formData.get('matchId') as string;
+    const matchId = formData.get('matchId');
+    if (!matchId || typeof matchId !== 'string') {
+      return fail(400, { message: 'Match ID is required' });
+    }
 
     const resolved = await resolveOrgAndLeague(fetch, params);
 
@@ -75,7 +78,10 @@ export const actions: Actions = {
 
   decline: async ({ fetch, params, request }) => {
     const formData = await request.formData();
-    const matchId = formData.get('matchId') as string;
+    const matchId = formData.get('matchId');
+    if (!matchId || typeof matchId !== 'string') {
+      return fail(400, { message: 'Match ID is required' });
+    }
 
     const resolved = await resolveOrgAndLeague(fetch, params);
 

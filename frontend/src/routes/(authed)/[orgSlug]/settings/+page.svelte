@@ -10,6 +10,7 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
+  import { Alert } from '$lib/components/ui/alert';
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -24,14 +25,10 @@
   </div>
 
   {#if form?.error}
-    <div class="bg-destructive/15 text-destructive rounded-md p-3 text-sm">
-      {form.error}
-    </div>
+    <Alert variant="destructive">{form.error}</Alert>
   {/if}
   {#if form?.success}
-    <div class="bg-green-500/15 text-green-700 rounded-md p-3 text-sm dark:text-green-400">
-      Organization updated successfully
-    </div>
+    <Alert variant="success">Organization updated successfully</Alert>
   {/if}
 
   <Card>

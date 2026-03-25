@@ -13,6 +13,7 @@
     CardTitle,
   } from '$lib/components/ui/card';
   import { Check, Copy, Link, Plus, Trash2, UserPlus } from 'lucide-svelte';
+  import { Alert } from '$lib/components/ui/alert';
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -61,14 +62,10 @@
   </div>
 
   {#if form?.error}
-    <div class="bg-destructive/15 text-destructive rounded-md p-3 text-sm">
-      {form.error}
-    </div>
+    <Alert variant="destructive">{form.error}</Alert>
   {/if}
   {#if form?.success}
-    <div class="bg-green-500/15 text-green-700 rounded-md p-3 text-sm dark:text-green-400">
-      {form.success}
-    </div>
+    <Alert variant="success">{form.success}</Alert>
   {/if}
 
   {#if isModeratorOrAbove}
