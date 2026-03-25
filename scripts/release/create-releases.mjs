@@ -30,6 +30,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(1);
   }
 
+  if (!process.env.GITHUB_REPOSITORY) {
+    console.error("Error: GITHUB_REPOSITORY environment variable is required");
+    process.exit(1);
+  }
+
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
   for (const component of components) {
@@ -46,30 +51,35 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
 
     const notes = extractReleaseNotes(path.join(repoRoot, component.changelogPath), currentPackage.version);
-    const notesFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "release-notes-")), `${component.name}.md`);
+    const notesDir = fs.mkdtempSync(path.join(os.tmpdir(), "release-notes-"));
+    const notesFile = path.join(notesDir, `${component.name}.md`);
     fs.writeFileSync(notesFile, notes);
 
-    execFileSync(
-      "gh",
-      [
-        "release",
-        "create",
-        tag,
-        "--repo",
-        process.env.GITHUB_REPOSITORY,
-        "--target",
-        headSha,
-        "--title",
-        `${component.name} v${currentPackage.version}`,
-        "--notes-file",
-        notesFile
-      ],
-      {
-        cwd: repoRoot,
-        stdio: "inherit",
-        env: process.env
-      }
-    );
+    try {
+      execFileSync(
+        "gh",
+        [
+          "release",
+          "create",
+          tag,
+          "--repo",
+          process.env.GITHUB_REPOSITORY,
+          "--target",
+          headSha,
+          "--title",
+          `${component.name} v${currentPackage.version}`,
+          "--notes-file",
+          notesFile
+        ],
+        {
+          cwd: repoRoot,
+          stdio: "inherit",
+          env: process.env
+        }
+      );
+    } finally {
+      fs.rmSync(notesDir, { recursive: true });
+    }
   }
 
   function readPackage(packageJsonPath) {

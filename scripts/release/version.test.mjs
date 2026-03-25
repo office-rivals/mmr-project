@@ -71,7 +71,7 @@ describe("syncCsprojVersion", () => {
     assert.match(result, /<Nullable>enable<\/Nullable>/);
   });
 
-  it("handles tab-indented Version element", () => {
+  it("replaces Version regardless of original indentation style", () => {
     const csproj = path.join(tmpDir, "Test.csproj");
     fs.writeFileSync(
       csproj,

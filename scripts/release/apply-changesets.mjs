@@ -74,7 +74,8 @@ export function updateChangelog(changelogPath, version, descriptions) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
   const changesetDir = path.join(repoRoot, ".changeset");
-  const componentMap = Object.fromEntries(components.map((c) => [c.name, c]));
+  const componentMap = Object.create(null);
+  for (const c of components) componentMap[c.name] = c;
 
   const changesetFiles = fs
     .readdirSync(changesetDir)
@@ -88,7 +89,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   const bumpPriority = { major: 3, minor: 2, patch: 1 };
-  const aggregated = {};
+  const aggregated = Object.create(null);
 
   for (const file of changesetFiles) {
     let bumps, description;
@@ -99,12 +100,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
 
     for (const [name, bumpType] of Object.entries(bumps)) {
-      if (!componentMap[name]) {
+      if (!(name in componentMap)) {
         console.error(`Unknown component "${name}" in ${path.basename(file)}`);
         process.exit(1);
       }
 
-      if (!aggregated[name]) {
+      if (!(name in aggregated)) {
         aggregated[name] = { bumpType, descriptions: [] };
       }
 
