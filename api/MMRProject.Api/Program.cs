@@ -53,6 +53,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPersonalAccessTokenService, PersonalAccessTokenService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IMatchFlagService, MatchFlagService>();
+builder.Services.AddScoped<DevelopmentDataSeeder>();
 
 // Background services
 builder.Services.AddHostedService<MatchMakingBackgroundService>();
@@ -110,6 +111,12 @@ using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
         db.Database.Migrate();
+    }
+
+    if (app.Environment.IsDevelopment() && configuration.GetValue<bool>("DevelopmentData:Enabled"))
+    {
+        var seeder = scope.ServiceProvider.GetRequiredService<DevelopmentDataSeeder>();
+        await seeder.SeedAsync();
     }
 }
 

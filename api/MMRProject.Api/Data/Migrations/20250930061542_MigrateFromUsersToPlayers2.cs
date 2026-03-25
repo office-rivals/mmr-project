@@ -30,6 +30,18 @@ namespace MMRProject.Api.Data.Migrations
                 name: "FK_QueuedPlayers_users_PlayerId",
                 table: "QueuedPlayers");
 
+            migrationBuilder.DropForeignKey(
+                name: "fk_player_histories_player",
+                table: "player_histories");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_teams_player_one",
+                table: "teams");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_teams_play_two",
+                table: "teams");
+
             migrationBuilder.DropPrimaryKey(
                 name: "users_pkey",
                 table: "users");
@@ -159,6 +171,27 @@ namespace MMRProject.Api.Data.Migrations
                 principalTable: "users",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_player_histories_player",
+                table: "player_histories",
+                column: "player_id",
+                principalTable: "users",
+                principalColumn: "id");
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_teams_player_one",
+                table: "teams",
+                column: "player_one_id",
+                principalTable: "users",
+                principalColumn: "id");
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_teams_play_two",
+                table: "teams",
+                column: "player_two_id",
+                principalTable: "users",
+                principalColumn: "id");
         }
     }
 }

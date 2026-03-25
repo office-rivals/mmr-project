@@ -25,6 +25,10 @@ func NewRouter() *gin.Engine {
 		}
 	}
 
+	router.GET("/api/v1/health", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	})
+
 	router.GET("/swagger", func(ctx *gin.Context) {
 		ctx.Redirect(http.StatusPermanentRedirect, "/swagger/index.html")
 	})

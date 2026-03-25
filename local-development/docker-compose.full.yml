@@ -1,0 +1,69 @@
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: this_is_a_hard_password1337
+      POSTGRES_DB: mmr_project
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mmr-api:
+    build:
+      context: ../mmr-api
+    environment:
+      ADMIN_SECRET: super-secret-admin
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api:
+    build:
+      context: ../api/MMRProject.Api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__ApiDbContext: "Host=db;Database=mmr_project;Username=postgres;Password=this_is_a_hard_password1337"
+      Admin__Secret: super-secret-admin
+      DevelopmentData__Enabled: "false"
+      Migration__Enabled: "true"
+      MMRCalculationAPI__BaseUrl: http://mmr-api:8080
+      MMRCalculationAPI__ApiKey: super-secret-admin
+      # Set Authorization__Issuer via .env file or override:
+      # Authorization__Issuer: https://your-app.clerk.accounts.dev
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+      mmr-api:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        PUBLIC_CLERK_PUBLISHABLE_KEY: ${PUBLIC_CLERK_PUBLISHABLE_KEY}
+    environment:
+      API_BASE_PATH: http://api:8080
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
