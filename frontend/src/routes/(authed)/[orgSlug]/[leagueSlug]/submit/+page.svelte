@@ -17,6 +17,11 @@
   let team2Score: number = $state(0);
 
   const players = $derived(data.players ?? []);
+
+  function availablePlayers(currentValue: string) {
+    const selected = [team1Player1, team1Player2, team2Player1, team2Player2].filter(Boolean);
+    return players.filter((p: { id: string }) => p.id === currentValue || !selected.includes(p.id));
+  }
 </script>
 
 <div class="flex flex-col gap-8">
@@ -33,7 +38,7 @@
           class="rounded border p-2"
         >
           <option value="">Select player...</option>
-          {#each players as player}
+          {#each availablePlayers(team1Player1) as player}
             <option value={player.id}>
               {player.displayName ?? player.username}
             </option>
@@ -48,7 +53,7 @@
           class="rounded border p-2"
         >
           <option value="">Select player...</option>
-          {#each players as player}
+          {#each availablePlayers(team1Player2) as player}
             <option value={player.id}>
               {player.displayName ?? player.username}
             </option>
@@ -78,7 +83,7 @@
           class="rounded border p-2"
         >
           <option value="">Select player...</option>
-          {#each players as player}
+          {#each availablePlayers(team2Player1) as player}
             <option value={player.id}>
               {player.displayName ?? player.username}
             </option>
@@ -93,7 +98,7 @@
           class="rounded border p-2"
         >
           <option value="">Select player...</option>
-          {#each players as player}
+          {#each availablePlayers(team2Player2) as player}
             <option value={player.id}>
               {player.displayName ?? player.username}
             </option>
