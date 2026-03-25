@@ -35,6 +35,8 @@ public class V3SeasonService(ApiDbContext dbContext) : IV3SeasonService
 
     public async Task<List<SeasonResponse>> GetSeasonsAsync(Guid orgId, Guid leagueId)
     {
+        await EnsureLeagueExists(orgId, leagueId);
+
         var seasons = await dbContext.Set<V3Season>()
             .Where(s => s.OrganizationId == orgId && s.LeagueId == leagueId)
             .OrderByDescending(s => s.StartsAt)

@@ -31,6 +31,7 @@ public class LeaguePlayerService(
             ?? throw new NotFoundException("User not found");
 
         var membership = await dbContext.OrganizationMemberships
+            .Include(m => m.User)
             .FirstOrDefaultAsync(m => m.OrganizationId == orgId
                                       && m.UserId == user.Id
                                       && m.Status == MembershipStatus.Active)
@@ -90,6 +91,7 @@ public class LeaguePlayerService(
 
         var player = await dbContext.LeaguePlayers
             .Include(lp => lp.OrganizationMembership)
+                .ThenInclude(m => m.User)
             .FirstOrDefaultAsync(lp => lp.OrganizationId == orgId
                                        && lp.LeagueId == leagueId
                                        && lp.OrganizationMembership.User!.IdentityUserId == identityUserId

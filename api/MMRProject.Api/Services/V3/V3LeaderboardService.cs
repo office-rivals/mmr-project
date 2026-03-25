@@ -33,6 +33,7 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
         var players = await dbContext.Set<LeaguePlayer>()
             .AsNoTracking()
             .Include(lp => lp.OrganizationMembership)
+                .ThenInclude(m => m.User)
             .Where(lp => lp.OrganizationId == orgId && lp.LeagueId == leagueId)
             .OrderByDescending(lp => lp.Mmr)
             .ToListAsync();
@@ -40,8 +41,8 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
         return AssignRanks(players.Select(lp => new LeaderboardEntryResponse
         {
             LeaguePlayerId = lp.Id,
-            DisplayName = lp.OrganizationMembership.DisplayName,
-            Username = lp.OrganizationMembership.Username,
+            DisplayName = lp.OrganizationMembership.DisplayName ?? lp.OrganizationMembership.User?.DisplayName,
+            Username = lp.OrganizationMembership.Username ?? lp.OrganizationMembership.User?.Username,
             Mmr = lp.Mmr,
             Mu = lp.Mu,
             Sigma = lp.Sigma,
@@ -56,6 +57,7 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
             .AsNoTracking()
             .Include(rh => rh.LeaguePlayer)
                 .ThenInclude(lp => lp.OrganizationMembership)
+                    .ThenInclude(m => m.User)
             .Include(rh => rh.Match)
             .Where(rh => rh.OrganizationId == orgId
                 && rh.LeaguePlayer.LeagueId == leagueId
@@ -69,8 +71,8 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
             .Select(rh => new LeaderboardEntryResponse
             {
                 LeaguePlayerId = rh.LeaguePlayerId,
-                DisplayName = rh.LeaguePlayer.OrganizationMembership.DisplayName,
-                Username = rh.LeaguePlayer.OrganizationMembership.Username,
+                DisplayName = rh.LeaguePlayer.OrganizationMembership.DisplayName ?? rh.LeaguePlayer.OrganizationMembership.User?.DisplayName,
+                Username = rh.LeaguePlayer.OrganizationMembership.Username ?? rh.LeaguePlayer.OrganizationMembership.User?.Username,
                 Mmr = rh.Mmr,
                 Mu = rh.Mu,
                 Sigma = rh.Sigma,

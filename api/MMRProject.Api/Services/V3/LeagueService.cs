@@ -25,6 +25,9 @@ public class LeagueService(ApiDbContext dbContext) : ILeagueService
         if (existingLeague != null)
             throw new InvalidArgumentException($"A league with slug '{request.Slug}' already exists in this organization");
 
+        if (request.QueueSize < 2)
+            throw new InvalidArgumentException("Queue size must be at least 2");
+
         var league = new League
         {
             OrganizationId = orgId,

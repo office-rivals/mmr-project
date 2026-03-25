@@ -185,6 +185,14 @@ public class OrganizationService(
             .FirstOrDefaultAsync(m => m.Id == membershipId && m.OrganizationId == orgId)
             ?? throw new NotFoundException($"Membership with ID '{membershipId}' not found");
 
+        if (membership.Role == OrganizationRole.Owner)
+        {
+            var ownerCount = await dbContext.OrganizationMemberships
+                .CountAsync(m => m.OrganizationId == orgId && m.Role == OrganizationRole.Owner);
+            if (ownerCount <= 1)
+                throw new InvalidArgumentException("Cannot remove the last owner of the organization");
+        }
+
         dbContext.OrganizationMemberships.Remove(membership);
         await dbContext.SaveChangesAsync();
     }
