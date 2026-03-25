@@ -25,7 +25,7 @@ public class OrganizationMembersController(IOrganizationService organizationServ
         [FromRoute] Guid orgId, [FromBody] InviteMemberRequest request)
     {
         var result = await organizationService.InviteMemberAsync(orgId, request);
-        return Created($"api/v3/organizations/{orgId}/members/{result.Id}", result);
+        return Ok(result);
     }
 
     [HttpPatch("{membershipId:guid}")]

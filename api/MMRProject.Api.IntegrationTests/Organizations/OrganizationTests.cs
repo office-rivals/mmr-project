@@ -79,7 +79,7 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
         var response = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/members",
             new InviteMemberRequest { Email = "newmember@test.com", Role = OrganizationRole.Member });
 
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var member = await ReadJsonAsync<OrganizationMemberResponse>(response);
         Assert.NotNull(member);
         Assert.Equal(OrganizationRole.Member, member.Role);
