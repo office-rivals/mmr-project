@@ -99,7 +99,9 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         Guid leagueId,
         string identityUserId = "test-user-id",
         string email = "test@example.com",
-        OrganizationRole role = OrganizationRole.Member)
+        OrganizationRole role = OrganizationRole.Member,
+        string? displayName = null,
+        string? username = null)
     {
         using var scope = Factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
@@ -108,6 +110,8 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         {
             IdentityUserId = identityUserId,
             Email = email,
+            DisplayName = displayName,
+            Username = username,
         };
         dbContext.V3Users.Add(user);
         await dbContext.SaveChangesAsync();

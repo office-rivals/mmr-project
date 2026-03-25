@@ -3,6 +3,7 @@ using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.Exceptions;
+using MMRProject.Api.Extensions;
 using MMRProject.Api.UserContext;
 
 namespace MMRProject.Api.Services.V3;
@@ -106,8 +107,8 @@ public class LeaguePlayerService(
         {
             Id = player.Id,
             OrganizationMembershipId = player.OrganizationMembershipId,
-            DisplayName = membership.DisplayName ?? membership.User?.DisplayName,
-            Username = membership.Username ?? membership.User?.Username,
+            DisplayName = membership.GetDisplayName(),
+            Username = membership.GetUsername(),
             Mmr = player.Mmr,
             Mu = player.Mu,
             Sigma = player.Sigma,

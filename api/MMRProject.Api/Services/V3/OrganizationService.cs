@@ -3,6 +3,7 @@ using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.Exceptions;
+using MMRProject.Api.Extensions;
 using MMRProject.Api.UserContext;
 
 namespace MMRProject.Api.Services.V3;
@@ -187,9 +188,9 @@ public class OrganizationService(
 
         if (membership.Role == OrganizationRole.Owner)
         {
-            var ownerCount = await dbContext.OrganizationMemberships
-                .CountAsync(m => m.OrganizationId == orgId && m.Role == OrganizationRole.Owner);
-            if (ownerCount <= 1)
+            var hasOtherOwner = await dbContext.OrganizationMemberships
+                .AnyAsync(m => m.OrganizationId == orgId && m.Role == OrganizationRole.Owner && m.Id != membershipId);
+            if (!hasOtherOwner)
                 throw new InvalidArgumentException("Cannot remove the last owner of the organization");
         }
 
@@ -240,8 +241,8 @@ public class OrganizationService(
             Id = membership.Id,
             UserId = membership.UserId,
             Email = membership.User?.Email ?? membership.InviteEmail,
-            DisplayName = membership.DisplayName ?? membership.User?.DisplayName,
-            Username = membership.Username ?? membership.User?.Username,
+            DisplayName = membership.GetDisplayName(),
+            Username = membership.GetUsername(),
             Role = membership.Role,
             Status = membership.Status,
             ClaimedAt = membership.ClaimedAt,

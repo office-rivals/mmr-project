@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
+using MMRProject.Api.Extensions;
 
 namespace MMRProject.Api.Services.V3;
 
@@ -41,8 +42,8 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
         return AssignRanks(players.Select(lp => new LeaderboardEntryResponse
         {
             LeaguePlayerId = lp.Id,
-            DisplayName = lp.OrganizationMembership.DisplayName ?? lp.OrganizationMembership.User?.DisplayName,
-            Username = lp.OrganizationMembership.Username ?? lp.OrganizationMembership.User?.Username,
+            DisplayName = lp.OrganizationMembership.GetDisplayName(),
+            Username = lp.OrganizationMembership.GetUsername(),
             Mmr = lp.Mmr,
             Mu = lp.Mu,
             Sigma = lp.Sigma,
@@ -71,8 +72,8 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
             .Select(rh => new LeaderboardEntryResponse
             {
                 LeaguePlayerId = rh.LeaguePlayerId,
-                DisplayName = rh.LeaguePlayer.OrganizationMembership.DisplayName ?? rh.LeaguePlayer.OrganizationMembership.User?.DisplayName,
-                Username = rh.LeaguePlayer.OrganizationMembership.Username ?? rh.LeaguePlayer.OrganizationMembership.User?.Username,
+                DisplayName = rh.LeaguePlayer.OrganizationMembership.GetDisplayName(),
+                Username = rh.LeaguePlayer.OrganizationMembership.GetUsername(),
                 Mmr = rh.Mmr,
                 Mu = rh.Mu,
                 Sigma = rh.Sigma,
