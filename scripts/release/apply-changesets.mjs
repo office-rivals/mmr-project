@@ -1,76 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { components } from "./components.mjs";
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const changesetDir = path.join(repoRoot, ".changeset");
-
-const components = {
-  frontend: { packageJsonPath: "frontend/package.json", changelogPath: "frontend/CHANGELOG.md" },
-  api: { packageJsonPath: "api/package.json", changelogPath: "api/CHANGELOG.md" },
-  "mmr-api": { packageJsonPath: "mmr-api/package.json", changelogPath: "mmr-api/CHANGELOG.md" }
-};
-
-const changesetFiles = fs
-  .readdirSync(changesetDir)
-  .filter((f) => f.endsWith(".md") && f !== "README.md")
-  .map((f) => path.join(changesetDir, f));
-
-if (changesetFiles.length === 0) {
-  console.log("No pending changesets found.");
-  process.exit(0);
-}
-
-const bumpPriority = { major: 3, minor: 2, patch: 1 };
-const aggregated = {};
-
-for (const file of changesetFiles) {
-  let bumps, description;
-  try {
-    ({ bumps, description } = parseFrontmatter(fs.readFileSync(file, "utf8")));
-  } catch (err) {
-    throw new Error(`${err.message} in ${path.basename(file)}`);
-  }
-
-  for (const [name, bumpType] of Object.entries(bumps)) {
-    if (!components[name]) {
-      console.error(`Unknown component "${name}" in ${path.basename(file)}`);
-      process.exit(1);
-    }
-
-    if (!aggregated[name]) {
-      aggregated[name] = { bumpType, descriptions: [] };
-    }
-
-    if (bumpPriority[bumpType] > bumpPriority[aggregated[name].bumpType]) {
-      aggregated[name].bumpType = bumpType;
-    }
-
-    if (description) {
-      aggregated[name].descriptions.push(description);
-    }
-  }
-}
-
-for (const [name, { bumpType, descriptions }] of Object.entries(aggregated)) {
-  const pkgPath = path.join(repoRoot, components[name].packageJsonPath);
-  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-  const oldVersion = pkg.version;
-  const newVersion = incrementVersion(oldVersion, bumpType);
-
-  pkg.version = newVersion;
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-
-  updateChangelog(path.join(repoRoot, components[name].changelogPath), newVersion, descriptions);
-
-  console.log(`${name}: ${oldVersion} → ${newVersion} (${bumpType})`);
-}
-
-for (const file of changesetFiles) {
-  fs.unlinkSync(file);
-}
-
-function parseFrontmatter(content) {
+export function parseFrontmatter(content) {
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
   if (!match) {
     throw new Error("Invalid changeset: missing frontmatter");
@@ -80,7 +13,7 @@ function parseFrontmatter(content) {
   for (const line of match[1].split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    const m = trimmed.match(/^"([^"]+)":\s*(major|minor|patch)\s*$/);
+    const m = trimmed.match(/^"?([^"]+?)"?:\s*(major|minor|patch)\s*$/);
     if (!m) {
       throw new Error(`Invalid changeset frontmatter line: ${line}`);
     }
@@ -95,7 +28,7 @@ function parseFrontmatter(content) {
   return { bumps, description };
 }
 
-function incrementVersion(version, bumpType) {
+export function incrementVersion(version, bumpType) {
   const parts = version.split(".");
   if (parts.length !== 3 || parts.some((p) => !/^\d+$/.test(p))) {
     throw new Error(`Invalid semver version: ${version}`);
@@ -113,7 +46,7 @@ function incrementVersion(version, bumpType) {
   }
 }
 
-function updateChangelog(changelogPath, version, descriptions) {
+export function updateChangelog(changelogPath, version, descriptions) {
   const formatDescription = (description) => {
     const [firstLine, ...rest] = description.split(/\r?\n/);
     return [`- ${firstLine}`, ...rest.map((line) => `  ${line}`)].join("\n");
@@ -135,5 +68,73 @@ function updateChangelog(changelogPath, version, descriptions) {
     }
   } else {
     fs.writeFileSync(changelogPath, `# Changelog\n\n${entry}`);
+  }
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+  const changesetDir = path.join(repoRoot, ".changeset");
+  const componentMap = Object.fromEntries(components.map((c) => [c.name, c]));
+
+  const changesetFiles = fs
+    .readdirSync(changesetDir)
+    .filter((f) => f.endsWith(".md") && f !== "README.md")
+    .sort()
+    .map((f) => path.join(changesetDir, f));
+
+  if (changesetFiles.length === 0) {
+    console.log("No pending changesets found.");
+    process.exit(0);
+  }
+
+  const bumpPriority = { major: 3, minor: 2, patch: 1 };
+  const aggregated = {};
+
+  for (const file of changesetFiles) {
+    let bumps, description;
+    try {
+      ({ bumps, description } = parseFrontmatter(fs.readFileSync(file, "utf8")));
+    } catch (err) {
+      throw new Error(`${err.message} in ${path.basename(file)}`);
+    }
+
+    for (const [name, bumpType] of Object.entries(bumps)) {
+      if (!componentMap[name]) {
+        console.error(`Unknown component "${name}" in ${path.basename(file)}`);
+        process.exit(1);
+      }
+
+      if (!aggregated[name]) {
+        aggregated[name] = { bumpType, descriptions: [] };
+      }
+
+      if (bumpPriority[bumpType] > bumpPriority[aggregated[name].bumpType]) {
+        aggregated[name].bumpType = bumpType;
+      }
+
+      if (description) {
+        aggregated[name].descriptions.push(description);
+      }
+    }
+  }
+
+  const plannedUpdates = [];
+  for (const [name, { bumpType, descriptions }] of Object.entries(aggregated)) {
+    const pkgPath = path.join(repoRoot, componentMap[name].packageJsonPath);
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+    const oldVersion = pkg.version;
+    const newVersion = incrementVersion(oldVersion, bumpType);
+    plannedUpdates.push({ name, bumpType, descriptions, pkgPath, pkg, oldVersion, newVersion });
+  }
+
+  for (const u of plannedUpdates) {
+    u.pkg.version = u.newVersion;
+    fs.writeFileSync(u.pkgPath, JSON.stringify(u.pkg, null, 2) + "\n");
+    updateChangelog(path.join(repoRoot, componentMap[u.name].changelogPath), u.newVersion, u.descriptions);
+    console.log(`${u.name}: ${u.oldVersion} → ${u.newVersion} (${u.bumpType})`);
+  }
+
+  for (const file of changesetFiles) {
+    fs.unlinkSync(file);
   }
 }
