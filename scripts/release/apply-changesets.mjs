@@ -9,7 +9,7 @@ export function parseFrontmatter(content) {
     throw new Error("Invalid changeset: missing frontmatter");
   }
 
-  const bumps = {};
+  const bumps = Object.create(null);
   for (const line of match[1].split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed) continue;
@@ -29,6 +29,9 @@ export function parseFrontmatter(content) {
 }
 
 export function incrementVersion(version, bumpType) {
+  if (typeof version !== "string") {
+    throw new Error(`Missing or invalid version: ${version}`);
+  }
   const parts = version.split(".");
   if (parts.length !== 3 || parts.some((p) => !/^\d+$/.test(p))) {
     throw new Error(`Invalid semver version: ${version}`);

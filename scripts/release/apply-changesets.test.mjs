@@ -5,45 +5,49 @@ import path from "node:path";
 import os from "node:os";
 import { parseFrontmatter, incrementVersion, updateChangelog } from "./apply-changesets.mjs";
 
+function bumps(obj) {
+  return Object.assign(Object.create(null), obj);
+}
+
 describe("parseFrontmatter", () => {
   it("parses quoted keys", () => {
     const content = '---\n"frontend": minor\n---\n\nSome change.';
     const result = parseFrontmatter(content);
-    assert.deepEqual(result.bumps, { frontend: "minor" });
+    assert.deepEqual(result.bumps, bumps({ frontend: "minor" }));
     assert.equal(result.description, "Some change.");
   });
 
   it("parses unquoted keys", () => {
     const content = "---\nfrontend: minor\n---\n\nSome change.";
     const result = parseFrontmatter(content);
-    assert.deepEqual(result.bumps, { frontend: "minor" });
+    assert.deepEqual(result.bumps, bumps({ frontend: "minor" }));
     assert.equal(result.description, "Some change.");
   });
 
   it("parses multiple components", () => {
     const content = '---\n"frontend": minor\n"api": patch\n---\n\nMulti bump.';
     const result = parseFrontmatter(content);
-    assert.deepEqual(result.bumps, { frontend: "minor", api: "patch" });
+    assert.deepEqual(result.bumps, bumps({ frontend: "minor", api: "patch" }));
     assert.equal(result.description, "Multi bump.");
   });
 
   it("parses hyphenated component names", () => {
     const content = "---\nmmr-api: major\n---\n";
     const result = parseFrontmatter(content);
-    assert.deepEqual(result.bumps, { "mmr-api": "major" });
+    assert.deepEqual(result.bumps, bumps({ "mmr-api": "major" }));
   });
 
   it("handles CRLF line endings", () => {
     const content = '---\r\n"frontend": minor\r\n---\r\n\r\nDescription.';
     const result = parseFrontmatter(content);
-    assert.deepEqual(result.bumps, { frontend: "minor" });
+    assert.deepEqual(result.bumps, bumps({ frontend: "minor" }));
     assert.equal(result.description, "Description.");
   });
 
   it("handles empty description", () => {
     const content = "---\nfrontend: patch\n---\n";
     const result = parseFrontmatter(content);
-    assert.deepEqual(result.bumps, { frontend: "patch" });
+    assert.deepEqual(result.bumps, bumps({ frontend: "patch" }));
     assert.equal(result.description, "");
   });
 
@@ -72,7 +76,7 @@ describe("parseFrontmatter", () => {
   it("ignores blank lines in frontmatter", () => {
     const content = '---\n"frontend": minor\n\n"api": patch\n---\n';
     const result = parseFrontmatter(content);
-    assert.deepEqual(result.bumps, { frontend: "minor", api: "patch" });
+    assert.deepEqual(result.bumps, bumps({ frontend: "minor", api: "patch" }));
   });
 });
 
@@ -93,6 +97,11 @@ describe("incrementVersion", () => {
     assert.equal(incrementVersion("0.0.0", "patch"), "0.0.1");
     assert.equal(incrementVersion("0.0.0", "minor"), "0.1.0");
     assert.equal(incrementVersion("0.0.0", "major"), "1.0.0");
+  });
+
+  it("throws on non-string version", () => {
+    assert.throws(() => incrementVersion(undefined, "patch"), /Missing or invalid version/);
+    assert.throws(() => incrementVersion(null, "patch"), /Missing or invalid version/);
   });
 
   it("throws on invalid version format", () => {
