@@ -171,6 +171,27 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         return (user, membership);
     }
 
+    protected async Task<OrganizationMembership> SeedExistingUserMembership(
+        Guid organizationId,
+        Guid userId,
+        OrganizationRole role = OrganizationRole.Member)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+
+        var membership = new OrganizationMembership
+        {
+            OrganizationId = organizationId,
+            UserId = userId,
+            Role = role,
+            Status = MembershipStatus.Active,
+        };
+        dbContext.OrganizationMemberships.Add(membership);
+        await dbContext.SaveChangesAsync();
+
+        return membership;
+    }
+
     protected async Task<User> SeedUser(
         string identityUserId = "test-user-id",
         string email = "test@example.com")
@@ -195,6 +216,29 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         if (orgRole.HasValue)
         {
             Factory.ClaimsProvider.AddClaim("org_role", orgRole.Value.ToString());
+        }
+    }
+
+    protected void AuthenticateAsPat(
+        string identityUserId,
+        string scope,
+        Guid? organizationId = null,
+        Guid? leagueId = null,
+        string? email = null)
+    {
+        Factory.ClaimsProvider.SetUser(identityUserId, email ?? $"{identityUserId}@test.com");
+        Factory.ClaimsProvider.AddClaim("auth_method", "pat");
+        Factory.ClaimsProvider.AddClaim("pat_id", Guid.NewGuid().ToString());
+        Factory.ClaimsProvider.AddClaim("pat_scope", scope);
+
+        if (organizationId.HasValue)
+        {
+            Factory.ClaimsProvider.AddClaim("pat_org_id", organizationId.Value.ToString());
+        }
+
+        if (leagueId.HasValue)
+        {
+            Factory.ClaimsProvider.AddClaim("pat_league_id", leagueId.Value.ToString());
         }
     }
 

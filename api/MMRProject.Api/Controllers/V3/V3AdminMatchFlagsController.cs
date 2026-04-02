@@ -11,6 +11,7 @@ namespace MMRProject.Api.Controllers.V3;
 [ApiExplorerSettings(GroupName = "v3")]
 [Route("api/v3/organizations/{orgId:guid}/leagues/{leagueId:guid}/admin/match-flags")]
 [Authorize]
+[Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
 public class V3AdminMatchFlagsController(IV3MatchFlagService matchFlagService) : ControllerBase
 {
     [HttpGet]

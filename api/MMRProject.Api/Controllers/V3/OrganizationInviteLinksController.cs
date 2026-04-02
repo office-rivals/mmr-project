@@ -10,6 +10,7 @@ namespace MMRProject.Api.Controllers.V3;
 [ApiExplorerSettings(GroupName = "v3")]
 [Route("api/v3/organizations/{orgId:guid}/invite-links")]
 [Authorize]
+[Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
 public class OrganizationInviteLinksController(IInviteLinkService inviteLinkService) : ControllerBase
 {
     [HttpGet]

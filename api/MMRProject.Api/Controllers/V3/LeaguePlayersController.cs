@@ -10,6 +10,7 @@ namespace MMRProject.Api.Controllers.V3;
 [ApiExplorerSettings(GroupName = "v3")]
 [Route("api/v3/organizations/{orgId:guid}/leagues/{leagueId:guid}/players")]
 [Authorize]
+[Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
 public class LeaguePlayersController(ILeaguePlayerService leaguePlayerService) : ControllerBase
 {
     [HttpPost]
@@ -22,7 +23,7 @@ public class LeaguePlayersController(ILeaguePlayerService leaguePlayerService) :
     }
 
     [HttpGet]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<List<LeaguePlayerResponse>>> ListPlayers(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId)
     {
@@ -30,7 +31,7 @@ public class LeaguePlayersController(ILeaguePlayerService leaguePlayerService) :
     }
 
     [HttpGet("me")]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<LeaguePlayerResponse>> GetMe(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId)
     {
@@ -41,7 +42,7 @@ public class LeaguePlayersController(ILeaguePlayerService leaguePlayerService) :
     }
 
     [HttpGet("{playerId:guid}")]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<LeaguePlayerResponse>> GetPlayer(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromRoute] Guid playerId)
     {

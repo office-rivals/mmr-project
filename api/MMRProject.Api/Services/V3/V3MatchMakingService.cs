@@ -25,7 +25,8 @@ public class V3MatchMakingService(
     ILogger<V3MatchMakingService> logger,
     IUserContextResolver userContextResolver,
     ApiDbContext dbContext,
-    IV3MatchesService matchesService
+    IV3MatchesService matchesService,
+    IOrganizationService organizationService
 ) : IV3MatchMakingService
 {
     public async Task AddPlayerToQueueAsync(Guid orgId, Guid leagueId)
@@ -290,6 +291,8 @@ public class V3MatchMakingService(
             throw new NotFoundException("Active match not found");
         }
 
+        await EnsureCanMutateActiveMatchAsync(orgId, leagueId, activeMatch);
+
         RemoveActiveMatch(activeMatch);
         await dbContext.SaveChangesAsync();
     }
@@ -310,6 +313,8 @@ public class V3MatchMakingService(
         {
             throw new NotFoundException("Active match not found");
         }
+
+        await EnsureCanMutateActiveMatchAsync(orgId, leagueId, activeMatch);
 
         var submitRequest = new SubmitMatchRequest
         {
@@ -472,6 +477,30 @@ public class V3MatchMakingService(
         }
 
         return leaguePlayer;
+    }
+
+    private async Task EnsureCanMutateActiveMatchAsync(Guid orgId, Guid leagueId, V3ActiveMatch activeMatch)
+    {
+        var currentMembership = await organizationService.GetMembershipForCurrentUserAsync(orgId)
+            ?? throw new ForbiddenException("You are not a member of this organization");
+
+        if (currentMembership.Role <= OrganizationRole.Moderator)
+        {
+            return;
+        }
+
+        var playerIds = activeMatch.PendingMatch.Teams
+            .SelectMany(t => t.Players)
+            .Select(p => p.LeaguePlayerId)
+            .ToList();
+
+        var isParticipant = await dbContext.LeaguePlayers
+            .AnyAsync(lp => lp.OrganizationMembershipId == currentMembership.Id
+                            && lp.LeagueId == leagueId
+                            && playerIds.Contains(lp.Id));
+
+        if (!isParticipant)
+            throw new ForbiddenException("You are not allowed to modify this active match");
     }
 
     private static PendingMatchResponse MapPendingMatch(V3PendingMatch pm) => new()

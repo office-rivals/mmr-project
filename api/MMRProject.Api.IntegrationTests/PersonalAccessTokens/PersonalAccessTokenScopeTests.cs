@@ -62,4 +62,24 @@ public class PersonalAccessTokenScopeTests(PostgresFixture postgres) : Integrati
             response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.BadRequest,
             $"Expected 403/400 but got {(int)response.StatusCode} — user was able to mint a PAT for a league in another org");
     }
+
+    [Fact]
+    public async Task CreateToken_WithUnsupportedScope_ShouldFail()
+    {
+        var org = await CreateOrganization("Org", "scope-org");
+        await SeedOrgMember(org.Id, "user-1", "user1@test.com", OrganizationRole.Member);
+
+        AuthenticateAs("user-1");
+
+        var response = await Client.PostAsJsonAsync("api/v3/me/tokens", new CreateTokenRequest
+        {
+            Name = "Read Token",
+            Scope = "read",
+            OrganizationId = org.Id,
+        });
+
+        Assert.True(
+            response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity,
+            $"Expected 400/422 but got {(int)response.StatusCode} — unsupported PAT scope was accepted");
+    }
 }

@@ -10,10 +10,11 @@ namespace MMRProject.Api.Controllers.V3;
 [ApiExplorerSettings(GroupName = "v3")]
 [Route("api/v3/organizations/{orgId:guid}/leagues/{leagueId:guid}/pending-matches")]
 [Authorize]
+[Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
 public class V3PendingMatchesController(IV3MatchMakingService matchMakingService) : ControllerBase
 {
     [HttpGet("{pendingMatchId:guid}")]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<PendingMatchResponse>> GetPendingMatchStatus(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromRoute] Guid pendingMatchId)
     {
@@ -21,7 +22,7 @@ public class V3PendingMatchesController(IV3MatchMakingService matchMakingService
     }
 
     [HttpPost("{pendingMatchId:guid}/accept")]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<IActionResult> AcceptPendingMatch(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromRoute] Guid pendingMatchId)
     {
@@ -30,7 +31,7 @@ public class V3PendingMatchesController(IV3MatchMakingService matchMakingService
     }
 
     [HttpPost("{pendingMatchId:guid}/decline")]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<IActionResult> DeclinePendingMatch(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromRoute] Guid pendingMatchId)
     {

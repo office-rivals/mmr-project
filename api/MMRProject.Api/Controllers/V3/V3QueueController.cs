@@ -10,10 +10,11 @@ namespace MMRProject.Api.Controllers.V3;
 [ApiExplorerSettings(GroupName = "v3")]
 [Route("api/v3/organizations/{orgId:guid}/leagues/{leagueId:guid}/queue")]
 [Authorize]
+[Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
 public class V3QueueController(IV3MatchMakingService matchMakingService) : ControllerBase
 {
     [HttpPost]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<IActionResult> JoinQueue([FromRoute] Guid orgId, [FromRoute] Guid leagueId)
     {
         await matchMakingService.AddPlayerToQueueAsync(orgId, leagueId);
@@ -21,7 +22,7 @@ public class V3QueueController(IV3MatchMakingService matchMakingService) : Contr
     }
 
     [HttpDelete]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<IActionResult> LeaveQueue([FromRoute] Guid orgId, [FromRoute] Guid leagueId)
     {
         await matchMakingService.RemovePlayerFromQueueAsync(orgId, leagueId);
@@ -29,7 +30,7 @@ public class V3QueueController(IV3MatchMakingService matchMakingService) : Contr
     }
 
     [HttpGet]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<QueueStatusResponse>> GetQueueStatus(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId)
     {

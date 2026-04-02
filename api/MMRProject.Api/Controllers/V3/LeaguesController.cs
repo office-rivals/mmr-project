@@ -10,6 +10,7 @@ namespace MMRProject.Api.Controllers.V3;
 [ApiExplorerSettings(GroupName = "v3")]
 [Route("api/v3/organizations/{orgId:guid}/leagues")]
 [Authorize]
+[Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
 public class LeaguesController(ILeagueService leagueService) : ControllerBase
 {
     [HttpPost]
@@ -29,7 +30,7 @@ public class LeaguesController(ILeagueService leagueService) : ControllerBase
     }
 
     [HttpGet("{leagueId:guid}")]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<LeagueResponse>> GetLeague(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId)
     {

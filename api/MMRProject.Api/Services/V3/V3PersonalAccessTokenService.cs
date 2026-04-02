@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using MMRProject.Api.Auth;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
@@ -25,6 +26,9 @@ public class V3PersonalAccessTokenService(
 {
     public async Task<CreateTokenResponse> GenerateTokenAsync(CreateTokenRequest request)
     {
+        if (!PatScopes.TryNormalize(request.Scope, out var normalizedScope))
+            throw new InvalidArgumentException("Unsupported PAT scope");
+
         var user = await GetCurrentUserAsync();
 
         if (request.OrganizationId.HasValue)
@@ -59,7 +63,7 @@ public class V3PersonalAccessTokenService(
             UserId = user.Id,
             OrganizationId = request.OrganizationId,
             LeagueId = request.LeagueId,
-            Scope = request.Scope,
+            Scope = normalizedScope,
             TokenHash = tokenHash,
             Name = request.Name,
             ExpiresAt = request.ExpiresAt,

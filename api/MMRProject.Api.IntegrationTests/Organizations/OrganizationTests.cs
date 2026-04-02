@@ -1,4 +1,7 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -106,5 +109,122 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
         var updated = await ReadJsonAsync<OrganizationMemberResponse>(response);
         Assert.NotNull(updated);
         Assert.Equal(OrganizationRole.Moderator, updated.Role);
+    }
+
+    [Fact]
+    public async Task UpdateMemberRole_CannotDemoteLastOwner()
+    {
+        var org = await CreateOrganization("Solo Owner Org", "solo-owner-org");
+        var (_, ownerMembership) = await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("owner-1");
+
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members/{ownerMembership.Id}",
+            new UpdateMemberRoleRequest { Role = OrganizationRole.Member });
+
+        Assert.True(response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task RemoveMember_PreservesLeagueHistoryAndHidesMembership()
+    {
+        var org = await CreateOrganization("History Org", "history-org");
+        var league = await CreateLeague(org.Id, "History League", "history-league");
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        var (_, membership, leaguePlayer) = await SeedTestUser(org.Id, league.Id, "member-1", "member@test.com");
+        AuthenticateAs("owner-1");
+
+        var response = await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/members/{membership.Id}");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        var membersResponse = await Client.GetAsync($"api/v3/organizations/{org.Id}/members");
+        Assert.Equal(HttpStatusCode.OK, membersResponse.StatusCode);
+        var members = await ReadJsonAsync<List<OrganizationMemberResponse>>(membersResponse);
+        Assert.NotNull(members);
+        Assert.DoesNotContain(members, m => m.Id == membership.Id);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var storedMembership = await dbContext.OrganizationMemberships
+            .FirstAsync(m => m.Id == membership.Id);
+        var storedLeaguePlayer = await dbContext.LeaguePlayers
+            .FirstOrDefaultAsync(lp => lp.Id == leaguePlayer.Id);
+
+        Assert.Equal(MembershipStatus.Removed, storedMembership.Status);
+        Assert.NotNull(storedLeaguePlayer);
+    }
+
+    [Fact]
+    public async Task ReinviteRemovedMember_ReactivatesExistingMembershipAndLeagueProfile()
+    {
+        var org = await CreateOrganization("Rejoin Org", "rejoin-org");
+        var league = await CreateLeague(org.Id, "Rejoin League", "rejoin-league");
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        var (user, membership, leaguePlayer) = await SeedTestUser(
+            org.Id, league.Id, "member-1", "member@test.com");
+
+        AuthenticateAs("owner-1");
+        var removeResponse = await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/members/{membership.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, removeResponse.StatusCode);
+
+        var inviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = user.Email, Role = OrganizationRole.Member });
+        Assert.Equal(HttpStatusCode.OK, inviteResponse.StatusCode);
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
+        Assert.NotNull(invited);
+        Assert.Equal(membership.Id, invited.Id);
+        Assert.Equal(MembershipStatus.Invited, invited.Status);
+
+        AuthenticateAs("member-1", email: "member@test.com");
+        var meResponse = await Client.GetAsync("api/v3/me");
+        Assert.Equal(HttpStatusCode.OK, meResponse.StatusCode);
+        var me = await ReadJsonAsync<MeResponse>(meResponse);
+        Assert.NotNull(me);
+        var orgResponse = Assert.Single(me.Organizations);
+        Assert.Equal(org.Id, orgResponse.Id);
+        var leagueResponse = Assert.Single(orgResponse.Leagues);
+        Assert.Equal(leaguePlayer.Id, leagueResponse.LeaguePlayerId);
+    }
+
+    [Fact]
+    public async Task InviteLinkRejoin_ReactivatesExistingMembershipAndLeagueProfile()
+    {
+        var org = await CreateOrganization("Invite Rejoin Org", "invite-rejoin-org");
+        var league = await CreateLeague(org.Id, "Invite Rejoin League", "invite-rejoin-league");
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        var (_, membership, leaguePlayer) = await SeedTestUser(
+            org.Id, league.Id, "member-1", "member@test.com");
+
+        AuthenticateAs("owner-1");
+        var inviteLinkResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/invite-links",
+            new CreateInviteLinkRequest());
+        Assert.Equal(HttpStatusCode.Created, inviteLinkResponse.StatusCode);
+        var inviteLink = await ReadJsonAsync<InviteLinkResponse>(inviteLinkResponse);
+        Assert.NotNull(inviteLink);
+
+        var removeResponse = await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/members/{membership.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, removeResponse.StatusCode);
+
+        AuthenticateAs("member-1", email: "member@test.com");
+        var joinResponse = await Client.PostAsync($"api/v3/invites/{inviteLink.Code}/join", null);
+        Assert.Equal(HttpStatusCode.OK, joinResponse.StatusCode);
+        var joined = await ReadJsonAsync<JoinOrganizationResponse>(joinResponse);
+        Assert.NotNull(joined);
+        Assert.Equal(membership.Id, joined.MembershipId);
+
+        var meResponse = await Client.GetAsync("api/v3/me");
+        Assert.Equal(HttpStatusCode.OK, meResponse.StatusCode);
+        var me = await ReadJsonAsync<MeResponse>(meResponse);
+        Assert.NotNull(me);
+        var orgResponse = Assert.Single(me.Organizations);
+        Assert.Equal(org.Id, orgResponse.Id);
+        var leagueResponse = Assert.Single(orgResponse.Leagues);
+        Assert.Equal(leaguePlayer.Id, leagueResponse.LeaguePlayerId);
     }
 }

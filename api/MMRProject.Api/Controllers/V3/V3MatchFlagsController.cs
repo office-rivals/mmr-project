@@ -11,10 +11,11 @@ namespace MMRProject.Api.Controllers.V3;
 [ApiExplorerSettings(GroupName = "v3")]
 [Route("api/v3/organizations/{orgId:guid}/leagues/{leagueId:guid}/match-flags")]
 [Authorize]
+[Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
 public class V3MatchFlagsController(IV3MatchFlagService matchFlagService) : ControllerBase
 {
     [HttpPost]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<MatchFlagResponse>> CreateFlag(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromBody] CreateMatchFlagRequest request)
     {
@@ -23,7 +24,7 @@ public class V3MatchFlagsController(IV3MatchFlagService matchFlagService) : Cont
     }
 
     [HttpGet]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<List<MatchFlagResponse>>> ListFlags(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromQuery] MatchFlagStatus? status)
     {
@@ -31,7 +32,7 @@ public class V3MatchFlagsController(IV3MatchFlagService matchFlagService) : Cont
     }
 
     [HttpGet("me")]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<List<MatchFlagResponse>>> GetMyFlags(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId)
     {
@@ -39,7 +40,7 @@ public class V3MatchFlagsController(IV3MatchFlagService matchFlagService) : Cont
     }
 
     [HttpPut("{flagId:guid}")]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<MatchFlagResponse>> UpdateFlagReason(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromRoute] Guid flagId,
         [FromBody] UpdateMatchFlagReasonRequest request)
@@ -48,7 +49,7 @@ public class V3MatchFlagsController(IV3MatchFlagService matchFlagService) : Cont
     }
 
     [HttpDelete("{flagId:guid}")]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult> DeleteFlag(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromRoute] Guid flagId)
     {

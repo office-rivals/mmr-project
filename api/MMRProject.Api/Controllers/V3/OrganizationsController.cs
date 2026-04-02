@@ -13,6 +13,7 @@ namespace MMRProject.Api.Controllers.V3;
 public class OrganizationsController(IOrganizationService organizationService) : ControllerBase
 {
     [HttpPost]
+    [Authorize(Policy = V3AuthorizationPolicies.DenyPatAuthentication)]
     public async Task<ActionResult<OrganizationResponse>> CreateOrganization(
         [FromBody] CreateOrganizationRequest request)
     {
@@ -21,6 +22,8 @@ public class OrganizationsController(IOrganizationService organizationService) :
     }
 
     [HttpGet("{orgId:guid}")]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
     public async Task<ActionResult<OrganizationResponse>> GetOrganization([FromRoute] Guid orgId)
     {
         return await organizationService.GetOrganizationAsync(orgId);
@@ -28,6 +31,7 @@ public class OrganizationsController(IOrganizationService organizationService) :
 
     [HttpPatch("{orgId:guid}")]
     [Authorize(Policy = V3AuthorizationPolicies.RequireOrgOwner)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
     public async Task<ActionResult<OrganizationResponse>> UpdateOrganization(
         [FromRoute] Guid orgId, [FromBody] UpdateOrganizationRequest request)
     {

@@ -122,7 +122,7 @@ public class OrganizationService(
         var members = await dbContext.OrganizationMemberships
             .AsNoTracking()
             .Include(m => m.User)
-            .Where(m => m.OrganizationId == orgId)
+            .Where(m => m.OrganizationId == orgId && m.Status != MembershipStatus.Removed)
             .ToListAsync();
 
         return members.Select(MapToMemberResponse).ToList();
@@ -132,7 +132,9 @@ public class OrganizationService(
     {
         var existing = await dbContext.OrganizationMemberships
             .Include(m => m.User)
-            .FirstOrDefaultAsync(m => m.OrganizationId == orgId && m.InviteEmail == request.Email);
+            .FirstOrDefaultAsync(m => m.OrganizationId == orgId
+                                      && m.InviteEmail == request.Email
+                                      && m.Status != MembershipStatus.Removed);
 
         if (existing != null)
             throw new InvalidArgumentException($"A member with email '{request.Email}' has already been invited");
@@ -141,10 +143,30 @@ public class OrganizationService(
             .Include(m => m.User)
             .FirstOrDefaultAsync(m => m.OrganizationId == orgId
                                       && m.User != null
-                                      && m.User.Email == request.Email);
+                                      && m.User.Email == request.Email
+                                      && m.Status != MembershipStatus.Removed);
 
         if (existingByUser != null)
             throw new InvalidArgumentException($"A member with email '{request.Email}' already exists in this organization");
+
+        var removedMembership = await dbContext.OrganizationMemberships
+            .Include(m => m.User)
+            .FirstOrDefaultAsync(m => m.OrganizationId == orgId
+                                      && m.Status == MembershipStatus.Removed
+                                      && (m.InviteEmail == request.Email
+                                          || (m.User != null && m.User.Email == request.Email)));
+
+        if (removedMembership != null)
+        {
+            removedMembership.InviteEmail = request.Email;
+            removedMembership.Role = request.Role;
+            removedMembership.Status = MembershipStatus.Invited;
+            removedMembership.ClaimedAt = null;
+
+            await dbContext.SaveChangesAsync();
+
+            return MapToMemberResponse(removedMembership);
+        }
 
         var membership = new OrganizationMembership
         {
@@ -165,11 +187,24 @@ public class OrganizationService(
     {
         var membership = await dbContext.OrganizationMemberships
             .Include(m => m.User)
-            .FirstOrDefaultAsync(m => m.Id == membershipId && m.OrganizationId == orgId)
+            .FirstOrDefaultAsync(m => m.Id == membershipId
+                                      && m.OrganizationId == orgId
+                                      && m.Status != MembershipStatus.Removed)
             ?? throw new NotFoundException($"Membership with ID '{membershipId}' not found");
 
         var currentUserMembership = await GetMembershipForCurrentUserAsync(orgId)
             ?? throw new ForbiddenException("You are not a member of this organization");
+
+        if (membership.Role == OrganizationRole.Owner && request.Role != OrganizationRole.Owner)
+        {
+            var hasOtherOwner = await dbContext.OrganizationMemberships
+                .AnyAsync(m => m.OrganizationId == orgId
+                               && m.Status == MembershipStatus.Active
+                               && m.Role == OrganizationRole.Owner
+                               && m.Id != membershipId);
+            if (!hasOtherOwner)
+                throw new InvalidArgumentException("Cannot remove the last owner of the organization");
+        }
 
         membership.Role = request.Role;
         membership.RoleAssignedByMembershipId = currentUserMembership.Id;
@@ -183,18 +218,24 @@ public class OrganizationService(
     public async Task RemoveMemberAsync(Guid orgId, Guid membershipId)
     {
         var membership = await dbContext.OrganizationMemberships
-            .FirstOrDefaultAsync(m => m.Id == membershipId && m.OrganizationId == orgId)
+            .FirstOrDefaultAsync(m => m.Id == membershipId
+                                      && m.OrganizationId == orgId
+                                      && m.Status != MembershipStatus.Removed)
             ?? throw new NotFoundException($"Membership with ID '{membershipId}' not found");
 
         if (membership.Role == OrganizationRole.Owner)
         {
             var hasOtherOwner = await dbContext.OrganizationMemberships
-                .AnyAsync(m => m.OrganizationId == orgId && m.Role == OrganizationRole.Owner && m.Id != membershipId);
+                .AnyAsync(m => m.OrganizationId == orgId
+                               && m.Status == MembershipStatus.Active
+                               && m.Role == OrganizationRole.Owner
+                               && m.Id != membershipId);
             if (!hasOtherOwner)
                 throw new InvalidArgumentException("Cannot remove the last owner of the organization");
         }
 
-        dbContext.OrganizationMemberships.Remove(membership);
+        membership.Status = MembershipStatus.Removed;
+
         await dbContext.SaveChangesAsync();
     }
 

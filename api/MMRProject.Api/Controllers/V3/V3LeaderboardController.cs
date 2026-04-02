@@ -10,10 +10,11 @@ namespace MMRProject.Api.Controllers.V3;
 [ApiExplorerSettings(GroupName = "v3")]
 [Route("api/v3/organizations/{orgId:guid}/leagues/{leagueId:guid}/leaderboard")]
 [Authorize]
+[Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
 public class V3LeaderboardController(IV3LeaderboardService leaderboardService) : ControllerBase
 {
     [HttpGet]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<LeaderboardResponse>> GetLeaderboard(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromQuery] Guid? seasonId)
     {

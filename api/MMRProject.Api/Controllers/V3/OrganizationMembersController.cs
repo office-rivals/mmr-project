@@ -10,6 +10,7 @@ namespace MMRProject.Api.Controllers.V3;
 [ApiExplorerSettings(GroupName = "v3")]
 [Route("api/v3/organizations/{orgId:guid}/members")]
 [Authorize]
+[Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
 public class OrganizationMembersController(IOrganizationService organizationService) : ControllerBase
 {
     [HttpGet]

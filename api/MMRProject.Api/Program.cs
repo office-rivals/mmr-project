@@ -35,9 +35,18 @@ builder.Services.AddAuthorization(options =>
         policy.Requirements.Add(new OrganizationRoleRequirement(OrganizationRole.Moderator)));
     options.AddPolicy(V3AuthorizationPolicies.RequireOrgMember, policy =>
         policy.Requirements.Add(new OrganizationRoleRequirement(OrganizationRole.Member)));
+    options.AddPolicy(V3AuthorizationPolicies.RequireLeagueAccess, policy =>
+        policy.Requirements.Add(new LeagueAccessRequirement()));
+    options.AddPolicy(V3AuthorizationPolicies.RequirePatWrite, policy =>
+        policy.Requirements.Add(new PatScopeRequirement(PatScopes.Write)));
+    options.AddPolicy(V3AuthorizationPolicies.DenyPatAuthentication, policy =>
+        policy.Requirements.Add(new DenyPatAuthenticationRequirement()));
 });
 
 builder.Services.AddSingleton<IAuthorizationHandler, OrganizationRoleAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, LeagueAccessAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, PatAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, DenyPatAuthenticationHandler>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddUserContextResolver();

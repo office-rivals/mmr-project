@@ -123,15 +123,32 @@ public class InviteLinkService(
                                       && m.InviteEmail == email
                                       && m.Status == MembershipStatus.Invited);
 
+        var removedMembership = await dbContext.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.OrganizationId == link.OrganizationId
+                                      && m.Status == MembershipStatus.Removed
+                                      && (m.UserId == user.Id || m.InviteEmail == email));
+
         OrganizationMembership membership;
         if (pendingInvite != null)
         {
             pendingInvite.UserId = user.Id;
             pendingInvite.DisplayName = user.DisplayName;
             pendingInvite.Username = user.Username;
+            pendingInvite.InviteEmail = null;
             pendingInvite.Status = MembershipStatus.Active;
             pendingInvite.ClaimedAt = DateTimeOffset.UtcNow;
             membership = pendingInvite;
+        }
+        else if (removedMembership != null)
+        {
+            removedMembership.UserId = user.Id;
+            removedMembership.DisplayName = user.DisplayName;
+            removedMembership.Username = user.Username;
+            removedMembership.InviteEmail = null;
+            removedMembership.Role = OrganizationRole.Member;
+            removedMembership.Status = MembershipStatus.Active;
+            removedMembership.ClaimedAt = DateTimeOffset.UtcNow;
+            membership = removedMembership;
         }
         else
         {
@@ -188,6 +205,7 @@ public class InviteLinkService(
             invite.UserId = userId;
             invite.DisplayName = user.DisplayName;
             invite.Username = user.Username;
+            invite.InviteEmail = null;
             invite.Status = MembershipStatus.Active;
             invite.ClaimedAt = DateTimeOffset.UtcNow;
         }

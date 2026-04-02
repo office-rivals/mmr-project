@@ -10,10 +10,11 @@ namespace MMRProject.Api.Controllers.V3;
 [ApiExplorerSettings(GroupName = "v3")]
 [Route("api/v3/organizations/{orgId:guid}/leagues/{leagueId:guid}/matches")]
 [Authorize]
+[Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
 public class V3MatchesController(IV3MatchesService matchesService) : ControllerBase
 {
     [HttpPost]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<MatchResponse>> SubmitMatch(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromBody] SubmitMatchRequest request)
     {
@@ -22,7 +23,7 @@ public class V3MatchesController(IV3MatchesService matchesService) : ControllerB
     }
 
     [HttpGet]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<List<MatchResponse>>> GetMatches(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId,
         [FromQuery] Guid? seasonId, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
@@ -31,7 +32,7 @@ public class V3MatchesController(IV3MatchesService matchesService) : ControllerB
     }
 
     [HttpGet("{matchId:guid}")]
-    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<MatchResponse>> GetMatch(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromRoute] Guid matchId)
     {

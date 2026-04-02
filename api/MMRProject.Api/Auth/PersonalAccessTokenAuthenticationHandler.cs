@@ -54,10 +54,22 @@ public class PersonalAccessTokenAuthenticationHandler(
             new Claim(ClaimTypes.NameIdentifier, identityUserId),
             new Claim("sub", identityUserId),
             new Claim("auth_method", "pat"),
-            new Claim("pat_id", personalAccessToken.Id.ToString())
+            new Claim("pat_id", personalAccessToken.Id.ToString()),
+            new Claim("pat_scope", personalAccessToken.Scope)
         };
 
-        var identity = new ClaimsIdentity(claims, Scheme.Name);
+        var scopedClaims = claims.ToList();
+        if (personalAccessToken.OrganizationId.HasValue)
+        {
+            scopedClaims.Add(new Claim("pat_org_id", personalAccessToken.OrganizationId.Value.ToString()));
+        }
+
+        if (personalAccessToken.LeagueId.HasValue)
+        {
+            scopedClaims.Add(new Claim("pat_league_id", personalAccessToken.LeagueId.Value.ToString()));
+        }
+
+        var identity = new ClaimsIdentity(scopedClaims, Scheme.Name);
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
