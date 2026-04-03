@@ -40,6 +40,10 @@ Today, leagues are joinable by any active org member. There is no private-league
 
 Users can join leagues themselves from the league directory. They may also be added to a league implicitly when match submission references an existing organization member who is not yet in that league.
 
+![Organization league directory](/screenshots/org-directory.png)
+
+_Org members can browse the league directory, see whether they already belong to a league, and jump straight into league-specific pages._
+
 The current API path for self-join is:
 
 - `POST /api/v3/organizations/{orgId}/leagues/{leagueId}/players`

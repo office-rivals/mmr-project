@@ -22,6 +22,10 @@ When submitting a match, a slot can resolve to:
 - an organization member who is not yet in the league
 - a brand-new provisional player
 
+![Match submission screen](/screenshots/submit-match.png)
+
+_The current submit flow supports existing players and an inline `Add New` path for provisional players._
+
 ## Automatic League Enrollment
 
 If a selected player already belongs to the organization but not the league, match submission can add them to the league automatically.
