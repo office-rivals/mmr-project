@@ -35,6 +35,14 @@ Moderators and owners are organization-scoped. Regular members must join a leagu
 - if an org member is selected during match submission but is not yet in the league, they are added automatically
 - invited and removed memberships can be reactivated instead of fragmenting player history
 
+![Signed-in leaderboard view](/screenshots/leaderboard.png)
+
+_Signed-in users can browse leaderboard standings and recent match history from the app._
+
+![Player profile with rating history](/screenshots/player-profile.png)
+
+_Individual player pages surface rating history, match counts, and recent results._
+
 ## Security Boundaries
 
 The important security rule is:
