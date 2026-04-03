@@ -80,4 +80,19 @@ public class PatAuthorizationTests(PostgresFixture postgres) : IntegrationTestBa
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    [Fact]
+    public async Task WriteScopedPat_CanResolveCurrentLeaguePlayer()
+    {
+        var org = await CreateOrganization("Org", "pat-player-org");
+        var league = await CreateLeague(org.Id, "League", "pat-player-league");
+        await SeedTestUser(org.Id, league.Id, "member-1", "member@test.com");
+
+        AuthenticateAsPat("member-1", "write", org.Id, league.Id);
+
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/players/me");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
 }

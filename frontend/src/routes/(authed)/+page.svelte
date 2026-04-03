@@ -31,18 +31,25 @@
     <div class="flex flex-col gap-4">
       {#each data.organizations as org}
         <div class="bg-card rounded-lg border p-4">
-          <h2 class="text-xl font-semibold">{org.name}</h2>
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-xl font-semibold">{org.name}</h2>
+            <Button variant="ghost" href={`/${org.slug}`}>
+              Browse Leagues
+            </Button>
+          </div>
           {#if org.leagues?.length > 0}
             <div class="mt-3 flex flex-col gap-2">
               {#each org.leagues as league}
-                <Button variant="outline" href="/{org.slug}/{league.slug}" class="justify-start gap-2">
+                <Button variant="outline" href={`/${org.slug}/${league.slug}`} class="justify-start gap-2">
                   <Trophy class="h-4 w-4" />
                   {league.name}
                 </Button>
               {/each}
             </div>
           {:else}
-            <p class="text-muted-foreground mt-2 text-sm">No leagues yet.</p>
+            <p class="text-muted-foreground mt-2 text-sm">
+              You have not joined any leagues in this organization yet.
+            </p>
           {/if}
         </div>
       {/each}

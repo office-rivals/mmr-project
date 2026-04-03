@@ -16,38 +16,34 @@ public interface IUserContextResolver
 
 public class UserContextResolver : IUserContextResolver
 {
-    private readonly ClaimsPrincipal _user;
-    private readonly Lazy<string> _userId;
-    private readonly Lazy<string?> _email;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public UserContextResolver(IHttpContextAccessor httpContextAccessor)
     {
-        _user =
-            httpContextAccessor.HttpContext?.User
-            ?? throw new Exception("Could not get user from http context");
-        _userId = new Lazy<string>(
-            () => _user.GetUserId() ?? throw new Exception("Missing user id")
-        );
-        _email = new Lazy<string?>(
-            () => _user.FindFirstValue(ClaimTypes.Email)
-                ?? _user.FindFirstValue("email")
-        );
+        _httpContextAccessor = httpContextAccessor;
     }
 
-    public ClaimsPrincipal GetUserIdentity() => _user;
+    private ClaimsPrincipal GetCurrentUser()
+        => _httpContextAccessor.HttpContext?.User
+           ?? throw new Exception("Could not get user from http context");
 
-    public string GetIdentityUserId() => _userId.Value;
+    public ClaimsPrincipal GetUserIdentity() => GetCurrentUser();
 
-    public string? GetEmail() => _email.Value;
+    public string GetIdentityUserId()
+        => GetCurrentUser().GetUserId() ?? throw new Exception("Missing user id");
+
+    public string? GetEmail()
+        => GetCurrentUser().FindFirstValue(ClaimTypes.Email)
+           ?? GetCurrentUser().FindFirstValue("email");
 
     public bool IsPatAuthentication()
     {
-        return _user.FindFirstValue("auth_method") == "pat";
+        return GetCurrentUser().FindFirstValue("auth_method") == "pat";
     }
 
     public PlayerRole GetRole()
     {
-        var roleClaim = _user.FindFirstValue("player_role");
+        var roleClaim = GetCurrentUser().FindFirstValue("player_role");
         return Enum.TryParse<PlayerRole>(roleClaim, out var role)
             ? role
             : PlayerRole.User;

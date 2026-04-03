@@ -3,6 +3,7 @@ using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.Exceptions;
+using MMRProject.Api.Extensions;
 using MMRProject.Api.MMRCalculationApi;
 using MMRProject.Api.MMRCalculationApi.Models;
 
@@ -33,17 +34,27 @@ public class V3MatchesService(
 
         var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
 
-        var allPlayerIds = request.Teams.SelectMany(t => t.Players).ToList();
+        var resolvedTeams = new List<List<LeaguePlayer>>();
+        foreach (var team in request.Teams)
+        {
+            var resolvedPlayers = new List<LeaguePlayer>();
+            foreach (var player in team.Players)
+            {
+                resolvedPlayers.Add(await ResolveLeaguePlayerAsync(orgId, leagueId, player));
+            }
+
+            resolvedTeams.Add(resolvedPlayers);
+        }
+
+        var allPlayerIds = resolvedTeams.SelectMany(t => t).Select(lp => lp.Id).ToList();
         var uniquePlayerIds = allPlayerIds.Distinct().ToList();
         if (uniquePlayerIds.Count != allPlayerIds.Count)
             throw new InvalidArgumentException("Players must be unique across all teams");
 
-        var leaguePlayers = await dbContext.Set<LeaguePlayer>()
-            .Where(lp => lp.OrganizationId == orgId && lp.LeagueId == leagueId && uniquePlayerIds.Contains(lp.Id))
-            .ToListAsync();
-
-        if (leaguePlayers.Count != uniquePlayerIds.Count)
-            throw new InvalidArgumentException("Not all players were found in this league");
+        var leaguePlayers = resolvedTeams.SelectMany(t => t)
+            .GroupBy(lp => lp.Id)
+            .Select(g => g.First())
+            .ToList();
 
         var now = DateTimeOffset.UtcNow;
         var match = new V3Match
@@ -63,6 +74,7 @@ public class V3MatchesService(
         for (var teamIndex = 0; teamIndex < request.Teams.Count; teamIndex++)
         {
             var teamRequest = request.Teams[teamIndex];
+            var resolvedPlayers = resolvedTeams[teamIndex];
             var isWinner = winnerCount == 1 && teamRequest.Score == maxScore;
 
             var matchTeam = new MatchTeam
@@ -74,13 +86,13 @@ public class V3MatchesService(
                 IsWinner = isWinner,
             };
 
-            for (var playerIndex = 0; playerIndex < teamRequest.Players.Count; playerIndex++)
+            for (var playerIndex = 0; playerIndex < resolvedPlayers.Count; playerIndex++)
             {
                 matchTeam.Players.Add(new MatchTeamPlayer
                 {
                     OrganizationId = orgId,
                     LeagueId = leagueId,
-                    LeaguePlayerId = teamRequest.Players[playerIndex],
+                    LeaguePlayerId = resolvedPlayers[playerIndex].Id,
                     Index = playerIndex,
                 });
             }
@@ -94,6 +106,135 @@ public class V3MatchesService(
         await CalculateAndApplyMmr(orgId, match, leaguePlayers);
 
         return await LoadAndMapMatch(orgId, leagueId, match.Id);
+    }
+
+    private async Task<LeaguePlayer> ResolveLeaguePlayerAsync(
+        Guid orgId,
+        Guid leagueId,
+        SubmitMatchPlayerRequest playerRequest)
+    {
+        var populatedReferenceCount =
+            (playerRequest.LeaguePlayerId.HasValue ? 1 : 0)
+            + (playerRequest.OrganizationMembershipId.HasValue ? 1 : 0)
+            + (playerRequest.NewPlayer is not null ? 1 : 0);
+
+        if (populatedReferenceCount != 1)
+        {
+            throw new InvalidArgumentException(
+                "Each submitted player must specify exactly one of leaguePlayerId, organizationMembershipId, or newPlayer");
+        }
+
+        if (playerRequest.LeaguePlayerId.HasValue)
+        {
+            return await dbContext.LeaguePlayers
+                .FirstOrDefaultAsync(lp => lp.Id == playerRequest.LeaguePlayerId.Value
+                                           && lp.OrganizationId == orgId
+                                           && lp.LeagueId == leagueId)
+                ?? throw new InvalidArgumentException("Not all players were found in this league");
+        }
+
+        if (playerRequest.OrganizationMembershipId.HasValue)
+        {
+            var membership = await dbContext.OrganizationMemberships
+                .Include(m => m.User)
+                .FirstOrDefaultAsync(m => m.Id == playerRequest.OrganizationMembershipId.Value
+                                          && m.OrganizationId == orgId
+                                          && m.Status != MembershipStatus.Removed)
+                ?? throw new InvalidArgumentException("Organization member was not found");
+
+            return await GetOrCreateLeaguePlayerAsync(orgId, leagueId, membership);
+        }
+
+        return await ResolveNewPlayerAsync(orgId, leagueId, playerRequest.NewPlayer!);
+    }
+
+    private async Task<LeaguePlayer> ResolveNewPlayerAsync(
+        Guid orgId,
+        Guid leagueId,
+        CreateMatchPlayerRequest newPlayer)
+    {
+        if (string.IsNullOrWhiteSpace(newPlayer.DisplayName))
+        {
+            throw new InvalidArgumentException("Display name is required for new players");
+        }
+
+        var normalizedEmail = string.IsNullOrWhiteSpace(newPlayer.Email)
+            ? null
+            : newPlayer.Email.Trim();
+
+        OrganizationMembership? membership = null;
+
+        if (normalizedEmail != null)
+        {
+            membership = await dbContext.OrganizationMemberships
+                .Include(m => m.User)
+                .FirstOrDefaultAsync(m => m.OrganizationId == orgId
+                                          && m.Status != MembershipStatus.Removed
+                                          && (m.InviteEmail == normalizedEmail
+                                              || (m.User != null && m.User.Email == normalizedEmail)));
+        }
+
+        if (membership == null)
+        {
+            User? existingUser = null;
+            if (normalizedEmail != null)
+            {
+                existingUser = await dbContext.V3Users
+                    .FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+            }
+
+            membership = new OrganizationMembership
+            {
+                OrganizationId = orgId,
+                UserId = existingUser?.Id,
+                InviteEmail = existingUser == null ? normalizedEmail : null,
+                DisplayName = existingUser?.DisplayName ?? newPlayer.DisplayName.Trim(),
+                Username = existingUser?.Username,
+                Role = OrganizationRole.Member,
+                Status = existingUser != null
+                    ? MembershipStatus.Active
+                    : normalizedEmail != null
+                        ? MembershipStatus.Invited
+                        : MembershipStatus.Active,
+                ClaimedAt = existingUser != null ? DateTimeOffset.UtcNow : null,
+            };
+            dbContext.OrganizationMemberships.Add(membership);
+        }
+        else if (string.IsNullOrWhiteSpace(membership.DisplayName))
+        {
+            membership.DisplayName = newPlayer.DisplayName.Trim();
+        }
+
+        return await GetOrCreateLeaguePlayerAsync(orgId, leagueId, membership);
+    }
+
+    private async Task<LeaguePlayer> GetOrCreateLeaguePlayerAsync(
+        Guid orgId,
+        Guid leagueId,
+        OrganizationMembership membership)
+    {
+        var existingPlayer = await dbContext.LeaguePlayers
+            .FirstOrDefaultAsync(lp => lp.OrganizationId == orgId
+                                       && lp.LeagueId == leagueId
+                                       && lp.OrganizationMembershipId == membership.Id);
+
+        if (existingPlayer != null)
+        {
+            return existingPlayer;
+        }
+
+        var leaguePlayer = new LeaguePlayer
+        {
+            OrganizationId = orgId,
+            LeagueId = leagueId,
+            OrganizationMembershipId = membership.Id,
+            Mmr = 1500,
+            Mu = 25.0m,
+            Sigma = 8.333m,
+        };
+
+        dbContext.LeaguePlayers.Add(leaguePlayer);
+        return leaguePlayer;
     }
 
     public async Task<List<MatchResponse>> GetMatchesAsync(Guid orgId, Guid leagueId, Guid? seasonId, int limit = 50, int offset = 0)

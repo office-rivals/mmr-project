@@ -150,8 +150,19 @@ export interface SubmitMatchRequest {
 }
 
 export interface SubmitMatchTeamRequest {
-  players: string[];
+  players: SubmitMatchPlayerRequest[];
   score: number;
+}
+
+export interface SubmitMatchPlayerRequest {
+  leaguePlayerId?: string;
+  organizationMembershipId?: string;
+  newPlayer?: CreateMatchPlayerRequest;
+}
+
+export interface CreateMatchPlayerRequest {
+  displayName: string;
+  email?: string;
 }
 
 export interface MatchResponse {

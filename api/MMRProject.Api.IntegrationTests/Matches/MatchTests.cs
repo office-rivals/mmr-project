@@ -1,4 +1,6 @@
 using System.Net;
+using Microsoft.Extensions.DependencyInjection;
+using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -227,6 +229,125 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
 
         Assert.True(response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.NotFound,
             $"Expected 400 or 404 but got {response.StatusCode}");
+    }
+
+    [Fact]
+    public async Task SubmitMatch_WithOrgMemberNotInLeague_AddsThemToLeague()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, member3) = await SeedOrgMember(org.Id, "p3", "p3@test.com");
+        var (_, _, player4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        var response = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new
+            {
+                teams = new object[]
+                {
+                    new
+                    {
+                        players = new object[]
+                        {
+                            new { leaguePlayerId = player1.Id },
+                            new { leaguePlayerId = player2.Id }
+                        },
+                        score = 10
+                    },
+                    new
+                    {
+                        players = new object[]
+                        {
+                            new { organizationMembershipId = member3.Id },
+                            new { leaguePlayerId = player4.Id }
+                        },
+                        score = 5
+                    }
+                }
+            });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var addedPlayer = dbContext.LeaguePlayers.SingleOrDefault(lp =>
+            lp.OrganizationId == org.Id
+            && lp.LeagueId == league.Id
+            && lp.OrganizationMembershipId == member3.Id);
+
+        Assert.NotNull(addedPlayer);
+    }
+
+    [Fact]
+    public async Task SubmitMatch_WithNewPlayer_CreatesProvisionalMembershipAndLeaguePlayer()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, player3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+
+        AuthenticateAs("p1");
+
+        var response = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new
+            {
+                teams = new object[]
+                {
+                    new
+                    {
+                        players = new object[]
+                        {
+                            new { leaguePlayerId = player1.Id },
+                            new { leaguePlayerId = player2.Id }
+                        },
+                        score = 10
+                    },
+                    new
+                    {
+                        players = new object[]
+                        {
+                            new { leaguePlayerId = player3.Id },
+                            new
+                            {
+                                newPlayer = new
+                                {
+                                    displayName = "New Recruit",
+                                    email = "new-recruit@test.com"
+                                }
+                            }
+                        },
+                        score = 5
+                    }
+                }
+            });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var membership = dbContext.OrganizationMemberships.SingleOrDefault(m =>
+            m.OrganizationId == org.Id && m.InviteEmail == "new-recruit@test.com");
+        Assert.NotNull(membership);
+        Assert.Equal(MembershipStatus.Invited, membership.Status);
+        Assert.Equal("New Recruit", membership.DisplayName);
+
+        var leaguePlayer = dbContext.LeaguePlayers.SingleOrDefault(lp =>
+            lp.OrganizationId == org.Id
+            && lp.LeagueId == league.Id
+            && lp.OrganizationMembershipId == membership.Id);
+        Assert.NotNull(leaguePlayer);
     }
 
     [Fact]

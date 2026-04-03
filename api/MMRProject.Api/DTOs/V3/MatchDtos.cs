@@ -10,8 +10,24 @@ public record SubmitMatchRequest
 
 public record SubmitMatchTeamRequest
 {
-    [Required] public required List<Guid> Players { get; init; }
+    [Required] public required List<SubmitMatchPlayerRequest> Players { get; init; }
     [Required] public required int Score { get; init; }
+}
+
+public record SubmitMatchPlayerRequest
+{
+    public Guid? LeaguePlayerId { get; init; }
+    public Guid? OrganizationMembershipId { get; init; }
+    public CreateMatchPlayerRequest? NewPlayer { get; init; }
+
+    public static implicit operator SubmitMatchPlayerRequest(Guid leaguePlayerId)
+        => new() { LeaguePlayerId = leaguePlayerId };
+}
+
+public record CreateMatchPlayerRequest
+{
+    [Required] public required string DisplayName { get; init; }
+    public string? Email { get; init; }
 }
 
 public record MatchResponse

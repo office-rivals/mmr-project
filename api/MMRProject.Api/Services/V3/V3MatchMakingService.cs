@@ -330,7 +330,10 @@ public class V3MatchMakingService(
 
                 return new SubmitMatchTeamRequest
                 {
-                    Players = pendingTeam.Players.OrderBy(p => p.Index).Select(p => p.LeaguePlayerId).ToList(),
+                    Players = pendingTeam.Players
+                        .OrderBy(p => p.Index)
+                        .Select(p => new SubmitMatchPlayerRequest { LeaguePlayerId = p.LeaguePlayerId })
+                        .ToList(),
                     Score = t.Score
                 };
             }).ToList()

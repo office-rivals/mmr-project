@@ -47,6 +47,15 @@ public class LeagueAccessAuthorizationHandler(
             return;
         }
 
+        var leagueExists = await dbContext.Leagues
+            .AnyAsync(l => l.OrganizationId == orgId && l.Id == leagueId);
+
+        if (!leagueExists)
+        {
+            context.Succeed(requirement);
+            return;
+        }
+
         var hasLeagueAccess = await dbContext.LeaguePlayers
             .AnyAsync(lp => lp.OrganizationId == orgId
                             && lp.LeagueId == leagueId
