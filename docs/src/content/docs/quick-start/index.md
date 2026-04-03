@@ -61,14 +61,10 @@ Once the stack is live, the typical first-run sequence is:
 Before you call the deployment done, verify:
 
 - the frontend can load after login
-- `GET /swagger` on the API works
+- `GET /api/v3/me` on the API returns `401 Unauthorized` before sign-in instead of a server error
 - a user can create an organization
 - a member can join a league
 - a match can be submitted successfully
 - the matchmaking queue can create a pending match
-
-![Swagger UI for the Office Rivals API](/screenshots/api-swagger.png)
-
-_Swagger is the fastest smoke test for confirming that the API process is up and serving the V3 surface._
 
 For production guidance, continue to [Self-Hosting Overview](/self-hosting/).

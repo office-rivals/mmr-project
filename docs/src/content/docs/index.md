@@ -18,10 +18,6 @@ The docs are organized around the jobs an operator or team admin actually needs 
 - run upgrades safely
 - understand the product capabilities and security boundaries
 
-![Office Rivals docs site](/screenshots/docs-home.png)
-
-_The Starlight docs site is structured around deployment, configuration, operations, features, and lower-level reference material._
-
 ## Recommended Reading Order
 
 1. Start with [Quick Start](/quick-start/)

@@ -21,6 +21,10 @@ You need three values from a single Clerk application:
 
 Use the same Clerk app for both the frontend and API.
 
+![Office Rivals sign-in screen](/screenshots/login.png)
+
+_With valid Clerk configuration in place, the local `/login` route renders the real Office Rivals sign-in flow instead of throwing a key-validation error._
+
 ## Frontend Configuration
 
 Set these values for the frontend:
@@ -32,6 +36,18 @@ CLERK_SECRET_KEY=sk_test_xxxxxxxx
 ```
 
 `PUBLIC_CLERK_PUBLISHABLE_KEY` is also passed as a Docker build arg in the example Compose setup because the checked-in frontend Dockerfile injects it during the build.
+
+## Sign-Up Experience
+
+In development mode, the same Clerk application also serves the sign-up flow:
+
+![Office Rivals sign-up screen](/screenshots/signup.png)
+
+This is useful as a smoke test for confirming that:
+
+- the publishable key is valid
+- Clerk-hosted pages can load correctly
+- the frontend is linked to the intended Clerk application
 
 ## API Configuration
 
@@ -49,7 +65,8 @@ After configuring Clerk, verify:
 
 1. the frontend redirects to Clerk for login
 2. a successful login returns the user to the app
-3. `GET /api/v3/me` succeeds for a signed-in browser session
+3. `GET /api/v3/me` returns `401 Unauthorized` when called without a token instead of a server error
+4. `GET /api/v3/me` succeeds for a signed-in browser session
 4. the API no longer logs `Missing Authorization:Issuer configuration`
 
 ## PATs Are Supplemental
