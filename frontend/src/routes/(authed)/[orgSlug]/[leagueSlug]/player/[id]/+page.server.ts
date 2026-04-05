@@ -2,64 +2,66 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { matchFlagActions } from '$lib/server/actions/matchFlagActions';
 
-export const load: PageServerLoad = async ({ params, parent, fetch, url }) => {
+export const load: PageServerLoad = async ({ params, parent, locals: { apiClientV3 }, url }) => {
   const { orgId, leagueId, leaguePlayerId, orgSlug, leagueSlug } =
     await parent();
-  const base = `/api/v3/organizations/${orgId}/leagues/${leagueId}`;
   const playerId = params.id;
-
   const seasonId = url.searchParams.get('season') ?? undefined;
-  const seasonQuery = seasonId ? `?seasonId=${seasonId}` : '';
 
-  const [playerRes, matchesRes, historyRes, leaderboardRes, seasonsRes, myFlagsRes] =
-    await Promise.all([
-      fetch(`${base}/players/${playerId}`),
-      fetch(`${base}/matches?leaguePlayerId=${playerId}&limit=1000&offset=0`),
-      fetch(`${base}/rating-history/${playerId}${seasonQuery}`),
-      fetch(`${base}/leaderboard${seasonQuery}`),
-      fetch(`${base}/seasons`),
-      fetch(`${base}/match-flags/me`).catch(() => null),
-    ]);
+  try {
+    const [player, allMatches, ratingHistory, leaderboard, seasons, myFlags] =
+      await Promise.all([
+        apiClientV3.leaguePlayersApi.getPlayer(orgId, leagueId, playerId),
+        apiClientV3.matchesApi.getMatches(orgId, leagueId, { limit: 1000, offset: 0 }),
+        apiClientV3.ratingHistoryApi.getPlayerHistory(orgId, leagueId, playerId, seasonId),
+        apiClientV3.leaderboardApi.getLeaderboard(orgId, leagueId, seasonId),
+        apiClientV3.seasonsApi.listSeasons(orgId, leagueId),
+        apiClientV3.matchFlagsApi.getMyFlags(orgId, leagueId).catch(() => []),
+      ]);
 
-  if (!playerRes.ok) {
+    const matches = allMatches.filter((match) =>
+      match.teams.some((team) =>
+        team.players.some((playerEntry) => playerEntry.leaguePlayerId === playerId)
+      )
+    );
+
+    const playerEntry = leaderboard.entries?.find(
+      (entry) => entry.leaguePlayerId === playerId
+    );
+
+    const totalMatches = matches.length;
+    const wins = matches.filter((match) =>
+      match.teams.some(
+        (team) =>
+          team.isWinner &&
+          team.players.some((playerEntry) => playerEntry.leaguePlayerId === playerId)
+      )
+    ).length;
+    const losses = Math.max(totalMatches - wins, 0);
+    const winrate = totalMatches > 0 ? wins / totalMatches : 0;
+    const mmr = playerEntry?.mmr ?? player.mmr ?? null;
+
+    return {
+      player,
+      matches,
+      ratingHistory,
+      isCurrentUser: playerId === leaguePlayerId,
+      stats: {
+        mmr,
+        totalMatches,
+        wins,
+        losses,
+        winrate,
+      },
+      orgSlug,
+      leagueSlug,
+      seasons,
+      currentSeason: seasons[0] ?? null,
+      myFlags,
+    };
+  } catch {
     throw error(404, 'Player not found');
   }
-
-  const player = await playerRes.json();
-  const matches = matchesRes.ok ? await matchesRes.json() : [];
-  const ratingHistory = historyRes.ok ? await historyRes.json() : { entries: [] };
-  const leaderboard = leaderboardRes.ok ? await leaderboardRes.json() : { entries: [] };
-  const seasons = seasonsRes.ok ? await seasonsRes.json() : [];
-  const myFlags = myFlagsRes?.ok ? await myFlagsRes.json() : [];
-
-  const playerEntry = leaderboard.entries?.find(
-    (e: { leaguePlayerId: string }) => e.leaguePlayerId === playerId
-  );
-
-  const totalMatches = playerEntry?.totalMatches ?? 0;
-  const wins = playerEntry?.wins ?? 0;
-  const losses = playerEntry?.losses ?? 0;
-  const winrate = totalMatches > 0 ? wins / totalMatches : 0;
-  const mmr = playerEntry?.mmr ?? null;
-
-  return {
-    player,
-    matches,
-    ratingHistory,
-    isCurrentUser: playerId === leaguePlayerId,
-    stats: {
-      mmr,
-      totalMatches,
-      wins,
-      losses,
-      winrate,
-    },
-    orgSlug,
-    leagueSlug,
-    seasons,
-    currentSeason: seasons[0] ?? null,
-    myFlags,
-  };
 };
 
 export const actions: Actions = {

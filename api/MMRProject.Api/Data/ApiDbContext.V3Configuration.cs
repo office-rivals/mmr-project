@@ -187,7 +187,7 @@ public partial class ApiDbContext
             entity.Property(e => e.Score).HasColumnName("score");
             entity.Property(e => e.IsWinner).HasColumnName("is_winner");
 
-            entity.HasIndex(e => e.MatchId, "ix_match_teams_match");
+            entity.HasIndex(e => new { e.MatchId, e.Index }, "ix_match_teams_match_index").IsUnique();
 
             entity.HasOne(e => e.Match).WithMany(m => m.Teams)
                 .HasForeignKey(e => e.MatchId)
@@ -206,6 +206,8 @@ public partial class ApiDbContext
             entity.Property(e => e.MatchTeamId).HasColumnName("match_team_id");
             entity.Property(e => e.LeaguePlayerId).HasColumnName("league_player_id");
             entity.Property(e => e.Index).HasColumnName("index");
+
+            entity.HasIndex(e => new { e.MatchTeamId, e.LeaguePlayerId }, "ix_match_team_players_team_player").IsUnique();
 
             entity.HasOne(e => e.MatchTeam).WithMany(t => t.Players)
                 .HasForeignKey(e => e.MatchTeamId)
@@ -349,7 +351,7 @@ public partial class ApiDbContext
             entity.Property(e => e.Sigma).HasColumnName("sigma");
             entity.Property(e => e.Delta).HasColumnName("delta");
 
-            entity.HasIndex(e => new { e.LeaguePlayerId, e.MatchId }, "ix_rating_histories_player_match");
+            entity.HasIndex(e => new { e.LeaguePlayerId, e.MatchId }, "ix_rating_histories_player_match").IsUnique();
 
             entity.HasOne(e => e.LeaguePlayer).WithMany()
                 .HasForeignKey(e => e.LeaguePlayerId)
@@ -378,7 +380,7 @@ public partial class ApiDbContext
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
             entity.Property(e => e.LegacyPatId).HasColumnName("legacy_pat_id");
 
-            entity.HasIndex(e => e.TokenHash, "ix_personal_access_tokens_token_hash");
+            entity.HasIndex(e => e.TokenHash, "ix_personal_access_tokens_token_hash").IsUnique();
 
             entity.HasOne(e => e.User).WithMany()
                 .HasForeignKey(e => e.UserId)

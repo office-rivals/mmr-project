@@ -1,43 +1,42 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ parent, fetch, url }) => {
+export const load: PageServerLoad = async ({ parent, locals: { apiClientV3 }, url }) => {
   const { orgId, leagueId } = await parent();
-  const base = `/api/v3/organizations/${orgId}/leagues/${leagueId}`;
-
   const seasonId = url.searchParams.get('season') ?? undefined;
-  const seasonQuery = seasonId ? `?seasonId=${seasonId}` : '';
 
   try {
     const [leaderboard, seasons] = await Promise.all([
-      fetch(`${base}/leaderboard${seasonQuery}`).then((r) => r.json()),
-      fetch(`${base}/seasons`).then((r) => r.json()),
+      apiClientV3.leaderboardApi.getLeaderboard(orgId, leagueId, seasonId),
+      apiClientV3.seasonsApi.listSeasons(orgId, leagueId),
     ]);
 
     const playerHistories = await Promise.all(
-      (leaderboard?.entries ?? []).slice(0, 10).map(
-        async (entry: { leaguePlayerId: string; displayName?: string; username?: string }) => {
-          const historyResponse = await fetch(
-            `${base}/rating-history/${entry.leaguePlayerId}${seasonQuery}`
+      (leaderboard.entries ?? []).slice(0, 10).map(async (entry) => {
+        try {
+          const history = await apiClientV3.ratingHistoryApi.getPlayerHistory(
+            orgId,
+            leagueId,
+            entry.leaguePlayerId,
+            seasonId
           );
-          if (!historyResponse.ok) return null;
-          const history = await historyResponse.json();
           return {
             name: entry.displayName ?? entry.username ?? 'Unknown',
             entries: history.entries ?? [],
           };
+        } catch {
+          return null;
         }
-      )
+      })
     );
 
     const statistics = playerHistories
       .filter(Boolean)
-      .flatMap(
-        (ph: { name: string; entries: { recordedAt: string; mmr: number }[] } | null) =>
-          ph?.entries.map((e: { recordedAt: string; mmr: number }) => ({
+      .flatMap((ph) =>
+        ph?.entries.map((entry) => ({
             name: ph.name,
-            date: e.recordedAt,
-            mmr: e.mmr,
+            date: entry.recordedAt,
+            mmr: entry.mmr,
           })) ?? []
       );
 

@@ -30,6 +30,8 @@
   <PageTitle>Submit Match Result</PageTitle>
 
   <form method="post" class="flex flex-col gap-6">
+    <input type="hidden" name="orgId" value={data.orgId} />
+    <input type="hidden" name="leagueId" value={data.leagueId} />
     {#each teams as team, i}
       <div class="bg-card flex flex-col gap-2 rounded-lg border p-4">
         <h3 class="text-lg font-semibold">Team {i + 1}</h3>

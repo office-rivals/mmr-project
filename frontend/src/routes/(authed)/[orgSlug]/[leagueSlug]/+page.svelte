@@ -80,8 +80,6 @@
         <Table.Head class="w-[3ch]">#</Table.Head>
         <Table.Head>Player</Table.Head>
         <Table.Head class="text-right">MMR</Table.Head>
-        <Table.Head class="text-right">W</Table.Head>
-        <Table.Head class="text-right">L</Table.Head>
       </Table.Row>
     </Table.Header>
     <Table.Body>
@@ -97,8 +95,6 @@
             </a>
           </Table.Cell>
           <Table.Cell class="text-right">{entry.mmr ?? 'N/A'}</Table.Cell>
-          <Table.Cell class="text-right">{entry.wins ?? 0}</Table.Cell>
-          <Table.Cell class="text-right">{entry.losses ?? 0}</Table.Cell>
         </Table.Row>
       {/each}
     </Table.Body>
@@ -175,6 +171,8 @@
           }}
         >
           <input type="hidden" name="flagId" value={editingFlagId} />
+          <input type="hidden" name="orgId" value={data.orgId} />
+          <input type="hidden" name="leagueId" value={data.leagueId} />
           <div class="space-y-2">
             <label for="reason" class="text-sm font-medium">Reason</label>
             <textarea
@@ -220,6 +218,8 @@
           }}
         >
           <input type="hidden" name="matchId" value={flagMatchId} />
+          <input type="hidden" name="orgId" value={data.orgId} />
+          <input type="hidden" name="leagueId" value={data.leagueId} />
           <div class="space-y-2">
             <label for="reason" class="text-sm font-medium">Reason</label>
             <textarea
@@ -272,6 +272,8 @@
       }}
     >
       <input type="hidden" name="flagId" value={editingFlagId} />
+      <input type="hidden" name="orgId" value={data.orgId} />
+      <input type="hidden" name="leagueId" value={data.leagueId} />
       <Dialog.Footer class="gap-2">
         <Button
           type="button"

@@ -90,6 +90,19 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
     }
 
     [Fact]
+    public async Task InviteMember_AsModerator_CannotInviteOwner()
+    {
+        var org = await CreateOrganization("Invite Org Restricted", "invite-org-restricted");
+        await SeedOrgMember(org.Id, "mod-1", "mod@test.com", OrganizationRole.Moderator);
+        AuthenticateAs("mod-1");
+
+        var response = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "owner-escalation@test.com", Role = OrganizationRole.Owner });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task UpdateMemberRole_AsOwner_Succeeds()
     {
         var org = await CreateOrganization("Role Org", "role-org");

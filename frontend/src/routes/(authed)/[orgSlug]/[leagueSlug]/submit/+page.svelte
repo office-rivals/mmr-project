@@ -153,6 +153,8 @@
   {/if}
 
   <form method="post" class="flex flex-col gap-6">
+    <input type="hidden" name="orgId" value={data.orgId} />
+    <input type="hidden" name="leagueId" value={data.leagueId} />
     <input type="hidden" name="team1_player1_displayName" value={newPlayers.team1_player1.displayName} />
     <input type="hidden" name="team1_player1_email" value={newPlayers.team1_player1.email} />
     <input type="hidden" name="team1_player2_displayName" value={newPlayers.team1_player2.displayName} />

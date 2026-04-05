@@ -1,6 +1,7 @@
 <script lang="ts">
   import PageTitle from '$lib/components/page-title.svelte';
   import { Button } from '$lib/components/ui/button';
+  import type { ActiveMatchResponse, QueueStatusResponse } from '$api3';
   import { LoaderCircle, Pause, Play } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import type { PageData } from './$types';
@@ -11,14 +12,18 @@
 
   let { data }: Props = $props();
 
-  let queueStatus = $state(data.queueStatus);
-  let activeMatches: any[] = $state(data.activeMatches ?? []);
-  let isInQueue = $derived(queueStatus?.isUserInQueue ?? false);
-  let playersInQueue = $derived(queueStatus?.playersInQueue ?? 0);
+  let queueStatus = $state<QueueStatusResponse | null>(data.queueStatus);
+  let activeMatches = $state<ActiveMatchResponse[]>(data.activeMatches ?? []);
+  let isInQueue = $derived(
+    (queueStatus?.queuedPlayers ?? []).some(
+      (player) => player.leaguePlayerId === data.leaguePlayerId
+    )
+  );
+  let playersInQueue = $derived((queueStatus?.queuedPlayers ?? []).length);
 
   const refreshQueue = async () => {
     const response = await fetch(
-      `/api/v3/organizations/${data.orgId}/leagues/${data.leagueId}/matchmaking/queue`
+      `/api/v3/organizations/${data.orgId}/leagues/${data.leagueId}/queue`
     );
     if (response.ok) {
       queueStatus = await response.json();
@@ -50,12 +55,16 @@
       <p>Waiting for a match...</p>
     </div>
     <form method="post" action="?/leave">
+      <input type="hidden" name="orgId" value={data.orgId} />
+      <input type="hidden" name="leagueId" value={data.leagueId} />
       <Button variant="destructive" type="submit" class="w-full">
         <Pause /><span class="ml-2">Leave queue</span>
       </Button>
     </form>
   {:else}
     <form method="post" action="?/join">
+      <input type="hidden" name="orgId" value={data.orgId} />
+      <input type="hidden" name="leagueId" value={data.leagueId} />
       <Button size="lg" class="w-full py-6" type="submit">
         <Play /><span class="ml-2 text-xl">Queue up</span>
       </Button>

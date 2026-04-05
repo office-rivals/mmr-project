@@ -130,6 +130,12 @@ public class OrganizationService(
 
     public async Task<OrganizationMemberResponse> InviteMemberAsync(Guid orgId, InviteMemberRequest request)
     {
+        var currentUserMembership = await GetMembershipForCurrentUserAsync(orgId)
+            ?? throw new ForbiddenException("You are not a member of this organization");
+
+        if (request.Role < currentUserMembership.Role)
+            throw new ForbiddenException("You can only invite members at your role level or below");
+
         var existing = await dbContext.OrganizationMemberships
             .Include(m => m.User)
             .FirstOrDefaultAsync(m => m.OrganizationId == orgId

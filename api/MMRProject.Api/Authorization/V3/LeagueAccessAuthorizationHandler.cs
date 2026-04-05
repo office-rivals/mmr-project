@@ -52,7 +52,6 @@ public class LeagueAccessAuthorizationHandler(
 
         if (!leagueExists)
         {
-            context.Succeed(requirement);
             return;
         }
 

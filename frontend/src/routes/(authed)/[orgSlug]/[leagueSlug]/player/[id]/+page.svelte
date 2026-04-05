@@ -175,6 +175,8 @@
           }}
         >
           <input type="hidden" name="flagId" value={editingFlagId} />
+          <input type="hidden" name="orgId" value={data.orgId} />
+          <input type="hidden" name="leagueId" value={data.leagueId} />
           <div class="space-y-2">
             <label for="reason" class="text-sm font-medium">Reason</label>
             <textarea
@@ -220,6 +222,8 @@
           }}
         >
           <input type="hidden" name="matchId" value={flagMatchId} />
+          <input type="hidden" name="orgId" value={data.orgId} />
+          <input type="hidden" name="leagueId" value={data.leagueId} />
           <div class="space-y-2">
             <label for="reason" class="text-sm font-medium">Reason</label>
             <textarea
@@ -272,6 +276,8 @@
       }}
     >
       <input type="hidden" name="flagId" value={editingFlagId} />
+      <input type="hidden" name="orgId" value={data.orgId} />
+      <input type="hidden" name="leagueId" value={data.leagueId} />
       <Dialog.Footer class="gap-2">
         <Button
           type="button"

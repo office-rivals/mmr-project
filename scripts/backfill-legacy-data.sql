@@ -164,32 +164,44 @@ WHERE s.deleted_at IS NULL
 -- =============================================================================
 
 -- Step 7a: Create Match rows
+WITH resolved_matches AS (
+    SELECT m.id AS legacy_match_id,
+           COALESCE(m.created_at, now()) AS created_at,
+           ns.id AS season_id,
+           COALESCE(
+               lp_t1_p1.organization_membership_id,
+               lp_t1_p2.organization_membership_id,
+               lp_t2_p1.organization_membership_id,
+               lp_t2_p2.organization_membership_id
+           ) AS created_by_membership_id
+    FROM legacy_matches m
+    JOIN legacy_teams t1 ON t1.id = m.team_one_id
+    JOIN legacy_teams t2 ON t2.id = m.team_two_id
+    JOIN seasons ns ON ns.legacy_season_id = m.season_id
+    LEFT JOIN league_players lp_t1_p1 ON lp_t1_p1.legacy_player_id = t1.player_one_id
+    LEFT JOIN league_players lp_t1_p2 ON lp_t1_p2.legacy_player_id = t1.player_two_id
+    LEFT JOIN league_players lp_t2_p1 ON lp_t2_p1.legacy_player_id = t2.player_one_id
+    LEFT JOIN league_players lp_t2_p2 ON lp_t2_p2.legacy_player_id = t2.player_two_id
+    WHERE m.deleted_at IS NULL
+)
 INSERT INTO matches (
     id, created_at, organization_id, league_id, season_id,
     source, created_by_membership_id, played_at, recorded_at, legacy_match_id
 )
 SELECT gen_random_uuid(),
-       COALESCE(m.created_at, now()),
+       rm.created_at,
        (SELECT id FROM organizations WHERE slug = 'default'),
        (SELECT l.id FROM leagues l JOIN organizations o ON o.id = l.organization_id
         WHERE o.slug = 'default' AND l.slug = 'default'),
-       ns.id,                                      -- migrated season UUID
+       rm.season_id,                               -- migrated season UUID
        0,                                          -- Manual source
-       COALESCE(
-           (SELECT lp_om.organization_membership_id FROM league_players lp_om
-            WHERE lp_om.legacy_player_id = t1.player_one_id),
-           (SELECT om.id FROM organization_memberships om
-            WHERE om.organization_id = (SELECT id FROM organizations WHERE slug = 'default')
-            LIMIT 1)
-       ),                                          -- created_by: team_one player_one's membership
-       COALESCE(m.created_at, now()),              -- played_at = created_at
-       COALESCE(m.created_at, now()),              -- recorded_at = created_at
-       m.id
-FROM legacy_matches m
-JOIN legacy_teams t1 ON t1.id = m.team_one_id
-LEFT JOIN seasons ns ON ns.legacy_season_id = m.season_id
-WHERE m.deleted_at IS NULL
-  AND NOT EXISTS (SELECT 1 FROM matches nm WHERE nm.legacy_match_id = m.id);
+       rm.created_by_membership_id,
+       rm.created_at,                              -- played_at = created_at
+       rm.created_at,                              -- recorded_at = created_at
+       rm.legacy_match_id
+FROM resolved_matches rm
+WHERE rm.created_by_membership_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM matches nm WHERE nm.legacy_match_id = rm.legacy_match_id);
 
 -- Step 7b: Create MatchTeam rows for team_one (index 0)
 INSERT INTO match_teams (id, created_at, organization_id, league_id, match_id, index, score, is_winner)

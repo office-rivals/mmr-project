@@ -1,29 +1,23 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { resolveOrgAndLeague } from '$lib/server/resolveIds';
+import { getApiErrorDetails } from '$lib/server/api/apiError';
 
-export const load: PageServerLoad = async ({ parent, fetch }) => {
+export const load: PageServerLoad = async ({ parent, locals: { apiClientV3 } }) => {
   const { orgId, leagueId } = await parent();
-  const base = `/api/v3/organizations/${orgId}/leagues/${leagueId}`;
 
-  const [playersResponse, membersResponse] = await Promise.all([
-    fetch(`${base}/players`),
-    fetch(`/api/v3/organizations/${orgId}/members`),
-  ]);
+  try {
+    const [players, members] = await Promise.all([
+      apiClientV3.leaguePlayersApi.listPlayers(orgId, leagueId),
+      apiClientV3.organizationMembersApi.listMembers(orgId),
+    ]);
 
-  if (!playersResponse.ok || !membersResponse.ok) {
+    return {
+      players,
+      members,
+    };
+  } catch {
     throw error(500, 'Failed to load players');
   }
-
-  const [players, members] = await Promise.all([
-    playersResponse.json(),
-    membersResponse.json(),
-  ]);
-
-  return {
-    players,
-    members,
-  };
 };
 
 function resolvePlayerReference(formData: FormData, fieldName: string) {
@@ -63,8 +57,19 @@ function resolvePlayerReference(formData: FormData, fieldName: string) {
   return { error: 'Player selection is invalid' };
 }
 
+type ResolvedPlayerReference = Exclude<
+  ReturnType<typeof resolvePlayerReference>,
+  { error: string } | null
+>;
+
+function isResolvedPlayerReference(
+  player: ReturnType<typeof resolvePlayerReference>
+): player is ResolvedPlayerReference {
+  return player !== null && !('error' in player);
+}
+
 export const actions: Actions = {
-  default: async ({ request, fetch, params }) => {
+  default: async ({ request, locals: { apiClientV3 }, params }) => {
     const formData = await request.formData();
 
     const team1Player1 = formData.get('team1_player1') as string;
@@ -82,7 +87,12 @@ export const actions: Actions = {
       return fail(400, { message: 'Scores are required' });
     }
 
-    const { base } = await resolveOrgAndLeague(fetch, params);
+    const orgId = formData.get('orgId')?.toString();
+    const leagueId = formData.get('leagueId')?.toString();
+
+    if (!orgId || !leagueId) {
+      return fail(400, { message: 'Organization and league are required' });
+    }
 
     const team1PlayerRefs = ['team1_player1', 'team1_player2']
       .filter((fieldName) => (formData.get(fieldName)?.toString() ?? '') !== '')
@@ -99,26 +109,20 @@ export const actions: Actions = {
 
     const teams = [
       {
-        players: team1PlayerRefs,
+        players: team1PlayerRefs.filter(isResolvedPlayerReference),
         score: team1Score,
       },
       {
-        players: team2PlayerRefs,
+        players: team2PlayerRefs.filter(isResolvedPlayerReference),
         score: team2Score,
       },
     ];
 
-    const response = await fetch(`${base}/matches`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teams }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      return fail(response.status, {
-        message: errorData?.detail ?? 'Failed to submit match',
-      });
+    try {
+      await apiClientV3.matchesApi.submitMatch(orgId, leagueId, { teams });
+    } catch (error) {
+      const { status, message } = await getApiErrorDetails(error, 'Failed to submit match');
+      return fail(status, { message });
     }
 
     throw redirect(303, `/${params.orgSlug}/${params.leagueSlug}`);

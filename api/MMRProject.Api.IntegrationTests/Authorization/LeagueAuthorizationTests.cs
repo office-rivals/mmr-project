@@ -93,6 +93,21 @@ public class LeagueAuthorizationTests(PostgresFixture postgres) : IntegrationTes
     }
 
     [Fact]
+    public async Task OrgMember_CannotAccessNonExistentLeague()
+    {
+        var org = await CreateOrganization("Org", "league-auth-missing-org");
+        var league = await CreateLeague(org.Id, "League", "league-auth-missing-league");
+
+        await SeedTestUser(org.Id, league.Id, "member-1", "member1@test.com");
+        AuthenticateAs("member-1");
+
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{Guid.NewGuid()}/leaderboard");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task NonMember_CannotGetOrganization()
     {
         var org = await CreateOrganization("Secret Org", "secret-org");

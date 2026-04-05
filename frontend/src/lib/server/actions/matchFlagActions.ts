@@ -1,78 +1,75 @@
 import { fail } from '@sveltejs/kit';
-import { resolveOrgAndLeague } from '$lib/server/resolveIds';
+import { getApiErrorDetails } from '$lib/server/api/apiError';
 
 type ActionParams = {
   request: Request;
-  fetch: typeof globalThis.fetch;
   params: { orgSlug: string; leagueSlug: string };
+  locals: App.Locals;
 };
 
 export const matchFlagActions = {
-  flagMatch: async ({ request, fetch, params }: ActionParams) => {
+  flagMatch: async ({ request, locals }: ActionParams) => {
     const formData = await request.formData();
     const matchId = formData.get('matchId') as string;
     const reason = (formData.get('reason') as string)?.trim();
+    const orgId = formData.get('orgId') as string;
+    const leagueId = formData.get('leagueId') as string;
 
-    if (!matchId || !reason) {
+    if (!matchId || !reason || !orgId || !leagueId) {
       return fail(400, { success: false, message: 'Match ID and reason are required' });
     }
 
-    const resolved = await resolveOrgAndLeague(fetch, params);
-
-    const res = await fetch(`${resolved.base}/match-flags`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ matchId, reason }),
-    });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      return fail(res.status, { success: false, message: body.detail || 'Failed to create flag' });
+    try {
+      await locals.apiClientV3.matchFlagsApi.createFlag(orgId, leagueId, {
+        matchId,
+        reason,
+      });
+    } catch (error) {
+      const { status, message } = await getApiErrorDetails(error, 'Failed to create flag');
+      return fail(status, { success: false, message });
     }
 
     return { success: true, message: 'Match flagged successfully' };
   },
 
-  updateFlag: async ({ request, fetch, params }: ActionParams) => {
+  updateFlag: async ({ request, locals }: ActionParams) => {
     const formData = await request.formData();
     const flagId = formData.get('flagId') as string;
     const reason = (formData.get('reason') as string)?.trim();
+    const orgId = formData.get('orgId') as string;
+    const leagueId = formData.get('leagueId') as string;
 
-    if (!flagId || !reason) {
+    if (!flagId || !reason || !orgId || !leagueId) {
       return fail(400, { success: false, message: 'Flag ID and reason are required' });
     }
 
-    const resolved = await resolveOrgAndLeague(fetch, params);
-
-    const res = await fetch(`${resolved.base}/match-flags/${flagId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason }),
-    });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      return fail(res.status, { success: false, message: body.detail || 'Failed to update flag' });
+    try {
+      await locals.apiClientV3.matchFlagsApi.updateFlagReason(orgId, leagueId, flagId, {
+        reason,
+      });
+    } catch (error) {
+      const { status, message } = await getApiErrorDetails(error, 'Failed to update flag');
+      return fail(status, { success: false, message });
     }
 
     return { success: true, message: 'Flag updated successfully' };
   },
 
-  deleteFlag: async ({ request, fetch, params }: ActionParams) => {
+  deleteFlag: async ({ request, locals }: ActionParams) => {
     const formData = await request.formData();
     const flagId = formData.get('flagId') as string;
+    const orgId = formData.get('orgId') as string;
+    const leagueId = formData.get('leagueId') as string;
 
-    if (!flagId) {
+    if (!flagId || !orgId || !leagueId) {
       return fail(400, { success: false, message: 'Flag ID is required' });
     }
 
-    const resolved = await resolveOrgAndLeague(fetch, params);
-
-    const res = await fetch(`${resolved.base}/match-flags/${flagId}`, { method: 'DELETE' });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      return fail(res.status, { success: false, message: body.detail || 'Failed to delete flag' });
+    try {
+      await locals.apiClientV3.matchFlagsApi.deleteFlag(orgId, leagueId, flagId);
+    } catch (error) {
+      const { status, message } = await getApiErrorDetails(error, 'Failed to delete flag');
+      return fail(status, { success: false, message });
     }
 
     return { success: true, message: 'Flag deleted successfully' };

@@ -1,13 +1,13 @@
 import { error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ params, fetch }) => {
-  const meResponse = await fetch('/api/v3/me');
-  if (!meResponse.ok) {
+export const load: LayoutServerLoad = async ({ params, locals: { apiClientV3 } }) => {
+  let me;
+  try {
+    me = await apiClientV3.meApi.getMe();
+  } catch {
     throw error(401, 'Failed to load user profile');
   }
-
-  const me = await meResponse.json();
 
   const org = me.organizations?.find(
     (o: { slug: string }) => o.slug === params.orgSlug

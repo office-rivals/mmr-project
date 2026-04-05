@@ -221,6 +221,8 @@
         >
           <input type="hidden" name="flagId" value={selectedFlag.id} />
           <input type="hidden" name="status" value={resolveStatus} />
+          <input type="hidden" name="orgId" value={data.orgId} />
+          <input type="hidden" name="leagueId" value={data.leagueId} />
 
           <div class="space-y-4">
             <div class="space-y-2">

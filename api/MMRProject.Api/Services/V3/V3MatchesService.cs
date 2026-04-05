@@ -26,9 +26,15 @@ public class V3MatchesService(
     IV3SeasonService seasonService,
     ILogger<V3MatchesService> logger) : IV3MatchesService
 {
+    private const long DefaultMmr = 1500;
+    private const decimal DefaultMu = 25.0m;
+    private const decimal DefaultSigma = 8.333m;
+
     public async Task<MatchResponse> SubmitMatchAsync(Guid orgId, Guid leagueId, SubmitMatchRequest request,
         MatchSource source = MatchSource.Manual)
     {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
         var currentSeason = await seasonService.GetCurrentSeasonAsync(orgId, leagueId)
             ?? throw new InvalidArgumentException("No active season found for this league");
 
@@ -104,6 +110,7 @@ public class V3MatchesService(
         await dbContext.SaveChangesAsync();
 
         await CalculateAndApplyMmr(orgId, match, leaguePlayers);
+        await transaction.CommitAsync();
 
         return await LoadAndMapMatch(orgId, leagueId, match.Id);
     }
@@ -228,9 +235,9 @@ public class V3MatchesService(
             OrganizationId = orgId,
             LeagueId = leagueId,
             OrganizationMembershipId = membership.Id,
-            Mmr = 1500,
-            Mu = 25.0m,
-            Sigma = 8.333m,
+            Mmr = DefaultMmr,
+            Mu = DefaultMu,
+            Sigma = DefaultSigma,
         };
 
         dbContext.LeaguePlayers.Add(leaguePlayer);
@@ -275,6 +282,8 @@ public class V3MatchesService(
 
     public async Task DeleteMatchAsync(Guid orgId, Guid leagueId, Guid matchId)
     {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
         var match = await dbContext.Set<V3Match>()
             .Include(m => m.Teams)
                 .ThenInclude(t => t.Players)
@@ -282,6 +291,19 @@ public class V3MatchesService(
 
         if (match == null)
             throw new NotFoundException("Match not found");
+
+        var latestMatchId = await dbContext.Set<V3Match>()
+            .Where(m => m.OrganizationId == orgId && m.LeagueId == leagueId)
+            .OrderByDescending(m => m.PlayedAt)
+            .ThenByDescending(m => m.RecordedAt)
+            .ThenByDescending(m => m.CreatedAt)
+            .Select(m => m.Id)
+            .FirstOrDefaultAsync();
+
+        if (latestMatchId != match.Id)
+            throw new InvalidArgumentException("Only the most recent match can be deleted");
+
+        await RestoreLatestMatchPlayerRatings(match);
 
         var ratingHistories = await dbContext.RatingHistories
             .Where(rh => rh.MatchId == matchId)
@@ -295,6 +317,7 @@ public class V3MatchesService(
         dbContext.Set<MatchTeam>().RemoveRange(match.Teams);
         dbContext.Set<V3Match>().Remove(match);
         await dbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     private async Task<MatchResponse> LoadAndMapMatch(Guid orgId, Guid leagueId, Guid matchId)
@@ -409,6 +432,63 @@ public class V3MatchesService(
         }
 
         await dbContext.SaveChangesAsync();
+    }
+
+    private async Task RestoreLatestMatchPlayerRatings(V3Match match)
+    {
+        var impactedPlayerIds = match.Teams
+            .SelectMany(t => t.Players)
+            .Select(p => p.LeaguePlayerId)
+            .Distinct()
+            .ToList();
+
+        var leaguePlayers = await dbContext.LeaguePlayers
+            .Where(lp => impactedPlayerIds.Contains(lp.Id))
+            .ToDictionaryAsync(lp => lp.Id);
+
+        var previousRatings = await dbContext.RatingHistories
+            .Where(rh => impactedPlayerIds.Contains(rh.LeaguePlayerId) && rh.MatchId != match.Id)
+            .Join(
+                dbContext.Set<V3Match>(),
+                rh => rh.MatchId,
+                m => m.Id,
+                (rh, m) => new
+                {
+                    rh.LeaguePlayerId,
+                    rh.Mmr,
+                    rh.Mu,
+                    rh.Sigma,
+                    m.PlayedAt,
+                    m.RecordedAt,
+                    m.CreatedAt,
+                })
+            .Where(x => x.PlayedAt < match.PlayedAt
+                        || (x.PlayedAt == match.PlayedAt && x.RecordedAt < match.RecordedAt)
+                        || (x.PlayedAt == match.PlayedAt && x.RecordedAt == match.RecordedAt
+                            && x.CreatedAt < match.CreatedAt))
+            .GroupBy(x => x.LeaguePlayerId)
+            .Select(g => g
+                .OrderByDescending(x => x.PlayedAt)
+                .ThenByDescending(x => x.RecordedAt)
+                .ThenByDescending(x => x.CreatedAt)
+                .First())
+            .ToDictionaryAsync(x => x.LeaguePlayerId);
+
+        foreach (var playerId in impactedPlayerIds)
+        {
+            var leaguePlayer = leaguePlayers[playerId];
+            if (previousRatings.TryGetValue(playerId, out var previous))
+            {
+                leaguePlayer.Mmr = previous.Mmr;
+                leaguePlayer.Mu = previous.Mu;
+                leaguePlayer.Sigma = previous.Sigma;
+                continue;
+            }
+
+            leaguePlayer.Mmr = DefaultMmr;
+            leaguePlayer.Mu = DefaultMu;
+            leaguePlayer.Sigma = DefaultSigma;
+        }
     }
 
     private static MatchResponse MapToResponse(V3Match match, Dictionary<Guid, RatingHistory>? ratingHistories)
