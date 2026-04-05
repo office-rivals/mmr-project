@@ -1,16 +1,16 @@
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
 using MMRProject.Api.Auth;
-using MMRProject.Api.Authorization;
+using MMRProject.Api.Authorization.V3;
 using MMRProject.Api.BackgroundServices;
 using MMRProject.Api.Data;
-using MMRProject.Api.Data.Entities;
+using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.Exceptions;
 using MMRProject.Api.MMRCalculationApi;
-using MMRProject.Api.Services;
+using MMRProject.Api.Services.V3;
 using MMRProject.Api.UserContext;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,33 +29,43 @@ builder.Services.AddMemoryCache();
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy(AuthorizationPolicies.RequireOwnerRole, policy =>
-        policy.Requirements.Add(new PlayerRoleRequirement(PlayerRole.Owner)));
-
-    options.AddPolicy(AuthorizationPolicies.RequireModeratorRole, policy =>
-        policy.Requirements.Add(new PlayerRoleRequirement(PlayerRole.Moderator)));
-
-    options.AddPolicy(AuthorizationPolicies.RequireUserRole, policy =>
-        policy.Requirements.Add(new PlayerRoleRequirement(PlayerRole.User)));
+    options.AddPolicy(V3AuthorizationPolicies.RequireOrgOwner, policy =>
+        policy.Requirements.Add(new OrganizationRoleRequirement(OrganizationRole.Owner)));
+    options.AddPolicy(V3AuthorizationPolicies.RequireOrgModerator, policy =>
+        policy.Requirements.Add(new OrganizationRoleRequirement(OrganizationRole.Moderator)));
+    options.AddPolicy(V3AuthorizationPolicies.RequireOrgMember, policy =>
+        policy.Requirements.Add(new OrganizationRoleRequirement(OrganizationRole.Member)));
+    options.AddPolicy(V3AuthorizationPolicies.RequireLeagueAccess, policy =>
+        policy.Requirements.Add(new LeagueAccessRequirement()));
+    options.AddPolicy(V3AuthorizationPolicies.RequirePatWrite, policy =>
+        policy.Requirements.Add(new PatScopeRequirement(PatScopes.Write)));
+    options.AddPolicy(V3AuthorizationPolicies.DenyPatAuthentication, policy =>
+        policy.Requirements.Add(new DenyPatAuthenticationRequirement()));
 });
 
-builder.Services.AddSingleton<IAuthorizationHandler, PlayerRoleAuthorizationHandler>();
-
-builder.Services.AddScoped<IClaimsTransformation, RoleClaimsTransformation>();
+builder.Services.AddSingleton<IAuthorizationHandler, OrganizationRoleAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, LeagueAccessAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, PatAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, DenyPatAuthenticationHandler>();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddUserContextResolver();
 
-builder.Services.AddScoped<IMatchesService, MatchesService>();
-builder.Services.AddScoped<IMatchMakingService, MatchMakingService>();
-builder.Services.AddScoped<ISeasonService, SeasonService>();
-builder.Services.AddScoped<IStatisticsService, StatisticsService>();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IPersonalAccessTokenService, PersonalAccessTokenService>();
-builder.Services.AddScoped<IRoleService, RoleService>();
-builder.Services.AddScoped<IMatchFlagService, MatchFlagService>();
+builder.Services.AddScoped<IV3UserService, V3UserService>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<IOrganizationService, OrganizationService>();
+builder.Services.AddScoped<ILeagueService, LeagueService>();
+builder.Services.AddScoped<ILeaguePlayerService, LeaguePlayerService>();
+builder.Services.AddScoped<IV3SeasonService, V3SeasonService>();
+builder.Services.AddScoped<IV3MatchesService, V3MatchesService>();
+builder.Services.AddScoped<IV3LeaderboardService, V3LeaderboardService>();
+builder.Services.AddScoped<IV3RatingHistoryService, V3RatingHistoryService>();
+builder.Services.AddScoped<IV3MatchMakingService, V3MatchMakingService>();
+builder.Services.AddScoped<IV3PersonalAccessTokenService, V3PersonalAccessTokenService>();
+builder.Services.AddScoped<IV3MatchFlagService, V3MatchFlagService>();
+builder.Services.AddScoped<IInviteLinkService, InviteLinkService>();
 
-// Background services
-builder.Services.AddHostedService<MatchMakingBackgroundService>();
+builder.Services.AddHostedService<V3MatchMakingBackgroundService>();
 
 // External APIs
 builder.Services.AddHttpClient<IMMRCalculationApiClient, MMRCalculationApiClient>(client =>
@@ -73,6 +83,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
+    options.SwaggerDoc("v3", new OpenApiInfo { Title = "MMR Project API v3", Version = "v3" });
     options.CustomOperationIds(api =>
     {
         if (api.ActionDescriptor is ControllerActionDescriptor actionDescriptor)
@@ -89,12 +100,11 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    options.SwaggerEndpoint("/swagger/v3/swagger.json", "MMR Project API v3");
+});
 
 app.UseHttpsRedirection();
 
@@ -114,3 +124,5 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+public partial class Program;

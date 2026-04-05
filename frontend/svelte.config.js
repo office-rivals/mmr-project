@@ -16,6 +16,7 @@ const config = {
       process.env.DEPLOY_TO_AZURE === 'true' ? nodeAdapter() : autoAdapter(),
     alias: {
       $api: './src/api',
+      $api3: './src/api-v3',
     },
   },
 };

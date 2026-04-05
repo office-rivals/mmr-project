@@ -298,11 +298,6 @@
           </ul>
         </div>
       </div>
-      <Button
-        href="/submit?player1={teams[0][0]}&player2={teams[0][1]}&player3={teams[1][0]}&player4={teams[1][1]}"
-      >
-        Submit result
-      </Button>
     {/if}
   {:else}
     {#if !isMobile}
