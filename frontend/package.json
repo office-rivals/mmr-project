@@ -12,10 +12,13 @@
     "format": "prettier --write .",
     "generate-api": "openapi-generator-cli generate -i http://localhost:8081/swagger/v1/swagger.json -g typescript-fetch -o src/api --additional-properties=supportsES6=true --skip-validate-spec",
     "generate-api-v3": "openapi-generator-cli generate -i http://localhost:8081/swagger/v3/swagger.json -g typescript-fetch -o src/api-v3 --additional-properties=supportsES6=true --skip-validate-spec",
-    "start": "node -r dotenv/config build"
+    "start": "node -r dotenv/config build",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "^2.30.2",
+    "@playwright/test": "^1.59.1",
     "@sveltejs/adapter-auto": "^3.3.1",
     "@sveltejs/adapter-node": "^5.5.4",
     "@sveltejs/kit": "^2.55.0",
