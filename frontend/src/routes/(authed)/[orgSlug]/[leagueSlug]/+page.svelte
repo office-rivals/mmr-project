@@ -10,13 +10,7 @@
   import Label from '$lib/components/ui/label/label.svelte';
   import { showMmr } from '../../../../stores/show-mmr';
   import { Checkbox } from 'bits-ui';
-  import {
-    AlertCircle,
-    Check,
-    CheckCircle,
-    Flag,
-    Minus,
-  } from 'lucide-svelte';
+  import { AlertCircle, Check, CheckCircle, Flag, Minus } from 'lucide-svelte';
   import type {
     LeaderboardEntryResponse,
     LeagueRatingHistoryEntry,
@@ -58,7 +52,6 @@
     const body = await res.json();
     return body.match;
   }
-
 </script>
 
 <div class="flex flex-col gap-4">
@@ -105,11 +98,11 @@
       <Checkbox.Root
         bind:checked={$showMmr}
         id="show-mmr"
-        class="border-muted bg-primary active:scale-98 data-[state=unchecked]:border-border-input data-[state=unchecked]:hover:border-dark-40 peer inline-flex size-[25px] items-center justify-center rounded-md border transition-all duration-150 ease-in-out data-[state=unchecked]:bg-white"
+        class="active:scale-98 data-[state=unchecked]:border-border-input data-[state=unchecked]:hover:border-dark-40 peer inline-flex size-[25px] items-center justify-center rounded-md border border-muted bg-primary transition-all duration-150 ease-in-out data-[state=unchecked]:bg-white"
       >
         {#snippet children({ checked, indeterminate })}
           {#if checked}
-            <Check class="text-primary-foreground size-[15px] font-bold" />
+            <Check class="size-[15px] font-bold text-primary-foreground" />
           {:else if indeterminate}
             <Minus class="size-[15px] font-bold" />
           {/if}

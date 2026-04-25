@@ -1,15 +1,22 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals: { apiClientV3 } }) => {
+export const load: PageServerLoad = async ({
+  params,
+  locals: { apiClientV3 },
+}) => {
   const me = await apiClientV3.meApi.getMe();
-  const org = me.organizations?.find((organization) => organization.slug === params.orgSlug);
+  const org = me.organizations?.find(
+    (organization) => organization.slug === params.orgSlug
+  );
   if (!org) {
     throw error(404, `Organization '${params.orgSlug}' not found`);
   }
 
   const leagues = await apiClientV3.leaguesApi.listLeagues(org.id);
-  const joinedLeagueIds = new Set((org.leagues ?? []).map((league) => league.id));
+  const joinedLeagueIds = new Set(
+    (org.leagues ?? []).map((league) => league.id)
+  );
 
   return {
     org,
@@ -31,7 +38,9 @@ export const actions: Actions = {
     }
 
     const me = await apiClientV3.meApi.getMe();
-    const org = me.organizations?.find((organization) => organization.slug === params.orgSlug);
+    const org = me.organizations?.find(
+      (organization) => organization.slug === params.orgSlug
+    );
     if (!org) {
       return fail(404, { error: 'Organization not found' });
     }

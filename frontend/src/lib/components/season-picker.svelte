@@ -24,7 +24,10 @@
       : currentSeason
   );
 
-  function seasonLabel(season: SeasonResponse, currentSeason: SeasonResponse): string {
+  function seasonLabel(
+    season: SeasonResponse,
+    currentSeason: SeasonResponse
+  ): string {
     if (season.id === currentSeason.id) return 'Current Season';
     return new Date(season.startsAt).toLocaleDateString(undefined, {
       year: 'numeric',
@@ -47,7 +50,8 @@
   );
 
   function getSeason(): string {
-    return (seasons.find((s) => s.id === selectedSeason.id) ?? currentSeason).id;
+    return (seasons.find((s) => s.id === selectedSeason.id) ?? currentSeason)
+      .id;
   }
 
   function setSeason(value: string) {
@@ -73,27 +77,29 @@
   items={seasonValues}
 >
   <Select.Trigger
-    class="border-input bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-ring ring-offset-background flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
     aria-label="Select a season"
   >
     {seasonLabel(selectedSeason, currentSeason)}
-    <ChevronsUpDown class="text-muted-foreground ml-2 h-4 w-4" />
+    <ChevronsUpDown class="ml-2 h-4 w-4 text-muted-foreground" />
   </Select.Trigger>
 
   <Select.Portal>
     <Select.Content
-      class="border-muted bg-background z-50 mt-2 max-h-96 w-full overflow-auto rounded-md border shadow-lg focus:outline-none"
+      class="z-50 mt-2 max-h-96 w-full overflow-auto rounded-md border border-muted bg-background shadow-lg focus:outline-none"
       sideOffset={10}
       align="end"
     >
-      <Select.ScrollUpButton class="flex w-full items-center justify-center py-1">
-        <ChevronsUp class="text-muted-foreground h-3 w-3" />
+      <Select.ScrollUpButton
+        class="flex w-full items-center justify-center py-1"
+      >
+        <ChevronsUp class="h-3 w-3 text-muted-foreground" />
       </Select.ScrollUpButton>
 
       <Select.Viewport class="p-1">
         {#each seasonValues as season, i (i + season.value)}
           <Select.Item
-            class="hover:bg-muted data-[highlighted]:bg-muted data-[highlighted]:text-foreground data-[state=checked]:bg-accent data-[state=checked]:text-accent-foreground flex h-10 w-full items-center justify-between rounded-md px-3 py-2 text-sm capitalize disabled:cursor-not-allowed disabled:opacity-50"
+            class="flex h-10 w-full items-center justify-between rounded-md px-3 py-2 text-sm capitalize hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 data-[highlighted]:bg-muted data-[state=checked]:bg-accent data-[highlighted]:text-foreground data-[state=checked]:text-accent-foreground"
             value={season.value}
             label={season.label}
             disabled={season.disabled}
@@ -101,15 +107,17 @@
             {#snippet children({ selected })}
               {season.label}
               {#if selected}
-                <Check class="text-ring ml-2 mr-1 h-4 w-4" />
+                <Check class="ml-2 mr-1 h-4 w-4 text-ring" />
               {/if}
             {/snippet}
           </Select.Item>
         {/each}
       </Select.Viewport>
 
-      <Select.ScrollDownButton class="flex w-full items-center justify-center py-1">
-        <ChevronsDown class="text-muted-foreground h-3 w-3" />
+      <Select.ScrollDownButton
+        class="flex w-full items-center justify-center py-1"
+      >
+        <ChevronsDown class="h-3 w-3 text-muted-foreground" />
       </Select.ScrollDownButton>
     </Select.Content>
   </Select.Portal>

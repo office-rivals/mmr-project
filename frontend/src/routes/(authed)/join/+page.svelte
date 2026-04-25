@@ -21,10 +21,10 @@
 </script>
 
 <div class="flex flex-col items-center justify-center gap-8 py-16">
-  <Ticket class="text-muted-foreground h-16 w-16" />
+  <Ticket class="h-16 w-16 text-muted-foreground" />
   <div class="flex flex-col gap-2 text-center">
     <PageTitle>Join an Organization</PageTitle>
-    <p class="text-muted-foreground max-w-md">
+    <p class="max-w-md text-muted-foreground">
       Enter the 6-character invite code you received to join an organization.
     </p>
   </div>

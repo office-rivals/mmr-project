@@ -19,7 +19,7 @@
 <div class="space-y-6">
   <div class="space-y-1">
     <h1 class="text-2xl font-bold tracking-tight">{data.org.name}</h1>
-    <p class="text-muted-foreground text-sm">
+    <p class="text-sm text-muted-foreground">
       Browse leagues in this organization and join the ones you want to play in.
     </p>
   </div>
@@ -46,7 +46,7 @@
           </Badge>
         </CardHeader>
         <CardContent class="flex items-center justify-between gap-3">
-          <div class="text-muted-foreground flex items-center gap-2 text-sm">
+          <div class="flex items-center gap-2 text-sm text-muted-foreground">
             <Users class="h-4 w-4" />
             <span>{league.slug}</span>
           </div>
@@ -59,9 +59,7 @@
             <form method="POST" action="?/joinLeague" use:enhance>
               <input type="hidden" name="leagueId" value={league.id} />
               <input type="hidden" name="leagueSlug" value={league.slug} />
-              <Button type="submit">
-                Join League
-              </Button>
+              <Button type="submit">Join League</Button>
             </form>
           {/if}
         </CardContent>

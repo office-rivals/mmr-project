@@ -54,20 +54,20 @@
     </CardHeader>
     <CardContent>
       <div class="flex flex-col gap-4">
-        <p class="text-muted-foreground text-sm">
+        <p class="text-sm text-muted-foreground">
           Personal access tokens allow you to authenticate with the API
           programmatically. Keep your tokens secure and never share them.
         </p>
 
         {#if form?.createdToken != null}
           <div
-            class="border-primary flex flex-col gap-3 rounded-lg border border-l-4 bg-green-950/20 p-4"
+            class="flex flex-col gap-3 rounded-lg border border-l-4 border-primary bg-green-950/20 p-4"
           >
             <div class="flex items-start gap-2">
-              <AlertCircle class="text-primary mt-0.5 shrink-0" size={20} />
+              <AlertCircle class="mt-0.5 shrink-0 text-primary" size={20} />
               <div class="flex-1">
-                <p class="text-primary font-semibold">Save your token now!</p>
-                <p class="text-muted-foreground text-sm">
+                <p class="font-semibold text-primary">Save your token now!</p>
+                <p class="text-sm text-muted-foreground">
                   You won't be able to see this token again. Copy it now and
                   store it securely.
                 </p>
@@ -75,7 +75,7 @@
             </div>
             <div class="flex gap-2">
               <code
-                class="bg-muted flex-1 overflow-x-auto rounded px-3 py-2 font-mono text-sm"
+                class="flex-1 overflow-x-auto rounded bg-muted px-3 py-2 font-mono text-sm"
               >
                 {form.createdToken.token}
               </code>
@@ -112,7 +112,7 @@
           <form
             method="post"
             action="?/create"
-            class="border-muted flex flex-col gap-4 rounded-lg border p-4"
+            class="flex flex-col gap-4 rounded-lg border border-muted p-4"
             use:enhance={() => {
               isCreating = true;
               return async ({ update }) => {
@@ -132,7 +132,7 @@
                 type="text"
                 required
                 placeholder="e.g., My API Token"
-                class="border-input bg-background rounded-md border px-3 py-2 text-sm"
+                class="rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
 
@@ -144,7 +144,7 @@
                 id="token-expiry"
                 name="expiresAt"
                 type="datetime-local"
-                class="border-input bg-background rounded-md border px-3 py-2 text-sm"
+                class="rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
 
@@ -166,9 +166,9 @@
         {/if}
 
         {#if data.tokens.length > 0}
-          <div class="border-muted mt-4 overflow-hidden rounded-lg border">
+          <div class="mt-4 overflow-hidden rounded-lg border border-muted">
             <table class="w-full">
-              <thead class="bg-muted/50 border-muted border-b">
+              <thead class="border-b border-muted bg-muted/50">
                 <tr>
                   <th class="px-4 py-3 text-left text-sm font-medium">Name</th>
                   <th class="px-4 py-3 text-left text-sm font-medium"
@@ -187,15 +187,15 @@
               </thead>
               <tbody>
                 {#each data.tokens as token}
-                  <tr class="border-muted border-b last:border-0">
+                  <tr class="border-b border-muted last:border-0">
                     <td class="px-4 py-3 font-medium">{token.name}</td>
-                    <td class="px-4 py-3 text-muted-foreground text-sm"
+                    <td class="px-4 py-3 text-sm text-muted-foreground"
                       >{formatDate(token.lastUsedAt)}</td
                     >
-                    <td class="px-4 py-3 text-muted-foreground text-sm"
+                    <td class="px-4 py-3 text-sm text-muted-foreground"
                       >{formatDate(token.expiresAt)}</td
                     >
-                    <td class="px-4 py-3 text-muted-foreground text-sm"
+                    <td class="px-4 py-3 text-sm text-muted-foreground"
                       >{formatDate(token.createdAt)}</td
                     >
                     <td class="px-4 py-3 text-right">
@@ -224,7 +224,7 @@
             </table>
           </div>
         {:else if !showCreateDialog && !form?.createdToken}
-          <p class="text-muted-foreground text-sm">
+          <p class="text-sm text-muted-foreground">
             You don't have any personal access tokens yet. Create one to get
             started.
           </p>

@@ -24,9 +24,13 @@ test.describe('Leaderboard page', () => {
     await expect(headerCells.nth(4)).toHaveText('Score');
   });
 
-  test('shows username (handle) in match cards, not display name', async ({ page }) => {
+  test('shows username (handle) in match cards, not display name', async ({
+    page,
+  }) => {
     await page.goto(LEAGUE_URL);
-    const firstCard = page.locator('.flex.flex-1.flex-col.items-stretch > div').first();
+    const firstCard = page
+      .locator('.flex.flex-1.flex-col.items-stretch > div')
+      .first();
 
     // The seed gives usernames `tuser` (test user), `alia`, `bobr`, etc.
     // and display names like "Test User", "Alice Anderson". Match cards
@@ -35,7 +39,9 @@ test.describe('Leaderboard page', () => {
     await expect(firstCard).not.toContainText('Test User');
   });
 
-  test('defaults to current season (does not show older-season-only data)', async ({ page }) => {
+  test('defaults to current season (does not show older-season-only data)', async ({
+    page,
+  }) => {
     await page.goto(LEAGUE_URL);
 
     // The season picker label reads "Current Season" by default.
@@ -47,7 +53,9 @@ test.describe('Leaderboard page', () => {
     await expect(rows.filter({ hasText: 'tuser' })).toHaveCount(1);
   });
 
-  test('marks players with <10 ranked matches as Unranked', async ({ page }) => {
+  test('marks players with <10 ranked matches as Unranked', async ({
+    page,
+  }) => {
     await page.goto(LEAGUE_URL);
 
     // Players in the seed who only show up in M13/M14 (Eve, Dave) have ≤4
@@ -55,12 +63,18 @@ test.describe('Leaderboard page', () => {
     await expect(page.getByText('Unranked', { exact: true })).toBeVisible();
   });
 
-  test('toggling MMR shows the (+/−delta) inline next to each player', async ({ page }) => {
+  test('toggling MMR shows the (+/−delta) inline next to each player', async ({
+    page,
+  }) => {
     await page.goto(LEAGUE_URL);
 
-    const firstCard = page.locator('.flex.flex-1.flex-col.items-stretch > div').first();
+    const firstCard = page
+      .locator('.flex.flex-1.flex-col.items-stretch > div')
+      .first();
     // MMR off by default — no "(+...)" delta text yet.
-    await expect(firstCard.locator('span', { hasText: /\(\+\d+\)|\(-\d+\)/ })).toHaveCount(0);
+    await expect(
+      firstCard.locator('span', { hasText: /\(\+\d+\)|\(-\d+\)/ })
+    ).toHaveCount(0);
 
     await page.locator('button[role=checkbox]#show-mmr').click();
 
@@ -69,7 +83,9 @@ test.describe('Leaderboard page', () => {
     ).toBeVisible();
   });
 
-  test('clicking a leaderboard row opens the user stats modal', async ({ page }) => {
+  test('clicking a leaderboard row opens the user stats modal', async ({
+    page,
+  }) => {
     await page.goto(LEAGUE_URL);
 
     const tuserRow = page

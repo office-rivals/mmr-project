@@ -3,10 +3,7 @@
   import Button from '$lib/components/ui/button/button.svelte';
   import { Input } from '$lib/components/ui/input';
   import X from 'lucide-svelte/icons/x';
-  import type {
-    LeaguePlayerResponse,
-    OrganizationMemberResponse,
-  } from '$api3';
+  import type { LeaguePlayerResponse, OrganizationMemberResponse } from '$api3';
 
   export type SlotValue =
     | { kind: 'league'; player: LeaguePlayerResponse }
@@ -40,8 +37,11 @@
 
   let filter = $state('');
 
-  const playerName = (p: { displayName?: string; username?: string; email?: string }) =>
-    p.displayName ?? p.username ?? p.email ?? 'Unknown';
+  const playerName = (p: {
+    displayName?: string;
+    username?: string;
+    email?: string;
+  }) => p.displayName ?? p.username ?? p.email ?? 'Unknown';
 
   const matches = (text: string) =>
     text.toLowerCase().includes(filter.toLowerCase());
@@ -111,7 +111,10 @@
         <ul>
           {#each matchedPlayers as player (player.id)}
             <li class="mb-1">
-              <PlayerButton user={player} onclick={() => selectPlayer(player)} />
+              <PlayerButton
+                user={player}
+                onclick={() => selectPlayer(player)}
+              />
             </li>
           {/each}
           {#if matchedMembers.length > 0}
@@ -121,7 +124,10 @@
             {#each matchedMembers as member (member.id)}
               <li class="mb-1">
                 <PlayerButton
-                  user={{ displayName: member.displayName, username: member.username }}
+                  user={{
+                    displayName: member.displayName,
+                    username: member.username,
+                  }}
                   onclick={() => selectMember(member)}
                 />
               </li>
@@ -139,7 +145,7 @@
     {/if}
   {:else}
     <div
-      class="border-input flex w-full items-center gap-1 rounded-md border px-3 py-2"
+      class="flex w-full items-center gap-1 rounded-md border border-input px-3 py-2"
     >
       <div class="flex flex-1 flex-col gap-1">
         {#if value.kind === 'league'}

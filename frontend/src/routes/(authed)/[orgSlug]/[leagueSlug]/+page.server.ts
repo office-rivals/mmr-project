@@ -2,7 +2,11 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { matchFlagActions } from '$lib/server/actions/matchFlagActions';
 
-export const load: PageServerLoad = async ({ parent, locals: { apiClientV3 }, url }) => {
+export const load: PageServerLoad = async ({
+  parent,
+  locals: { apiClientV3 },
+  url,
+}) => {
   const { orgId, leagueId } = await parent();
   const urlSeasonId = url.searchParams.get('season') ?? undefined;
 
@@ -10,7 +14,8 @@ export const load: PageServerLoad = async ({ parent, locals: { apiClientV3 }, ur
     const seasons = await apiClientV3.seasonsApi.listSeasons(orgId, leagueId);
     const currentSeason = seasons[0] ?? null;
     const seasonId = urlSeasonId ?? currentSeason?.id;
-    const isCurrentSeason = urlSeasonId == null || urlSeasonId === currentSeason?.id;
+    const isCurrentSeason =
+      urlSeasonId == null || urlSeasonId === currentSeason?.id;
 
     const ratingHistoryPromise = apiClientV3.ratingHistoryApi
       .getLeagueHistory(orgId, leagueId, seasonId)

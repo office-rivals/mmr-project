@@ -23,9 +23,10 @@
     <AlertCircle class="h-16 w-16 text-red-500" />
     <div class="flex flex-col gap-2 text-center">
       <PageTitle>Invalid Invite</PageTitle>
-      <p class="text-muted-foreground max-w-md">
+      <p class="max-w-md text-muted-foreground">
         {#if data.invite.organizationName}
-          This invite to <strong>{data.invite.organizationName}</strong> has expired or reached its usage limit.
+          This invite to <strong>{data.invite.organizationName}</strong> has expired
+          or reached its usage limit.
         {:else}
           This invite code is not valid. Please check the code and try again.
         {/if}
@@ -41,7 +42,9 @@
       <CardContent>
         <div class="flex flex-col gap-6">
           <div class="text-center">
-            <p class="text-muted-foreground text-sm">You're already a member of</p>
+            <p class="text-sm text-muted-foreground">
+              You're already a member of
+            </p>
             <p class="text-2xl font-bold">{data.invite.organizationName}</p>
           </div>
           <Button href="/{data.invite.organizationSlug}" class="w-full">
@@ -53,13 +56,13 @@
   {:else}
     <Card class="w-full max-w-md">
       <CardHeader class="items-center text-center">
-        <Building2 class="text-primary mb-2 h-12 w-12" />
+        <Building2 class="mb-2 h-12 w-12 text-primary" />
         <CardTitle>You've been invited!</CardTitle>
       </CardHeader>
       <CardContent>
         <div class="flex flex-col gap-6">
           <div class="text-center">
-            <p class="text-muted-foreground text-sm">You're invited to join</p>
+            <p class="text-sm text-muted-foreground">You're invited to join</p>
             <p class="text-2xl font-bold">{data.invite.organizationName}</p>
           </div>
 

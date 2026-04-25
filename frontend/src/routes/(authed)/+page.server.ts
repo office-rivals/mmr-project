@@ -2,7 +2,11 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { apiClientV3 } }) => {
-  let organizations: Array<{ name: string; slug: string; leagues: Array<{ name: string; slug: string }> }> = [];
+  let organizations: Array<{
+    name: string;
+    slug: string;
+    leagues: Array<{ name: string; slug: string }>;
+  }> = [];
 
   try {
     const me = await apiClientV3.meApi.getMe();

@@ -25,9 +25,9 @@
     leaguePlayerId: string | null | undefined
   ) =>
     leaguePlayerId
-      ? teams[teamIndex]?.players.some(
+      ? (teams[teamIndex]?.players.some(
           (p) => p.leaguePlayerId === leaguePlayerId
-        ) ?? false
+        ) ?? false)
       : false;
 
   const currentUserTeam: TeamOption = $derived(
@@ -43,7 +43,7 @@
   );
 
   const teamPlayers = (which: TeamOption) =>
-    which === 'team1' ? teams[0]?.players ?? [] : teams[1]?.players ?? [];
+    which === 'team1' ? (teams[0]?.players ?? []) : (teams[1]?.players ?? []);
 
   // Reorder so the current player appears first within their team for clarity
   const orderedPlayers = (which: TeamOption) => {
@@ -89,9 +89,7 @@
   // but the wire format stays index-based: team1Score → teams[0], team2Score → teams[1].
 
   const orderForUi: [TeamOption, TeamOption] = $derived(
-    currentUserTeam === 'team1'
-      ? ['team1', 'team2']
-      : ['team2', 'team1']
+    currentUserTeam === 'team1' ? ['team1', 'team2'] : ['team2', 'team1']
   );
 
   function teamHeading(which: TeamOption): string {
@@ -146,7 +144,7 @@
         >
           We won &nbsp; 🎉
         </Button>
-        <div class="bg-border min-h-full w-px"></div>
+        <div class="min-h-full w-px bg-border"></div>
         <Button
           type="button"
           onclick={() => setWinner(otherTeam)}

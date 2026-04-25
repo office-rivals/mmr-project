@@ -24,7 +24,12 @@
     children?: Snippet;
   }
 
-  let { class: className = undefined, variant = 'default', children, ...rest }: Props = $props();
+  let {
+    class: className = undefined,
+    variant = 'default',
+    children,
+    ...rest
+  }: Props = $props();
 </script>
 
 <div class={cn(alertVariants({ variant }), className)} role="alert" {...rest}>

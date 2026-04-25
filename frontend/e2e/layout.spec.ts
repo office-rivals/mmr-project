@@ -19,7 +19,9 @@ test.describe('Authed layout chrome', () => {
     await expect(nav.getByRole('link')).toHaveCount(5);
   });
 
-  test('navbar links resolve to default org/league when not in a league route', async ({ page }) => {
+  test('navbar links resolve to default org/league when not in a league route', async ({
+    page,
+  }) => {
     await page.goto('/random');
 
     const homeLink = page.locator('nav a').first();

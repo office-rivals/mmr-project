@@ -2,7 +2,10 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getApiErrorDetails } from '$lib/server/api/apiError';
 
-export const load: PageServerLoad = async ({ parent, locals: { apiClientV3 } }) => {
+export const load: PageServerLoad = async ({
+  parent,
+  locals: { apiClientV3 },
+}) => {
   const { orgId, leagueId } = await parent();
 
   try {
@@ -39,7 +42,8 @@ function resolvePlayerReference(formData: FormData, fieldName: string) {
   }
 
   if (rawValue === 'new') {
-    const displayName = formData.get(`${fieldName}_displayName`)?.toString().trim() ?? '';
+    const displayName =
+      formData.get(`${fieldName}_displayName`)?.toString().trim() ?? '';
     const email = formData.get(`${fieldName}_email`)?.toString().trim() ?? '';
 
     if (displayName === '') {
@@ -102,7 +106,9 @@ export const actions: Actions = {
       .map((fieldName) => resolvePlayerReference(formData, fieldName));
 
     const allPlayerRefs = [...team1PlayerRefs, ...team2PlayerRefs];
-    const playerError = allPlayerRefs.find((player) => player && 'error' in player);
+    const playerError = allPlayerRefs.find(
+      (player) => player && 'error' in player
+    );
     if (playerError && 'error' in playerError) {
       return fail(400, { message: playerError.error });
     }
@@ -121,7 +127,10 @@ export const actions: Actions = {
     try {
       await apiClientV3.matchesApi.submitMatch(orgId, leagueId, { teams });
     } catch (error) {
-      const { status, message } = await getApiErrorDetails(error, 'Failed to submit match');
+      const { status, message } = await getApiErrorDetails(
+        error,
+        'Failed to submit match'
+      );
       return fail(status, { message });
     }
 

@@ -39,7 +39,9 @@ setup('apply seed and sign in', async ({ page }) => {
 
   // After sign-in we land on either the home page (org list) or, when the
   // seed wires us into a single org/league, on the leaderboard route.
-  await expect(page).toHaveURL(/\/(test-org\/test-league|$)/, { timeout: 15_000 });
+  await expect(page).toHaveURL(/\/(test-org\/test-league|$)/, {
+    timeout: 15_000,
+  });
 
   await page.context().storageState({ path: authFile });
 });

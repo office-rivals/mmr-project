@@ -2,7 +2,11 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getApiErrorDetails } from '$lib/server/api/apiError';
 
-export const load: PageServerLoad = async ({ params, parent, locals: { apiClientV3 } }) => {
+export const load: PageServerLoad = async ({
+  params,
+  parent,
+  locals: { apiClientV3 },
+}) => {
   const { orgId, leagueId, leaguePlayerId, orgSlug, leagueSlug } =
     await parent();
   const activeMatchId = params.id;
@@ -18,7 +22,10 @@ export const load: PageServerLoad = async ({ params, parent, locals: { apiClient
     throw error(404, 'Active match not found');
   }
 
-  const players = await apiClientV3.leaguePlayersApi.listPlayers(orgId, leagueId);
+  const players = await apiClientV3.leaguePlayersApi.listPlayers(
+    orgId,
+    leagueId
+  );
 
   return {
     activeMatch,
@@ -52,9 +59,14 @@ export const actions: Actions = {
     }
 
     try {
-      await apiClientV3.activeMatchesApi.submitResult(orgId, leagueId, params.id, {
-        teams,
-      });
+      await apiClientV3.activeMatchesApi.submitResult(
+        orgId,
+        leagueId,
+        params.id,
+        {
+          teams,
+        }
+      );
     } catch (error) {
       const { status, message } = await getApiErrorDetails(
         error,

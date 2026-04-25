@@ -30,7 +30,10 @@ export default defineConfig({
       name: 'chromium',
       dependencies: ['setup'],
       testIgnore: /global\.setup\.ts/,
-      use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/user.json' },
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'e2e/.auth/user.json',
+      },
     },
   ],
 });

@@ -19,7 +19,7 @@
 <div class="space-y-6">
   <div>
     <h1 class="text-2xl font-bold tracking-tight">Organization Settings</h1>
-    <p class="text-muted-foreground text-sm">
+    <p class="text-sm text-muted-foreground">
       Manage your organization's settings
     </p>
   </div>
@@ -34,7 +34,8 @@
   <Card>
     <CardHeader>
       <CardTitle>General</CardTitle>
-      <CardDescription>Update your organization's name and slug</CardDescription>
+      <CardDescription>Update your organization's name and slug</CardDescription
+      >
     </CardHeader>
     <CardContent>
       <form method="POST" action="?/update" use:enhance class="space-y-4">
@@ -45,7 +46,7 @@
         <div class="space-y-2">
           <Label for="slug">Slug</Label>
           <Input id="slug" name="slug" value={data.org.slug} required />
-          <p class="text-muted-foreground text-xs">
+          <p class="text-xs text-muted-foreground">
             Used in URLs. Changing this will update all links.
           </p>
         </div>

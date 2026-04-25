@@ -1,7 +1,11 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ parent, locals: { apiClientV3 }, url }) => {
+export const load: PageServerLoad = async ({
+  parent,
+  locals: { apiClientV3 },
+  url,
+}) => {
   const { orgId, leagueId } = await parent();
   const urlSeasonId = url.searchParams.get('season') ?? undefined;
   const seasons = await apiClientV3.seasonsApi.listSeasons(orgId, leagueId);
@@ -35,15 +39,14 @@ export const load: PageServerLoad = async ({ parent, locals: { apiClientV3 }, ur
       })
     );
 
-    const statistics = playerHistories
-      .filter(Boolean)
-      .flatMap((ph) =>
+    const statistics = playerHistories.filter(Boolean).flatMap(
+      (ph) =>
         ph?.entries.map((entry) => ({
           name: ph.name,
           date: entry.recordedAt,
           mmr: entry.mmr,
         })) ?? []
-      );
+    );
 
     return {
       statistics,

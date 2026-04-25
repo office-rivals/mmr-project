@@ -16,7 +16,9 @@ test.describe('Player profile', () => {
     await expect(page.getByText('Streak', { exact: true })).toBeVisible();
   });
 
-  test('rating-over-time chart container renders (Carbon CSS loaded)', async ({ page }) => {
+  test('rating-over-time chart container renders (Carbon CSS loaded)', async ({
+    page,
+  }) => {
     await page.goto(PROFILE_URL);
 
     await expect(page.getByText('Rating over time')).toBeVisible();
@@ -35,7 +37,9 @@ test.describe('Player profile', () => {
     await expect(page.getByText('Most common teammates')).toBeVisible();
   });
 
-  test('always shows the profile player at top-left of every match card', async ({ page }) => {
+  test('always shows the profile player at top-left of every match card', async ({
+    page,
+  }) => {
     await page.goto(PROFILE_URL);
 
     // Each MatchCard renders one `.items-start` div per left-team players column.

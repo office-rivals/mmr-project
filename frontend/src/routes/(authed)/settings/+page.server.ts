@@ -1,7 +1,10 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals: { apiClientV3 }, fetch }) => {
+export const load: PageServerLoad = async ({
+  locals: { apiClientV3 },
+  fetch,
+}) => {
   try {
     const response = await apiClientV3.personalAccessTokensApi.listTokens();
     return { tokens: response };
@@ -24,9 +27,10 @@ export const actions: Actions = {
       const result = await apiClientV3.personalAccessTokensApi.generateToken({
         name: name.trim(),
         scope: 'full',
-        expiresAt: expiresAt && typeof expiresAt === 'string' && expiresAt !== ''
-          ? new Date(expiresAt).toISOString()
-          : undefined,
+        expiresAt:
+          expiresAt && typeof expiresAt === 'string' && expiresAt !== ''
+            ? new Date(expiresAt).toISOString()
+            : undefined,
       });
 
       return { success: true, createdToken: result };

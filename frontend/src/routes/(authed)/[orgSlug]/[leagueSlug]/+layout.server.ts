@@ -1,7 +1,10 @@
 import { error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ params, locals: { apiClientV3 } }) => {
+export const load: LayoutServerLoad = async ({
+  params,
+  locals: { apiClientV3 },
+}) => {
   let me;
   try {
     me = await apiClientV3.meApi.getMe();

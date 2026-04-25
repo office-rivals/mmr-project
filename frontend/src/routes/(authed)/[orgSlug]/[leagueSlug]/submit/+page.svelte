@@ -162,10 +162,7 @@
           index: 0,
           score: team1Score === -1 ? 0 : team1Score,
           isWinner: team1Score === 10,
-          players: [
-            slots.team1_player1,
-            slots.team1_player2,
-          ].map((s, i) => ({
+          players: [slots.team1_player1, slots.team1_player2].map((s, i) => ({
             id: `t1p${i}`,
             leaguePlayerId: '',
             displayName: playerName(s),
@@ -177,10 +174,7 @@
           index: 1,
           score: team2Score === -1 ? 0 : team2Score,
           isWinner: team2Score === 10,
-          players: [
-            slots.team2_player1,
-            slots.team2_player2,
-          ].map((s, i) => ({
+          players: [slots.team2_player1, slots.team2_player2].map((s, i) => ({
             id: `t2p${i}`,
             leaguePlayerId: '',
             displayName: playerName(s),
@@ -234,11 +228,7 @@
           name="{slot}_displayName"
           value={slots[slot].displayName}
         />
-        <input
-          type="hidden"
-          name="{slot}_email"
-          value={slots[slot].email}
-        />
+        <input type="hidden" name="{slot}_email" value={slots[slot].email} />
       {/if}
     {/each}
     <input type="hidden" name="team1_score" value={team1Score} />
@@ -274,7 +264,7 @@
             />
           {/if}
         </div>
-        <div class="bg-border min-h-full w-px"></div>
+        <div class="min-h-full w-px bg-border"></div>
         <div id="team2-step" class="flex flex-1 flex-col gap-4">
           <h3 class="mb-2 text-center text-2xl">Team 2</h3>
           {#if team1Filled || slots.team2_player1 !== null}
@@ -319,7 +309,7 @@
             >
               We won &nbsp; 🎉
             </Button>
-            <div class="bg-border min-h-full w-px"></div>
+            <div class="min-h-full w-px bg-border"></div>
             <Button
               type="button"
               onclick={setTeam2Wins}
@@ -377,7 +367,8 @@
     <Dialog.Header>
       <Dialog.Title>Add new player</Dialog.Title>
       <Dialog.Description>
-        Create a player for this match. If you add an email, the address can be claimed later.
+        Create a player for this match. If you add an email, the address can be
+        claimed later.
       </Dialog.Description>
     </Dialog.Header>
 
@@ -406,7 +397,11 @@
     </div>
 
     <Dialog.Footer class="mt-4 gap-2">
-      <Button type="button" variant="outline" onclick={() => (dialogOpen = false)}>
+      <Button
+        type="button"
+        variant="outline"
+        onclick={() => (dialogOpen = false)}
+      >
         Cancel
       </Button>
       <Button type="button" onclick={saveNewPlayer}>Use player</Button>

@@ -46,20 +46,25 @@
   </Button>
 
   {#if open}
-    <button class="fixed inset-0 z-40" onclick={close} aria-label="Close menu"></button>
+    <button class="fixed inset-0 z-40" onclick={close} aria-label="Close menu"
+    ></button>
     <div
-      class="bg-popover border-border absolute left-0 top-full z-50 mt-1 w-64 rounded-md border shadow-md"
+      class="absolute left-0 top-full z-50 mt-1 w-64 rounded-md border border-border bg-popover shadow-md"
     >
       {#each organizations as org}
-        <div class="border-border border-b p-2 last:border-b-0">
-          <div class="text-muted-foreground flex items-center gap-2 px-2 py-1 text-xs font-semibold uppercase">
+        <div class="border-b border-border p-2 last:border-b-0">
+          <div
+            class="flex items-center gap-2 px-2 py-1 text-xs font-semibold uppercase text-muted-foreground"
+          >
             <Building2 class="h-3 w-3" />
             {org.name}
           </div>
           {#each org.leagues as league}
-            {@const isActive = currentOrg?.slug === org.slug && currentLeague?.slug === league.slug}
+            {@const isActive =
+              currentOrg?.slug === org.slug &&
+              currentLeague?.slug === league.slug}
             <button
-              class="hover:bg-accent w-full rounded px-3 py-1.5 text-left text-sm transition-colors {isActive
+              class="w-full rounded px-3 py-1.5 text-left text-sm transition-colors hover:bg-accent {isActive
                 ? 'bg-accent font-medium'
                 : ''}"
               onclick={() => navigate(org.slug, league.slug)}
@@ -73,7 +78,7 @@
         </div>
       {/each}
       {#if organizations.length === 0}
-        <div class="text-muted-foreground p-4 text-center text-sm">
+        <div class="p-4 text-center text-sm text-muted-foreground">
           No organizations found
         </div>
       {/if}

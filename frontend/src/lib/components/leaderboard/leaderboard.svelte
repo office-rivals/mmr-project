@@ -16,12 +16,8 @@
     currentLeaguePlayerId?: string | null;
   }
 
-  let {
-    entries,
-    ratingHistory,
-    onSelect,
-    currentLeaguePlayerId,
-  }: Props = $props();
+  let { entries, ratingHistory, onSelect, currentLeaguePlayerId }: Props =
+    $props();
 </script>
 
 <Card.Root>
@@ -66,7 +62,9 @@
                     {entry.displayName}
                   </span>
                 {/if}
-                <span class="block">{entry.username ?? entry.displayName ?? 'Unknown'}</span>
+                <span class="block"
+                  >{entry.username ?? entry.displayName ?? 'Unknown'}</span
+                >
               </div>
             </Table.Cell>
             <Table.Cell>
@@ -74,7 +72,9 @@
                 {entry.wins}
                 {#if entry.winningStreak >= SHOW_STREAK_THRESHOLD}
                   <span class="text-nowrap text-xs" title="Winning streak">
-                    🔥 <span class="hidden sm:inline">{entry.winningStreak}</span>
+                    🔥 <span class="hidden sm:inline"
+                      >{entry.winningStreak}</span
+                    >
                   </span>
                 {/if}
               </div>
@@ -97,14 +97,19 @@
                     {#if ratingHistory != null}
                       <Sparkline
                         data={ratingHistory
-                          .filter((h) => h.leaguePlayerId === entry.leaguePlayerId)
+                          .filter(
+                            (h) => h.leaguePlayerId === entry.leaguePlayerId
+                          )
                           .map((h) => ({
                             date: h.recordedAt,
                             rating: h.mmr,
                           }))}
                       />
                     {:else}
-                      <Sparkline data={[]} options={{ data: { loading: true } }} />
+                      <Sparkline
+                        data={[]}
+                        options={{ data: { loading: true } }}
+                      />
                     {/if}
                   </div>
                 {/if}

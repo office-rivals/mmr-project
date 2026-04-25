@@ -3,10 +3,14 @@ import { test, expect } from '@playwright/test';
 const SUBMIT_URL = '/test-org/test-league/submit';
 
 test.describe('Submit match', () => {
-  test('step-by-step flow: pick players → who won → loser score → preview', async ({ page }) => {
+  test('step-by-step flow: pick players → who won → loser score → preview', async ({
+    page,
+  }) => {
     await page.goto(SUBMIT_URL);
 
-    await expect(page.getByRole('heading', { name: 'Submit match' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Submit match' })
+    ).toBeVisible();
     await expect(page.getByText('Team 1', { exact: true })).toBeVisible();
     await expect(page.getByText('Team 2', { exact: true })).toBeVisible();
 
@@ -21,7 +25,9 @@ test.describe('Submit match', () => {
     const youField = page.locator('input[placeholder="Filter..."]').first();
     await youField.fill('zzzzznoplayer');
 
-    await expect(page.getByRole('button', { name: 'Add new player' })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Add new player' })
+    ).toBeVisible();
     await page.getByRole('button', { name: 'Add new player' }).click();
 
     const dialog = page.getByRole('dialog');

@@ -223,7 +223,9 @@
       {/if}
 
       <div class="py-4">
-        <div class="pointer-events-none mb-4 rounded-lg border border-border p-1">
+        <div
+          class="pointer-events-none mb-4 rounded-lg border border-border p-1"
+        >
           <MatchCard match={selectedMatch} showMmr={false} />
         </div>
 
@@ -274,7 +276,12 @@
           </div>
 
           <Dialog.Footer class="mt-4 gap-2">
-            <Button type="button" variant="ghost" onclick={goBack} disabled={isSubmitting}>
+            <Button
+              type="button"
+              variant="ghost"
+              onclick={goBack}
+              disabled={isSubmitting}
+            >
               <ChevronLeft class="mr-1 h-4 w-4" />
               Back
             </Button>
@@ -313,7 +320,8 @@
       <Dialog.Header>
         <Dialog.Title>Delete flag</Dialog.Title>
         <Dialog.Description>
-          Are you sure you want to delete this flag? This action cannot be undone.
+          Are you sure you want to delete this flag? This action cannot be
+          undone.
         </Dialog.Description>
       </Dialog.Header>
       <form

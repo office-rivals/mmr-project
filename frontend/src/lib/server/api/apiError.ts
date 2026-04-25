@@ -27,8 +27,7 @@ export async function getApiErrorDetails(
             message: text,
           };
         }
-      } catch {
-      }
+      } catch {}
     }
 
     return {

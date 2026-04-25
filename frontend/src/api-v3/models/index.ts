@@ -389,18 +389,52 @@ export interface CreateTokenResponse {
 }
 
 // JSON conversion helpers (placeholder - will be generated)
-export function MeResponseFromJSON(json: any): MeResponse { return json; }
-export function OrganizationResponseFromJSON(json: any): OrganizationResponse { return json; }
-export function OrganizationMemberResponseFromJSON(json: any): OrganizationMemberResponse { return json; }
-export function LeagueResponseFromJSON(json: any): LeagueResponse { return json; }
-export function LeaguePlayerResponseFromJSON(json: any): LeaguePlayerResponse { return json; }
-export function SeasonResponseFromJSON(json: any): SeasonResponse { return json; }
-export function MatchResponseFromJSON(json: any): MatchResponse { return json; }
-export function LeaderboardResponseFromJSON(json: any): LeaderboardResponse { return json; }
-export function RatingHistoryResponseFromJSON(json: any): RatingHistoryResponse { return json; }
-export function QueueStatusResponseFromJSON(json: any): QueueStatusResponse { return json; }
-export function PendingMatchResponseFromJSON(json: any): PendingMatchResponse { return json; }
-export function ActiveMatchResponseFromJSON(json: any): ActiveMatchResponse { return json; }
-export function MatchFlagResponseFromJSON(json: any): MatchFlagResponse { return json; }
-export function TokenResponseFromJSON(json: any): TokenResponse { return json; }
-export function CreateTokenResponseFromJSON(json: any): CreateTokenResponse { return json; }
+export function MeResponseFromJSON(json: any): MeResponse {
+  return json;
+}
+export function OrganizationResponseFromJSON(json: any): OrganizationResponse {
+  return json;
+}
+export function OrganizationMemberResponseFromJSON(
+  json: any
+): OrganizationMemberResponse {
+  return json;
+}
+export function LeagueResponseFromJSON(json: any): LeagueResponse {
+  return json;
+}
+export function LeaguePlayerResponseFromJSON(json: any): LeaguePlayerResponse {
+  return json;
+}
+export function SeasonResponseFromJSON(json: any): SeasonResponse {
+  return json;
+}
+export function MatchResponseFromJSON(json: any): MatchResponse {
+  return json;
+}
+export function LeaderboardResponseFromJSON(json: any): LeaderboardResponse {
+  return json;
+}
+export function RatingHistoryResponseFromJSON(
+  json: any
+): RatingHistoryResponse {
+  return json;
+}
+export function QueueStatusResponseFromJSON(json: any): QueueStatusResponse {
+  return json;
+}
+export function PendingMatchResponseFromJSON(json: any): PendingMatchResponse {
+  return json;
+}
+export function ActiveMatchResponseFromJSON(json: any): ActiveMatchResponse {
+  return json;
+}
+export function MatchFlagResponseFromJSON(json: any): MatchFlagResponse {
+  return json;
+}
+export function TokenResponseFromJSON(json: any): TokenResponse {
+  return json;
+}
+export function CreateTokenResponseFromJSON(json: any): CreateTokenResponse {
+  return json;
+}

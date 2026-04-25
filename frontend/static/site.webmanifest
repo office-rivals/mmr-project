@@ -1,23 +1,23 @@
 {
-    "name": "MMR Project",
-    "short_name": "MMR Project",
-    "id": "/",
-    "start_url": "/",
-    "scope": "/",
-    "orientation": "portrait",
-    "icons": [
-        {
-            "src": "/android-chrome-192x192.png",
-            "sizes": "192x192",
-            "type": "image/png"
-        },
-        {
-            "src": "/android-chrome-384x384.png",
-            "sizes": "384x384",
-            "type": "image/png"
-        }
-    ],
-    "theme_color": "#01182e",
-    "background_color": "#01182e",
-    "display": "standalone"
+  "name": "MMR Project",
+  "short_name": "MMR Project",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#01182e",
+  "background_color": "#01182e",
+  "display": "standalone"
 }

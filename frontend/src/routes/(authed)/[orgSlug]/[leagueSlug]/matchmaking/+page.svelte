@@ -115,8 +115,8 @@
     that are also ready for a game.
   </p>
   <p>
-    Once <strong>{PLAYERS_REQUIRED_FOR_MATCH} players</strong> are in the queue,
-    a match will be created and you will be notified.
+    Once <strong>{PLAYERS_REQUIRED_FOR_MATCH} players</strong> are in the queue, a
+    match will be created and you will be notified.
   </p>
   <p>
     If you do not accept the match within <strong>30 seconds</strong>, you will
@@ -152,12 +152,13 @@
   {#if activeMatches.length > 0}
     <h2 class="mt-4 text-2xl">Active matches</h2>
     {#each activeMatches as match (match.id)}
-      <div class="bg-card rounded-lg border p-4">
+      <div class="rounded-lg border bg-card p-4">
         <div class="flex items-center justify-around gap-2">
           {#each match.teams ?? [] as team}
             <div class="flex flex-col items-center gap-1">
               {#each team.players ?? [] as player}
-                <span>{player.displayName ?? player.username ?? 'Unknown'}</span>
+                <span>{player.displayName ?? player.username ?? 'Unknown'}</span
+                >
               {/each}
             </div>
           {/each}
@@ -199,7 +200,8 @@
                 (a) => a.leaguePlayerId === player.leaguePlayerId
               )}
               <div class="flex justify-between text-sm">
-                <span>{player.displayName ?? player.username ?? 'Unknown'}</span>
+                <span>{player.displayName ?? player.username ?? 'Unknown'}</span
+                >
                 <span class="text-xs text-muted-foreground">
                   {#if acc?.status === AcceptanceStatus.Accepted}
                     ✅ accepted

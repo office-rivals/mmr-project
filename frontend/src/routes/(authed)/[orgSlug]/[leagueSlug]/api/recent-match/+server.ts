@@ -1,7 +1,11 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url, params, locals: { apiClientV3 } }) => {
+export const GET: RequestHandler = async ({
+  url,
+  params,
+  locals: { apiClientV3 },
+}) => {
   const leaguePlayerId = url.searchParams.get('leaguePlayerId');
   const seasonId = url.searchParams.get('season') ?? undefined;
 

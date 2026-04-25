@@ -51,9 +51,7 @@
     (data.matches ?? []).filter((match) => {
       if (filteredPlayers.length === 0) return true;
       return filteredPlayers.every((id) =>
-        match.teams.some((t) =>
-          t.players.some((p) => p.leaguePlayerId === id)
-        )
+        match.teams.some((t) => t.players.some((p) => p.leaguePlayerId === id))
       );
     })
   );
@@ -94,8 +92,7 @@
   const playerHref = (leaguePlayerId: string) =>
     `/${data.orgSlug}/${data.leagueSlug}/player/${leaguePlayerId}`;
 
-  const findPlayer = (id: string) =>
-    data.players.find((p) => p.id === id);
+  const findPlayer = (id: string) => data.players.find((p) => p.id === id);
 </script>
 
 <div class="flex flex-col gap-6">
@@ -163,7 +160,10 @@
     {#if data.stats.winningStreak > 0 || data.stats.losingStreak > 0}
       <Kpi title="Streak">
         {#if data.stats.winningStreak > 0}🔥 {data.stats.winningStreak}{/if}
-        {#if data.stats.losingStreak > 0}{data.stats.losingStreak >= 7 ? '⛈️' : '🌧️'} {data.stats.losingStreak}{/if}
+        {#if data.stats.losingStreak > 0}{data.stats.losingStreak >= 7
+            ? '⛈️'
+            : '🌧️'}
+          {data.stats.losingStreak}{/if}
       </Kpi>
     {/if}
   </div>
@@ -304,7 +304,7 @@
             {@const p = findPlayer(id)}
             {#if p != null}
               <div
-                class="bg-secondary text-secondary-foreground flex items-center space-x-2 rounded-md p-2 text-sm"
+                class="flex items-center space-x-2 rounded-md bg-secondary p-2 text-sm text-secondary-foreground"
               >
                 <span>{p.displayName ?? p.username ?? 'Unknown'}</span>
                 <button

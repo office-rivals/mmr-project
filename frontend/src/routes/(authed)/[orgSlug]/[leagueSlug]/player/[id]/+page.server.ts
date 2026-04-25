@@ -25,7 +25,10 @@ export const load: PageServerLoad = async ({
   const urlSeasonId = url.searchParams.get('season') ?? undefined;
 
   try {
-    const seasonsList = await apiClientV3.seasonsApi.listSeasons(orgId, leagueId);
+    const seasonsList = await apiClientV3.seasonsApi.listSeasons(
+      orgId,
+      leagueId
+    );
     const currentSeason = seasonsList[0] ?? null;
     const seasonId = urlSeasonId ?? currentSeason?.id;
 
@@ -65,8 +68,7 @@ export const load: PageServerLoad = async ({
     const wins = matches.filter((m: MatchResponse) =>
       m.teams.some(
         (t) =>
-          t.isWinner &&
-          t.players.some((p) => p.leaguePlayerId === playerId)
+          t.isWinner && t.players.some((p) => p.leaguePlayerId === playerId)
       )
     ).length;
     const lost = Math.max(totalMatches - wins, 0);

@@ -16,7 +16,10 @@ export const matchFlagActions = {
     const leagueId = formData.get('leagueId') as string;
 
     if (!matchId || !reason || !orgId || !leagueId) {
-      return fail(400, { success: false, message: 'Match ID and reason are required' });
+      return fail(400, {
+        success: false,
+        message: 'Match ID and reason are required',
+      });
     }
 
     try {
@@ -25,7 +28,10 @@ export const matchFlagActions = {
         reason,
       });
     } catch (error) {
-      const { status, message } = await getApiErrorDetails(error, 'Failed to create flag');
+      const { status, message } = await getApiErrorDetails(
+        error,
+        'Failed to create flag'
+      );
       return fail(status, { success: false, message });
     }
 
@@ -40,15 +46,26 @@ export const matchFlagActions = {
     const leagueId = formData.get('leagueId') as string;
 
     if (!flagId || !reason || !orgId || !leagueId) {
-      return fail(400, { success: false, message: 'Flag ID and reason are required' });
+      return fail(400, {
+        success: false,
+        message: 'Flag ID and reason are required',
+      });
     }
 
     try {
-      await locals.apiClientV3.matchFlagsApi.updateFlagReason(orgId, leagueId, flagId, {
-        reason,
-      });
+      await locals.apiClientV3.matchFlagsApi.updateFlagReason(
+        orgId,
+        leagueId,
+        flagId,
+        {
+          reason,
+        }
+      );
     } catch (error) {
-      const { status, message } = await getApiErrorDetails(error, 'Failed to update flag');
+      const { status, message } = await getApiErrorDetails(
+        error,
+        'Failed to update flag'
+      );
       return fail(status, { success: false, message });
     }
 
@@ -66,9 +83,16 @@ export const matchFlagActions = {
     }
 
     try {
-      await locals.apiClientV3.matchFlagsApi.deleteFlag(orgId, leagueId, flagId);
+      await locals.apiClientV3.matchFlagsApi.deleteFlag(
+        orgId,
+        leagueId,
+        flagId
+      );
     } catch (error) {
-      const { status, message } = await getApiErrorDetails(error, 'Failed to delete flag');
+      const { status, message } = await getApiErrorDetails(
+        error,
+        'Failed to delete flag'
+      );
       return fail(status, { success: false, message });
     }
 

@@ -23,13 +23,8 @@
     playerHrefBase: string;
   }
 
-  let {
-    entry,
-    open,
-    onOpenChange,
-    fetchRecentMatch,
-    playerHrefBase,
-  }: Props = $props();
+  let { entry, open, onOpenChange, fetchRecentMatch, playerHrefBase }: Props =
+    $props();
 
   const seasonId = $derived(page.url.searchParams.get('season') ?? undefined);
 
@@ -43,7 +38,9 @@
   );
 
   const totalGames = $derived(entry.wins + entry.losses);
-  const displayName = $derived(entry.displayName ?? entry.username ?? 'Unknown');
+  const displayName = $derived(
+    entry.displayName ?? entry.username ?? 'Unknown'
+  );
 </script>
 
 <Dialog.Root {open} {onOpenChange}>
@@ -54,14 +51,17 @@
         <Kpi title="Rank">{entry.mmr != null ? entry.rank : '–'}</Kpi>
         <Kpi title="MMR">{entry.mmr ?? '🐣'}</Kpi>
         <Kpi title="Win %">
-          {percentFormatter.format(totalGames > 0 ? entry.wins / totalGames : 0)}
+          {percentFormatter.format(
+            totalGames > 0 ? entry.wins / totalGames : 0
+          )}
         </Kpi>
         <Kpi title="# Wins" class="col-start-1">{entry.wins}</Kpi>
         <Kpi title="# Losses">{entry.losses}</Kpi>
         <Kpi title="# Matches">{totalGames}</Kpi>
         <Kpi title="Streak">
           {#if entry.winningStreak > 0}🔥 {entry.winningStreak}{/if}
-          {#if entry.losingStreak > 0}{entry.losingStreak >= 7 ? '⛈️' : '🌧️'} {entry.losingStreak}{/if}
+          {#if entry.losingStreak > 0}{entry.losingStreak >= 7 ? '⛈️' : '🌧️'}
+            {entry.losingStreak}{/if}
           {#if entry.winningStreak === 0 && entry.losingStreak === 0}—{/if}
         </Kpi>
       </div>
@@ -71,8 +71,8 @@
         {#if recentMatchPromise != null}
           {#await recentMatchPromise}
             <Card.Root class="flex items-center gap-2 p-4">
-              <LoaderCircle class="text-muted-foreground animate-spin" />
-              <p class="text-muted-foreground text-base">
+              <LoaderCircle class="animate-spin text-muted-foreground" />
+              <p class="text-base text-muted-foreground">
                 Fetching latest match...
               </p>
             </Card.Root>
@@ -81,7 +81,7 @@
               <MatchCard match={recentMatch} showMmr />
             {:else}
               <Card.Root class="p-4">
-                <p class="text-muted-foreground text-base">No matches yet.</p>
+                <p class="text-base text-muted-foreground">No matches yet.</p>
               </Card.Root>
             {/if}
           {:catch error}
@@ -93,9 +93,14 @@
       </div>
     </div>
     <Dialog.Footer class="gap-2">
-      <Button variant="outline" onclick={() => onOpenChange(false)}>Close</Button>
+      <Button variant="outline" onclick={() => onOpenChange(false)}
+        >Close</Button
+      >
       <Button
-        href={withSeasonParam(`${playerHrefBase}/${entry.leaguePlayerId}`, seasonId)}
+        href={withSeasonParam(
+          `${playerHrefBase}/${entry.leaguePlayerId}`,
+          seasonId
+        )}
       >
         More details
       </Button>
