@@ -72,7 +72,9 @@
   function payload(): string {
     return JSON.stringify(
       teams.map((team) => ({
-        score: team.score,
+        // Number inputs bound through `bind:value` come back as strings in
+        // Svelte; force-coerce so the server-side parser accepts them.
+        score: Number(team.score),
         players: team.players.map((p) => ({ leaguePlayerId: p.leaguePlayerId })),
       }))
     );
