@@ -13,30 +13,24 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { CalendarDays, Plus } from 'lucide-svelte';
+  import { formatDateTime } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
   let showCreate = $state(false);
 
-  function formatDateTime(d: string): string {
-    return new Date(d).toLocaleString();
-  }
-
-  // Sort seasons newest first; mark the most recent (with startsAt <= now) as current.
   const sortedSeasons = $derived(
     [...data.seasons].sort(
       (a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime()
     )
   );
 
-  const currentSeasonId = $derived.by(() => {
-    const now = Date.now();
-    const started = sortedSeasons.find(
-      (s) => new Date(s.startsAt).getTime() <= now
-    );
-    return started?.id ?? null;
-  });
+  // The current season is the most recent one whose startsAt is in the past.
+  const currentSeasonId = $derived(
+    sortedSeasons.find((s) => new Date(s.startsAt).getTime() <= Date.now())
+      ?.id ?? null
+  );
 </script>
 
 <div class="space-y-4">

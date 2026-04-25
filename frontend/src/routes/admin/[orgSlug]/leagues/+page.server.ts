@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { resolveOrgIdBySlug } from '$lib/server/resolveIds';
 
 export const load: PageServerLoad = async ({
   parent,
@@ -9,15 +10,6 @@ export const load: PageServerLoad = async ({
   const leagues = await apiClientV3.leaguesApi.listLeagues(orgId);
   return { leagues };
 };
-
-async function resolveOrgId(
-  apiClientV3: App.Locals['apiClientV3'],
-  orgSlug: string | undefined
-): Promise<string | null> {
-  if (!orgSlug) return null;
-  const me = await apiClientV3.meApi.getMe();
-  return (me.organizations ?? []).find((o) => o.slug === orgSlug)?.id ?? null;
-}
 
 export const actions: Actions = {
   create: async ({ request, params, locals: { apiClientV3 } }) => {
@@ -33,7 +25,7 @@ export const actions: Actions = {
       return fail(400, { error: 'Queue size must be at least 2' });
     }
 
-    const orgId = await resolveOrgId(apiClientV3, params.orgSlug);
+    const orgId = await resolveOrgIdBySlug(apiClientV3, params.orgSlug);
     if (!orgId) return fail(404, { error: 'Organization not found' });
 
     try {

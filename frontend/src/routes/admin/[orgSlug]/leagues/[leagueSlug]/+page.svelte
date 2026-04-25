@@ -9,14 +9,10 @@
     CardTitle,
   } from '$lib/components/ui/card';
   import { CalendarDays, Flag, Trophy, Users } from 'lucide-svelte';
+  import { formatDate, getPlayerDisplayName } from '$lib/utils';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
-
-  function formatDate(d: string | null | undefined): string {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString();
-  }
 </script>
 
 <div class="space-y-5">
@@ -99,10 +95,7 @@
               <div class="text-sm">
                 <span class={team1?.isWinner ? 'font-semibold' : ''}>
                   {(team1?.players ?? [])
-                    .map(
-                      (p: { displayName?: string; username?: string }) =>
-                        p.displayName ?? p.username ?? '?'
-                    )
+                    .map((p) => getPlayerDisplayName(p, '?'))
                     .join(' & ')}
                 </span>
                 <span class="mx-2 text-muted-foreground">
@@ -110,10 +103,7 @@
                 </span>
                 <span class={team2?.isWinner ? 'font-semibold' : ''}>
                   {(team2?.players ?? [])
-                    .map(
-                      (p: { displayName?: string; username?: string }) =>
-                        p.displayName ?? p.username ?? '?'
-                    )
+                    .map((p) => getPlayerDisplayName(p, '?'))
                     .join(' & ')}
                 </span>
               </div>

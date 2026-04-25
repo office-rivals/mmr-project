@@ -1,14 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-
-async function resolveOrgId(
-  apiClientV3: App.Locals['apiClientV3'],
-  orgSlug: string | undefined
-): Promise<string | null> {
-  if (!orgSlug) return null;
-  const me = await apiClientV3.meApi.getMe();
-  return (me.organizations ?? []).find((o) => o.slug === orgSlug)?.id ?? null;
-}
+import { resolveOrgIdBySlug } from '$lib/server/resolveIds';
 
 export const load: PageServerLoad = async ({
   parent,
@@ -30,7 +22,7 @@ export const actions: Actions = {
     const email = formData.get('email') as string;
     const role = formData.get('role') as string;
 
-    const orgId = await resolveOrgId(apiClientV3, params.orgSlug);
+    const orgId = await resolveOrgIdBySlug(apiClientV3, params.orgSlug);
     if (!orgId) return fail(404, { error: 'Organization not found' });
 
     try {
@@ -49,7 +41,7 @@ export const actions: Actions = {
     const membershipId = formData.get('membershipId') as string;
     const role = formData.get('role') as string;
 
-    const orgId = await resolveOrgId(apiClientV3, params.orgSlug);
+    const orgId = await resolveOrgIdBySlug(apiClientV3, params.orgSlug);
     if (!orgId) return fail(404, { error: 'Organization not found' });
 
     try {
@@ -68,7 +60,7 @@ export const actions: Actions = {
     const formData = await request.formData();
     const membershipId = formData.get('membershipId') as string;
 
-    const orgId = await resolveOrgId(apiClientV3, params.orgSlug);
+    const orgId = await resolveOrgIdBySlug(apiClientV3, params.orgSlug);
     if (!orgId) return fail(404, { error: 'Organization not found' });
 
     try {
@@ -87,7 +79,7 @@ export const actions: Actions = {
     const maxUsesRaw = formData.get('maxUses') as string;
     const expiresAtRaw = formData.get('expiresAt') as string;
 
-    const orgId = await resolveOrgId(apiClientV3, params.orgSlug);
+    const orgId = await resolveOrgIdBySlug(apiClientV3, params.orgSlug);
     if (!orgId) return fail(404, { error: 'Organization not found' });
 
     try {
@@ -107,7 +99,7 @@ export const actions: Actions = {
     const formData = await request.formData();
     const linkId = formData.get('linkId') as string;
 
-    const orgId = await resolveOrgId(apiClientV3, params.orgSlug);
+    const orgId = await resolveOrgIdBySlug(apiClientV3, params.orgSlug);
     if (!orgId) return fail(404, { error: 'Organization not found' });
 
     try {

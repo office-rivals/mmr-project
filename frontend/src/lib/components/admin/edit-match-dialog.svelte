@@ -5,6 +5,7 @@
   import * as Dialog from '$lib/components/ui/dialog';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
+  import { getPlayerDisplayName } from '$lib/utils';
   import type { LeaguePlayerResponse, MatchResponse } from '$api3';
 
   interface Props {
@@ -23,64 +24,55 @@
     formAction = '?/edit',
   }: Props = $props();
 
-  // Local editable state, hydrated from the match prop each time the dialog opens.
   type SlotState = { leaguePlayerId: string };
   type TeamState = { players: SlotState[]; score: number };
 
   let teams = $state<TeamState[]>([]);
   let formError = $state<string | null>(null);
 
-  function hydrate(source: MatchResponse) {
-    teams = source.teams
-      .slice()
-      .sort((a, b) => a.index - b.index)
-      .map((team) => ({
-        players: team.players
-          .slice()
-          .sort((a, b) => a.index - b.index)
-          .map((p) => ({ leaguePlayerId: p.leaguePlayerId })),
-        score: team.score,
-      }));
-  }
-
   $effect(() => {
     if (open && match) {
-      hydrate(match);
+      teams = match.teams
+        .slice()
+        .sort((a, b) => a.index - b.index)
+        .map((team) => ({
+          players: team.players
+            .slice()
+            .sort((a, b) => a.index - b.index)
+            .map((p) => ({ leaguePlayerId: p.leaguePlayerId })),
+          score: team.score,
+        }));
       formError = null;
     }
   });
 
-  const playerName = (id: string) => {
-    const p = leaguePlayers.find((lp) => lp.id === id);
-    return p?.displayName ?? p?.username ?? 'Unknown';
-  };
+  const playerName = (id: string) =>
+    getPlayerDisplayName(leaguePlayers.find((lp) => lp.id === id));
 
-  const allChosenIds = $derived(
-    teams.flatMap((t) => t.players.map((p) => p.leaguePlayerId))
-  );
-
-  function isDuplicate(): boolean {
+  const duplicate = $derived.by(() => {
     const seen = new Set<string>();
-    for (const id of allChosenIds) {
-      if (!id) return true;
-      if (seen.has(id)) return true;
-      seen.add(id);
+    for (const team of teams) {
+      for (const slot of team.players) {
+        if (!slot.leaguePlayerId) return true;
+        if (seen.has(slot.leaguePlayerId)) return true;
+        seen.add(slot.leaguePlayerId);
+      }
     }
     return false;
-  }
+  });
 
-  function payload(): string {
-    return JSON.stringify(
+  // Number inputs bound via `bind:value` return strings; coerce so the server
+  // parser sees a numeric `score`.
+  const payload = $derived(
+    JSON.stringify(
       teams.map((team) => ({
-        // Number inputs bound through `bind:value` come back as strings in
-        // Svelte; force-coerce so the server-side parser accepts them.
         score: Number(team.score),
         players: team.players.map((p) => ({
           leaguePlayerId: p.leaguePlayerId,
         })),
       }))
-    );
-  }
+    )
+  );
 </script>
 
 <Dialog.Root {open} {onOpenChange}>
@@ -99,7 +91,6 @@
         No match selected.
       </p>
     {:else}
-      {@const duplicate = isDuplicate()}
       <form
         method="POST"
         action={formAction}
@@ -117,7 +108,7 @@
         class="space-y-5"
       >
         <input type="hidden" name="matchId" value={match.id} />
-        <input type="hidden" name="teams" value={payload()} />
+        <input type="hidden" name="teams" value={payload} />
 
         {#if formError}
           <Alert variant="destructive">{formError}</Alert>

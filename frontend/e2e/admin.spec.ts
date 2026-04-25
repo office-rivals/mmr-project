@@ -29,8 +29,6 @@ test.describe('Org admin overview', () => {
     ).toBeVisible();
     await expect(page.getByText('Open match flags')).toBeVisible();
 
-    // The leagues card lists the seeded league with a clickable link
-    // forwarding to the league admin overview.
     const leagueRow = page.getByRole('link', { name: /Test League/ });
     await expect(leagueRow).toBeVisible();
     await leagueRow.click();
@@ -155,7 +153,6 @@ test.describe('League admin', () => {
 test.describe('Admin navigation chrome', () => {
   test('admin shell exposes Open Org and Exit Admin', async ({ page }) => {
     await page.goto(ORG_ADMIN);
-    // The header has a single "Admin" link that points at /admin (the home).
     await expect(
       page.getByRole('link', { name: 'Admin', exact: true })
     ).toBeVisible();

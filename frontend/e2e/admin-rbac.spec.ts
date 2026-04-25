@@ -19,19 +19,13 @@ test.describe('Admin RBAC', () => {
   }) => {
     await page.goto(ADMIN_HOME);
 
-    // The owned org is shown.
     await expect(
       page.getByRole('link', { name: /Test Org/ }).first()
     ).toBeVisible();
 
-    // Member-only orgs do NOT show up in the administerable list. The page
-    // surfaces a hint paragraph when the user has Member-only orgs that are
-    // hidden — match a stable substring rather than the full sentence.
     await expect(
       page.getByText(/Member in some organizations that aren't shown here/i)
     ).toBeVisible();
-
-    // The org's link must not appear.
     await expect(
       page.getByRole('link', { name: new RegExp(NON_ADMIN_ORG_NAME) })
     ).toHaveCount(0);
@@ -42,7 +36,6 @@ test.describe('Admin RBAC', () => {
   }) => {
     const response = await page.goto(`/admin/${NON_ADMIN_ORG_SLUG}`);
     expect(response?.status()).toBe(403);
-    // SvelteKit's default error page surfaces the message verbatim.
     await expect(page.getByText(/Owner or Moderator role/i)).toBeVisible();
   });
 

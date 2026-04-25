@@ -19,20 +19,15 @@
     RefreshCw,
     Trash2,
   } from 'lucide-svelte';
+  import { formatDateTime, getPlayerDisplayName } from '$lib/utils';
   import type { MatchResponse } from '$api3';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
-  function formatDateTime(d: string): string {
-    return new Date(d).toLocaleString();
-  }
-
-  function teamPlayers(
+  const teamPlayers = (
     players: { displayName?: string; username?: string }[]
-  ): string {
-    return players.map((p) => p.displayName ?? p.username ?? '?').join(' & ');
-  }
+  ) => players.map((p) => getPlayerDisplayName(p, '?')).join(' & ');
 
   const prevOffset = $derived(Math.max(0, data.offset - data.pageSize));
   const nextOffset = $derived(data.offset + data.pageSize);

@@ -7,6 +7,23 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function formatDate(d: string | null | undefined): string {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString();
+}
+
+export function formatDateTime(d: string | null | undefined): string {
+  if (!d) return '—';
+  return new Date(d).toLocaleString();
+}
+
+export function getPlayerDisplayName(
+  p: { displayName?: string | null; username?: string | null } | null | undefined,
+  fallback = 'Unknown'
+): string {
+  return p?.displayName ?? p?.username ?? fallback;
+}
+
 type FlyAndScaleParams = {
   y?: number;
   x?: number;

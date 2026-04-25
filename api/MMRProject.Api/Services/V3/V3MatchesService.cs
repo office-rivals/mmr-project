@@ -42,23 +42,7 @@ public class V3MatchesService(
 
         var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
 
-        var resolvedTeams = new List<List<LeaguePlayer>>();
-        foreach (var team in request.Teams)
-        {
-            var resolvedPlayers = new List<LeaguePlayer>();
-            foreach (var player in team.Players)
-            {
-                resolvedPlayers.Add(await ResolveLeaguePlayerAsync(orgId, leagueId, player));
-            }
-
-            resolvedTeams.Add(resolvedPlayers);
-        }
-
-        var allPlayerIds = resolvedTeams.SelectMany(t => t).Select(lp => lp.Id).ToList();
-        var uniquePlayerIds = allPlayerIds.Distinct().ToList();
-        if (uniquePlayerIds.Count != allPlayerIds.Count)
-            throw new InvalidArgumentException("Players must be unique across all teams");
-
+        var resolvedTeams = await ResolveAndValidateTeamsAsync(orgId, leagueId, request);
         var leaguePlayers = resolvedTeams.SelectMany(t => t)
             .GroupBy(lp => lp.Id)
             .Select(g => g.First())
@@ -76,6 +60,49 @@ public class V3MatchesService(
             RecordedAt = now,
         };
 
+        foreach (var team in BuildMatchTeams(orgId, leagueId, request, resolvedTeams))
+        {
+            match.Teams.Add(team);
+        }
+
+        dbContext.Set<V3Match>().Add(match);
+        await dbContext.SaveChangesAsync();
+
+        await CalculateAndApplyMmr(orgId, match, leaguePlayers);
+        await transaction.CommitAsync();
+
+        return await LoadAndMapMatch(orgId, leagueId, match.Id);
+    }
+
+    private async Task<List<List<LeaguePlayer>>> ResolveAndValidateTeamsAsync(
+        Guid orgId, Guid leagueId, SubmitMatchRequest request)
+    {
+        var resolvedTeams = new List<List<LeaguePlayer>>();
+        foreach (var team in request.Teams)
+        {
+            var resolvedPlayers = new List<LeaguePlayer>();
+            foreach (var player in team.Players)
+            {
+                resolvedPlayers.Add(await ResolveLeaguePlayerAsync(orgId, leagueId, player));
+            }
+
+            resolvedTeams.Add(resolvedPlayers);
+        }
+
+        var allPlayerIds = resolvedTeams.SelectMany(t => t).Select(lp => lp.Id).ToList();
+        if (allPlayerIds.Distinct().Count() != allPlayerIds.Count)
+            throw new InvalidArgumentException("Players must be unique across all teams");
+
+        return resolvedTeams;
+    }
+
+    private static IEnumerable<MatchTeam> BuildMatchTeams(
+        Guid orgId,
+        Guid leagueId,
+        SubmitMatchRequest request,
+        List<List<LeaguePlayer>> resolvedTeams,
+        Guid? matchId = null)
+    {
         var maxScore = request.Teams.Max(t => t.Score);
         var winnerCount = request.Teams.Count(t => t.Score == maxScore);
 
@@ -83,7 +110,6 @@ public class V3MatchesService(
         {
             var teamRequest = request.Teams[teamIndex];
             var resolvedPlayers = resolvedTeams[teamIndex];
-            var isWinner = winnerCount == 1 && teamRequest.Score == maxScore;
 
             var matchTeam = new MatchTeam
             {
@@ -91,8 +117,9 @@ public class V3MatchesService(
                 LeagueId = leagueId,
                 Index = teamIndex,
                 Score = teamRequest.Score,
-                IsWinner = isWinner,
+                IsWinner = winnerCount == 1 && teamRequest.Score == maxScore,
             };
+            if (matchId.HasValue) matchTeam.MatchId = matchId.Value;
 
             for (var playerIndex = 0; playerIndex < resolvedPlayers.Count; playerIndex++)
             {
@@ -105,16 +132,8 @@ public class V3MatchesService(
                 });
             }
 
-            match.Teams.Add(matchTeam);
+            yield return matchTeam;
         }
-
-        dbContext.Set<V3Match>().Add(match);
-        await dbContext.SaveChangesAsync();
-
-        await CalculateAndApplyMmr(orgId, match, leaguePlayers);
-        await transaction.CommitAsync();
-
-        return await LoadAndMapMatch(orgId, leagueId, match.Id);
     }
 
     private async Task<LeaguePlayer> ResolveLeaguePlayerAsync(
@@ -289,8 +308,7 @@ public class V3MatchesService(
 
     public async Task<MatchResponse> UpdateMatchAsync(Guid orgId, Guid leagueId, Guid matchId, SubmitMatchRequest request)
     {
-        // Resolve season and validate match in a no-tracking pass first; we'll
-        // re-fetch the tracked entity once we've deleted the old teams.
+        // No-tracking validation pass — we re-fetch as tracked once child rows are gone.
         var match = await dbContext.Set<V3Match>()
             .AsNoTracking()
             .FirstOrDefaultAsync(m => m.OrganizationId == orgId && m.LeagueId == leagueId && m.Id == matchId)
@@ -302,25 +320,12 @@ public class V3MatchesService(
         if (match.SeasonId != currentSeason.Id)
             throw new InvalidArgumentException("Only matches in the current season can be edited");
 
-        var resolvedTeams = new List<List<LeaguePlayer>>();
-        foreach (var team in request.Teams)
-        {
-            var resolvedPlayers = new List<LeaguePlayer>();
-            foreach (var player in team.Players)
-            {
-                resolvedPlayers.Add(await ResolveLeaguePlayerAsync(orgId, leagueId, player));
-            }
-            resolvedTeams.Add(resolvedPlayers);
-        }
-
-        var allPlayerIds = resolvedTeams.SelectMany(t => t).Select(lp => lp.Id).ToList();
-        if (allPlayerIds.Distinct().Count() != allPlayerIds.Count)
-            throw new InvalidArgumentException("Players must be unique across all teams");
+        var resolvedTeams = await ResolveAndValidateTeamsAsync(orgId, leagueId, request);
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync();
 
-        // Hard-delete old team players and teams via raw delete commands so EF's
-        // change tracker stays out of the way. Rating history for this match is
+        // Raw delete the old child rows so EF's change tracker doesn't fight when
+        // we add the rebuilt teams. Rating history for this match is intentionally
         // left untouched — the caller invokes recalc afterwards.
         var teamIds = await dbContext.Set<MatchTeam>()
             .Where(t => t.MatchId == matchId)
@@ -334,42 +339,13 @@ public class V3MatchesService(
             .Where(t => t.MatchId == matchId)
             .ExecuteDeleteAsync();
 
-        // Re-fetch as a tracked entity now that the old child rows are gone.
         var trackedMatch = await dbContext.Set<V3Match>()
             .FirstOrDefaultAsync(m => m.Id == matchId)
             ?? throw new NotFoundException("Match disappeared during update");
 
-        var maxScore = request.Teams.Max(t => t.Score);
-        var winnerCount = request.Teams.Count(t => t.Score == maxScore);
-
-        for (var teamIndex = 0; teamIndex < request.Teams.Count; teamIndex++)
+        foreach (var team in BuildMatchTeams(orgId, leagueId, request, resolvedTeams, trackedMatch.Id))
         {
-            var teamRequest = request.Teams[teamIndex];
-            var resolvedPlayers = resolvedTeams[teamIndex];
-            var isWinner = winnerCount == 1 && teamRequest.Score == maxScore;
-
-            var matchTeam = new MatchTeam
-            {
-                OrganizationId = orgId,
-                LeagueId = leagueId,
-                MatchId = trackedMatch.Id,
-                Index = teamIndex,
-                Score = teamRequest.Score,
-                IsWinner = isWinner,
-            };
-
-            for (var playerIndex = 0; playerIndex < resolvedPlayers.Count; playerIndex++)
-            {
-                matchTeam.Players.Add(new MatchTeamPlayer
-                {
-                    OrganizationId = orgId,
-                    LeagueId = leagueId,
-                    LeaguePlayerId = resolvedPlayers[playerIndex].Id,
-                    Index = playerIndex,
-                });
-            }
-
-            dbContext.Set<MatchTeam>().Add(matchTeam);
+            dbContext.Set<MatchTeam>().Add(team);
         }
 
         trackedMatch.RecordedAt = DateTimeOffset.UtcNow;
