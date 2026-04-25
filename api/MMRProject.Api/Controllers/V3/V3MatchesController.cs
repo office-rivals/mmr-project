@@ -26,9 +26,10 @@ public class V3MatchesController(IV3MatchesService matchesService) : ControllerB
     [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
     public async Task<ActionResult<List<MatchResponse>>> GetMatches(
         [FromRoute] Guid orgId, [FromRoute] Guid leagueId,
-        [FromQuery] Guid? seasonId, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
+        [FromQuery] Guid? seasonId, [FromQuery] Guid? leaguePlayerId,
+        [FromQuery] int limit = 50, [FromQuery] int offset = 0)
     {
-        return await matchesService.GetMatchesAsync(orgId, leagueId, seasonId, limit, offset);
+        return await matchesService.GetMatchesAsync(orgId, leagueId, seasonId, leaguePlayerId, limit, offset);
     }
 
     [HttpGet("{matchId:guid}")]

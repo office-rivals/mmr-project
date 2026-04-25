@@ -60,6 +60,7 @@ builder.Services.AddScoped<IV3SeasonService, V3SeasonService>();
 builder.Services.AddScoped<IV3MatchesService, V3MatchesService>();
 builder.Services.AddScoped<IV3LeaderboardService, V3LeaderboardService>();
 builder.Services.AddScoped<IV3RatingHistoryService, V3RatingHistoryService>();
+builder.Services.AddScoped<IV3StatisticsService, V3StatisticsService>();
 builder.Services.AddScoped<IV3MatchMakingService, V3MatchMakingService>();
 builder.Services.AddScoped<IV3PendingMatchCoordinator, V3PendingMatchCoordinator>();
 builder.Services.AddScoped<IV3PersonalAccessTokenService, V3PersonalAccessTokenService>();

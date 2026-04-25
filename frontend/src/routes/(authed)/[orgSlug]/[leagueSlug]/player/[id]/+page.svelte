@@ -1,13 +1,28 @@
 <script lang="ts">
   import Kpi from '$lib/components/kpi.svelte';
+  import MatchCard from '$lib/components/match-card/match-card.svelte';
   import PageTitle from '$lib/components/page-title.svelte';
-  import LineChart from '$lib/components/ui/line-chart/line-chart.svelte';
-  import * as Dialog from '$lib/components/ui/dialog';
-  import { Button } from '$lib/components/ui/button';
+  import SeasonPicker from '$lib/components/season-picker.svelte';
   import { Alert } from '$lib/components/ui/alert';
+  import { Button } from '$lib/components/ui/button';
+  import * as Card from '$lib/components/ui/card';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import LineChart from '$lib/components/ui/line-chart/line-chart.svelte';
+  import * as Table from '$lib/components/ui/table';
   import { enhance } from '$app/forms';
-  import { Flag, Trash2, CheckCircle, AlertCircle } from 'lucide-svelte';
-  import type { PageData, ActionData } from './$types';
+  import {
+    AlertCircle,
+    CheckCircle,
+    Flag,
+    Handshake,
+    Settings,
+    Swords,
+    Trash2,
+    X,
+  } from 'lucide-svelte';
+  import { SignOutButton } from 'svelte-clerk';
+  import type { ActionData, PageData } from './$types';
+  import Filter from './components/filter.svelte';
 
   interface Props {
     data: PageData;
@@ -16,29 +31,45 @@
 
   let { data, form }: Props = $props();
 
+  const winRateFormatter = new Intl.NumberFormat(undefined, {
+    style: 'percent',
+    maximumFractionDigits: 0,
+  });
+
   let flagDialogOpen = $state(false);
   let flagMatchId = $state('');
   let flagReason = $state('');
   let editingFlagId = $state<string | null>(null);
   let deleteConfirmOpen = $state(false);
 
+  let filteredPlayers: string[] = $state([]);
+  const playerName = $derived(
+    data.player.displayName ?? data.player.username ?? 'Player'
+  );
+
+  const matches = $derived(
+    (data.matches ?? []).filter((match) => {
+      if (filteredPlayers.length === 0) return true;
+      return filteredPlayers.every((id) =>
+        match.teams.some((t) =>
+          t.players.some((p) => p.leaguePlayerId === id)
+        )
+      );
+    })
+  );
+
   const chartData = $derived(
-    data.ratingHistory?.entries?.map(
-      (e: { recordedAt: string; mmr: number }) => ({
-        date: e.recordedAt,
-        player: data.player.displayName ?? data.player.username ?? 'Player',
-        rating: e.mmr,
-      })
-    ) ?? []
+    data.ratingHistory?.entries?.map((e) => ({
+      date: e.recordedAt,
+      player: playerName,
+      rating: e.mmr,
+    })) ?? []
   );
 
   const profileSuffix = data.isCurrentUser ? ' - You' : '';
 
-  const myFlagForMatch = (matchId: string) => {
-    return data.myFlags?.find(
-      (f: { matchId: string }) => f.matchId === matchId
-    );
-  };
+  const myFlagForMatch = (matchId: string) =>
+    data.myFlags?.find((f: { matchId: string }) => f.matchId === matchId);
 
   function openFlagDialog(matchId: string) {
     const existing = myFlagForMatch(matchId);
@@ -59,14 +90,19 @@
     flagReason = '';
     editingFlagId = null;
   }
+
+  const playerHref = (leaguePlayerId: string) =>
+    `/${data.orgSlug}/${data.leagueSlug}/player/${leaguePlayerId}`;
+
+  const findPlayer = (id: string) =>
+    data.players.find((p) => p.id === id);
 </script>
 
 <div class="flex flex-col gap-6">
   {#if data.player?.displayName}
-    <PageTitle
-      >{data.player.displayName} ({data.player
-        .username}){profileSuffix}</PageTitle
-    >
+    <PageTitle>
+      {data.player.displayName} ({data.player.username}){profileSuffix}
+    </PageTitle>
   {:else}
     <PageTitle>{data.player?.username ?? 'Player'}{profileSuffix}</PageTitle>
   {/if}
@@ -87,17 +123,49 @@
     </Alert>
   {/if}
 
+  {#if data.isCurrentUser}
+    <div class="flex justify-end gap-2">
+      <Button href="/settings" class="gap-2" variant="outline">
+        <Settings size={16} />
+        Settings
+      </Button>
+      <SignOutButton>
+        <Button variant="secondary">Logout</Button>
+      </SignOutButton>
+    </div>
+  {/if}
+
+  {#if data.seasons != null && data.seasons.length > 1 && data.currentSeason}
+    <div class="self-end">
+      <SeasonPicker seasons={data.seasons} currentSeason={data.currentSeason} />
+    </div>
+  {/if}
+
   <div class="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
-    <Kpi title="MMR">{data.stats.mmr ?? 'N/A'}</Kpi>
+    <Kpi title="MMR">{data.stats.mmr ?? '🐣'}</Kpi>
     <Kpi title="# Matches">{data.stats.totalMatches}</Kpi>
     <Kpi title="# Wins">{data.stats.wins}</Kpi>
-    <Kpi title="# Losses">{data.stats.losses}</Kpi>
+    <Kpi title="# Losses">{data.stats.lost}</Kpi>
     <Kpi title="Win rate">
       {new Intl.NumberFormat(undefined, {
         style: 'percent',
         maximumFractionDigits: 1,
       }).format(data.stats.winrate)}
     </Kpi>
+    {#if data.stats.daysSinceLastMatch != null}
+      <Kpi title="Last match">
+        {new Intl.RelativeTimeFormat(undefined, {
+          style: 'narrow',
+          numeric: data.stats.daysSinceLastMatch !== 0 ? 'always' : 'auto',
+        }).format(data.stats.daysSinceLastMatch, 'day')}
+      </Kpi>
+    {/if}
+    {#if data.stats.winningStreak > 0 || data.stats.losingStreak > 0}
+      <Kpi title="Streak">
+        {#if data.stats.winningStreak > 0}🔥 {data.stats.winningStreak}{/if}
+        {#if data.stats.losingStreak > 0}{data.stats.losingStreak >= 7 ? '⛈️' : '🌧️'} {data.stats.losingStreak}{/if}
+      </Kpi>
+    {/if}
   </div>
 
   {#if chartData.length > 0}
@@ -105,45 +173,178 @@
     <LineChart data={chartData} height={300} legend={false} />
   {/if}
 
-  {#if data.matches.length > 0}
-    <h2 class="text-2xl md:text-4xl">Matches</h2>
-    <div class="flex flex-1 flex-col items-stretch gap-2">
-      {#each data.matches as match}
-        {@const existingFlag = myFlagForMatch(match.id)}
-        <div
-          class="rounded-lg border bg-card p-3 {existingFlag
-            ? 'border-red-400'
-            : ''}"
+  {#if data.opponents.length > 0}
+    <Card.Root>
+      <Card.Content class="flex flex-col p-0 md:p-6">
+        <h2
+          class="flex items-center space-x-2 px-4 py-3 text-xl md:p-0 md:text-2xl"
         >
-          <div class="flex items-center justify-between text-sm">
-            {#each match.teams as team}
-              <div class="flex flex-col items-center gap-1">
-                <span class="text-lg font-bold">{team.score}</span>
-                {#each team.players as player}
+          <Swords /><span>Most common opponents</span>
+        </h2>
+        <Table.Root>
+          <Table.Header>
+            <Table.Row>
+              <Table.Head>Player</Table.Head>
+              <Table.Head>
+                <span class="sm:hidden">W</span>
+                <span class="hidden sm:inline">Wins</span>
+              </Table.Head>
+              <Table.Head>
+                <span class="sm:hidden">L</span>
+                <span class="hidden sm:inline">Losses</span>
+              </Table.Head>
+              <Table.Head class="text-right">Win %</Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {#each data.opponents as opp (opp.leaguePlayerId)}
+              <Table.Row>
+                <Table.Cell>
                   <a
-                    href="/{data.orgSlug}/{data.leagueSlug}/player/{player.leaguePlayerId}"
                     class="hover:underline"
+                    href={playerHref(opp.leaguePlayerId)}
                   >
-                    {player.displayName ?? player.username ?? 'Unknown'}
+                    <div class="flex flex-col items-start">
+                      {#if opp.displayName}
+                        <span class="hidden w-full truncate sm:block">
+                          {opp.displayName}
+                        </span>
+                      {/if}
+                      <span class="block">
+                        {opp.username ?? opp.displayName ?? 'Unknown'}
+                      </span>
+                    </div>
                   </a>
-                {/each}
-                {#if team.isWinner}
-                  <span class="text-xs font-semibold text-primary">Winner</span>
-                {/if}
-              </div>
+                </Table.Cell>
+                <Table.Cell>{opp.wins}</Table.Cell>
+                <Table.Cell>{opp.losses}</Table.Cell>
+                <Table.Cell class="text-right">
+                  {winRateFormatter.format(
+                    opp.total > 0 ? opp.wins / opp.total : 0
+                  )}
+                </Table.Cell>
+              </Table.Row>
             {/each}
-            <button
-              class="ml-2 rounded p-1 transition-colors hover:bg-muted {existingFlag
-                ? 'text-red-500'
-                : 'text-muted-foreground'}"
-              title={existingFlag ? 'Edit flag' : 'Flag this match'}
-              onclick={() => openFlagDialog(match.id)}
-            >
-              <Flag class="h-4 w-4" />
-            </button>
-          </div>
+          </Table.Body>
+        </Table.Root>
+      </Card.Content>
+    </Card.Root>
+  {/if}
+
+  {#if data.teammates.length > 0}
+    <Card.Root>
+      <Card.Content class="flex flex-col p-0 md:p-6">
+        <h2
+          class="flex items-center space-x-2 px-4 py-3 text-xl md:p-0 md:text-2xl"
+        >
+          <Handshake /><span>Most common teammates</span>
+        </h2>
+        <Table.Root>
+          <Table.Header>
+            <Table.Row>
+              <Table.Head>Player</Table.Head>
+              <Table.Head>
+                <span class="sm:hidden">W</span>
+                <span class="hidden sm:inline">Wins</span>
+              </Table.Head>
+              <Table.Head>
+                <span class="sm:hidden">L</span>
+                <span class="hidden sm:inline">Losses</span>
+              </Table.Head>
+              <Table.Head class="text-right">Win %</Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {#each data.teammates as tm (tm.leaguePlayerId)}
+              <Table.Row>
+                <Table.Cell>
+                  <a
+                    class="hover:underline"
+                    href={playerHref(tm.leaguePlayerId)}
+                  >
+                    <div class="flex flex-col items-start">
+                      {#if tm.displayName}
+                        <span class="hidden w-full truncate sm:block">
+                          {tm.displayName}
+                        </span>
+                      {/if}
+                      <span class="block">
+                        {tm.username ?? tm.displayName ?? 'Unknown'}
+                      </span>
+                    </div>
+                  </a>
+                </Table.Cell>
+                <Table.Cell>{tm.wins}</Table.Cell>
+                <Table.Cell>{tm.losses}</Table.Cell>
+                <Table.Cell class="text-right">
+                  {winRateFormatter.format(
+                    tm.total > 0 ? tm.wins / tm.total : 0
+                  )}
+                </Table.Cell>
+              </Table.Row>
+            {/each}
+          </Table.Body>
+        </Table.Root>
+      </Card.Content>
+    </Card.Root>
+  {/if}
+
+  {#if data.matches.length > 0}
+    <div class="flex flex-col gap-3">
+      <div class="flex items-center gap-3">
+        <h2 class="text-2xl md:text-4xl">Matches</h2>
+      </div>
+      <div class="flex flex-col space-y-2">
+        <Filter
+          players={data.players ?? []}
+          onSelected={(id) => (filteredPlayers = [...filteredPlayers, id])}
+        />
+        <div class="flex flex-wrap gap-1">
+          {#each filteredPlayers as id (id)}
+            {@const p = findPlayer(id)}
+            {#if p != null}
+              <div
+                class="bg-secondary text-secondary-foreground flex items-center space-x-2 rounded-md p-2 text-sm"
+              >
+                <span>{p.displayName ?? p.username ?? 'Unknown'}</span>
+                <button
+                  onclick={() => {
+                    filteredPlayers = filteredPlayers.filter(
+                      (pid) => pid !== id
+                    );
+                  }}
+                >
+                  <X class="h-4 w-4" />
+                </button>
+              </div>
+            {/if}
+          {/each}
         </div>
-      {/each}
+      </div>
+      <div class="flex flex-1 flex-col items-stretch gap-2">
+        {#if matches.length === 0}
+          <p>No matches found</p>
+        {/if}
+        {#each matches as match (match.id)}
+          {@const existingFlag = myFlagForMatch(match.id)}
+          <div class="rounded-lg {existingFlag ? 'ring-1 ring-red-400' : ''}">
+            <div class="flex items-stretch gap-1">
+              <div class="flex-1">
+                <MatchCard {match} showMmr />
+              </div>
+              <button
+                class="rounded p-2 transition-colors hover:bg-muted {existingFlag
+                  ? 'text-red-500'
+                  : 'text-muted-foreground'}"
+                title={existingFlag ? 'Edit flag' : 'Flag this match'}
+                onclick={() => openFlagDialog(match.id)}
+              >
+                <Flag class="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        {/each}
+      </div>
     </div>
   {/if}
 </div>

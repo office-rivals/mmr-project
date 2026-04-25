@@ -1,10 +1,14 @@
 <script lang="ts">
-  import type { UserDetails } from '$api';
   import { cn } from '$lib/utils';
   import type { HTMLAttributes } from 'svelte/elements';
 
+  interface PlayerLike {
+    displayName?: string;
+    username?: string;
+  }
+
   interface Props extends HTMLAttributes<HTMLButtonElement> {
-    user: UserDetails;
+    user: PlayerLike;
   }
 
   let { user, class: className = undefined, ...rest }: Props = $props();
@@ -19,11 +23,9 @@
   type="button"
 >
   <p class="line-clamp-1 text-sm md:text-base">
-    {user.displayName ?? user.name}
+    {user.displayName ?? user.username ?? 'Unknown'}
   </p>
-  <p class="text-xs">
-    {#if user.displayName != null}
-      {user.name}
-    {/if}
-  </p>
+  {#if user.displayName != null && user.username != null}
+    <p class="text-xs">{user.username}</p>
+  {/if}
 </button>

@@ -23,6 +23,8 @@ import type {
   MatchResponse,
   LeaderboardResponse,
   RatingHistoryResponse,
+  LeagueRatingHistoryResponse,
+  TimeDistributionResponse,
   QueueStatusResponse,
   PendingMatchResponse,
   ActiveMatchResponse,
@@ -156,9 +158,10 @@ export class V3MatchesApi extends runtime.BaseAPI {
     return await response.json();
   }
 
-  async getMatches(orgId: string, leagueId: string, params?: { seasonId?: string; limit?: number; offset?: number }): Promise<MatchResponse[]> {
+  async getMatches(orgId: string, leagueId: string, params?: { seasonId?: string; leaguePlayerId?: string; limit?: number; offset?: number }): Promise<MatchResponse[]> {
     const query: runtime.HTTPQuery = {};
     if (params?.seasonId) query['seasonId'] = params.seasonId;
+    if (params?.leaguePlayerId) query['leaguePlayerId'] = params.leaguePlayerId;
     if (params?.limit !== undefined) query['limit'] = params.limit;
     if (params?.offset !== undefined) query['offset'] = params.offset;
     const response = await this.request({ path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/matches`, method: 'GET', headers: {}, query });
@@ -191,6 +194,13 @@ export class V3RatingHistoryApi extends runtime.BaseAPI {
     const query: runtime.HTTPQuery = {};
     if (seasonId) query['seasonId'] = seasonId;
     const response = await this.request({ path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/rating-history/${leaguePlayerId}`, method: 'GET', headers: {}, query });
+    return await response.json();
+  }
+
+  async getLeagueHistory(orgId: string, leagueId: string, seasonId?: string): Promise<LeagueRatingHistoryResponse> {
+    const query: runtime.HTTPQuery = {};
+    if (seasonId) query['seasonId'] = seasonId;
+    const response = await this.request({ path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/rating-history`, method: 'GET', headers: {}, query });
     return await response.json();
   }
 }
@@ -337,5 +347,15 @@ export class V3PersonalAccessTokensApi extends runtime.BaseAPI {
 
   async revokeToken(tokenId: string): Promise<void> {
     await this.request({ path: `/api/v3/me/tokens/${tokenId}`, method: 'DELETE', headers: {} });
+  }
+}
+
+// Statistics API
+export class V3StatisticsApi extends runtime.BaseAPI {
+  async getTimeDistribution(orgId: string, leagueId: string, seasonId?: string): Promise<TimeDistributionResponse> {
+    const query: runtime.HTTPQuery = {};
+    if (seasonId) query['seasonId'] = seasonId;
+    const response = await this.request({ path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/statistics/time-distribution`, method: 'GET', headers: {}, query });
+    return await response.json();
   }
 }

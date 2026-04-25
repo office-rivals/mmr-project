@@ -14,7 +14,7 @@ public interface IV3MatchesService
 {
     Task<MatchResponse> SubmitMatchAsync(Guid orgId, Guid leagueId, SubmitMatchRequest request,
         MatchSource source = MatchSource.Manual);
-    Task<List<MatchResponse>> GetMatchesAsync(Guid orgId, Guid leagueId, Guid? seasonId, int limit = 50, int offset = 0);
+    Task<List<MatchResponse>> GetMatchesAsync(Guid orgId, Guid leagueId, Guid? seasonId, Guid? leaguePlayerId = null, int limit = 50, int offset = 0);
     Task<MatchResponse> GetMatchAsync(Guid orgId, Guid leagueId, Guid matchId);
     Task DeleteMatchAsync(Guid orgId, Guid leagueId, Guid matchId);
 }
@@ -244,7 +244,7 @@ public class V3MatchesService(
         return leaguePlayer;
     }
 
-    public async Task<List<MatchResponse>> GetMatchesAsync(Guid orgId, Guid leagueId, Guid? seasonId, int limit = 50, int offset = 0)
+    public async Task<List<MatchResponse>> GetMatchesAsync(Guid orgId, Guid leagueId, Guid? seasonId, Guid? leaguePlayerId = null, int limit = 50, int offset = 0)
     {
         var query = dbContext.Set<V3Match>()
             .AsNoTracking()
@@ -258,8 +258,12 @@ public class V3MatchesService(
         if (seasonId.HasValue)
             query = query.Where(m => m.SeasonId == seasonId.Value);
 
+        if (leaguePlayerId.HasValue)
+            query = query.Where(m => m.Teams.Any(t => t.Players.Any(p => p.LeaguePlayerId == leaguePlayerId.Value)));
+
         var matches = await query
             .OrderByDescending(m => m.PlayedAt)
+            .ThenByDescending(m => m.RecordedAt)
             .Skip(offset)
             .Take(limit)
             .ToListAsync();

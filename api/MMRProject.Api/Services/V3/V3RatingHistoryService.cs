@@ -9,10 +9,13 @@ namespace MMRProject.Api.Services.V3;
 public interface IV3RatingHistoryService
 {
     Task<RatingHistoryResponse> GetPlayerHistoryAsync(Guid orgId, Guid leagueId, Guid leaguePlayerId, Guid? seasonId);
+    Task<LeagueRatingHistoryResponse> GetLeagueHistoryAsync(Guid orgId, Guid leagueId, Guid? seasonId);
 }
 
 public class V3RatingHistoryService(ApiDbContext dbContext) : IV3RatingHistoryService
 {
+    private const int RankedMatchThreshold = 10;
+
     public async Task<RatingHistoryResponse> GetPlayerHistoryAsync(Guid orgId, Guid leagueId, Guid leaguePlayerId, Guid? seasonId)
     {
         var playerExists = await dbContext.Set<LeaguePlayer>()
@@ -42,5 +45,47 @@ public class V3RatingHistoryService(ApiDbContext dbContext) : IV3RatingHistorySe
             .ToListAsync();
 
         return new RatingHistoryResponse { Entries = histories };
+    }
+
+    public async Task<LeagueRatingHistoryResponse> GetLeagueHistoryAsync(Guid orgId, Guid leagueId, Guid? seasonId)
+    {
+        var query = dbContext.Set<RatingHistory>()
+            .AsNoTracking()
+            .Include(rh => rh.Match)
+            .Include(rh => rh.LeaguePlayer)
+            .Where(rh => rh.OrganizationId == orgId && rh.LeaguePlayer.LeagueId == leagueId);
+
+        if (seasonId.HasValue)
+            query = query.Where(rh => rh.Match.SeasonId == seasonId.Value);
+
+        var rows = await query
+            .OrderBy(rh => rh.Match.RecordedAt)
+            .Select(rh => new
+            {
+                rh.LeaguePlayerId,
+                rh.MatchId,
+                rh.Mmr,
+                rh.Match.RecordedAt,
+            })
+            .ToListAsync();
+
+        var includedPlayerIds = rows
+            .GroupBy(r => r.LeaguePlayerId)
+            .Where(g => g.Count() >= RankedMatchThreshold)
+            .Select(g => g.Key)
+            .ToHashSet();
+
+        var entries = rows
+            .Where(r => includedPlayerIds.Contains(r.LeaguePlayerId))
+            .Select(r => new LeagueRatingHistoryEntry
+            {
+                LeaguePlayerId = r.LeaguePlayerId,
+                MatchId = r.MatchId,
+                Mmr = r.Mmr,
+                RecordedAt = r.RecordedAt,
+            })
+            .ToList();
+
+        return new LeagueRatingHistoryResponse { Entries = entries };
     }
 }

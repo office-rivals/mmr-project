@@ -202,10 +202,14 @@ export interface LeaderboardEntryResponse {
   leaguePlayerId: string;
   displayName?: string;
   username?: string;
-  mmr: number;
+  mmr: number | null;
   mu: number;
   sigma: number;
   rank: number;
+  wins: number;
+  losses: number;
+  winningStreak: number;
+  losingStreak: number;
 }
 
 // Rating History DTOs
@@ -220,6 +224,27 @@ export interface RatingHistoryEntryResponse {
   sigma: number;
   delta: number;
   recordedAt: string;
+}
+
+export interface LeagueRatingHistoryResponse {
+  entries: LeagueRatingHistoryEntry[];
+}
+
+export interface LeagueRatingHistoryEntry {
+  leaguePlayerId: string;
+  matchId: string;
+  mmr: number;
+  recordedAt: string;
+}
+
+export interface TimeDistributionResponse {
+  entries: TimeDistributionEntry[];
+}
+
+export interface TimeDistributionEntry {
+  dayOfWeek: number;
+  hourOfDay: number;
+  count: number;
 }
 
 // Matchmaking DTOs

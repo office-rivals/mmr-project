@@ -8,63 +8,60 @@
     ChevronsUp,
     ChevronsUpDown,
   } from 'lucide-svelte';
-  import type { SeasonDto } from '../../api/models/SeasonDto';
+  import type { SeasonResponse } from '../../api-v3/models';
 
   interface Props {
-    seasons: SeasonDto[];
-    currentSeason: SeasonDto;
+    seasons: SeasonResponse[];
+    currentSeason: SeasonResponse;
   }
 
   let { seasons, currentSeason }: Props = $props();
 
   const seasonId = page.url.searchParams.get('season');
-  let selectedSeason = $state<SeasonDto>(
+  let selectedSeason = $state<SeasonResponse>(
     seasonId
-      ? (seasons.find((s: SeasonDto) => s.id === parseInt(seasonId)) ??
-          currentSeason)
+      ? (seasons.find((s) => s.id === seasonId) ?? currentSeason)
       : currentSeason
   );
 
-  function mapSeasonToTheme(
-    season: SeasonDto,
-    currentSeason: SeasonDto
-  ): NonNullable<SelectRootProps['items']>[number] {
-    if (season.id === currentSeason.id) {
-      return {
-        label: `Current Season`,
-        value: season.id.toString(),
-      };
-    }
+  function seasonLabel(season: SeasonResponse, currentSeason: SeasonResponse): string {
+    if (season.id === currentSeason.id) return 'Current Season';
+    return new Date(season.startsAt).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+    });
+  }
 
+  function mapSeasonToItem(
+    season: SeasonResponse,
+    currentSeason: SeasonResponse
+  ): NonNullable<SelectRootProps['items']>[number] {
     return {
-      label: `Season ${season.id}`,
-      value: season.id.toString(),
+      label: seasonLabel(season, currentSeason),
+      value: season.id,
     };
   }
 
   let seasonValues = $derived(
-    seasons.map((season) => mapSeasonToTheme(season, currentSeason))
+    seasons.map((season) => mapSeasonToItem(season, currentSeason))
   );
 
   function getSeason(): string {
-    const season =
-      seasons.find((s: SeasonDto) => s.id === selectedSeason.id) ??
-      currentSeason;
-    return season.id.toString();
+    return (seasons.find((s) => s.id === selectedSeason.id) ?? currentSeason).id;
   }
 
   function setSeason(value: string) {
-    const season = seasons.find((s: SeasonDto) => s.id === parseInt(value));
+    const season = seasons.find((s) => s.id === value);
     handleSeasonChange(season ?? currentSeason);
   }
 
-  function handleSeasonChange(season: SeasonDto) {
+  function handleSeasonChange(season: SeasonResponse) {
     selectedSeason = season;
     const url = new URL(page.url);
     if (season.id === currentSeason.id) {
       url.searchParams.delete('season');
     } else {
-      url.searchParams.set('season', season.id.toString());
+      url.searchParams.set('season', season.id);
     }
     goto(url.toString(), { replaceState: true, invalidateAll: true });
   }
@@ -77,9 +74,9 @@
 >
   <Select.Trigger
     class="border-input bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-ring ring-offset-background flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-    aria-label="Select a theme"
+    aria-label="Select a season"
   >
-    {mapSeasonToTheme(selectedSeason, currentSeason).label}
+    {seasonLabel(selectedSeason, currentSeason)}
     <ChevronsUpDown class="text-muted-foreground ml-2 h-4 w-4" />
   </Select.Trigger>
 
@@ -89,9 +86,7 @@
       sideOffset={10}
       align="end"
     >
-      <Select.ScrollUpButton
-        class="flex w-full items-center justify-center py-1"
-      >
+      <Select.ScrollUpButton class="flex w-full items-center justify-center py-1">
         <ChevronsUp class="text-muted-foreground h-3 w-3" />
       </Select.ScrollUpButton>
 
@@ -113,9 +108,7 @@
         {/each}
       </Select.Viewport>
 
-      <Select.ScrollDownButton
-        class="flex w-full items-center justify-center py-1"
-      >
+      <Select.ScrollDownButton class="flex w-full items-center justify-center py-1">
         <ChevronsDown class="text-muted-foreground h-3 w-3" />
       </Select.ScrollDownButton>
     </Select.Content>

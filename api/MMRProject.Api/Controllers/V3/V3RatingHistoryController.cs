@@ -21,4 +21,12 @@ public class V3RatingHistoryController(IV3RatingHistoryService ratingHistoryServ
     {
         return await ratingHistoryService.GetPlayerHistoryAsync(orgId, leagueId, leaguePlayerId, seasonId);
     }
+
+    [HttpGet]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
+    public async Task<ActionResult<LeagueRatingHistoryResponse>> GetLeagueHistory(
+        [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromQuery] Guid? seasonId)
+    {
+        return await ratingHistoryService.GetLeagueHistoryAsync(orgId, leagueId, seasonId);
+    }
 }
