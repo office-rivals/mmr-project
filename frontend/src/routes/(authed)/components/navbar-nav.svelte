@@ -26,9 +26,9 @@
   {@render children?.()}
   {#if badge}
     <div class="relative">
-      <StatusIndicator variant="primary" class="absolute -right-3 -top-6"
-        >{#if typeof badge === 'number'}{badge}{/if}</StatusIndicator
-      >
+      <StatusIndicator variant="primary" class="absolute -right-3 -top-6">
+        {#if typeof badge === 'number'}{badge}{/if}
+      </StatusIndicator>
     </div>
   {/if}
 </Button>

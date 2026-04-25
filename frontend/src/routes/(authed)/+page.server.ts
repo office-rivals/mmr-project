@@ -1,88 +1,33 @@
-import type { LeaderboardEntry } from '$api/models/LeaderboardEntry';
-import type { RankedLeaderboardEntry } from '$lib/components/leaderboard/leader-board-entry';
-import { createMatchFlagActions } from '$lib/server/actions/matchFlagActions';
-import { fail } from '@sveltejs/kit';
-import type { Actions, PageServerLoad } from './$types';
+import { redirect } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals: { apiClient }, url }) => {
+export const load: PageServerLoad = async ({ locals: { apiClientV3 } }) => {
+  let organizations: Array<{
+    name: string;
+    slug: string;
+    leagues: Array<{ name: string; slug: string }>;
+  }> = [];
+
   try {
-    const searchParams = url.searchParams;
-    const seasonId = searchParams.get('season')
-      ? Number(searchParams.get('season'))
-      : undefined;
-
-    // Not awaited by design, since we don't need to wait for this to render the page
-    const statisticsPromise =
-      apiClient.statisticsApi.statisticsGetPlayerHistory({
-        seasonId,
-      });
-
-    const [entries, matches, users, activeMatches, seasons, profile, userFlags] =
-      await Promise.all([
-        apiClient.statisticsApi.statisticsGetLeaderboard({ seasonId }),
-        apiClient.mmrApi.mMRV2GetMatches({
-          limit: 5,
-          offset: 0,
-          seasonId,
-        }),
-        apiClient.usersApi.usersGetUsers(),
-        apiClient.matchmakingApi.matchMakingGetActiveMatches(),
-        apiClient.seasonsApi.seasonsGetSeasons(),
-        apiClient.profileApi.profileGetProfile().catch(() => undefined),
-        apiClient.matchFlagsApi.matchFlagsGetMyPendingFlags().catch(() => []),
-      ]);
-
-    const leaderboardEntries = entries
-      .toSorted((a: LeaderboardEntry, b: LeaderboardEntry) => {
-        if (a.mmr === b.mmr) {
-          return (b.userId ?? 0) - (a.userId ?? 0);
-        }
-
-        if (a.mmr == null) {
-          return 1;
-        }
-
-        if (b.mmr == null) {
-          return -1;
-        }
-
-        return b.mmr - a.mmr;
-      })
-      .map<RankedLeaderboardEntry>((entry: LeaderboardEntry, idx: number) => ({
-        ...entry,
-        rank: idx + 1,
-      }));
-
-    return {
-      users,
-      statisticsPromise,
-      leaderboardEntries,
-      recentMatches: matches ?? [],
-      activeMatches,
-      profile,
-      seasons,
-      currentSeason: seasons[0],
-      isCurrentSeason: seasonId == null || seasonId === seasons[0]?.id,
-      userFlags: userFlags ?? [],
-    };
-  } catch (error) {
-    return fail(500, {
-      message: 'Failed to load leaderboard',
-    });
+    const me = await apiClientV3.meApi.getMe();
+    organizations = (me.organizations ?? []).map((org) => ({
+      name: org.name,
+      slug: org.slug,
+      leagues: (org.leagues ?? []).map((league) => ({
+        name: league.name,
+        slug: league.slug,
+      })),
+    }));
+  } catch {
+    return { organizations: [] };
   }
-};
 
-export const actions: Actions = {
-  flagMatch: async ({ request, locals: { apiClient } }) => {
-    const actions = createMatchFlagActions(apiClient);
-    return actions.flagMatch(await request.formData());
-  },
-  updateFlag: async ({ request, locals: { apiClient } }) => {
-    const actions = createMatchFlagActions(apiClient);
-    return actions.updateFlag(await request.formData());
-  },
-  deleteFlag: async ({ request, locals: { apiClient } }) => {
-    const actions = createMatchFlagActions(apiClient);
-    return actions.deleteFlag(await request.formData());
-  },
+  // If the user has exactly one org with one league, go straight there
+  if (organizations.length === 1 && organizations[0].leagues?.length === 1) {
+    const org = organizations[0];
+    const league = org.leagues[0];
+    throw redirect(307, `/${org.slug}/${league.slug}`);
+  }
+
+  return { organizations };
 };

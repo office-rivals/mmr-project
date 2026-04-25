@@ -62,11 +62,12 @@
 {#if pullDistance > 0}
   <div
     class="pointer-events-none fixed left-0 right-0 z-50 flex justify-center"
-    style="top: calc(env(safe-area-inset-top) + {pullDistance - 40}px); opacity: {Math.min(pullDistance / THRESHOLD, 1)}"
+    style="top: calc(env(safe-area-inset-top) + {pullDistance -
+      40}px); opacity: {Math.min(pullDistance / THRESHOLD, 1)}"
   >
-    <div class="bg-card rounded-full border p-2 shadow-md">
+    <div class="rounded-full border bg-card p-2 shadow-md">
       <RefreshCw
-        class="text-primary h-6 w-6 {isRefreshing ? 'animate-spin' : ''}"
+        class="h-6 w-6 text-primary {isRefreshing ? 'animate-spin' : ''}"
         style="transform: rotate({(pullDistance / THRESHOLD) * 360}deg)"
       />
     </div>

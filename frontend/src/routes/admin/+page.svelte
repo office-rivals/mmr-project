@@ -1,103 +1,89 @@
 <script lang="ts">
-	import type { PageData } from './$types';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import { Calendar, Activity, CheckCircle, ClipboardList, Users, Shield, Flag } from 'lucide-svelte';
-	import { PlayerRole } from '../../api';
+  import { Alert } from '$lib/components/ui/alert';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Button } from '$lib/components/ui/button';
+  import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+  } from '$lib/components/ui/card';
+  import { ArrowRight, Building2, ShieldAlert } from 'lucide-svelte';
+  import type { PageData } from './$types';
 
-	let { data }: { data: PageData } = $props();
-	const { currentSeason, userRole, pendingFlagsCount, totalUsersCount, totalMatchesCount } = data;
+  let { data }: { data: PageData } = $props();
+
+  const adminableOrgs = $derived(
+    (data.me.organizations ?? []).filter(
+      (org) => org.role === 'Owner' || org.role === 'Moderator'
+    )
+  );
 </script>
 
-<div class="space-y-8">
-	<div>
-		<h1 class="text-3xl font-bold tracking-tight">Dashboard</h1>
-		<p class="text-muted-foreground">Welcome to the admin panel</p>
-	</div>
+<div class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight">Site administration</h1>
+    <p class="text-sm text-muted-foreground">
+      Super-admin tools (organization management, cross-org users, deletion) are
+      coming. Until then, pick an organization below to manage it.
+    </p>
+  </div>
 
-	<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-		<Card>
-			<CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-				<CardTitle class="text-sm font-medium">Current Season</CardTitle>
-				<Calendar class="h-4 w-4 text-muted-foreground" />
-			</CardHeader>
-			<CardContent>
-				{#if currentSeason}
-					<div class="space-y-1">
-						<div class="text-2xl font-bold">Season {currentSeason.id}</div>
-						<p class="text-xs text-muted-foreground">
-							Started: {currentSeason.startsAt ? new Date(currentSeason.startsAt).toLocaleDateString() : 'N/A'}
-						</p>
-					</div>
-				{:else}
-					<div class="text-sm text-muted-foreground">No active season</div>
-				{/if}
-			</CardContent>
-		</Card>
+  <Alert variant="default">
+    <div class="flex items-start gap-2">
+      <ShieldAlert class="mt-0.5 h-4 w-4 text-muted-foreground" />
+      <div class="text-sm">
+        <p class="font-medium">Super-admin features pending</p>
+        <p class="text-muted-foreground">
+          Listing every organization, creating new orgs, soft-deleting orgs, and
+          toggling super-admin flags will live here once the role is implemented
+          on the backend.
+        </p>
+      </div>
+    </div>
+  </Alert>
 
-		<Card>
-			<CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-				<CardTitle class="text-sm font-medium">System Status</CardTitle>
-				<Activity class="h-4 w-4 text-muted-foreground" />
-			</CardHeader>
-			<CardContent>
-				<div class="flex items-center space-x-2">
-					<CheckCircle class="h-5 w-5 text-green-500" />
-					<div class="text-xl font-semibold">Operational</div>
-				</div>
-				<p class="text-xs text-muted-foreground mt-1">All systems running normally</p>
-			</CardContent>
-		</Card>
+  <section class="space-y-3">
+    <h2 class="text-lg font-semibold">Organizations you can administer</h2>
 
-		<Card>
-			<CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-				<CardTitle class="text-sm font-medium">Your Role</CardTitle>
-				<Shield class="h-4 w-4 text-muted-foreground" />
-			</CardHeader>
-			<CardContent>
-				<div class="text-2xl font-bold">{userRole}</div>
-				<p class="text-xs text-muted-foreground mt-1">Admin access level</p>
-			</CardContent>
-		</Card>
+    {#if adminableOrgs.length === 0}
+      <p class="text-sm text-muted-foreground">
+        You aren't an Owner or Moderator of any organization.
+      </p>
+    {:else}
+      <div class="grid gap-3 sm:grid-cols-2">
+        {#each adminableOrgs as org}
+          <a href={`/admin/${org.slug}`} class="block">
+            <Card class="h-full transition-colors hover:bg-accent/40">
+              <CardHeader>
+                <CardTitle class="flex items-center gap-2">
+                  <Building2 class="h-4 w-4" />
+                  {org.name}
+                </CardTitle>
+                <CardDescription>{org.slug}</CardDescription>
+              </CardHeader>
+              <CardContent class="flex items-center justify-between">
+                <Badge variant={org.role === 'Owner' ? 'default' : 'secondary'}>
+                  {org.role}
+                </Badge>
+                <ArrowRight class="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </a>
+        {/each}
+      </div>
+    {/if}
 
-		{#if userRole === PlayerRole.Owner || userRole === PlayerRole.Moderator}
-			<a href="/admin/users" class="block transition-transform hover:scale-[1.02]">
-				<Card class="h-full cursor-pointer hover:bg-accent/50">
-					<CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle class="text-sm font-medium">Total Users</CardTitle>
-						<Users class="h-4 w-4 text-muted-foreground" />
-					</CardHeader>
-					<CardContent>
-						<div class="text-2xl font-bold">{totalUsersCount}</div>
-						<p class="text-xs text-muted-foreground mt-1">Registered players</p>
-					</CardContent>
-				</Card>
-			</a>
-		{/if}
+    {#if (data.me.organizations ?? []).length > adminableOrgs.length}
+      <p class="text-sm text-muted-foreground">
+        You're a Member in some organizations that aren't shown here — only
+        Owners and Moderators can use the admin panel.
+      </p>
+    {/if}
+  </section>
 
-		<a href="/admin/matches" class="block transition-transform hover:scale-[1.02]">
-			<Card class="h-full cursor-pointer hover:bg-accent/50">
-				<CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle class="text-sm font-medium">Total Matches</CardTitle>
-					<ClipboardList class="h-4 w-4 text-muted-foreground" />
-				</CardHeader>
-				<CardContent>
-					<div class="text-2xl font-bold">{totalMatchesCount}</div>
-					<p class="text-xs text-muted-foreground mt-1">Games played</p>
-				</CardContent>
-			</Card>
-		</a>
-
-		<a href="/admin/match-flags" class="block transition-transform hover:scale-[1.02]">
-			<Card class="h-full cursor-pointer hover:bg-accent/50">
-				<CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle class="text-sm font-medium">Open Match Flags</CardTitle>
-					<Flag class="h-4 w-4 text-muted-foreground" />
-				</CardHeader>
-				<CardContent>
-					<div class="text-2xl font-bold">{pendingFlagsCount}</div>
-					<p class="text-xs text-muted-foreground mt-1">Pending review</p>
-				</CardContent>
-			</Card>
-		</a>
-	</div>
+  <div class="flex gap-2">
+    <Button href="/" variant="outline">Back to app</Button>
+  </div>
 </div>

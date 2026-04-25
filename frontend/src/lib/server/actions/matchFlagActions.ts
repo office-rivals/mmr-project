@@ -1,96 +1,101 @@
 import { fail } from '@sveltejs/kit';
-import type { ApiClient } from '$lib/server/api/apiClient';
-import { ResponseError } from '$api/runtime';
+import { getApiErrorDetails } from '$lib/server/api/apiError';
 
-export function createMatchFlagActions(apiClient: ApiClient) {
-  return {
-    flagMatch: async (data: FormData) => {
-      const matchId = data.get('matchId');
-      const reason = (data.get('reason') as string | null)?.trim();
+type ActionParams = {
+  request: Request;
+  params: { orgSlug: string; leagueSlug: string };
+  locals: App.Locals;
+};
 
-      if (!matchId || !reason) {
-        return fail(400, { success: false, message: 'Match ID and reason are required' });
-      }
+export const matchFlagActions = {
+  flagMatch: async ({ request, locals }: ActionParams) => {
+    const formData = await request.formData();
+    const matchId = formData.get('matchId') as string;
+    const reason = (formData.get('reason') as string)?.trim();
+    const orgId = formData.get('orgId') as string;
+    const leagueId = formData.get('leagueId') as string;
 
-      const parsedMatchId = Number(matchId);
-      if (!Number.isInteger(parsedMatchId) || parsedMatchId <= 0) {
-        return fail(400, { success: false, message: 'Valid match ID is required' });
-      }
+    if (!matchId || !reason || !orgId || !leagueId) {
+      return fail(400, {
+        success: false,
+        message: 'Match ID and reason are required',
+      });
+    }
 
-      try {
-        await apiClient.matchFlagsApi.matchFlagsCreateFlag({
-          createMatchFlagRequest: {
-            matchId: parsedMatchId,
-            reason,
-          },
-        });
+    try {
+      await locals.apiClientV3.matchFlagsApi.createFlag(orgId, leagueId, {
+        matchId,
+        reason,
+      });
+    } catch (error) {
+      const { status, message } = await getApiErrorDetails(
+        error,
+        'Failed to create flag'
+      );
+      return fail(status, { success: false, message });
+    }
 
-        return { success: true, message: 'Match flagged successfully' };
-      } catch (error) {
-        console.error('Error flagging match:', error);
-        if (error instanceof ResponseError && error.response.status < 500) {
-          return fail(error.response.status, { success: false, message: await error.response.text() });
+    return { success: true, message: 'Match flagged successfully' };
+  },
+
+  updateFlag: async ({ request, locals }: ActionParams) => {
+    const formData = await request.formData();
+    const flagId = formData.get('flagId') as string;
+    const reason = (formData.get('reason') as string)?.trim();
+    const orgId = formData.get('orgId') as string;
+    const leagueId = formData.get('leagueId') as string;
+
+    if (!flagId || !reason || !orgId || !leagueId) {
+      return fail(400, {
+        success: false,
+        message: 'Flag ID and reason are required',
+      });
+    }
+
+    try {
+      await locals.apiClientV3.matchFlagsApi.updateFlagReason(
+        orgId,
+        leagueId,
+        flagId,
+        {
+          reason,
         }
-        return fail(500, { success: false, message: 'Failed to flag match' });
-      }
-    },
+      );
+    } catch (error) {
+      const { status, message } = await getApiErrorDetails(
+        error,
+        'Failed to update flag'
+      );
+      return fail(status, { success: false, message });
+    }
 
-    updateFlag: async (data: FormData) => {
-      const flagId = data.get('flagId');
-      const reason = (data.get('reason') as string | null)?.trim();
+    return { success: true, message: 'Flag updated successfully' };
+  },
 
-      if (!flagId || !reason) {
-        return fail(400, { success: false, message: 'Flag ID and reason are required' });
-      }
+  deleteFlag: async ({ request, locals }: ActionParams) => {
+    const formData = await request.formData();
+    const flagId = formData.get('flagId') as string;
+    const orgId = formData.get('orgId') as string;
+    const leagueId = formData.get('leagueId') as string;
 
-      const parsedFlagId = Number(flagId);
-      if (!Number.isInteger(parsedFlagId) || parsedFlagId <= 0) {
-        return fail(400, { success: false, message: 'Valid flag ID is required' });
-      }
+    if (!flagId || !orgId || !leagueId) {
+      return fail(400, { success: false, message: 'Flag ID is required' });
+    }
 
-      try {
-        await apiClient.matchFlagsApi.matchFlagsUpdateFlag({
-          id: parsedFlagId,
-          updateMatchFlagReasonRequest: {
-            reason,
-          },
-        });
+    try {
+      await locals.apiClientV3.matchFlagsApi.deleteFlag(
+        orgId,
+        leagueId,
+        flagId
+      );
+    } catch (error) {
+      const { status, message } = await getApiErrorDetails(
+        error,
+        'Failed to delete flag'
+      );
+      return fail(status, { success: false, message });
+    }
 
-        return { success: true, message: 'Flag updated successfully' };
-      } catch (error) {
-        console.error('Error updating flag:', error);
-        if (error instanceof ResponseError && error.response.status < 500) {
-          return fail(error.response.status, { success: false, message: await error.response.text() });
-        }
-        return fail(500, { success: false, message: 'Failed to update flag' });
-      }
-    },
-
-    deleteFlag: async (data: FormData) => {
-      const flagId = data.get('flagId');
-
-      if (!flagId) {
-        return fail(400, { success: false, message: 'Flag ID is required' });
-      }
-
-      const parsedFlagId = Number(flagId);
-      if (!Number.isInteger(parsedFlagId) || parsedFlagId <= 0) {
-        return fail(400, { success: false, message: 'Valid flag ID is required' });
-      }
-
-      try {
-        await apiClient.matchFlagsApi.matchFlagsDeleteFlag({
-          id: parsedFlagId,
-        });
-
-        return { success: true, message: 'Flag deleted successfully' };
-      } catch (error) {
-        console.error('Error deleting flag:', error);
-        if (error instanceof ResponseError && error.response.status < 500) {
-          return fail(error.response.status, { success: false, message: await error.response.text() });
-        }
-        return fail(500, { success: false, message: 'Failed to delete flag' });
-      }
-    },
-  };
-}
+    return { success: true, message: 'Flag deleted successfully' };
+  },
+};

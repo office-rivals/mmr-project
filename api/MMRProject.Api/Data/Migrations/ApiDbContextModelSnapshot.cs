@@ -17,7 +17,7 @@ namespace MMRProject.Api.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.8")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -53,7 +53,7 @@ namespace MMRProject.Api.Data.Migrations
 
                     b.HasIndex("TeamTwoPlayerTwoId");
 
-                    b.ToTable("ActiveMatches");
+                    b.ToTable("legacy_active_matches", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.Match", b =>
@@ -100,7 +100,7 @@ namespace MMRProject.Api.Data.Migrations
 
                     b.HasIndex(new[] { "DeletedAt" }, "idx_matches_deleted_at");
 
-                    b.ToTable("matches", (string)null);
+                    b.ToTable("legacy_matches", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.MatchFlag", b =>
@@ -153,7 +153,7 @@ namespace MMRProject.Api.Data.Migrations
                         .HasDatabaseName("IX_MatchFlags_MatchId_FlaggedById_Pending")
                         .HasFilter("\"Status\" = 0 AND \"DeletedAt\" IS NULL");
 
-                    b.ToTable("MatchFlags");
+                    b.ToTable("legacy_match_flags", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.MmrCalculation", b =>
@@ -204,7 +204,7 @@ namespace MMRProject.Api.Data.Migrations
 
                     b.HasIndex(new[] { "DeletedAt" }, "idx_mmr_calculations_deleted_at");
 
-                    b.ToTable("mmr_calculations", (string)null);
+                    b.ToTable("legacy_mmr_calculations", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.PendingMatch", b =>
@@ -233,7 +233,7 @@ namespace MMRProject.Api.Data.Migrations
                     b.HasIndex("ActiveMatchId")
                         .IsUnique();
 
-                    b.ToTable("PendingMatches");
+                    b.ToTable("legacy_pending_matches", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.PersonalAccessToken", b =>
@@ -274,7 +274,7 @@ namespace MMRProject.Api.Data.Migrations
 
                     b.HasIndex("TokenHash");
 
-                    b.ToTable("PersonalAccessTokens");
+                    b.ToTable("legacy_personal_access_tokens", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.Player", b =>
@@ -357,7 +357,7 @@ namespace MMRProject.Api.Data.Migrations
                     b.HasIndex(new[] { "Name" }, "uni_players_name")
                         .IsUnique();
 
-                    b.ToTable("Players");
+                    b.ToTable("legacy_players", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.PlayerHistory", b =>
@@ -410,7 +410,7 @@ namespace MMRProject.Api.Data.Migrations
 
                     b.HasIndex(new[] { "DeletedAt" }, "idx_player_histories_deleted_at");
 
-                    b.ToTable("player_histories", (string)null);
+                    b.ToTable("legacy_player_histories", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.QueuedPlayer", b =>
@@ -437,7 +437,7 @@ namespace MMRProject.Api.Data.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("QueuedPlayers");
+                    b.ToTable("legacy_queued_players", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.Season", b =>
@@ -470,7 +470,7 @@ namespace MMRProject.Api.Data.Migrations
 
                     b.HasIndex(new[] { "DeletedAt" }, "idx_seasons_deleted_at");
 
-                    b.ToTable("seasons", (string)null);
+                    b.ToTable("legacy_seasons", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.Team", b =>
@@ -519,7 +519,845 @@ namespace MMRProject.Api.Data.Migrations
 
                     b.HasIndex(new[] { "DeletedAt" }, "idx_teams_deleted_at");
 
-                    b.ToTable("teams", (string)null);
+                    b.ToTable("legacy_teams", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.League", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("QueueSize")
+                        .HasColumnType("integer")
+                        .HasColumnName("queue_size");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("slug");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "OrganizationId", "Slug" }, "ix_leagues_org_slug")
+                        .IsUnique();
+
+                    b.ToTable("leagues", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.LeaguePlayer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<long?>("LegacyPlayerId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("legacy_player_id");
+
+                    b.Property<long>("Mmr")
+                        .HasColumnType("bigint")
+                        .HasColumnName("mmr");
+
+                    b.Property<decimal>("Mu")
+                        .HasColumnType("numeric")
+                        .HasColumnName("mu");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("OrganizationMembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_membership_id");
+
+                    b.Property<decimal>("Sigma")
+                        .HasColumnType("numeric")
+                        .HasColumnName("sigma");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationMembershipId");
+
+                    b.HasIndex(new[] { "LeagueId", "OrganizationMembershipId" }, "ix_league_players_league_membership")
+                        .IsUnique();
+
+                    b.ToTable("league_players", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.MatchTeam", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Index")
+                        .HasColumnType("integer")
+                        .HasColumnName("index");
+
+                    b.Property<bool>("IsWinner")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_winner");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<Guid>("MatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("match_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer")
+                        .HasColumnName("score");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "MatchId", "Index" }, "ix_match_teams_match_index")
+                        .IsUnique();
+
+                    b.ToTable("match_teams", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.MatchTeamPlayer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Index")
+                        .HasColumnType("integer")
+                        .HasColumnName("index");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<Guid>("LeaguePlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_player_id");
+
+                    b.Property<Guid>("MatchTeamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("match_team_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaguePlayerId");
+
+                    b.HasIndex(new[] { "MatchTeamId", "LeaguePlayerId" }, "ix_match_team_players_team_player")
+                        .IsUnique();
+
+                    b.ToTable("match_team_players", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.Organization", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("slug");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "Slug" }, "ix_organizations_slug")
+                        .IsUnique();
+
+                    b.ToTable("organizations", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.OrganizationInviteLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByMembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_membership_id");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<int?>("MaxUses")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_uses");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("UseCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("use_count");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByMembershipId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex(new[] { "Code" }, "ix_organization_invite_links_code")
+                        .IsUnique();
+
+                    b.ToTable("organization_invite_links", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.OrganizationMembership", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ClaimedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("claimed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("text")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("InviteEmail")
+                        .HasColumnType("text")
+                        .HasColumnName("invite_email");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer")
+                        .HasColumnName("role");
+
+                    b.Property<DateTimeOffset?>("RoleAssignedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("role_assigned_at");
+
+                    b.Property<Guid?>("RoleAssignedByMembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_assigned_by_membership_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Username")
+                        .HasColumnType("text")
+                        .HasColumnName("username");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleAssignedByMembershipId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex(new[] { "OrganizationId", "InviteEmail" }, "ix_organization_memberships_org_invite_email")
+                        .IsUnique()
+                        .HasFilter("invite_email IS NOT NULL");
+
+                    b.HasIndex(new[] { "OrganizationId", "UserId" }, "ix_organization_memberships_org_user")
+                        .IsUnique()
+                        .HasFilter("user_id IS NOT NULL");
+
+                    b.ToTable("organization_memberships", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.PendingMatchAcceptance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("LeaguePlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_player_id");
+
+                    b.Property<Guid>("PendingMatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pending_match_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaguePlayerId");
+
+                    b.HasIndex("PendingMatchId");
+
+                    b.ToTable("pending_match_acceptances", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.PendingMatchTeam", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Index")
+                        .HasColumnType("integer")
+                        .HasColumnName("index");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("PendingMatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pending_match_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PendingMatchId");
+
+                    b.ToTable("pending_match_teams", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.PendingMatchTeamPlayer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Index")
+                        .HasColumnType("integer")
+                        .HasColumnName("index");
+
+                    b.Property<Guid>("LeaguePlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_player_id");
+
+                    b.Property<Guid>("PendingMatchTeamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pending_match_team_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaguePlayerId");
+
+                    b.HasIndex("PendingMatchTeamId");
+
+                    b.ToTable("pending_match_team_players", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.QueueEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("JoinedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<Guid>("LeaguePlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_player_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaguePlayerId");
+
+                    b.HasIndex(new[] { "LeagueId", "LeaguePlayerId" }, "ix_queue_entries_league_player")
+                        .IsUnique();
+
+                    b.ToTable("queue_entries", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.RatingHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("Delta")
+                        .HasColumnType("bigint")
+                        .HasColumnName("delta");
+
+                    b.Property<Guid>("LeaguePlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_player_id");
+
+                    b.Property<Guid>("MatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("match_id");
+
+                    b.Property<long>("Mmr")
+                        .HasColumnType("bigint")
+                        .HasColumnName("mmr");
+
+                    b.Property<decimal>("Mu")
+                        .HasColumnType("numeric")
+                        .HasColumnName("mu");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<decimal>("Sigma")
+                        .HasColumnType("numeric")
+                        .HasColumnName("sigma");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MatchId");
+
+                    b.HasIndex(new[] { "LeaguePlayerId", "MatchId" }, "ix_rating_histories_player_match")
+                        .IsUnique();
+
+                    b.ToTable("rating_histories", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("text")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<string>("IdentityUserId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("identity_user_id");
+
+                    b.Property<long?>("LegacyPlayerId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("legacy_player_id");
+
+                    b.Property<string>("Username")
+                        .HasColumnType("text")
+                        .HasColumnName("username");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "Email" }, "ix_users_email");
+
+                    b.HasIndex(new[] { "IdentityUserId" }, "ix_users_identity_user_id")
+                        .IsUnique();
+
+                    b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3ActiveMatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("PendingMatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pending_match_id");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PendingMatchId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_active_matches_pending_match_id");
+
+                    b.ToTable("active_matches", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3Match", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByMembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_membership_id");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<long?>("LegacyMatchId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("legacy_match_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset>("PlayedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("played_at");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<Guid>("SeasonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("season_id");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("integer")
+                        .HasColumnName("source");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByMembershipId");
+
+                    b.HasIndex("SeasonId");
+
+                    b.HasIndex(new[] { "LeagueId", "SeasonId" }, "ix_matches_league_season");
+
+                    b.ToTable("matches", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3MatchFlag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("FlaggedByMembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("flagged_by_membership_id");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<Guid>("MatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("match_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("ResolutionNote")
+                        .HasColumnType("text")
+                        .HasColumnName("resolution_note");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<Guid?>("ResolvedByMembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resolved_by_membership_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FlaggedByMembershipId");
+
+                    b.HasIndex("ResolvedByMembershipId");
+
+                    b.HasIndex(new[] { "LeagueId", "MatchId" }, "ix_match_flags_league_match");
+
+                    b.HasIndex(new[] { "MatchId", "FlaggedByMembershipId" }, "ix_match_flags_match_flagged_by_open")
+                        .IsUnique()
+                        .HasFilter("status = 0");
+
+                    b.ToTable("match_flags", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3PendingMatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "LeagueId" }, "ix_pending_matches_league_pending")
+                        .IsUnique()
+                        .HasFilter("status = 0");
+
+                    b.ToTable("pending_matches", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3PersonalAccessToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<Guid?>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<long?>("LegacyPatId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("legacy_pat_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("scope");
+
+                    b.Property<byte[]>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_hash");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeagueId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex(new[] { "TokenHash" }, "ix_personal_access_tokens_token_hash")
+                        .IsUnique();
+
+                    b.ToTable("personal_access_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3Season", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<long?>("LegacySeasonId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("legacy_season_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "LeagueId" }, "ix_seasons_league");
+
+                    b.ToTable("seasons", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.ActiveMatch", b =>
@@ -562,17 +1400,17 @@ namespace MMRProject.Api.Data.Migrations
                     b.HasOne("MMRProject.Api.Data.Entities.Season", "Season")
                         .WithMany("Matches")
                         .HasForeignKey("SeasonId")
-                        .HasConstraintName("fk_matches_season");
+                        .HasConstraintName("fk_legacy_matches_season");
 
                     b.HasOne("MMRProject.Api.Data.Entities.Team", "TeamOne")
                         .WithMany("MatchTeamOnes")
                         .HasForeignKey("TeamOneId")
-                        .HasConstraintName("fk_matches_team_one");
+                        .HasConstraintName("fk_legacy_matches_team_one");
 
                     b.HasOne("MMRProject.Api.Data.Entities.Team", "TeamTwo")
                         .WithMany("MatchTeamTwos")
                         .HasForeignKey("TeamTwoId")
-                        .HasConstraintName("fk_matches_team_two");
+                        .HasConstraintName("fk_legacy_matches_team_two");
 
                     b.Navigation("Season");
 
@@ -611,7 +1449,7 @@ namespace MMRProject.Api.Data.Migrations
                     b.HasOne("MMRProject.Api.Data.Entities.Match", "Match")
                         .WithMany("MmrCalculations")
                         .HasForeignKey("MatchId")
-                        .HasConstraintName("fk_matches_mmr_calculations");
+                        .HasConstraintName("fk_legacy_matches_mmr_calculations");
 
                     b.Navigation("Match");
                 });
@@ -650,12 +1488,12 @@ namespace MMRProject.Api.Data.Migrations
                     b.HasOne("MMRProject.Api.Data.Entities.Match", "Match")
                         .WithMany("PlayerHistories")
                         .HasForeignKey("MatchId")
-                        .HasConstraintName("fk_player_histories_match");
+                        .HasConstraintName("fk_legacy_player_histories_match");
 
                     b.HasOne("MMRProject.Api.Data.Entities.Player", "Player")
                         .WithMany("PlayerHistories")
                         .HasForeignKey("PlayerId")
-                        .HasConstraintName("fk_player_histories_player");
+                        .HasConstraintName("fk_legacy_player_histories_player");
 
                     b.Navigation("Match");
 
@@ -684,16 +1522,338 @@ namespace MMRProject.Api.Data.Migrations
                     b.HasOne("MMRProject.Api.Data.Entities.Player", "PlayerOne")
                         .WithMany("TeamPlayerOnes")
                         .HasForeignKey("PlayerOneId")
-                        .HasConstraintName("fk_teams_player_one");
+                        .HasConstraintName("fk_legacy_teams_player_one");
 
                     b.HasOne("MMRProject.Api.Data.Entities.Player", "PlayerTwo")
                         .WithMany("TeamPlayerTwos")
                         .HasForeignKey("PlayerTwoId")
-                        .HasConstraintName("fk_teams_play_two");
+                        .HasConstraintName("fk_legacy_teams_play_two");
 
                     b.Navigation("PlayerOne");
 
                     b.Navigation("PlayerTwo");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.League", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_leagues_organization");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.LeaguePlayer", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.League", "League")
+                        .WithMany()
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_league_players_league");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.OrganizationMembership", "OrganizationMembership")
+                        .WithMany()
+                        .HasForeignKey("OrganizationMembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_league_players_membership");
+
+                    b.Navigation("League");
+
+                    b.Navigation("OrganizationMembership");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.MatchTeam", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.V3Match", "Match")
+                        .WithMany("Teams")
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_match_teams_match");
+
+                    b.Navigation("Match");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.MatchTeamPlayer", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.LeaguePlayer", "LeaguePlayer")
+                        .WithMany()
+                        .HasForeignKey("LeaguePlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_match_team_players_player");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.MatchTeam", "MatchTeam")
+                        .WithMany("Players")
+                        .HasForeignKey("MatchTeamId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_match_team_players_team");
+
+                    b.Navigation("LeaguePlayer");
+
+                    b.Navigation("MatchTeam");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.OrganizationInviteLink", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.OrganizationMembership", "CreatedByMembership")
+                        .WithMany()
+                        .HasForeignKey("CreatedByMembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_invite_links_created_by");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_invite_links_organization");
+
+                    b.Navigation("CreatedByMembership");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.OrganizationMembership", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_memberships_organization");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.OrganizationMembership", "RoleAssignedByMembership")
+                        .WithMany()
+                        .HasForeignKey("RoleAssignedByMembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_organization_memberships_role_assigned_by");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_organization_memberships_user");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("RoleAssignedByMembership");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.PendingMatchAcceptance", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.LeaguePlayer", "LeaguePlayer")
+                        .WithMany()
+                        .HasForeignKey("LeaguePlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pending_match_acceptances_player");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.V3PendingMatch", "PendingMatch")
+                        .WithMany("Acceptances")
+                        .HasForeignKey("PendingMatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pending_match_acceptances_pending_match");
+
+                    b.Navigation("LeaguePlayer");
+
+                    b.Navigation("PendingMatch");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.PendingMatchTeam", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.V3PendingMatch", "PendingMatch")
+                        .WithMany("Teams")
+                        .HasForeignKey("PendingMatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pending_match_teams_pending_match");
+
+                    b.Navigation("PendingMatch");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.PendingMatchTeamPlayer", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.LeaguePlayer", "LeaguePlayer")
+                        .WithMany()
+                        .HasForeignKey("LeaguePlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pending_match_team_players_player");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.PendingMatchTeam", "PendingMatchTeam")
+                        .WithMany("Players")
+                        .HasForeignKey("PendingMatchTeamId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pending_match_team_players_team");
+
+                    b.Navigation("LeaguePlayer");
+
+                    b.Navigation("PendingMatchTeam");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.QueueEntry", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.League", "League")
+                        .WithMany()
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_queue_entries_league");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.LeaguePlayer", "LeaguePlayer")
+                        .WithMany()
+                        .HasForeignKey("LeaguePlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_queue_entries_player");
+
+                    b.Navigation("League");
+
+                    b.Navigation("LeaguePlayer");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.RatingHistory", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.LeaguePlayer", "LeaguePlayer")
+                        .WithMany()
+                        .HasForeignKey("LeaguePlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_rating_histories_player");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.V3Match", "Match")
+                        .WithMany()
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_rating_histories_match");
+
+                    b.Navigation("LeaguePlayer");
+
+                    b.Navigation("Match");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3ActiveMatch", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.V3PendingMatch", "PendingMatch")
+                        .WithMany()
+                        .HasForeignKey("PendingMatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_active_matches_pending_match");
+
+                    b.Navigation("PendingMatch");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3Match", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.OrganizationMembership", "CreatedByMembership")
+                        .WithMany()
+                        .HasForeignKey("CreatedByMembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_matches_created_by");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.League", "League")
+                        .WithMany()
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_matches_league");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.V3Season", "Season")
+                        .WithMany()
+                        .HasForeignKey("SeasonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_matches_season");
+
+                    b.Navigation("CreatedByMembership");
+
+                    b.Navigation("League");
+
+                    b.Navigation("Season");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3MatchFlag", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.OrganizationMembership", "FlaggedByMembership")
+                        .WithMany()
+                        .HasForeignKey("FlaggedByMembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_match_flags_flagged_by");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.V3Match", "Match")
+                        .WithMany()
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_match_flags_match");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.OrganizationMembership", "ResolvedByMembership")
+                        .WithMany()
+                        .HasForeignKey("ResolvedByMembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_match_flags_resolved_by");
+
+                    b.Navigation("FlaggedByMembership");
+
+                    b.Navigation("Match");
+
+                    b.Navigation("ResolvedByMembership");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3PersonalAccessToken", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.League", "League")
+                        .WithMany()
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_personal_access_tokens_league");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_personal_access_tokens_organization");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_personal_access_tokens_user");
+
+                    b.Navigation("League");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3Season", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.League", "League")
+                        .WithMany()
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_seasons_league");
+
+                    b.Navigation("League");
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.ActiveMatch", b =>
@@ -732,6 +1892,28 @@ namespace MMRProject.Api.Data.Migrations
                     b.Navigation("MatchTeamOnes");
 
                     b.Navigation("MatchTeamTwos");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.MatchTeam", b =>
+                {
+                    b.Navigation("Players");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.PendingMatchTeam", b =>
+                {
+                    b.Navigation("Players");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3Match", b =>
+                {
+                    b.Navigation("Teams");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3PendingMatch", b =>
+                {
+                    b.Navigation("Acceptances");
+
+                    b.Navigation("Teams");
                 });
 #pragma warning restore 612, 618
         }
