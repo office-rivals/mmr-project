@@ -77,7 +77,11 @@ export const actions: Actions = {
       return fail(404, { success: false, message: 'Org or league not found' });
 
     try {
-      await apiClientV3.matchesApi.deleteMatch(ctx.orgId, ctx.leagueId, matchId);
+      await apiClientV3.matchesApi.deleteMatch(
+        ctx.orgId,
+        ctx.leagueId,
+        matchId
+      );
       return { success: true, message: 'Match deleted' };
     } catch (err) {
       const { status, message } = await getApiErrorDetails(
@@ -132,7 +136,9 @@ export const actions: Actions = {
   recalculate: async ({ request, params, locals: { apiClientV3 } }) => {
     const formData = await request.formData();
     const fromMatchIdRaw = formData.get('fromMatchId') as string | null;
-    const fromMatchId = fromMatchIdRaw?.trim() ? fromMatchIdRaw.trim() : undefined;
+    const fromMatchId = fromMatchIdRaw?.trim()
+      ? fromMatchIdRaw.trim()
+      : undefined;
 
     const ctx = await resolveContext(apiClientV3, params);
     if (!ctx)

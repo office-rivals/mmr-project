@@ -43,9 +43,7 @@ test.describe('Admin RBAC', () => {
     const response = await page.goto(`/admin/${NON_ADMIN_ORG_SLUG}`);
     expect(response?.status()).toBe(403);
     // SvelteKit's default error page surfaces the message verbatim.
-    await expect(
-      page.getByText(/Owner or Moderator role/i)
-    ).toBeVisible();
+    await expect(page.getByText(/Owner or Moderator role/i)).toBeVisible();
   });
 
   test('deep-linking into Member-only org sub-pages also 403s', async ({

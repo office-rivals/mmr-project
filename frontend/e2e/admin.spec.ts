@@ -23,10 +23,10 @@ test.describe('Admin landing', () => {
 test.describe('Org admin overview', () => {
   test('shows headline counts and links to leagues', async ({ page }) => {
     await page.goto(ORG_ADMIN);
+    await expect(page.getByRole('heading', { name: 'Test Org' })).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: 'Test Org' })
+      page.getByText('Active members', { exact: true })
     ).toBeVisible();
-    await expect(page.getByText('Active members', { exact: true })).toBeVisible();
     await expect(page.getByText('Open match flags')).toBeVisible();
 
     // The leagues card lists the seeded league with a clickable link

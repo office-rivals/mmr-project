@@ -75,7 +75,9 @@
         // Number inputs bound through `bind:value` come back as strings in
         // Svelte; force-coerce so the server-side parser accepts them.
         score: Number(team.score),
-        players: team.players.map((p) => ({ leaguePlayerId: p.leaguePlayerId })),
+        players: team.players.map((p) => ({
+          leaguePlayerId: p.leaguePlayerId,
+        })),
       }))
     );
   }
@@ -87,13 +89,13 @@
       <Dialog.Title>Edit match</Dialog.Title>
       <Dialog.Description>
         Replace players or correct scores. Existing rating history is left
-        intact — recalculate MMR from this match afterwards if you want the
-        edit to flow through to the leaderboard.
+        intact — recalculate MMR from this match afterwards if you want the edit
+        to flow through to the leaderboard.
       </Dialog.Description>
     </Dialog.Header>
 
     {#if !match}
-      <p class="text-muted-foreground py-4 text-center text-sm">
+      <p class="py-4 text-center text-sm text-muted-foreground">
         No match selected.
       </p>
     {:else}
@@ -130,7 +132,7 @@
               <div class="flex items-center gap-2">
                 <Label
                   for={`team-${teamIndex}-score`}
-                  class="text-muted-foreground text-xs"
+                  class="text-xs text-muted-foreground"
                 >
                   Score
                 </Label>
@@ -148,12 +150,12 @@
             <div class="space-y-2">
               {#each team.players as slot, playerIndex}
                 <div class="flex items-center gap-2">
-                  <Label class="text-muted-foreground w-16 text-xs">
+                  <Label class="w-16 text-xs text-muted-foreground">
                     Player {playerIndex + 1}
                   </Label>
                   <select
                     bind:value={slot.leaguePlayerId}
-                    class="border-input bg-background flex h-9 flex-1 rounded-md border px-3 text-sm"
+                    class="flex h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
                     required
                   >
                     <option value="" disabled>Select a player…</option>
