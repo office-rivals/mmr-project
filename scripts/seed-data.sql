@@ -2,9 +2,12 @@
 -- Vendored test/dev seed for the MMR project.
 --
 -- Wipes all v3 data and inserts a deterministic fixture with:
---   - 1 organization ("Test Org" / test-org)
---   - 1 league ("Test League" / test-league, 2v2)
---   - 3 seasons (past, mid, current — current is the default selected by the UI)
+--   - 2 organizations ("Test Org" / test-org, "Other Org" / other-org)
+--     - Test Org: test user is Owner. Used for the bulk of e2e coverage.
+--     - Other Org: test user is Member only. Used for RBAC tests that assert
+--       the admin tree is closed to non-admins.
+--   - 2 leagues (one per org; "Test League" + "Other League", both 2v2)
+--   - 3 seasons in Test League (past, mid, current — current is the default)
 --   - 6 league players, including 1 test user account (E2E login target)
 --   - 15 matches in the current season (enough for ranked thresholds and streaks)
 --   - 3 matches in the past season
@@ -77,6 +80,23 @@ INSERT INTO organization_memberships
   ('55555555-5555-5555-5555-555555555504', '11111111-1111-1111-1111-111111111111', 2, 1, now() - interval '6 months', 'Carol Carter',   'caca'),
   ('55555555-5555-5555-5555-555555555505', '11111111-1111-1111-1111-111111111111', 2, 1, now() - interval '6 months', 'Dave Davies',    'dada'),
   ('55555555-5555-5555-5555-555555555506', '11111111-1111-1111-1111-111111111111', 2, 1, now() - interval '6 months', 'Eve Edwards',    'eved');
+
+-- =============================================================================
+-- Second org where the test user is a Member (not Owner/Moderator). Used by
+-- the RBAC e2e tests to verify admin pages 403 for non-admins.
+-- =============================================================================
+INSERT INTO organizations (id, name, slug, created_at) VALUES
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Other Org', 'other-org', now() - interval '1 year');
+
+INSERT INTO leagues (id, organization_id, name, slug, queue_size, created_at) VALUES
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+   'Other League', 'other-league', 4, now() - interval '1 year');
+
+-- Membership status 1 = Active, role 2 = Member (see OrganizationRole.cs).
+INSERT INTO organization_memberships
+  (id, organization_id, user_id, role, status, claimed_at, created_at, display_name, username) VALUES
+  ('cccccccc-cccc-cccc-cccc-cccccccccc01', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+   '44444444-4444-4444-4444-444444444401', 2, 1, now(), now() - interval '6 months', 'Test User', 'tuser');
 
 INSERT INTO league_players
   (id, organization_id, league_id, organization_membership_id, mmr, mu, sigma, created_at) VALUES
