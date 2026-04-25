@@ -106,7 +106,7 @@
       {#each data.recentMatches as match}
         {@const existingFlag = myFlagForMatch(match.id)}
         <div
-          class="bg-card rounded-lg border p-3 {existingFlag
+          class="rounded-lg border bg-card p-3 {existingFlag
             ? 'border-red-400'
             : ''}"
         >
@@ -123,9 +123,7 @@
                   </a>
                 {/each}
                 {#if team.isWinner}
-                  <span class="text-xs font-semibold text-green-500"
-                    >Winner</span
-                  >
+                  <span class="text-xs font-semibold text-primary">Winner</span>
                 {/if}
               </div>
             {/each}

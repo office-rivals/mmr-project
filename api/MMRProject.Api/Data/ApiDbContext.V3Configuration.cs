@@ -230,6 +230,10 @@ public partial class ApiDbContext
             entity.Property(e => e.LeagueId).HasColumnName("league_id");
             entity.Property(e => e.Status).HasColumnName("status");
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+
+            entity.HasIndex(e => e.LeagueId, "ix_pending_matches_league_pending")
+                .IsUnique()
+                .HasFilter("status = 0");
         });
 
         modelBuilder.Entity<PendingMatchTeam>(entity =>

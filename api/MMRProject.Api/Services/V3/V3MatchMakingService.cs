@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.Exceptions;
+using MMRProject.Api.Extensions;
 using MMRProject.Api.UserContext;
 
 namespace MMRProject.Api.Services.V3;
@@ -29,6 +31,8 @@ public class V3MatchMakingService(
     IOrganizationService organizationService
 ) : IV3MatchMakingService
 {
+    private const string QueueEntryIndexName = "ix_queue_entries_league_player";
+
     public async Task AddPlayerToQueueAsync(Guid orgId, Guid leagueId)
     {
         var leaguePlayer = await GetCurrentLeaguePlayerAsync(orgId, leagueId);
@@ -72,9 +76,20 @@ public class V3MatchMakingService(
         };
 
         dbContext.QueueEntries.Add(queueEntry);
-        await dbContext.SaveChangesAsync();
-
-        await TryCreatePendingMatchAsync(orgId, leagueId);
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+                                           {
+                                               SqlState: PostgresErrorCodes.UniqueViolation,
+                                               ConstraintName: QueueEntryIndexName
+                                           })
+        {
+            dbContext.Entry(queueEntry).State = EntityState.Detached;
+            logger.LogInformation("Player {LeaguePlayerId} already in queue for league {LeagueId}",
+                leaguePlayer.Id, leagueId);
+        }
     }
 
     public async Task RemovePlayerFromQueueAsync(Guid orgId, Guid leagueId)
@@ -97,19 +112,21 @@ public class V3MatchMakingService(
     {
         var leaguePlayer = await GetCurrentLeaguePlayerAsync(orgId, leagueId);
 
-        var queuedPlayers = await dbContext.QueueEntries
+        var queueEntries = await dbContext.QueueEntries
             .Where(q => q.LeagueId == leagueId)
             .Include(q => q.LeaguePlayer)
-            .ThenInclude(lp => lp.OrganizationMembership)
+                .ThenInclude(lp => lp.OrganizationMembership)
+                    .ThenInclude(om => om.User)
             .OrderBy(q => q.JoinedAt)
-            .Select(q => new QueuedPlayerResponse
-            {
-                LeaguePlayerId = q.LeaguePlayerId,
-                DisplayName = q.LeaguePlayer.OrganizationMembership.DisplayName,
-                Username = q.LeaguePlayer.OrganizationMembership.Username,
-                JoinedAt = q.JoinedAt
-            })
             .ToListAsync();
+
+        var queuedPlayers = queueEntries.Select(q => new QueuedPlayerResponse
+        {
+            LeaguePlayerId = q.LeaguePlayerId,
+            DisplayName = q.LeaguePlayer.OrganizationMembership.GetDisplayName(),
+            Username = q.LeaguePlayer.OrganizationMembership.GetUsername(),
+            JoinedAt = q.JoinedAt
+        }).ToList();
 
         var pendingMatch = await dbContext.V3PendingMatches
             .Where(pm => pm.LeagueId == leagueId && pm.Status == AcceptanceStatus.Pending)
@@ -118,6 +135,7 @@ public class V3MatchMakingService(
             .ThenInclude(t => t.Players)
             .ThenInclude(p => p.LeaguePlayer)
             .ThenInclude(lp => lp.OrganizationMembership)
+            .ThenInclude(om => om.User)
             .Include(pm => pm.Acceptances)
             .FirstOrDefaultAsync();
 
@@ -129,6 +147,7 @@ public class V3MatchMakingService(
             .ThenInclude(t => t.Players)
             .ThenInclude(p => p.LeaguePlayer)
             .ThenInclude(lp => lp.OrganizationMembership)
+            .ThenInclude(om => om.User)
             .FirstOrDefaultAsync();
 
         return new QueueStatusResponse
@@ -151,6 +170,7 @@ public class V3MatchMakingService(
             .ThenInclude(t => t.Players)
             .ThenInclude(p => p.LeaguePlayer)
             .ThenInclude(lp => lp.OrganizationMembership)
+            .ThenInclude(om => om.User)
             .Include(pm => pm.Acceptances)
             .FirstOrDefaultAsync();
 
@@ -166,12 +186,8 @@ public class V3MatchMakingService(
     {
         var leaguePlayer = await GetCurrentLeaguePlayerAsync(orgId, leagueId);
 
-        var pendingMatch = await dbContext.V3PendingMatches
-            .Where(pm => pm.Id == pendingMatchId && pm.LeagueId == leagueId)
-            .Include(pm => pm.Acceptances)
-            .Include(pm => pm.Teams)
-            .ThenInclude(t => t.Players)
-            .FirstOrDefaultAsync();
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        var pendingMatch = await GetPendingMatchForUpdateAsync(pendingMatchId, leagueId, includeTeams: true);
 
         if (pendingMatch is null)
         {
@@ -206,16 +222,15 @@ public class V3MatchMakingService(
         }
 
         await dbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     public async Task DeclinePendingMatchAsync(Guid orgId, Guid leagueId, Guid pendingMatchId)
     {
         var leaguePlayer = await GetCurrentLeaguePlayerAsync(orgId, leagueId);
 
-        var pendingMatch = await dbContext.V3PendingMatches
-            .Where(pm => pm.Id == pendingMatchId && pm.LeagueId == leagueId)
-            .Include(pm => pm.Acceptances)
-            .FirstOrDefaultAsync();
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        var pendingMatch = await GetPendingMatchForUpdateAsync(pendingMatchId, leagueId, includeTeams: false);
 
         if (pendingMatch is null)
         {
@@ -258,6 +273,7 @@ public class V3MatchMakingService(
         }
 
         await dbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     public async Task<IEnumerable<ActiveMatchResponse>> GetActiveMatchesAsync(Guid orgId, Guid leagueId)
@@ -269,6 +285,7 @@ public class V3MatchMakingService(
             .ThenInclude(t => t.Players)
             .ThenInclude(p => p.LeaguePlayer)
             .ThenInclude(lp => lp.OrganizationMembership)
+            .ThenInclude(om => om.User)
             .OrderByDescending(am => am.StartedAt)
             .ToListAsync();
 
@@ -348,81 +365,6 @@ public class V3MatchMakingService(
         return matchResponse;
     }
 
-    private async Task TryCreatePendingMatchAsync(Guid orgId, Guid leagueId)
-    {
-        var league = await dbContext.Leagues.FirstOrDefaultAsync(l => l.Id == leagueId);
-        if (league is null)
-        {
-            return;
-        }
-
-        var queueEntries = await dbContext.QueueEntries
-            .Where(q => q.LeagueId == leagueId)
-            .Include(q => q.LeaguePlayer)
-            .OrderBy(q => q.JoinedAt)
-            .ToListAsync();
-
-        if (queueEntries.Count < league.QueueSize)
-        {
-            return;
-        }
-
-        var selectedEntries = queueEntries.Take(league.QueueSize).ToList();
-        var players = selectedEntries.Select(e => e.LeaguePlayer).ToList();
-
-        var teams = BalanceTeams(players, orgId, leagueId);
-
-        var pendingMatch = new V3PendingMatch
-        {
-            OrganizationId = orgId,
-            LeagueId = leagueId,
-            Status = AcceptanceStatus.Pending,
-            ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(31),
-            Teams = teams,
-            Acceptances = players.Select(p => new PendingMatchAcceptance
-            {
-                PendingMatchId = default,
-                LeaguePlayerId = p.Id,
-                Status = AcceptanceStatus.Pending
-            }).ToList()
-        };
-
-        dbContext.V3PendingMatches.Add(pendingMatch);
-        await dbContext.SaveChangesAsync();
-    }
-
-    private static List<PendingMatchTeam> BalanceTeams(List<LeaguePlayer> players, Guid orgId, Guid leagueId)
-    {
-        var sorted = players.OrderByDescending(p => p.Mmr).ToList();
-        var teamCount = 2;
-        var teamPlayers = new List<List<LeaguePlayer>>();
-        for (var i = 0; i < teamCount; i++)
-        {
-            teamPlayers.Add(new List<LeaguePlayer>());
-        }
-
-        // Snake draft: for 4 players sorted by MMR [1,2,3,4] -> Team 0: [1,4], Team 1: [2,3]
-        for (var i = 0; i < sorted.Count; i++)
-        {
-            var round = i / teamCount;
-            var posInRound = i % teamCount;
-            var teamIndex = round % 2 == 0 ? posInRound : teamCount - 1 - posInRound;
-            teamPlayers[teamIndex].Add(sorted[i]);
-        }
-
-        return teamPlayers.Select((tp, index) => new PendingMatchTeam
-        {
-            OrganizationId = orgId,
-            LeagueId = leagueId,
-            Index = index,
-            Players = tp.Select((p, playerIndex) => new PendingMatchTeamPlayer
-            {
-                LeaguePlayerId = p.Id,
-                Index = playerIndex
-            }).ToList()
-        }).ToList();
-    }
-
     private async Task PromotePendingMatchToActiveMatch(Guid orgId, V3PendingMatch pendingMatch)
     {
         var activeMatch = new V3ActiveMatch
@@ -445,6 +387,38 @@ public class V3MatchMakingService(
             .ToListAsync();
 
         dbContext.QueueEntries.RemoveRange(queueEntries);
+    }
+
+    private async Task<V3PendingMatch?> GetPendingMatchForUpdateAsync(
+        Guid pendingMatchId,
+        Guid leagueId,
+        bool includeTeams)
+    {
+        var pendingMatch = await dbContext.V3PendingMatches
+            .FromSqlInterpolated($"SELECT * FROM pending_matches WHERE id = {pendingMatchId} AND league_id = {leagueId} FOR UPDATE")
+            .AsTracking()
+            .FirstOrDefaultAsync();
+
+        if (pendingMatch is null)
+        {
+            return null;
+        }
+
+        pendingMatch.Acceptances = await dbContext.PendingMatchAcceptances
+            .FromSqlInterpolated($"SELECT * FROM pending_match_acceptances WHERE pending_match_id = {pendingMatchId} FOR UPDATE")
+            .AsTracking()
+            .ToListAsync();
+
+        if (includeTeams)
+        {
+            await dbContext.Entry(pendingMatch)
+                .Collection(pm => pm.Teams)
+                .Query()
+                .Include(t => t.Players)
+                .LoadAsync();
+        }
+
+        return pendingMatch;
     }
 
     private void RemoveActiveMatch(V3ActiveMatch activeMatch)
@@ -517,8 +491,8 @@ public class V3MatchMakingService(
             Players = t.Players.OrderBy(p => p.Index).Select(p => new PendingMatchTeamPlayerResponse
             {
                 LeaguePlayerId = p.LeaguePlayerId,
-                DisplayName = p.LeaguePlayer.OrganizationMembership.DisplayName,
-                Username = p.LeaguePlayer.OrganizationMembership.Username,
+                DisplayName = p.LeaguePlayer.OrganizationMembership.GetDisplayName(),
+                Username = p.LeaguePlayer.OrganizationMembership.GetUsername(),
                 Index = p.Index
             }).ToList()
         }).ToList(),
@@ -541,8 +515,8 @@ public class V3MatchMakingService(
             Players = t.Players.OrderBy(p => p.Index).Select(p => new PendingMatchTeamPlayerResponse
             {
                 LeaguePlayerId = p.LeaguePlayerId,
-                DisplayName = p.LeaguePlayer.OrganizationMembership.DisplayName,
-                Username = p.LeaguePlayer.OrganizationMembership.Username,
+                DisplayName = p.LeaguePlayer.OrganizationMembership.GetDisplayName(),
+                Username = p.LeaguePlayer.OrganizationMembership.GetUsername(),
                 Index = p.Index
             }).ToList()
         }).ToList()

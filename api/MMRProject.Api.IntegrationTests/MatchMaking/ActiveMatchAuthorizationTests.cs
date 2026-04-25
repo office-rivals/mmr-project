@@ -77,6 +77,8 @@ public class ActiveMatchAuthorizationTests(PostgresFixture postgres) : Integrati
                 $"api/v3/organizations/{org.Id}/leagues/{league.Id}/queue", null);
         }
 
+        await RunMatchMakingCycleAsync();
+
         AuthenticateAs("p1");
         var queueStatusResponse = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/queue");

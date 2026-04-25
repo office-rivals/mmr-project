@@ -47,6 +47,8 @@ public class V3SeasonService(ApiDbContext dbContext) : IV3SeasonService
 
     public async Task<SeasonResponse?> GetCurrentSeasonAsync(Guid orgId, Guid leagueId)
     {
+        await EnsureLeagueExists(orgId, leagueId);
+
         var now = DateTimeOffset.UtcNow;
         var season = await dbContext.Set<V3Season>()
             .Where(s => s.OrganizationId == orgId && s.LeagueId == leagueId && s.StartsAt <= now)

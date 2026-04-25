@@ -56,7 +56,7 @@
 <div class="space-y-6">
   <div>
     <h1 class="text-2xl font-bold tracking-tight">Members</h1>
-    <p class="text-muted-foreground text-sm">
+    <p class="text-sm text-muted-foreground">
       Manage members of {data.org.name}
     </p>
   </div>
@@ -84,10 +84,14 @@
           {#if data.inviteLinks.length > 0}
             <div class="space-y-2">
               {#each data.inviteLinks as link}
-                <div class="flex items-center justify-between rounded-lg border p-3">
+                <div
+                  class="flex items-center justify-between rounded-lg border p-3"
+                >
                   <div class="flex flex-col gap-1">
                     <div class="flex items-center gap-2">
-                      <code class="bg-muted rounded px-2 py-0.5 font-mono text-sm tracking-widest">
+                      <code
+                        class="rounded bg-muted px-2 py-0.5 font-mono text-sm tracking-widest"
+                      >
                         {link.code}
                       </code>
                       <Button
@@ -103,7 +107,7 @@
                         {/if}
                       </Button>
                     </div>
-                    <p class="text-muted-foreground text-xs">
+                    <p class="text-xs text-muted-foreground">
                       {link.useCount}{link.maxUses ? `/${link.maxUses}` : ''} uses
                       {#if link.expiresAt}
                         · Expires {formatDate(link.expiresAt)}
@@ -116,7 +120,7 @@
                       type="submit"
                       variant="ghost"
                       size="sm"
-                      class="text-destructive hover:text-destructive h-8 w-8 p-0"
+                      class="h-8 w-8 p-0 text-destructive hover:text-destructive"
                     >
                       <Trash2 class="h-4 w-4" />
                     </Button>
@@ -145,7 +149,7 @@
                   showCreateLink = false;
                 };
               }}
-              class="border-muted flex flex-col gap-4 rounded-lg border p-4"
+              class="flex flex-col gap-4 rounded-lg border border-muted p-4"
             >
               <div class="flex gap-4">
                 <div class="flex-1 space-y-2">
@@ -160,7 +164,11 @@
                 </div>
                 <div class="flex-1 space-y-2">
                   <Label for="expiresAt">Expires (optional)</Label>
-                  <Input id="expiresAt" name="expiresAt" type="datetime-local" />
+                  <Input
+                    id="expiresAt"
+                    name="expiresAt"
+                    type="datetime-local"
+                  />
                 </div>
               </div>
               <div class="flex gap-2">
@@ -211,7 +219,7 @@
             <select
               id="role"
               name="role"
-              class="border-input bg-background ring-offset-background flex h-10 w-full rounded-md border px-3 py-2 text-sm"
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
             >
               <option value="Member">Member</option>
               <option value="Moderator">Moderator</option>
@@ -236,13 +244,14 @@
     <CardContent>
       <div class="space-y-3">
         {#each data.members as member}
-          <div
-            class="flex items-center justify-between rounded-lg border p-3"
-          >
+          <div class="flex items-center justify-between rounded-lg border p-3">
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <span class="truncate font-medium">
-                  {member.displayName || member.username || member.email || 'Unknown'}
+                  {member.displayName ||
+                    member.username ||
+                    member.email ||
+                    'Unknown'}
                 </span>
                 <Badge variant={getRoleBadgeVariant(member.role)}>
                   {member.role}
@@ -252,7 +261,7 @@
                 </Badge>
               </div>
               {#if member.email}
-                <p class="text-muted-foreground truncate text-sm">
+                <p class="truncate text-sm text-muted-foreground">
                   {member.email}
                 </p>
               {/if}
@@ -261,14 +270,10 @@
             {#if isModeratorOrAbove}
               <div class="ml-4 flex items-center gap-2">
                 <form method="POST" action="?/updateRole" use:enhance>
-                  <input
-                    type="hidden"
-                    name="membershipId"
-                    value={member.id}
-                  />
+                  <input type="hidden" name="membershipId" value={member.id} />
                   <select
                     name="role"
-                    class="border-input bg-background h-8 rounded-md border px-2 text-sm"
+                    class="h-8 rounded-md border border-input bg-background px-2 text-sm"
                     onchange={(e) => e.currentTarget.form?.requestSubmit()}
                     value={member.role}
                   >
@@ -280,16 +285,19 @@
                   </select>
                 </form>
                 <form method="POST" action="?/remove" use:enhance>
-                  <input
-                    type="hidden"
-                    name="membershipId"
-                    value={member.id}
-                  />
+                  <input type="hidden" name="membershipId" value={member.id} />
                   <Button
                     type="submit"
                     variant="ghost"
                     size="sm"
-                    class="text-destructive hover:text-destructive h-8 w-8 p-0"
+                    class="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    onclick={(event) => {
+                      if (
+                        !confirm('Remove this member from the organization?')
+                      ) {
+                        event.preventDefault();
+                      }
+                    }}
                   >
                     <Trash2 class="h-4 w-4" />
                   </Button>
@@ -299,7 +307,7 @@
           </div>
         {/each}
         {#if data.members.length === 0}
-          <p class="text-muted-foreground py-4 text-center text-sm">
+          <p class="py-4 text-center text-sm text-muted-foreground">
             No members yet
           </p>
         {/if}

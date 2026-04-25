@@ -35,7 +35,7 @@ public class LeagueTests(PostgresFixture postgres) : IntegrationTestBase(postgre
         AuthenticateAs("owner-1");
 
         var response = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/leagues",
-            new CreateLeagueRequest { Name = "Second League", Slug = "first-league" });
+            new CreateLeagueRequest { Name = "Second League", Slug = "first-league", QueueSize = 4 });
 
         Assert.True(response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict);
     }

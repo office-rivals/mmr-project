@@ -63,7 +63,6 @@ public class V3UserService(ApiDbContext dbContext) : IV3UserService
         }
         catch (DbUpdateException)
         {
-            // Concurrent insert won the race — return the existing row
             dbContext.ChangeTracker.Clear();
             return await dbContext.V3Users
                 .FirstAsync(u => u.IdentityUserId == identityUserId);

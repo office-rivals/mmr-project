@@ -3,7 +3,7 @@ using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.Exceptions;
-
+using MMRProject.Api.Extensions;
 using Npgsql;
 
 namespace MMRProject.Api.Services.V3;
@@ -64,7 +64,9 @@ public class V3MatchFlagService(
         var query = dbContext.Set<V3MatchFlag>()
             .AsNoTracking()
             .Include(f => f.FlaggedByMembership)
+                .ThenInclude(m => m.User)
             .Include(f => f.ResolvedByMembership)
+                .ThenInclude(m => m!.User)
             .Where(f => f.OrganizationId == orgId && f.LeagueId == leagueId);
 
         if (status.HasValue)
@@ -113,7 +115,9 @@ public class V3MatchFlagService(
         var flags = await dbContext.Set<V3MatchFlag>()
             .AsNoTracking()
             .Include(f => f.FlaggedByMembership)
+                .ThenInclude(m => m.User)
             .Include(f => f.ResolvedByMembership)
+                .ThenInclude(m => m!.User)
             .Where(f => f.OrganizationId == orgId && f.LeagueId == leagueId
                 && f.FlaggedByMembershipId == membershipId && f.Status == MatchFlagStatus.Open)
             .OrderByDescending(f => f.CreatedAt)
@@ -170,7 +174,9 @@ public class V3MatchFlagService(
     {
         var flag = await dbContext.Set<V3MatchFlag>()
             .Include(f => f.FlaggedByMembership)
+                .ThenInclude(m => m.User)
             .Include(f => f.ResolvedByMembership)
+                .ThenInclude(m => m!.User)
             .FirstOrDefaultAsync(f => f.OrganizationId == orgId && f.LeagueId == leagueId && f.Id == flagId);
 
         if (flag == null)
@@ -186,12 +192,12 @@ public class V3MatchFlagService(
             Id = flag.Id,
             MatchId = flag.MatchId,
             FlaggedByMembershipId = flag.FlaggedByMembershipId,
-            FlaggedByDisplayName = flag.FlaggedByMembership?.DisplayName,
+            FlaggedByDisplayName = flag.FlaggedByMembership?.GetDisplayName(),
             Reason = flag.Reason,
             Status = flag.Status,
             ResolutionNote = flag.ResolutionNote,
             ResolvedByMembershipId = flag.ResolvedByMembershipId,
-            ResolvedByDisplayName = flag.ResolvedByMembership?.DisplayName,
+            ResolvedByDisplayName = flag.ResolvedByMembership?.GetDisplayName(),
             ResolvedAt = flag.ResolvedAt,
             CreatedAt = flag.CreatedAt,
             UpdatedAt = flag.UpdatedAt,

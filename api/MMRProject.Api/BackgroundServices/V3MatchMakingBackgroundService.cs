@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 
+using MMRProject.Api.Services.V3;
+
 namespace MMRProject.Api.BackgroundServices;
 
 public class V3MatchMakingBackgroundService(
@@ -10,57 +12,29 @@ public class V3MatchMakingBackgroundService(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+
+        while (await timer.WaitForNextTickAsync(stoppingToken))
         {
-            logger.LogInformation("Running v3 match making background service");
-
-            var frequentUpdates = await DoWorkAsync(stoppingToken);
-
-            var delay = frequentUpdates ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(20);
-            await Task.Delay(delay, stoppingToken);
+            try
+            {
+                await DoWorkAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to process v3 matchmaking background work");
+            }
         }
     }
 
-    private async Task<bool> DoWorkAsync(CancellationToken cancellationToken)
+    private async Task DoWorkAsync(CancellationToken cancellationToken)
     {
         using var scope = serviceScopeFactory.CreateScope();
-
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
-
-        var expiredMatches = await dbContext.V3PendingMatches
-            .Include(pm => pm.Acceptances)
-            .Where(pm => pm.Status == AcceptanceStatus.Pending)
-            .Where(pm => pm.ExpiresAt.AddSeconds(1) < DateTimeOffset.UtcNow)
-            .ToListAsync(cancellationToken);
-
-        if (expiredMatches.Count == 0)
-        {
-            return false;
-        }
-
-        foreach (var pendingMatch in expiredMatches)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return false;
-            }
-
-            pendingMatch.Status = AcceptanceStatus.Declined;
-
-            var nonAcceptedPlayerIds = pendingMatch.Acceptances
-                .Where(a => a.Status != AcceptanceStatus.Accepted)
-                .Select(a => a.LeaguePlayerId)
-                .ToList();
-
-            var queueEntriesToRemove = await dbContext.QueueEntries
-                .Where(q => q.LeagueId == pendingMatch.LeagueId && nonAcceptedPlayerIds.Contains(q.LeaguePlayerId))
-                .ToListAsync(cancellationToken);
-
-            dbContext.QueueEntries.RemoveRange(queueEntriesToRemove);
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return true;
+        var coordinator = scope.ServiceProvider.GetRequiredService<IV3PendingMatchCoordinator>();
+        await coordinator.ProcessOnceAsync(cancellationToken);
     }
 }

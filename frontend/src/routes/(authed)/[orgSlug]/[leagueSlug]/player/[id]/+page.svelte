@@ -64,7 +64,8 @@
 <div class="flex flex-col gap-6">
   {#if data.player?.displayName}
     <PageTitle
-      >{data.player.displayName} ({data.player.username}){profileSuffix}</PageTitle
+      >{data.player.displayName} ({data.player
+        .username}){profileSuffix}</PageTitle
     >
   {:else}
     <PageTitle>{data.player?.username ?? 'Player'}{profileSuffix}</PageTitle>
@@ -110,7 +111,7 @@
       {#each data.matches as match}
         {@const existingFlag = myFlagForMatch(match.id)}
         <div
-          class="bg-card rounded-lg border p-3 {existingFlag
+          class="rounded-lg border bg-card p-3 {existingFlag
             ? 'border-red-400'
             : ''}"
         >
@@ -127,9 +128,7 @@
                   </a>
                 {/each}
                 {#if team.isWinner}
-                  <span class="text-xs font-semibold text-green-600"
-                    >Winner</span
-                  >
+                  <span class="text-xs font-semibold text-primary">Winner</span>
                 {/if}
               </div>
             {/each}

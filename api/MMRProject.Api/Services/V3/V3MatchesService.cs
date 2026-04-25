@@ -252,6 +252,7 @@ public class V3MatchesService(
                 .ThenInclude(t => t.Players)
                     .ThenInclude(p => p.LeaguePlayer)
                         .ThenInclude(lp => lp.OrganizationMembership)
+                            .ThenInclude(om => om.User)
             .Where(m => m.OrganizationId == orgId && m.LeagueId == leagueId);
 
         if (seasonId.HasValue)
@@ -327,6 +328,7 @@ public class V3MatchesService(
                 .ThenInclude(t => t.Players)
                     .ThenInclude(p => p.LeaguePlayer)
                         .ThenInclude(lp => lp.OrganizationMembership)
+                            .ThenInclude(om => om.User)
             .FirstOrDefaultAsync(m => m.OrganizationId == orgId && m.LeagueId == leagueId && m.Id == matchId);
 
         if (match == null)
@@ -512,8 +514,8 @@ public class V3MatchesService(
                 {
                     Id = p.Id,
                     LeaguePlayerId = p.LeaguePlayerId,
-                    DisplayName = p.LeaguePlayer?.OrganizationMembership?.DisplayName,
-                    Username = p.LeaguePlayer?.OrganizationMembership?.Username,
+                    DisplayName = p.LeaguePlayer?.OrganizationMembership?.GetDisplayName(),
+                    Username = p.LeaguePlayer?.OrganizationMembership?.GetUsername(),
                     Index = p.Index,
                     RatingDelta = ratingHistories?.GetValueOrDefault(p.LeaguePlayerId)?.Delta,
                 }).ToList(),

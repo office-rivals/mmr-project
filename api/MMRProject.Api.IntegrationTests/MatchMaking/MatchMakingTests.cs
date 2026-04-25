@@ -1,4 +1,7 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -29,7 +32,7 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
     }
 
     [Fact]
-    public async Task PendingMatch_CreatedWhenQueueFull()
+    public async Task PendingMatch_CreatedByCoordinatorWhenQueueFull()
     {
         var org = await CreateOrganization();
         var league = await CreateLeague(org.Id, queueSize: 4);
@@ -47,6 +50,14 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
         }
 
         AuthenticateAs("p1");
+        var queuedStatusResponse = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/queue");
+        var queuedStatus = await ReadJsonAsync<QueueStatusResponse>(queuedStatusResponse);
+        Assert.NotNull(queuedStatus);
+        Assert.Null(queuedStatus.PendingMatch);
+
+        await RunMatchMakingCycleAsync();
+
         var statusResponse = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/queue");
         var status = await ReadJsonAsync<QueueStatusResponse>(statusResponse);
@@ -54,6 +65,70 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
         Assert.NotNull(status.PendingMatch);
         Assert.Equal(AcceptanceStatus.Pending, status.PendingMatch.Status);
         Assert.Equal(2, status.PendingMatch.Teams.Count);
+    }
+
+    [Fact]
+    public async Task ExpiredPendingMatch_AllPlayersAccepted_DoesNotDecline()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id, queueSize: 2);
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com");
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+            var pendingMatch = new V3PendingMatch
+            {
+                OrganizationId = org.Id,
+                LeagueId = league.Id,
+                Status = AcceptanceStatus.Pending,
+                ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-5),
+                Acceptances =
+                [
+                    new PendingMatchAcceptance
+                    {
+                        LeaguePlayerId = player1.Id,
+                        Status = AcceptanceStatus.Accepted,
+                        AcceptedAt = DateTimeOffset.UtcNow,
+                    },
+                    new PendingMatchAcceptance
+                    {
+                        LeaguePlayerId = player2.Id,
+                        Status = AcceptanceStatus.Accepted,
+                        AcceptedAt = DateTimeOffset.UtcNow,
+                    },
+                ],
+            };
+
+            dbContext.V3PendingMatches.Add(pendingMatch);
+            dbContext.QueueEntries.AddRange(
+                new QueueEntry
+                {
+                    OrganizationId = org.Id,
+                    LeagueId = league.Id,
+                    LeaguePlayerId = player1.Id,
+                    JoinedAt = DateTimeOffset.UtcNow.AddMinutes(-2),
+                },
+                new QueueEntry
+                {
+                    OrganizationId = org.Id,
+                    LeagueId = league.Id,
+                    LeaguePlayerId = player2.Id,
+                    JoinedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+                });
+            await dbContext.SaveChangesAsync();
+        }
+
+        await RunMatchMakingCycleAsync();
+
+        using var verifyScope = Factory.Services.CreateScope();
+        var verifyDbContext = verifyScope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var storedPendingMatch = await verifyDbContext.V3PendingMatches.SingleAsync(pm => pm.LeagueId == league.Id);
+        var queuedCount = await verifyDbContext.QueueEntries.CountAsync(q => q.LeagueId == league.Id);
+
+        Assert.Equal(AcceptanceStatus.Pending, storedPendingMatch.Status);
+        Assert.Equal(2, queuedCount);
     }
 
     [Fact]
@@ -73,6 +148,8 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
             await Client.PostAsync(
                 $"api/v3/organizations/{org.Id}/leagues/{league.Id}/queue", null);
         }
+
+        await RunMatchMakingCycleAsync();
 
         AuthenticateAs("p1");
         var statusResponse = await Client.GetAsync(
@@ -144,6 +221,8 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
                 $"api/v3/organizations/{org.Id}/leagues/{league.Id}/queue", null);
         }
 
+        await RunMatchMakingCycleAsync();
+
         // Get pending match
         AuthenticateAs("p1");
         var statusResponse = await Client.GetAsync(
@@ -207,6 +286,8 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
             await Client.PostAsync(
                 $"api/v3/organizations/{org.Id}/leagues/{league.Id}/queue", null);
         }
+
+        await RunMatchMakingCycleAsync();
 
         AuthenticateAs("p1");
         var statusResponse = await Client.GetAsync(

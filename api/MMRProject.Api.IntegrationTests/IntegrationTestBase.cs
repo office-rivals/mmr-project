@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
+using MMRProject.Api.Services.V3;
 using Npgsql;
 using Respawn;
 using Respawn.Graph;
@@ -263,5 +264,12 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         await dbContext.SaveChangesAsync();
 
         return season;
+    }
+
+    protected async Task RunMatchMakingCycleAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var coordinator = scope.ServiceProvider.GetRequiredService<IV3PendingMatchCoordinator>();
+        await coordinator.ProcessOnceAsync();
     }
 }
