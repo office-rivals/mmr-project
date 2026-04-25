@@ -1,25 +1,20 @@
-import { error, redirect } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
-import { PlayerRole } from '../../api';
 
-export const load: LayoutServerLoad = async ({ locals }) => {
-  // Check authentication first
-  const { userId } = locals.auth();
-
-  if (!userId) {
-    return redirect(307, '/');
+// TODO(super-admin): once the super-admin role lands, gate this layout on
+// `user.isSuperAdmin === true` and redirect non-super-admins to their primary
+// org admin page (or just back to `/`). Until then we accept any authenticated
+// user — the per-org `/admin/[orgSlug]/+layout.server.ts` enforces the real
+// authorization for everything that actually matters.
+export const load: LayoutServerLoad = async ({ locals: { apiClientV3 } }) => {
+  let me;
+  try {
+    me = await apiClientV3.meApi.getMe();
+  } catch {
+    throw error(401, 'Failed to load user profile');
   }
 
-  // Check admin role
-  const apiClient = locals.apiClient;
-  const roleResponse = await apiClient.rolesApi.rolesGetMyRole();
-  const userRole = roleResponse.role;
-
-  if (!userRole || userRole === PlayerRole.User) {
-    error(403, {
-      message: 'Access denied. Admin privileges required.',
-    });
-  }
-
-  return { userRole };
+  return {
+    me,
+  };
 };

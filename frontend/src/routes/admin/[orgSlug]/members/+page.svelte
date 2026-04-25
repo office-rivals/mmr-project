@@ -18,9 +18,10 @@
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
-  const isOwner = data.org.role === 'Owner';
-  const isModeratorOrAbove =
-    data.org.role === 'Owner' || data.org.role === 'Moderator';
+  const isOwner = $derived(data.org.role === 'Owner');
+  const isModeratorOrAbove = $derived(
+    data.org.role === 'Owner' || data.org.role === 'Moderator'
+  );
 
   let showCreateLink = $state(false);
   let copiedCode = $state<string | null>(null);

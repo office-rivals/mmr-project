@@ -92,18 +92,18 @@
 
   {#if data.flags.length === 0}
     <div
-      class="border-border flex flex-col items-center justify-center rounded-lg border py-12 text-center"
+      class="flex flex-col items-center justify-center rounded-lg border border-border py-12 text-center"
     >
-      <CheckCircle class="text-muted-foreground mb-4 h-12 w-12" />
+      <CheckCircle class="mb-4 h-12 w-12 text-muted-foreground" />
       <h3 class="text-lg font-medium">No flags found</h3>
-      <p class="text-muted-foreground text-sm">
+      <p class="text-sm text-muted-foreground">
         {data.statusFilter
           ? `No ${data.statusFilter.toLowerCase()} flags`
           : 'All match flags have been resolved'}
       </p>
     </div>
   {:else}
-    <div class="border-border rounded-lg border">
+    <div class="rounded-lg border border-border">
       <Table.Root>
         <Table.Header>
           <Table.Row>
@@ -154,10 +154,7 @@
               </Table.Cell>
               <Table.Cell class="text-right">
                 {#if flag.status === 'Open'}
-                  <Button
-                    size="sm"
-                    onclick={() => handleResolve(flag.id)}
-                  >
+                  <Button size="sm" onclick={() => handleResolve(flag.id)}>
                     <CheckCircle class="mr-1 h-3.5 w-3.5" />
                     Resolve
                   </Button>
@@ -188,9 +185,9 @@
 
     {#if selectedFlag}
       <div class="space-y-4 py-4">
-        <div class="border-border space-y-2 rounded-lg border p-3">
+        <div class="space-y-2 rounded-lg border border-border p-3">
           <div class="flex items-center gap-2">
-            <span class="text-muted-foreground text-sm font-medium"
+            <span class="text-sm font-medium text-muted-foreground"
               >Flagged by:</span
             >
             <span class="text-sm"
@@ -198,7 +195,7 @@
             >
           </div>
           <div class="space-y-1">
-            <span class="text-muted-foreground text-sm font-medium"
+            <span class="text-sm font-medium text-muted-foreground"
               >Reason:</span
             >
             <p class="text-sm">{selectedFlag.reason}</p>
@@ -231,9 +228,7 @@
                 <Button
                   type="button"
                   size="sm"
-                  variant={resolveStatus === 'Resolved'
-                    ? 'default'
-                    : 'outline'}
+                  variant={resolveStatus === 'Resolved' ? 'default' : 'outline'}
                   onclick={() => (resolveStatus = 'Resolved')}
                 >
                   <CheckCircle class="mr-1 h-3.5 w-3.5" />
@@ -260,7 +255,7 @@
                 name="note"
                 bind:value={resolutionNote}
                 rows="3"
-                class="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[80px] w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2"
+                class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 placeholder="Add a note about why this flag was resolved..."
               ></textarea>
             </div>

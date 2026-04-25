@@ -2,13 +2,21 @@ import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getApiErrorDetails } from '$lib/server/api/apiError';
 
-export const load: PageServerLoad = async ({ parent, locals: { apiClientV3 }, url }) => {
+export const load: PageServerLoad = async ({
+  parent,
+  locals: { apiClientV3 },
+  url,
+}) => {
   const { orgId, leagueId } = await parent();
   const statusFilter = url.searchParams.get('status') ?? undefined;
 
   try {
     const [flags, players] = await Promise.all([
-      apiClientV3.adminMatchFlagsApi.listAllFlags(orgId, leagueId, statusFilter as any),
+      apiClientV3.adminMatchFlagsApi.listAllFlags(
+        orgId,
+        leagueId,
+        statusFilter as any
+      ),
       apiClientV3.leaguePlayersApi.listPlayers(orgId, leagueId),
     ]);
 
@@ -36,10 +44,15 @@ export const actions = {
     }
 
     try {
-      await apiClientV3.adminMatchFlagsApi.resolveFlag(orgId, leagueId, flagId, {
-        status: status as any,
-        resolutionNote: note,
-      });
+      await apiClientV3.adminMatchFlagsApi.resolveFlag(
+        orgId,
+        leagueId,
+        flagId,
+        {
+          status: status as any,
+          resolutionNote: note,
+        }
+      );
     } catch (error) {
       const { status: statusCode, message } = await getApiErrorDetails(
         error,
