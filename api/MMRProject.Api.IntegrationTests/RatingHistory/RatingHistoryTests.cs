@@ -132,4 +132,84 @@ public class RatingHistoryTests(PostgresFixture postgres) : IntegrationTestBase(
             response2.StatusCode == HttpStatusCode.NotFound || response2.StatusCode == HttpStatusCode.OK,
             $"Expected NotFound or OK, got {response2.StatusCode}");
     }
+
+    [Fact]
+    public async Task GetLeagueRatingHistory_ExcludesPlayersBelowRankedThreshold()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, p1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, p2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, p3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, p4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        // Only 5 matches — below the 10-match threshold
+        for (var i = 0; i < 5; i++)
+        {
+            await Client.PostAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+                new SubmitMatchRequest
+                {
+                    Teams =
+                    [
+                        new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
+                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = i }
+                    ]
+                });
+        }
+
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/rating-history");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var history = await ReadJsonAsync<LeagueRatingHistoryResponse>(response);
+        Assert.NotNull(history);
+        Assert.Empty(history.Entries);
+    }
+
+    [Fact]
+    public async Task GetLeagueRatingHistory_IncludesPlayersAtOrAboveRankedThreshold()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, p1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, p2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, p3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, p4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        for (var i = 0; i < 10; i++)
+        {
+            await Client.PostAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+                new SubmitMatchRequest
+                {
+                    Teams =
+                    [
+                        new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
+                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = i % 9 }
+                    ]
+                });
+        }
+
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/rating-history");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var history = await ReadJsonAsync<LeagueRatingHistoryResponse>(response);
+        Assert.NotNull(history);
+
+        var p1Entries = history.Entries.Where(e => e.LeaguePlayerId == p1.Id).ToList();
+        Assert.Equal(10, p1Entries.Count);
+        Assert.All(p1Entries, e => Assert.True(e.Mmr > 0));
+    }
 }

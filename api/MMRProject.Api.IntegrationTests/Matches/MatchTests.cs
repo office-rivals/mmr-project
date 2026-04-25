@@ -50,6 +50,74 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
     }
 
     [Fact]
+    public async Task GetMatches_FilterByLeaguePlayerId_ReturnsOnlyParticipantMatches()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, p1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, p2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, p3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, p4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+        var (_, _, p5) = await SeedTestUser(org.Id, league.Id, "p5", "p5@test.com");
+        var (_, _, p6) = await SeedTestUser(org.Id, league.Id, "p6", "p6@test.com");
+
+        AuthenticateAs("p1");
+
+        // Match A: p1 + p2 vs p3 + p4
+        await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 5 }
+                ]
+            });
+
+        // Match B: p3 + p4 vs p5 + p6 (no p1)
+        await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [p5.Id, p6.Id], Score = 7 }
+                ]
+            });
+
+        // Match C: p1 + p5 vs p2 + p6
+        await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [p1.Id, p5.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [p2.Id, p6.Id], Score = 8 }
+                ]
+            });
+
+        var p1Resp = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches?leaguePlayerId={p1.Id}");
+        var p1Matches = await ReadJsonAsync<List<MatchResponse>>(p1Resp);
+        Assert.NotNull(p1Matches);
+        Assert.Equal(2, p1Matches.Count);
+        Assert.All(p1Matches, m => Assert.Contains(m.Teams,
+            t => t.Players.Any(pl => pl.LeaguePlayerId == p1.Id)));
+
+        var p3Resp = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches?leaguePlayerId={p3.Id}");
+        var p3Matches = await ReadJsonAsync<List<MatchResponse>>(p3Resp);
+        Assert.NotNull(p3Matches);
+        Assert.Equal(2, p3Matches.Count);
+    }
+
+    [Fact]
     public async Task GetMatches_ReturnsLeagueScopedResults()
     {
         var org = await CreateOrganization();
