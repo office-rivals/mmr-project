@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test as setup, expect } from '@playwright/test';
@@ -20,7 +20,9 @@ if (!userEmail || !userPassword || !identityUserId) {
 
 setup('apply seed and sign in', async ({ page }) => {
   // 1. Reset DB to vendored seed, with the test user's Clerk identity.
-  execSync(path.join(projectRoot, 'scripts', 'seed-local.sh'), {
+  // execFileSync (with shell: false by default) bypasses shell parsing so
+  // unusual characters in projectRoot can't be interpreted as commands.
+  execFileSync(path.join(projectRoot, 'scripts', 'seed-local.sh'), [], {
     stdio: 'inherit',
     env: {
       ...process.env,
