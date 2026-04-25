@@ -262,8 +262,11 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
     }
 
     [Fact]
-    public async Task DeleteMatch_OlderMatch_IsRejected()
+    public async Task DeleteMatch_OlderMatch_RemovesMatchAndItsRatingHistory()
     {
+        // Older matches can be deleted; ratings for downstream matches go stale
+        // until the caller invokes the recalc endpoint. This test verifies the
+        // mechanical delete; the recalc test below verifies ratings can be fixed.
         var org = await CreateOrganization();
         var league = await CreateLeague(org.Id);
         await CreateSeason(org.Id, league.Id);
@@ -304,7 +307,18 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
         var deleteResponse = await Client.DeleteAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{firstMatch!.Id}");
 
-        Assert.Equal(HttpStatusCode.BadRequest, deleteResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var deletedMatch = await dbContext.Set<V3Match>()
+            .FirstOrDefaultAsync(m => m.Id == firstMatch.Id);
+        Assert.Null(deletedMatch);
+
+        var orphanedHistories = await dbContext.RatingHistories
+            .Where(rh => rh.MatchId == firstMatch.Id)
+            .CountAsync();
+        Assert.Equal(0, orphanedHistories);
     }
 
     [Fact]
@@ -674,5 +688,263 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
         var matches = await ReadJsonAsync<List<MatchResponse>>(response);
         Assert.NotNull(matches);
         Assert.Equal(2, matches.Count);
+    }
+
+    [Fact]
+    public async Task UpdateMatch_AsModerator_ReplacesTeamsAndScore()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, player3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, player4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+        var (_, _, player5) = await SeedTestUser(org.Id, league.Id, "p5", "p5@test.com");
+
+        AuthenticateAs("p1");
+
+        var submitResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                ]
+            });
+        var match = await ReadJsonAsync<MatchResponse>(submitResponse);
+        Assert.NotNull(match);
+
+        var updateResponse = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{match.Id}",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player5.Id], Score = 7 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 10 }
+                ]
+            });
+
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+        var updated = await ReadJsonAsync<MatchResponse>(updateResponse);
+        Assert.NotNull(updated);
+
+        var team1 = updated.Teams.OrderBy(t => t.Index).First();
+        Assert.Equal(7, team1.Score);
+        Assert.Contains(team1.Players, p => p.LeaguePlayerId == player5.Id);
+        Assert.DoesNotContain(team1.Players, p => p.LeaguePlayerId == player2.Id);
+
+        var team2 = updated.Teams.OrderBy(t => t.Index).Last();
+        Assert.Equal(10, team2.Score);
+        Assert.True(team2.IsWinner);
+        Assert.False(team1.IsWinner);
+    }
+
+    [Fact]
+    public async Task UpdateMatch_DuplicatePlayer_Returns400()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, player3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, player4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        var submitResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                ]
+            });
+        var match = await ReadJsonAsync<MatchResponse>(submitResponse);
+
+        var updateResponse = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{match!.Id}",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player1.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                ]
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, updateResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task RecalculateMatches_RebuildsRatingHistoryFromMatch()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, player3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, player4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        // First match: p1+p2 win 10-5
+        var firstResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                ]
+            });
+        var firstMatch = await ReadJsonAsync<MatchResponse>(firstResponse);
+
+        // Second match: p1+p2 win again 10-5
+        var secondResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                ]
+            });
+        secondResponse.EnsureSuccessStatusCode();
+
+        long mmrAfterTwoWins;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+            var p1Reload = await dbContext.LeaguePlayers.FindAsync(player1.Id);
+            mmrAfterTwoWins = p1Reload!.Mmr;
+        }
+
+        // Edit the first match: p3+p4 win instead. Without recalc, the rating
+        // history is now wrong for both matches.
+        var updateResponse = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{firstMatch!.Id}",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 5 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 10 }
+                ]
+            });
+        updateResponse.EnsureSuccessStatusCode();
+
+        // Recalc from the edited match onwards.
+        var recalcResponse = await Client.PostAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/recalculate?fromMatchId={firstMatch.Id}",
+            null);
+
+        Assert.Equal(HttpStatusCode.OK, recalcResponse.StatusCode);
+        var recalc = await ReadJsonAsync<RecalculateMatchesResponse>(recalcResponse);
+        Assert.NotNull(recalc);
+        Assert.Equal(2, recalc.MatchCount);
+        Assert.Equal(firstMatch.Id, recalc.FromMatchId);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+
+            // After recalc, p1 has lost twice. New MMR must be lower than after
+            // two wins.
+            var p1Reload = await dbContext.LeaguePlayers.FindAsync(player1.Id);
+            Assert.NotNull(p1Reload);
+            Assert.True(p1Reload.Mmr < mmrAfterTwoWins,
+                $"Expected p1 MMR after two losses ({p1Reload.Mmr}) to be less than after two wins ({mmrAfterTwoWins})");
+
+            // Exactly two RatingHistory rows per affected player (one per match).
+            var historyCount = await dbContext.RatingHistories
+                .Where(rh => rh.LeaguePlayerId == player1.Id)
+                .CountAsync();
+            Assert.Equal(2, historyCount);
+        }
+    }
+
+    [Fact]
+    public async Task RecalculateMatches_WithoutFromMatchId_ReplaysWholeSeason()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, player3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, player4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        for (var i = 0; i < 3; i++)
+        {
+            var response = await Client.PostAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+                new SubmitMatchRequest
+                {
+                    Teams =
+                    [
+                        new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                    ]
+                });
+            response.EnsureSuccessStatusCode();
+        }
+
+        var recalcResponse = await Client.PostAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/recalculate",
+            null);
+
+        Assert.Equal(HttpStatusCode.OK, recalcResponse.StatusCode);
+        var recalc = await ReadJsonAsync<RecalculateMatchesResponse>(recalcResponse);
+        Assert.NotNull(recalc);
+        Assert.Equal(3, recalc.MatchCount);
+        Assert.Null(recalc.FromMatchId);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var historyCount = await dbContext.RatingHistories
+            .Where(rh => rh.LeaguePlayerId == player1.Id)
+            .CountAsync();
+        Assert.Equal(3, historyCount);
+    }
+
+    [Fact]
+    public async Task RecalculateMatches_AsMember_Returns403()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        await SeedTestUser(org.Id, league.Id, "owner", "owner@test.com",
+            OrganizationRole.Owner);
+        await SeedTestUser(org.Id, league.Id, "member", "member@test.com",
+            OrganizationRole.Member);
+
+        AuthenticateAs("member");
+
+        var response = await Client.PostAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/recalculate",
+            null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 }

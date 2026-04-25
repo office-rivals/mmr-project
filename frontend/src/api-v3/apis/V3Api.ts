@@ -21,6 +21,7 @@ import type {
   SeasonResponse,
   SubmitMatchRequest,
   MatchResponse,
+  RecalculateMatchesResponse,
   LeaderboardResponse,
   RatingHistoryResponse,
   LeagueRatingHistoryResponse,
@@ -336,6 +337,37 @@ export class V3MatchesApi extends runtime.BaseAPI {
       method: 'DELETE',
       headers: {},
     });
+  }
+
+  async updateMatch(
+    orgId: string,
+    leagueId: string,
+    matchId: string,
+    request: SubmitMatchRequest
+  ): Promise<MatchResponse> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/matches/${matchId}`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: request,
+    });
+    return await response.json();
+  }
+
+  async recalculateMatches(
+    orgId: string,
+    leagueId: string,
+    fromMatchId?: string
+  ): Promise<RecalculateMatchesResponse> {
+    const query: runtime.HTTPQuery = {};
+    if (fromMatchId) query['fromMatchId'] = fromMatchId;
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/matches/recalculate`,
+      method: 'POST',
+      headers: {},
+      query,
+    });
+    return await response.json();
   }
 }
 

@@ -40,6 +40,15 @@ public class V3MatchesController(IV3MatchesService matchesService) : ControllerB
         return await matchesService.GetMatchAsync(orgId, leagueId, matchId);
     }
 
+    [HttpPatch("{matchId:guid}")]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgModerator)]
+    public async Task<ActionResult<MatchResponse>> UpdateMatch(
+        [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromRoute] Guid matchId,
+        [FromBody] SubmitMatchRequest request)
+    {
+        return await matchesService.UpdateMatchAsync(orgId, leagueId, matchId, request);
+    }
+
     [HttpDelete("{matchId:guid}")]
     [Authorize(Policy = V3AuthorizationPolicies.RequireOrgModerator)]
     public async Task<IActionResult> DeleteMatch(
@@ -47,5 +56,14 @@ public class V3MatchesController(IV3MatchesService matchesService) : ControllerB
     {
         await matchesService.DeleteMatchAsync(orgId, leagueId, matchId);
         return NoContent();
+    }
+
+    [HttpPost("recalculate")]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgModerator)]
+    public async Task<ActionResult<RecalculateMatchesResponse>> RecalculateMatches(
+        [FromRoute] Guid orgId, [FromRoute] Guid leagueId,
+        [FromQuery] Guid? fromMatchId)
+    {
+        return await matchesService.RecalculateCurrentSeasonAsync(orgId, leagueId, fromMatchId);
     }
 }

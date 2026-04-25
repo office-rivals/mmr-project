@@ -193,6 +193,13 @@ export interface MatchTeamPlayerResponse {
   ratingDelta?: number;
 }
 
+export interface RecalculateMatchesResponse {
+  matchCount: number;
+  fromMatchId?: string;
+  startedAt: string;
+  completedAt: string;
+}
+
 // Leaderboard DTOs
 export interface LeaderboardResponse {
   entries: LeaderboardEntryResponse[];

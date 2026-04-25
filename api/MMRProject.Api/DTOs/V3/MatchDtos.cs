@@ -60,3 +60,11 @@ public record MatchTeamPlayerResponse
     [Required] public required int Index { get; init; }
     public long? RatingDelta { get; init; }
 }
+
+public record RecalculateMatchesResponse
+{
+    [Required] public required int MatchCount { get; init; }
+    public Guid? FromMatchId { get; init; }
+    [Required] public required DateTimeOffset StartedAt { get; init; }
+    [Required] public required DateTimeOffset CompletedAt { get; init; }
+}

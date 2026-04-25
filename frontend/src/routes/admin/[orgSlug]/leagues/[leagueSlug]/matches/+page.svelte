@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import EditMatchDialog from '$lib/components/admin/edit-match-dialog.svelte';
   import { Alert } from '$lib/components/ui/alert';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
@@ -11,7 +12,14 @@
     CardTitle,
   } from '$lib/components/ui/card';
   import * as Table from '$lib/components/ui/table';
-  import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-svelte';
+  import {
+    ChevronLeft,
+    ChevronRight,
+    Pencil,
+    RefreshCw,
+    Trash2,
+  } from 'lucide-svelte';
+  import type { MatchResponse } from '$api3';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -28,16 +36,41 @@
 
   const prevOffset = $derived(Math.max(0, data.offset - data.pageSize));
   const nextOffset = $derived(data.offset + data.pageSize);
+
+  let editing = $state<MatchResponse | null>(null);
+  let editDialogOpen = $state(false);
+
+  function openEdit(match: MatchResponse) {
+    editing = match;
+    editDialogOpen = true;
+  }
 </script>
 
 <div class="space-y-4">
-  <div>
-    <h2 class="text-xl font-semibold">Matches</h2>
-    <p class="text-sm text-muted-foreground">
-      Most recent matches in this league. Only the latest match can be deleted —
-      that action rolls back ratings safely. To correct any earlier match, ask a
-      player to flag it instead.
-    </p>
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h2 class="text-xl font-semibold">Matches</h2>
+      <p class="text-sm text-muted-foreground">
+        Edit, delete, and recalculate MMR for matches in the current season.
+        Edits leave rating history untouched — recalc to flow through to the
+        leaderboard.
+      </p>
+    </div>
+    <form method="POST" action="?/recalculate" use:enhance>
+      <Button
+        type="submit"
+        variant="outline"
+        size="sm"
+        onclick={(event) => {
+          if (!confirm('Replay every match in the current season?')) {
+            event.preventDefault();
+          }
+        }}
+      >
+        <RefreshCw class="mr-2 h-4 w-4" />
+        Recalculate season
+      </Button>
+    </form>
   </div>
 
   {#if form?.success}
@@ -74,7 +107,7 @@
               {@const team1 = match.teams[0]}
               {@const team2 = match.teams[1]}
               {@const isLatest = match.id === data.latestMatchId}
-              <Table.Row>
+              <Table.Row data-testid="admin-match-row" data-match-id={match.id}>
                 <Table.Cell class="whitespace-nowrap text-sm">
                   {formatDateTime(match.playedAt)}
                 </Table.Cell>
@@ -88,7 +121,37 @@
                   {teamPlayers(team2?.players ?? [])}
                 </Table.Cell>
                 <Table.Cell class="text-right">
-                  {#if isLatest}
+                  <div class="flex flex-wrap justify-end gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onclick={() => openEdit(match)}
+                      data-testid="admin-match-edit"
+                    >
+                      <Pencil class="mr-1 h-3.5 w-3.5" />
+                      Edit
+                    </Button>
+                    <form
+                      method="POST"
+                      action="?/recalculate"
+                      use:enhance
+                      class="inline-block"
+                    >
+                      <input
+                        type="hidden"
+                        name="fromMatchId"
+                        value={match.id}
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        variant="ghost"
+                        data-testid="admin-match-recalculate"
+                      >
+                        <RefreshCw class="mr-1 h-3.5 w-3.5" />
+                        Recalc
+                      </Button>
+                    </form>
                     <form
                       method="POST"
                       action="?/delete"
@@ -98,15 +161,15 @@
                       <input type="hidden" name="matchId" value={match.id} />
                       <Button
                         type="submit"
-                        variant="ghost"
                         size="sm"
+                        variant="ghost"
                         class="text-destructive hover:text-destructive"
+                        data-testid="admin-match-delete"
                         onclick={(event) => {
-                          if (
-                            !confirm(
-                              'Delete this match and roll back its rating impact?'
-                            )
-                          ) {
+                          const msg = isLatest
+                            ? 'Delete this match and roll back its rating impact?'
+                            : 'Delete this match? Ratings for downstream matches will be wrong until you recalculate.';
+                          if (!confirm(msg)) {
                             event.preventDefault();
                           }
                         }}
@@ -115,9 +178,10 @@
                         Delete
                       </Button>
                     </form>
-                  {:else}
-                    <Badge variant="outline" class="text-xs">Locked</Badge>
-                  {/if}
+                    {#if isLatest}
+                      <Badge variant="outline" class="text-xs">Latest</Badge>
+                    {/if}
+                  </div>
                 </Table.Cell>
               </Table.Row>
             {/each}
@@ -148,3 +212,10 @@
     </Button>
   </div>
 </div>
+
+<EditMatchDialog
+  open={editDialogOpen}
+  onOpenChange={(value) => (editDialogOpen = value)}
+  match={editing}
+  leaguePlayers={data.leaguePlayers}
+/>
