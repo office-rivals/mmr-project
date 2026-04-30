@@ -17,6 +17,6 @@ public class AdminSeasonsController(ISeasonService seasonService) : ControllerBa
     public async Task<IActionResult> CreateSeason([FromBody] CreateSeasonRequest? request)
     {
         var season = await seasonService.CreateSeasonAsync(request?.StartsAt);
-        return CreatedAtAction(nameof(CreateSeason), season.ToSeasonDto());
+        return CreatedAtAction(nameof(SeasonsController.GetSeason), "Seasons", new { id = season.Id }, season.ToSeasonDto());
     }
 }
