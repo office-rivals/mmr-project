@@ -90,10 +90,18 @@ export interface OrganizationMemberResponse {
 export interface InviteMemberRequest {
   email: string;
   role: OrganizationRole;
+  displayName?: string;
+  username?: string;
 }
 
 export interface UpdateMemberRoleRequest {
   role: OrganizationRole;
+}
+
+export interface UpdateMemberProfileRequest {
+  displayName?: string;
+  username?: string;
+  email?: string;
 }
 
 // League DTOs
@@ -162,6 +170,7 @@ export interface SubmitMatchPlayerRequest {
 
 export interface CreateMatchPlayerRequest {
   displayName: string;
+  username?: string;
   email?: string;
 }
 

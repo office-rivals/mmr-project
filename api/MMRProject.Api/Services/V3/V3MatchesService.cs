@@ -190,6 +190,10 @@ public class V3MatchesService(
             ? null
             : newPlayer.Email.Trim();
 
+        var normalizedUsername = string.IsNullOrWhiteSpace(newPlayer.Username)
+            ? null
+            : newPlayer.Username.Trim();
+
         OrganizationMembership? membership = null;
 
         if (normalizedEmail != null)
@@ -217,7 +221,7 @@ public class V3MatchesService(
                 UserId = existingUser?.Id,
                 InviteEmail = existingUser == null ? normalizedEmail : null,
                 DisplayName = existingUser?.DisplayName ?? newPlayer.DisplayName.Trim(),
-                Username = existingUser?.Username,
+                Username = existingUser?.Username ?? normalizedUsername,
                 Role = OrganizationRole.Member,
                 Status = existingUser != null
                     ? MembershipStatus.Active
@@ -228,9 +232,16 @@ public class V3MatchesService(
             };
             dbContext.OrganizationMemberships.Add(membership);
         }
-        else if (string.IsNullOrWhiteSpace(membership.DisplayName))
+        else
         {
-            membership.DisplayName = newPlayer.DisplayName.Trim();
+            if (string.IsNullOrWhiteSpace(membership.DisplayName))
+            {
+                membership.DisplayName = newPlayer.DisplayName.Trim();
+            }
+            if (string.IsNullOrWhiteSpace(membership.Username) && normalizedUsername != null)
+            {
+                membership.Username = normalizedUsername;
+            }
         }
 
         return await GetOrCreateLeaguePlayerAsync(orgId, leagueId, membership);

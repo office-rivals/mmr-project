@@ -69,6 +69,7 @@
   let dialogOpen = $state(false);
   let dialogSlot = $state<SlotName>('team1_player1');
   let dialogDisplayName = $state('');
+  let dialogUsername = $state('');
   let dialogEmail = $state('');
   let dialogError = $state('');
 
@@ -77,6 +78,7 @@
   function openNewPlayerDialog(slot: SlotName, suggested: string) {
     dialogSlot = slot;
     dialogDisplayName = suggested;
+    dialogUsername = '';
     dialogEmail = '';
     dialogError = '';
     dialogOpen = true;
@@ -90,6 +92,7 @@
     slots[dialogSlot] = {
       kind: 'new',
       displayName: dialogDisplayName.trim(),
+      username: dialogUsername.trim(),
       email: dialogEmail.trim(),
     };
     dialogOpen = false;
@@ -227,6 +230,11 @@
           type="hidden"
           name="{slot}_displayName"
           value={slots[slot].displayName}
+        />
+        <input
+          type="hidden"
+          name="{slot}_username"
+          value={slots[slot].username}
         />
         <input type="hidden" name="{slot}_email" value={slots[slot].email} />
       {/if}
@@ -383,6 +391,14 @@
           id="new-player-display-name"
           bind:value={dialogDisplayName}
           placeholder="New teammate"
+        />
+      </div>
+      <div class="space-y-2">
+        <Label for="new-player-username">Username (optional)</Label>
+        <Input
+          id="new-player-username"
+          bind:value={dialogUsername}
+          placeholder="short-handle"
         />
       </div>
       <div class="space-y-2">

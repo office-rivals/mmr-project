@@ -17,6 +17,7 @@ public interface IOrganizationService
     Task<List<OrganizationMemberResponse>> ListMembersAsync(Guid orgId);
     Task<OrganizationMemberResponse> InviteMemberAsync(Guid orgId, InviteMemberRequest request);
     Task<OrganizationMemberResponse> UpdateMemberRoleAsync(Guid orgId, Guid membershipId, UpdateMemberRoleRequest request);
+    Task<OrganizationMemberResponse> UpdateMemberProfileAsync(Guid orgId, Guid membershipId, UpdateMemberProfileRequest request);
     Task RemoveMemberAsync(Guid orgId, Guid membershipId);
     Task<OrganizationMembership?> GetMembershipForCurrentUserAsync(Guid orgId);
     Task<Guid> GetCurrentMembershipIdAsync(Guid orgId);
@@ -162,12 +163,21 @@ public class OrganizationService(
                                       && (m.InviteEmail == request.Email
                                           || (m.User != null && m.User.Email == request.Email)));
 
+        var displayName = string.IsNullOrWhiteSpace(request.DisplayName)
+            ? null
+            : request.DisplayName.Trim();
+        var username = string.IsNullOrWhiteSpace(request.Username)
+            ? null
+            : request.Username.Trim();
+
         if (removedMembership != null)
         {
             removedMembership.InviteEmail = request.Email;
             removedMembership.Role = request.Role;
             removedMembership.Status = MembershipStatus.Invited;
             removedMembership.ClaimedAt = null;
+            if (displayName != null) removedMembership.DisplayName = displayName;
+            if (username != null) removedMembership.Username = username;
 
             await dbContext.SaveChangesAsync();
 
@@ -179,7 +189,9 @@ public class OrganizationService(
             OrganizationId = orgId,
             InviteEmail = request.Email,
             Role = request.Role,
-            Status = MembershipStatus.Invited
+            Status = MembershipStatus.Invited,
+            DisplayName = displayName,
+            Username = username,
         };
 
         dbContext.OrganizationMemberships.Add(membership);
@@ -215,6 +227,45 @@ public class OrganizationService(
         membership.Role = request.Role;
         membership.RoleAssignedByMembershipId = currentUserMembership.Id;
         membership.RoleAssignedAt = DateTimeOffset.UtcNow;
+
+        await dbContext.SaveChangesAsync();
+
+        return MapToMemberResponse(membership);
+    }
+
+    public async Task<OrganizationMemberResponse> UpdateMemberProfileAsync(
+        Guid orgId, Guid membershipId, UpdateMemberProfileRequest request)
+    {
+        var membership = await dbContext.OrganizationMemberships
+            .Include(m => m.User)
+            .FirstOrDefaultAsync(m => m.Id == membershipId
+                                      && m.OrganizationId == orgId
+                                      && m.Status != MembershipStatus.Removed)
+            ?? throw new NotFoundException($"Membership with ID '{membershipId}' not found");
+
+        if (request.DisplayName != null)
+        {
+            var trimmed = request.DisplayName.Trim();
+            membership.DisplayName = trimmed.Length == 0 ? null : trimmed;
+        }
+
+        if (request.Username != null)
+        {
+            var trimmed = request.Username.Trim();
+            membership.Username = trimmed.Length == 0 ? null : trimmed;
+        }
+
+        if (request.Email != null)
+        {
+            if (membership.UserId != null)
+            {
+                throw new InvalidArgumentException(
+                    "Cannot change email of a claimed membership; the user owns their account email");
+            }
+
+            var trimmed = request.Email.Trim();
+            membership.InviteEmail = trimmed.Length == 0 ? null : trimmed;
+        }
 
         await dbContext.SaveChangesAsync();
 

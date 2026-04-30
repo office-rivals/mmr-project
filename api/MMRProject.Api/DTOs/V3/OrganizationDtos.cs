@@ -40,9 +40,18 @@ public record InviteMemberRequest
 {
     [Required] public required string Email { get; init; }
     [Required] public required OrganizationRole Role { get; init; }
+    public string? DisplayName { get; init; }
+    public string? Username { get; init; }
 }
 
 public record UpdateMemberRoleRequest
 {
     [Required] public required OrganizationRole Role { get; init; }
+}
+
+public record UpdateMemberProfileRequest
+{
+    public string? DisplayName { get; init; }
+    public string? Username { get; init; }
+    public string? Email { get; init; }
 }

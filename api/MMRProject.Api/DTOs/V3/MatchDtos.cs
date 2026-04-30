@@ -27,6 +27,7 @@ public record SubmitMatchPlayerRequest
 public record CreateMatchPlayerRequest
 {
     [Required] public required string DisplayName { get; init; }
+    public string? Username { get; init; }
     public string? Email { get; init; }
 }
 

@@ -44,6 +44,8 @@ function resolvePlayerReference(formData: FormData, fieldName: string) {
   if (rawValue === 'new') {
     const displayName =
       formData.get(`${fieldName}_displayName`)?.toString().trim() ?? '';
+    const username =
+      formData.get(`${fieldName}_username`)?.toString().trim() ?? '';
     const email = formData.get(`${fieldName}_email`)?.toString().trim() ?? '';
 
     if (displayName === '') {
@@ -53,6 +55,7 @@ function resolvePlayerReference(formData: FormData, fieldName: string) {
     return {
       newPlayer: {
         displayName,
+        username: username || undefined,
         email: email || undefined,
       },
     };

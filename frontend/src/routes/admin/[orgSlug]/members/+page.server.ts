@@ -21,6 +21,10 @@ export const actions: Actions = {
     const formData = await request.formData();
     const email = formData.get('email') as string;
     const role = formData.get('role') as string;
+    const displayName =
+      ((formData.get('displayName') as string | null) ?? '').trim();
+    const username =
+      ((formData.get('username') as string | null) ?? '').trim();
 
     const orgId = await resolveOrgIdBySlug(apiClientV3, params.orgSlug);
     if (!orgId) return fail(404, { error: 'Organization not found' });
@@ -29,6 +33,8 @@ export const actions: Actions = {
       await apiClientV3.organizationMembersApi.inviteMember(orgId, {
         email,
         role: role as never,
+        displayName: displayName || undefined,
+        username: username || undefined,
       });
       return { success: 'Member invited successfully' };
     } catch {
@@ -53,6 +59,32 @@ export const actions: Actions = {
       return { success: 'Role updated successfully' };
     } catch {
       return fail(400, { error: 'Failed to update role' });
+    }
+  },
+
+  updateProfile: async ({ request, params, locals: { apiClientV3 } }) => {
+    const formData = await request.formData();
+    const membershipId = formData.get('membershipId') as string;
+    const displayName = (formData.get('displayName') as string | null) ?? '';
+    const username = (formData.get('username') as string | null) ?? '';
+    const emailRaw = formData.get('email') as string | null;
+
+    const orgId = await resolveOrgIdBySlug(apiClientV3, params.orgSlug);
+    if (!orgId) return fail(404, { error: 'Organization not found' });
+
+    try {
+      await apiClientV3.organizationMembersApi.updateMemberProfile(
+        orgId,
+        membershipId,
+        {
+          displayName: displayName.trim(),
+          username: username.trim(),
+          email: emailRaw == null ? undefined : emailRaw.trim(),
+        }
+      );
+      return { success: 'Profile updated successfully' };
+    } catch {
+      return fail(400, { error: 'Failed to update profile' });
     }
   },
 

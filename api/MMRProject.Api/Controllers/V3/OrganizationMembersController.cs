@@ -37,6 +37,14 @@ public class OrganizationMembersController(IOrganizationService organizationServ
         return await organizationService.UpdateMemberRoleAsync(orgId, membershipId, request);
     }
 
+    [HttpPatch("{membershipId:guid}/profile")]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgModerator)]
+    public async Task<ActionResult<OrganizationMemberResponse>> UpdateMemberProfile(
+        [FromRoute] Guid orgId, [FromRoute] Guid membershipId, [FromBody] UpdateMemberProfileRequest request)
+    {
+        return await organizationService.UpdateMemberProfileAsync(orgId, membershipId, request);
+    }
+
     [HttpDelete("{membershipId:guid}")]
     [Authorize(Policy = V3AuthorizationPolicies.RequireOrgOwner)]
     public async Task<IActionResult> RemoveMember([FromRoute] Guid orgId, [FromRoute] Guid membershipId)

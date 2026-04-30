@@ -13,6 +13,7 @@ import type {
   OrganizationMemberResponse,
   InviteMemberRequest,
   UpdateMemberRoleRequest,
+  UpdateMemberProfileRequest,
   CreateLeagueRequest,
   UpdateLeagueRequest,
   LeagueResponse,
@@ -120,6 +121,20 @@ export class OrganizationMembersApi extends runtime.BaseAPI {
   ): Promise<OrganizationMemberResponse> {
     const response = await this.request({
       path: `/api/v3/organizations/${orgId}/members/${membershipId}`,
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: request,
+    });
+    return await response.json();
+  }
+
+  async updateMemberProfile(
+    orgId: string,
+    membershipId: string,
+    request: UpdateMemberProfileRequest
+  ): Promise<OrganizationMemberResponse> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/members/${membershipId}/profile`,
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: request,

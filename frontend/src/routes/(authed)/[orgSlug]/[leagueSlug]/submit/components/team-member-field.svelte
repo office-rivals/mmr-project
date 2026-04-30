@@ -8,7 +8,7 @@
   export type SlotValue =
     | { kind: 'league'; player: LeaguePlayerResponse }
     | { kind: 'member'; member: OrganizationMemberResponse }
-    | { kind: 'new'; displayName: string; email: string }
+    | { kind: 'new'; displayName: string; username: string; email: string }
     | null;
 
   interface Props {
@@ -54,9 +54,14 @@
     )
   );
 
+  let leagueMembershipIds = $derived(
+    new Set(leaguePlayers.map((p) => p.organizationMembershipId))
+  );
+
   let matchedMembers = $derived(
     orgMembers.filter(
       (m) =>
+        !leagueMembershipIds.has(m.id) &&
         !excludeIds.includes(`member:${m.id}`) &&
         (matches(m.displayName ?? '') ||
           matches(m.username ?? '') ||
