@@ -9,3 +9,6 @@ memory-bank/
 
 # Ignore CLAUDE.md since we use AGENTS.md
 CLAUDE.md
+
+# Ignore certs since they are generated locally and should not be committed
+certs/
