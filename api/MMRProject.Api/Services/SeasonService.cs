@@ -8,6 +8,8 @@ public interface ISeasonService
 {
     Task<long?> CurrentSeasonIdAsync();
     Task<IEnumerable<Season>> GetAllSeasonsAsync();
+    Task<Season?> GetSeasonByIdAsync(long id);
+    Task<Season> CreateSeasonAsync(DateTimeOffset? startsAt);
 }
 
 public class SeasonService(ApiDbContext dbContext) : ISeasonService
@@ -38,5 +40,24 @@ public class SeasonService(ApiDbContext dbContext) : ISeasonService
             .Where(x => x.StartsAt <= now)
             .OrderByDescending(x => x.StartsAt)
             .ToListAsync();
+    }
+
+    public async Task<Season?> GetSeasonByIdAsync(long id)
+    {
+        return await dbContext.Seasons.FirstOrDefaultAsync(s => s.Id == id);
+    }
+
+    public async Task<Season> CreateSeasonAsync(DateTimeOffset? startsAt)
+    {
+        var season = new Season
+        {
+            StartsAt = startsAt ?? DateTimeOffset.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        dbContext.Seasons.Add(season);
+        await dbContext.SaveChangesAsync();
+
+        return season;
     }
 }

@@ -17,4 +17,12 @@ public class SeasonsController(ISeasonService seasonService) : ControllerBase
         var seasons = await seasonService.GetAllSeasonsAsync();
         return seasons.Select(x => x.ToSeasonDto()).ToList();
     }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetSeason(long id)
+    {
+        var season = await seasonService.GetSeasonByIdAsync(id);
+        if (season is null) return NotFound();
+        return Ok(season.ToSeasonDto());
+    }
 }
