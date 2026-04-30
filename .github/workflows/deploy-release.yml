@@ -11,10 +11,6 @@ on:
           - frontend
           - api
           - mmr-api
-      version:
-        description: Released version to deploy
-        required: true
-        type: string
 
 permissions:
   contents: read
