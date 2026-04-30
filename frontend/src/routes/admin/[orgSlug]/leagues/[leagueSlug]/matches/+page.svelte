@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import EditMatchDialog from '$lib/components/admin/edit-match-dialog.svelte';
+  import MatchCard from '$lib/components/match-card/match-card.svelte';
   import { Alert } from '$lib/components/ui/alert';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
@@ -11,7 +12,6 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
-  import * as Table from '$lib/components/ui/table';
   import {
     ChevronLeft,
     ChevronRight,
@@ -19,15 +19,10 @@
     RefreshCw,
     Trash2,
   } from 'lucide-svelte';
-  import { formatDateTime, getPlayerDisplayName } from '$lib/utils';
   import type { MatchResponse } from '$api3';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
-
-  const teamPlayers = (
-    players: { displayName?: string; username?: string }[]
-  ) => players.map((p) => getPlayerDisplayName(p, '?')).join(' & ');
 
   const prevOffset = $derived(Math.max(0, data.offset - data.pageSize));
   const nextOffset = $derived(data.offset + data.pageSize);
@@ -87,101 +82,71 @@
           No matches at this offset.
         </p>
       {:else}
-        <Table.Root>
-          <Table.Header>
-            <Table.Row>
-              <Table.Head>Played</Table.Head>
-              <Table.Head>Team 1</Table.Head>
-              <Table.Head class="text-center">Score</Table.Head>
-              <Table.Head>Team 2</Table.Head>
-              <Table.Head class="text-right">Actions</Table.Head>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {#each data.matches as match (match.id)}
-              {@const team1 = match.teams[0]}
-              {@const team2 = match.teams[1]}
-              {@const isLatest = match.id === data.latestMatchId}
-              <Table.Row data-testid="admin-match-row" data-match-id={match.id}>
-                <Table.Cell class="whitespace-nowrap text-sm">
-                  {formatDateTime(match.playedAt)}
-                </Table.Cell>
-                <Table.Cell class={team1?.isWinner ? 'font-semibold' : ''}>
-                  {teamPlayers(team1?.players ?? [])}
-                </Table.Cell>
-                <Table.Cell class="text-center font-mono text-sm">
-                  {team1?.score} – {team2?.score}
-                </Table.Cell>
-                <Table.Cell class={team2?.isWinner ? 'font-semibold' : ''}>
-                  {teamPlayers(team2?.players ?? [])}
-                </Table.Cell>
-                <Table.Cell class="text-right">
-                  <div class="flex flex-wrap justify-end gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onclick={() => openEdit(match)}
-                      data-testid="admin-match-edit"
-                    >
-                      <Pencil class="mr-1 h-3.5 w-3.5" />
-                      Edit
-                    </Button>
-                    <form
-                      method="POST"
-                      action="?/recalculate"
-                      use:enhance
-                      class="inline-block"
-                    >
-                      <input
-                        type="hidden"
-                        name="fromMatchId"
-                        value={match.id}
-                      />
-                      <Button
-                        type="submit"
-                        size="sm"
-                        variant="ghost"
-                        data-testid="admin-match-recalculate"
-                      >
-                        <RefreshCw class="mr-1 h-3.5 w-3.5" />
-                        Recalc
-                      </Button>
-                    </form>
-                    <form
-                      method="POST"
-                      action="?/delete"
-                      use:enhance
-                      class="inline-block"
-                    >
-                      <input type="hidden" name="matchId" value={match.id} />
-                      <Button
-                        type="submit"
-                        size="sm"
-                        variant="ghost"
-                        class="text-destructive hover:text-destructive"
-                        data-testid="admin-match-delete"
-                        onclick={(event) => {
-                          const msg = isLatest
-                            ? 'Delete this match and roll back its rating impact?'
-                            : 'Delete this match? Ratings for downstream matches will be wrong until you recalculate.';
-                          if (!confirm(msg)) {
-                            event.preventDefault();
-                          }
-                        }}
-                      >
-                        <Trash2 class="mr-1 h-3.5 w-3.5" />
-                        Delete
-                      </Button>
-                    </form>
-                    {#if isLatest}
-                      <Badge variant="outline" class="text-xs">Latest</Badge>
-                    {/if}
-                  </div>
-                </Table.Cell>
-              </Table.Row>
-            {/each}
-          </Table.Body>
-        </Table.Root>
+        <div class="flex flex-col gap-3">
+          {#each data.matches as match (match.id)}
+            {@const isLatest = match.id === data.latestMatchId}
+            <div
+              class="flex flex-col gap-3 md:flex-row md:items-center"
+              data-testid="admin-match-row"
+              data-match-id={match.id}
+            >
+              <div class="flex-1">
+                <MatchCard {match} showMmr />
+              </div>
+              <div class="flex flex-wrap items-center justify-end gap-1">
+                {#if isLatest}
+                  <Badge variant="outline" class="text-xs">Latest</Badge>
+                {/if}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onclick={() => openEdit(match)}
+                  data-testid="admin-match-edit"
+                >
+                  <Pencil class="mr-1 h-3.5 w-3.5" />
+                  Edit
+                </Button>
+                <form method="POST" action="?/recalculate" use:enhance>
+                  <input
+                    type="hidden"
+                    name="fromMatchId"
+                    value={match.id}
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="ghost"
+                    data-testid="admin-match-recalculate"
+                  >
+                    <RefreshCw class="mr-1 h-3.5 w-3.5" />
+                    Recalc
+                  </Button>
+                </form>
+                <form method="POST" action="?/delete" use:enhance>
+                  <input type="hidden" name="matchId" value={match.id} />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="ghost"
+                    class="text-destructive hover:text-destructive"
+                    data-testid="admin-match-delete"
+                    onclick={(event) => {
+                      const msg = isLatest
+                        ? 'Delete this match and roll back its rating impact?'
+                        : 'Delete this match? Ratings for downstream matches will be wrong until you recalculate.';
+                      if (!confirm(msg)) {
+                        event.preventDefault();
+                      }
+                    }}
+                  >
+                    <Trash2 class="mr-1 h-3.5 w-3.5" />
+                    Delete
+                  </Button>
+                </form>
+              </div>
+            </div>
+          {/each}
+        </div>
       {/if}
     </CardContent>
   </Card>
