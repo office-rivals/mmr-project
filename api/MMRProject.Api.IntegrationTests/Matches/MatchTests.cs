@@ -515,6 +515,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                                 newPlayer = new
                                 {
                                     displayName = "New Recruit",
+                                    username = "newr",
                                     email = "new-recruit@test.com"
                                 }
                             }
@@ -533,6 +534,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
         Assert.NotNull(membership);
         Assert.Equal(MembershipStatus.Invited, membership.Status);
         Assert.Equal("New Recruit", membership.DisplayName);
+        Assert.Equal("newr", membership.Username);
 
         var leaguePlayer = dbContext.LeaguePlayers.SingleOrDefault(lp =>
             lp.OrganizationId == org.Id

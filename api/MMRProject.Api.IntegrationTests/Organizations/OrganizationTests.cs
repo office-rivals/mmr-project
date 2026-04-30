@@ -90,6 +90,36 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
     }
 
     [Fact]
+    public async Task InviteMember_WithDisplayNameAndUsername_PersistsBoth()
+    {
+        var org = await CreateOrganization("Invite Names Org", "invite-names-org");
+        await SeedOrgMember(org.Id, "mod-1", "mod@test.com", OrganizationRole.Moderator);
+        AuthenticateAs("mod-1");
+
+        var response = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest
+            {
+                Email = "named@test.com",
+                Role = OrganizationRole.Member,
+                DisplayName = "Named Member",
+                Username = "namem",
+            });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var member = await ReadJsonAsync<OrganizationMemberResponse>(response);
+        Assert.NotNull(member);
+        Assert.Equal("Named Member", member.DisplayName);
+        Assert.Equal("namem", member.Username);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var stored = await dbContext.OrganizationMemberships
+            .FirstAsync(m => m.Id == member.Id);
+        Assert.Equal("Named Member", stored.DisplayName);
+        Assert.Equal("namem", stored.Username);
+    }
+
+    [Fact]
     public async Task InviteMember_AsModerator_CannotInviteOwner()
     {
         var org = await CreateOrganization("Invite Org Restricted", "invite-org-restricted");
@@ -201,6 +231,100 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
         Assert.Equal(org.Id, orgResponse.Id);
         var leagueResponse = Assert.Single(orgResponse.Leagues);
         Assert.Equal(leaguePlayer.Id, leagueResponse.LeaguePlayerId);
+    }
+
+    [Fact]
+    public async Task UpdateMemberProfile_AsModerator_UpdatesDisplayNameAndUsername()
+    {
+        var org = await CreateOrganization("Profile Org", "profile-org");
+        await SeedOrgMember(org.Id, "mod-1", "mod@test.com", OrganizationRole.Moderator);
+        var (_, target) = await SeedOrgMember(org.Id, "target-1", "target@test.com");
+        AuthenticateAs("mod-1");
+
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members/{target.Id}/profile",
+            new UpdateMemberProfileRequest
+            {
+                DisplayName = "Display Updated",
+                Username = "displ",
+            });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await ReadJsonAsync<OrganizationMemberResponse>(response);
+        Assert.NotNull(updated);
+        Assert.Equal("Display Updated", updated.DisplayName);
+        Assert.Equal("displ", updated.Username);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var stored = await dbContext.OrganizationMemberships.FirstAsync(m => m.Id == target.Id);
+        Assert.Equal("Display Updated", stored.DisplayName);
+        Assert.Equal("displ", stored.Username);
+    }
+
+    [Fact]
+    public async Task UpdateMemberProfile_OnUnclaimedMembership_UpdatesInviteEmail()
+    {
+        var org = await CreateOrganization("Unclaimed Email Org", "unclaimed-email-org");
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("owner-1");
+
+        var inviteResponse = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "old@test.com", Role = OrganizationRole.Member });
+        inviteResponse.EnsureSuccessStatusCode();
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
+        Assert.NotNull(invited);
+
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members/{invited.Id}/profile",
+            new UpdateMemberProfileRequest { Email = "new@test.com" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var stored = await dbContext.OrganizationMemberships.FirstAsync(m => m.Id == invited.Id);
+        Assert.Equal("new@test.com", stored.InviteEmail);
+        Assert.Null(stored.UserId);
+    }
+
+    [Fact]
+    public async Task UpdateMemberProfile_OnClaimedMembership_RejectsEmailChange()
+    {
+        var org = await CreateOrganization("Claimed Email Org", "claimed-email-org");
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        var (_, target) = await SeedOrgMember(org.Id, "target-1", "target@test.com");
+        AuthenticateAs("owner-1");
+
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members/{target.Id}/profile",
+            new UpdateMemberProfileRequest { Email = "rejected@test.com" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var stored = await dbContext.OrganizationMemberships
+            .Include(m => m.User)
+            .FirstAsync(m => m.Id == target.Id);
+        Assert.Equal("target@test.com", stored.User!.Email);
+        Assert.Null(stored.InviteEmail);
+    }
+
+    [Fact]
+    public async Task UpdateMemberProfile_AsMember_Forbidden()
+    {
+        var org = await CreateOrganization("Profile Auth Org", "profile-auth-org");
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        await SeedOrgMember(org.Id, "member-1", "member@test.com");
+        var (_, target) = await SeedOrgMember(org.Id, "target-1", "target@test.com");
+        AuthenticateAs("member-1");
+
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members/{target.Id}/profile",
+            new UpdateMemberProfileRequest { DisplayName = "Hacker" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]

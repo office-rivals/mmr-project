@@ -34,6 +34,7 @@ test.describe('Submit match', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText('Add new player')).toBeVisible();
     await expect(dialog.getByLabel('Display name')).toBeVisible();
+    await expect(dialog.getByLabel('Username (optional)')).toBeVisible();
     await expect(dialog.getByLabel('Email (optional)')).toBeVisible();
   });
 });
