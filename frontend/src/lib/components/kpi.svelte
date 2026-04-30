@@ -18,7 +18,7 @@
   )}
 >
   <div class="text-base text-gray-300">{title}</div>
-  <div class="text-primary text-2xl font-bold">
+  <div class="text-2xl font-bold text-primary">
     {@render children?.()}
   </div>
 </div>

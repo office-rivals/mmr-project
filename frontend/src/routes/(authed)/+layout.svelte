@@ -2,23 +2,28 @@
   import '@carbon/charts-svelte/styles.css';
   import '../../app.pcss';
 
-  import QueueIndicator from '$lib/components/matchmaking/queue-indicator.svelte';
-  import PullToRefresh from '$lib/components/pull-to-refresh.svelte';
   import type { Snippet } from 'svelte';
   import Navbar from './components/navbar.svelte';
+  import type { LayoutData } from './$types';
+
   interface Props {
+    data: LayoutData;
     children?: Snippet;
   }
 
-  let { children }: Props = $props();
+  let { data, children }: Props = $props();
 </script>
 
-<PullToRefresh />
-<main class="mx-auto max-w-screen-sm overflow-auto p-4" style="margin-bottom: calc(4rem + env(safe-area-inset-bottom))">
+<main class="mx-auto max-w-screen-sm overflow-auto p-4 pb-24">
   {@render children?.()}
 </main>
-<QueueIndicator />
-<Navbar />
+<Navbar
+  defaultOrgSlug={data.defaultOrgSlug}
+  defaultLeagueSlug={data.defaultLeagueSlug}
+  defaultOrgId={data.defaultOrgId}
+  defaultLeagueId={data.defaultLeagueId}
+  defaultLeaguePlayerId={data.defaultLeaguePlayerId}
+/>
 
 <style lang="postcss">
   :global(body) {

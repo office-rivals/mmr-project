@@ -114,7 +114,9 @@
 
     for (let i = 0; i < event.changedTouches.length; i++) {
       const touch = event.changedTouches[i];
-      const existingTouch = touches.find(t => t.identifier === touch.identifier);
+      const existingTouch = touches.find(
+        (t) => t.identifier === touch.identifier
+      );
 
       if (existingTouch) {
         existingTouch.x = touch.clientX - rect.left;
@@ -132,7 +134,7 @@
 
     for (let i = 0; i < event.changedTouches.length; i++) {
       const touch = event.changedTouches[i];
-      const index = touches.findIndex(t => t.identifier === touch.identifier);
+      const index = touches.findIndex((t) => t.identifier === touch.identifier);
 
       if (index !== -1) {
         touches.splice(index, 1);
@@ -195,7 +197,7 @@
       touches[shuffled[whiteCount + i]].color = 'brown';
     }
 
-    touches = touches.filter(t => t.color !== null);
+    touches = touches.filter((t) => t.color !== null);
 
     countdown = null;
     showingResult = true;
@@ -223,21 +225,6 @@
   }
 </script>
 
-<style>
-  @keyframes pulse-scale {
-    0%, 100% {
-      transform: translate(-50%, -50%) scale(1);
-    }
-    50% {
-      transform: translate(-50%, -50%) scale(1.15);
-    }
-  }
-
-  .pulse-scale {
-    animation: pulse-scale 1.5s ease-in-out infinite;
-  }
-</style>
-
 <div class="flex flex-col gap-8">
   <PageTitle>Random Team Generator</PageTitle>
 
@@ -248,7 +235,7 @@
       class="px-4 py-2 transition-colors {activeTab === 'names'
         ? 'border-b-2 border-primary font-semibold'
         : 'text-muted-foreground hover:text-foreground'}"
-      onclick={() => activeTab = 'names'}
+      onclick={() => (activeTab = 'names')}
     >
       Names
     </button>
@@ -258,7 +245,7 @@
       class="px-4 py-2 transition-colors {activeTab === 'touch'
         ? 'border-b-2 border-primary font-semibold'
         : 'text-muted-foreground hover:text-foreground'}"
-      onclick={() => activeTab = 'touch'}
+      onclick={() => (activeTab = 'touch')}
     >
       Touch
     </button>
@@ -288,7 +275,7 @@
             {/each}
           </ul>
         </div>
-        <div class="self-stretch bg-border min-h-full w-px"></div>
+        <div class="min-h-full w-px self-stretch bg-border"></div>
         <div class="flex flex-1 flex-col">
           <h3 class="text-2xl">Team 2</h3>
           <ul>
@@ -298,58 +285,73 @@
           </ul>
         </div>
       </div>
-      <Button
-        href="/submit?player1={teams[0][0]}&player2={teams[0][1]}&player3={teams[1][0]}&player4={teams[1][1]}"
-      >
-        Submit result
-      </Button>
     {/if}
+  {:else if !isMobile}
+    <div class="rounded-lg bg-muted p-4 text-center">
+      <p class="text-muted-foreground">
+        This feature only works on mobile devices with touch support.
+      </p>
+    </div>
   {:else}
-    {#if !isMobile}
-      <div class="bg-muted p-4 rounded-lg text-center">
-        <p class="text-muted-foreground">This feature only works on mobile devices with touch support.</p>
-      </div>
-    {:else}
-      <div class="flex flex-col gap-4">
-        <p class="text-sm text-muted-foreground text-center">
-          Place {REQUIRED_TOUCHES} fingers on the screen. After a {COUNTDOWN_SECONDS} second countdown, {TEAM_SIZE} fingers will be white team and {TEAM_SIZE} will be brown team.
-        </p>
+    <div class="flex flex-col gap-4">
+      <p class="text-center text-sm text-muted-foreground">
+        Place {REQUIRED_TOUCHES} fingers on the screen. After a {COUNTDOWN_SECONDS}
+        second countdown, {TEAM_SIZE} fingers will be white team and {TEAM_SIZE} will
+        be brown team.
+      </p>
 
-        <div
-          class="relative w-full min-h-screen bg-muted touch-none select-none"
-          ontouchstart={handleTouchStart}
-          ontouchmove={handleTouchMove}
-          ontouchend={handleTouchEnd}
-          ontouchcancel={handleTouchEnd}
-        >
-          {#if countdown !== null && countdown > 0}
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-              <div class="text-9xl font-bold text-primary animate-pulse">
-                {countdown}
-              </div>
+      <div
+        class="relative min-h-screen w-full touch-none select-none bg-muted"
+        ontouchstart={handleTouchStart}
+        ontouchmove={handleTouchMove}
+        ontouchend={handleTouchEnd}
+        ontouchcancel={handleTouchEnd}
+      >
+        {#if countdown !== null && countdown > 0}
+          <div
+            class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+          >
+            <div class="animate-pulse text-9xl font-bold text-primary">
+              {countdown}
             </div>
-          {/if}
+          </div>
+        {/if}
 
-          {#each touches as touch (touch.identifier)}
+        {#each touches as touch (touch.identifier)}
+          <div
+            class="absolute flex h-24 w-24 items-center justify-center rounded-full border-4 shadow-lg transition-colors duration-500"
+            class:pulse-scale={countdown !== null}
+            class:border-white={touch.color === 'white'}
+            class:border-amber-900={touch.color === 'brown'}
+            class:border-gray-300={touch.color === null}
+            style="left: {touch.x}px; top: {touch.y}px; transform: translate(-50%, -50%);"
+          >
             <div
-              class="absolute w-24 h-24 rounded-full transition-colors duration-500 shadow-lg border-4 flex items-center justify-center"
-              class:pulse-scale={countdown !== null}
-              class:border-white={touch.color === 'white'}
-              class:border-amber-900={touch.color === 'brown'}
-              class:border-gray-300={touch.color === null}
-              style="left: {touch.x}px; top: {touch.y}px; transform: translate(-50%, -50%);"
-            >
-              <div
-                class="rounded-full transition-colors duration-500"
-                class:bg-white={touch.color === 'white'}
-                class:bg-amber-900={touch.color === 'brown'}
-                class:bg-gray-300={touch.color === null}
-                style="width: 72px; height: 72px;"
-              ></div>
-            </div>
-          {/each}
-        </div>
+              class="rounded-full transition-colors duration-500"
+              class:bg-white={touch.color === 'white'}
+              class:bg-amber-900={touch.color === 'brown'}
+              class:bg-gray-300={touch.color === null}
+              style="width: 72px; height: 72px;"
+            ></div>
+          </div>
+        {/each}
       </div>
-    {/if}
+    </div>
   {/if}
 </div>
+
+<style>
+  @keyframes pulse-scale {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.15);
+    }
+  }
+
+  .pulse-scale {
+    animation: pulse-scale 1.5s ease-in-out infinite;
+  }
+</style>

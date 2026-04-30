@@ -1,167 +1,65 @@
 <script lang="ts">
-  import Leaderboard from '$lib/components/leaderboard';
-  import { MatchCard } from '$lib/components/match-card';
   import PageTitle from '$lib/components/page-title.svelte';
-  import SeasonPicker from '$lib/components/season-picker.svelte';
-  import Label from '$lib/components/ui/label/label.svelte';
-  import { Alert } from '$lib/components/ui/alert';
   import { Button } from '$lib/components/ui/button';
-  import UserStatsModal from '$lib/components/user-stats-modal.svelte';
-  import ReportMatchModal from '$lib/components/report-match-modal.svelte';
-  import { Checkbox } from 'bits-ui';
-  import { Check, Minus, CheckCircle, AlertCircle, Flag } from 'lucide-svelte';
-  import { onMount } from 'svelte';
-  import type { ActiveMatchDto, UserDetails } from '../../api';
-  import { showMmr } from '../../stores/show-mmr';
-  import type { ActionData, PageData } from './$types';
-  import ActiveMatches from './components/active-matches.svelte';
-  import CurrentActiveMatch from './components/current-active-match.svelte';
+  import { Building2, Ticket, Trophy } from 'lucide-svelte';
+  import type { PageData } from './$types';
 
   interface Props {
     data: PageData;
-    form: ActionData;
   }
 
-  let { data, form }: Props = $props();
-  const {
-    leaderboardEntries,
-    recentMatches,
-    users,
-    statisticsPromise,
-    profile,
-    seasons,
-    currentSeason,
-    userFlags,
-    isCurrentSeason,
-  } = $derived(data);
-
-  let reportModalOpen = $state(false);
-
-  let selectedUser: UserDetails | null | undefined = $state();
-  let leaderboardEntry = $derived(
-    selectedUser != null
-      ? leaderboardEntries?.find(
-          (entry) => entry.userId === selectedUser!.userId
-        )
-      : null
-  );
-
-  const fetchActiveMatches = async () => {
-    const response = await fetch(`/api/active-matches`);
-
-    if (response.ok) {
-      const data = await response.json();
-      return data.activeMatches as ActiveMatchDto[];
-    } else {
-      throw new Error('Failed to active matches');
-    }
-  };
-
-  let activeMatches = $state(data.activeMatches);
-
-  onMount(async () => {
-    setInterval(async () => {
-      activeMatches = await fetchActiveMatches();
-    }, 30000);
-  });
+  let { data }: Props = $props();
 </script>
 
-<div class="flex flex-col gap-4">
-  <PageTitle>Trifork Foosball</PageTitle>
-
-  {#if form?.success}
-    <Alert variant="success">
-      <div class="flex items-center gap-2">
-        <CheckCircle class="h-4 w-4" />
-        <span class="font-medium">{form.message}</span>
-      </div>
-    </Alert>
-  {:else if form?.success === false}
-    <Alert variant="destructive">
-      <div class="flex items-center gap-2">
-        <AlertCircle class="h-4 w-4" />
-        <span class="font-medium">{form.message}</span>
-      </div>
-    </Alert>
-  {/if}
-
-  {#if seasons != null && seasons.length > 1}
-    <div class="self-end"><SeasonPicker {seasons} {currentSeason} /></div>
-  {/if}
-
-  <CurrentActiveMatch
-    activeMatches={activeMatches ?? []}
-    users={users ?? []}
-    currentPlayerId={profile?.userId}
-  />
-  <div class="flex">
-    <div class="flex flex-1 items-center gap-3">
-      <h2 class="text-2xl md:text-4xl">Recent Matches</h2>
-      {#if profile?.userId != null && isCurrentSeason}
-        <Button variant="outline" size="sm" onclick={() => (reportModalOpen = true)}>
-          <Flag class="mr-1.5 h-4 w-4" />
-          Report match
-        </Button>
-      {/if}
+{#if data.organizations.length === 0}
+  <div
+    class="flex flex-col items-center justify-center gap-6 py-16 text-center"
+  >
+    <Building2 class="h-16 w-16 text-muted-foreground" />
+    <div class="flex flex-col gap-2">
+      <h1 class="text-3xl font-bold">Welcome to Office Rivals</h1>
+      <p class="max-w-md text-muted-foreground">
+        You're not a member of any organizations yet. Ask someone to invite you,
+        or join with an invite code.
+      </p>
     </div>
-    <div class="flex items-center space-x-3 self-center">
-      <Label id="show-mmr-label" for="show-mmr">MMR:</Label>
-      <Checkbox.Root
-        bind:checked={$showMmr}
-        id="show-mmr"
-        class="border-muted bg-primary active:scale-98 data-[state=unchecked]:border-border-input data-[state=unchecked]:hover:border-dark-40 peer inline-flex size-[25px] items-center justify-center rounded-md border transition-all duration-150 ease-in-out data-[state=unchecked]:bg-white"
-      >
-        {#snippet children({ checked, indeterminate })}
-          {#if checked}
-            <Check class="text-primary-foreground size-[15px] font-bold" />
-          {:else if indeterminate}
-            <Minus class="size-[15px] font-bold" />
+    <Button href="/join" variant="outline" class="gap-2">
+      <Ticket class="h-4 w-4" />
+      Join with Invite Code
+    </Button>
+  </div>
+{:else}
+  <div class="flex flex-col gap-6">
+    <PageTitle>Your Organizations</PageTitle>
+    <div class="flex flex-col gap-4">
+      {#each data.organizations as org}
+        <div class="rounded-lg border bg-card p-4">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-xl font-semibold">{org.name}</h2>
+            <Button variant="ghost" href={`/${org.slug}`}>
+              Browse Leagues
+            </Button>
+          </div>
+          {#if org.leagues?.length > 0}
+            <div class="mt-3 flex flex-col gap-2">
+              {#each org.leagues as league}
+                <Button
+                  variant="outline"
+                  href={`/${org.slug}/${league.slug}`}
+                  class="justify-start gap-2"
+                >
+                  <Trophy class="h-4 w-4" />
+                  {league.name}
+                </Button>
+              {/each}
+            </div>
+          {:else}
+            <p class="mt-2 text-sm text-muted-foreground">
+              You have not joined any leagues in this organization yet.
+            </p>
           {/if}
-        {/snippet}
-      </Checkbox.Root>
+        </div>
+      {/each}
     </div>
   </div>
-  <div class="flex flex-1 flex-col items-stretch gap-2">
-    {#each recentMatches ?? [] as match}
-      <MatchCard
-        users={users ?? []}
-        {match}
-        showMmr={$showMmr}
-      />
-    {/each}
-  </div>
-  <h2 class="text-2xl md:text-4xl">Leaderboard</h2>
-  <Leaderboard
-    data={leaderboardEntries ?? []}
-    {users}
-    onSelectedUser={(user) => {
-      selectedUser = user;
-    }}
-    {statisticsPromise}
-    currentUserId={profile?.userId}
-  />
-</div>
-<ActiveMatches activeMatches={activeMatches ?? []} users={users ?? []} />
-
-{#if selectedUser != null}
-  <UserStatsModal
-    user={selectedUser}
-    users={users ?? []}
-    {leaderboardEntry}
-    open={selectedUser != null}
-    onOpenChange={(open) => {
-      if (!open) {
-        selectedUser = null;
-      }
-    }}
-  />
-{/if}
-
-{#if profile?.userId != null && isCurrentSeason}
-  <ReportMatchModal
-    bind:open={reportModalOpen}
-    users={(users ?? []).filter((u) => u.userId != null).map((u) => ({ userId: u.userId!, name: u.name ?? 'Unknown' }))}
-    seasonId={currentSeason?.id}
-    userFlags={userFlags ?? []}
-  />
 {/if}

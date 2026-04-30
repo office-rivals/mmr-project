@@ -1,0 +1,235 @@
+<script lang="ts">
+  import { enhance } from '$app/forms';
+  import PageTitle from '$lib/components/page-title.svelte';
+  import Button from '$lib/components/ui/button/button.svelte';
+  import CardContent from '$lib/components/ui/card/card-content.svelte';
+  import CardHeader from '$lib/components/ui/card/card-header.svelte';
+  import CardTitle from '$lib/components/ui/card/card-title.svelte';
+  import Card from '$lib/components/ui/card/card.svelte';
+  import { AlertCircle, Check, Copy, Plus, Trash2 } from 'lucide-svelte';
+  import type { ActionData, PageData } from './$types';
+
+  interface Props {
+    data: PageData;
+    form: ActionData;
+  }
+
+  let { data, form }: Props = $props();
+  let showCreateDialog = $state(false);
+  let isCreating = $state(false);
+  let copySuccess = $state(false);
+
+  function formatDate(dateStr?: string): string {
+    if (!dateStr) return 'Never';
+    return new Date(dateStr).toLocaleDateString();
+  }
+
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      copySuccess = true;
+      setTimeout(() => (copySuccess = false), 2000);
+    } catch {
+      alert('Failed to copy to clipboard. Please copy manually.');
+    }
+  }
+
+  function handleDeleteClick(event: Event) {
+    if (
+      !confirm(
+        'Are you sure you want to revoke this token? This action cannot be undone.'
+      )
+    ) {
+      event.preventDefault();
+    }
+  }
+</script>
+
+<div class="flex flex-col gap-6">
+  <PageTitle>Settings</PageTitle>
+
+  <Card>
+    <CardHeader>
+      <CardTitle>Personal Access Tokens</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div class="flex flex-col gap-4">
+        <p class="text-sm text-muted-foreground">
+          Personal access tokens allow you to authenticate with the API
+          programmatically. Keep your tokens secure and never share them.
+        </p>
+
+        {#if form?.createdToken != null}
+          <div
+            class="flex flex-col gap-3 rounded-lg border border-l-4 border-primary bg-green-950/20 p-4"
+          >
+            <div class="flex items-start gap-2">
+              <AlertCircle class="mt-0.5 shrink-0 text-primary" size={20} />
+              <div class="flex-1">
+                <p class="font-semibold text-primary">Save your token now!</p>
+                <p class="text-sm text-muted-foreground">
+                  You won't be able to see this token again. Copy it now and
+                  store it securely.
+                </p>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <code
+                class="flex-1 overflow-x-auto rounded bg-muted px-3 py-2 font-mono text-sm"
+              >
+                {form.createdToken.token}
+              </code>
+              <Button
+                variant="outline"
+                size="sm"
+                onclick={() => copyToClipboard(form.createdToken.token)}
+              >
+                {#if copySuccess}
+                  <Check size={16} />
+                {:else}
+                  <Copy size={16} />
+                {/if}
+              </Button>
+            </div>
+          </div>
+        {/if}
+
+        {#if form?.error}
+          <div
+            class="flex items-start gap-2 rounded-lg border border-l-4 border-red-500 bg-red-950/20 p-4"
+          >
+            <AlertCircle class="mt-0.5 shrink-0 text-red-500" size={20} />
+            <p class="text-sm text-red-500">{form.error}</p>
+          </div>
+        {/if}
+
+        {#if !showCreateDialog}
+          <Button onclick={() => (showCreateDialog = true)} class="w-fit">
+            <Plus size={16} />
+            Create New Token
+          </Button>
+        {:else}
+          <form
+            method="post"
+            action="?/create"
+            class="flex flex-col gap-4 rounded-lg border border-muted p-4"
+            use:enhance={() => {
+              isCreating = true;
+              return async ({ update }) => {
+                await update();
+                isCreating = false;
+                showCreateDialog = false;
+              };
+            }}
+          >
+            <div class="flex flex-col gap-2">
+              <label for="token-name" class="text-sm font-medium"
+                >Token Name</label
+              >
+              <input
+                id="token-name"
+                name="name"
+                type="text"
+                required
+                placeholder="e.g., My API Token"
+                class="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <label for="token-expiry" class="text-sm font-medium">
+                Expiration (Optional)
+              </label>
+              <input
+                id="token-expiry"
+                name="expiresAt"
+                type="datetime-local"
+                class="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div class="flex gap-2">
+              <Button type="submit" disabled={isCreating}>
+                {isCreating ? 'Creating...' : 'Create Token'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onclick={() => {
+                  showCreateDialog = false;
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        {/if}
+
+        {#if data.tokens.length > 0}
+          <div class="mt-4 overflow-hidden rounded-lg border border-muted">
+            <table class="w-full">
+              <thead class="border-b border-muted bg-muted/50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-sm font-medium">Name</th>
+                  <th class="px-4 py-3 text-left text-sm font-medium"
+                    >Last Used</th
+                  >
+                  <th class="px-4 py-3 text-left text-sm font-medium"
+                    >Expires</th
+                  >
+                  <th class="px-4 py-3 text-left text-sm font-medium"
+                    >Created</th
+                  >
+                  <th class="px-4 py-3 text-right text-sm font-medium"
+                    >Actions</th
+                  >
+                </tr>
+              </thead>
+              <tbody>
+                {#each data.tokens as token}
+                  <tr class="border-b border-muted last:border-0">
+                    <td class="px-4 py-3 font-medium">{token.name}</td>
+                    <td class="px-4 py-3 text-sm text-muted-foreground"
+                      >{formatDate(token.lastUsedAt)}</td
+                    >
+                    <td class="px-4 py-3 text-sm text-muted-foreground"
+                      >{formatDate(token.expiresAt)}</td
+                    >
+                    <td class="px-4 py-3 text-sm text-muted-foreground"
+                      >{formatDate(token.createdAt)}</td
+                    >
+                    <td class="px-4 py-3 text-right">
+                      <form
+                        method="post"
+                        action="?/delete"
+                        class="inline"
+                        use:enhance
+                      >
+                        <input type="hidden" name="tokenId" value={token.id} />
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="sm"
+                          class="gap-2"
+                          onclick={handleDeleteClick}
+                        >
+                          <Trash2 size={16} />
+                          Revoke
+                        </Button>
+                      </form>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {:else if !showCreateDialog && !form?.createdToken}
+          <p class="text-sm text-muted-foreground">
+            You don't have any personal access tokens yet. Create one to get
+            started.
+          </p>
+        {/if}
+      </div>
+    </CardContent>
+  </Card>
+</div>

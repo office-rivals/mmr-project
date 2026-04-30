@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { RedirectToSignIn } from 'svelte-clerk';
+  import { SignIn } from 'svelte-clerk';
 </script>
 
-<RedirectToSignIn />
+<div class="flex min-h-screen items-center justify-center">
+  <SignIn />
+</div>

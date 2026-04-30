@@ -1,27 +1,35 @@
 <script lang="ts">
-  import { createRefreshQueueStatus } from '$lib/components/matchmaking/queue-status-updater';
   import { Play } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import NavbarNav from './navbar-nav.svelte';
 
   interface Props {
     path: string;
+    orgId: string;
+    leagueId: string;
   }
 
-  let { path }: Props = $props();
+  let { path, orgId, leagueId }: Props = $props();
 
   let badge: number | undefined = $state(undefined);
-  const refreshQueueStatus = createRefreshQueueStatus((status) => {
-    if (status.playersInQueue > 0) {
-      badge = status.playersInQueue;
-    } else {
-      badge = undefined;
+
+  const refresh = async () => {
+    try {
+      const res = await fetch(
+        `/api/v3/organizations/${orgId}/leagues/${leagueId}/queue`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const count = (data.queuedPlayers ?? []).length;
+      badge = count > 0 ? count : undefined;
+    } catch {
+      // ignore
     }
-  });
+  };
 
   onMount(() => {
-    refreshQueueStatus();
-    const interval = setInterval(refreshQueueStatus, 10000);
+    refresh();
+    const interval = setInterval(refresh, 10000);
     return () => clearInterval(interval);
   });
 </script>

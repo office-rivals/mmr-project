@@ -6,8 +6,7 @@
   } from 'bits-ui';
   import type { Snippet } from 'svelte';
 
-  interface Props
-    extends WithoutChildrenOrChild<DialogPrimitive.DescriptionProps> {
+  interface Props extends WithoutChildrenOrChild<DialogPrimitive.DescriptionProps> {
     children?: Snippet;
     [key: string]: any;
   }
@@ -16,7 +15,7 @@
 </script>
 
 <DialogPrimitive.Description
-  class={cn('text-muted-foreground text-sm', className)}
+  class={cn('text-sm text-muted-foreground', className)}
   {...rest}
 >
   {@render children?.()}
