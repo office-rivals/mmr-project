@@ -27,15 +27,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify release exists
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
-        run: gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
-
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
 
       - name: Log in to Azure
         uses: azure/login@v2
