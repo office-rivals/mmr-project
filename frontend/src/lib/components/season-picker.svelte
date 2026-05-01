@@ -24,15 +24,16 @@
       : currentSeason
   );
 
+  let seasonNumbers = $derived(
+    new Map(seasons.map((season, index) => [season.id, seasons.length - index]))
+  );
+
   function seasonLabel(
     season: SeasonResponse,
     currentSeason: SeasonResponse
   ): string {
     if (season.id === currentSeason.id) return 'Current Season';
-    return new Date(season.startsAt).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-    });
+    return `Season ${seasonNumbers.get(season.id) ?? '?'}`;
   }
 
   function mapSeasonToItem(
