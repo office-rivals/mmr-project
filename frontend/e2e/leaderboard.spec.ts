@@ -44,9 +44,8 @@ test.describe('Leaderboard page', () => {
   }) => {
     await page.goto(LEAGUE_URL);
 
-    // The seed creates 3 seasons; the picker defaults to the current
-    // (newest) one, which is labelled "Season 3".
-    await expect(page.getByText('Season 3')).toBeVisible();
+    // The season picker label reads "Current Season" by default.
+    await expect(page.getByText('Current Season')).toBeVisible();
 
     // The leaderboard should include the test user (P1) — they have 11
     // matches in the current season, above the 10-match ranked threshold.
