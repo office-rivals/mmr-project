@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.1
+
+- Bump frontend, api, and mmr-api dependencies to the latest minor/patch
+  within their current major. Includes Clerk JS SDK updates that pull in
+  patches for GHSA-vqx2-fgx2-5wq9 (middleware route protection bypass)
+  and GHSA-w24r-5266-9c3c (authorization bypass).
+- Fix the report-match modal on the leaderboard, which always rendered "Failed to load matches. Please try again." Add the missing SvelteKit endpoint at `/api/v3/organizations/[orgId]/leagues/[leagueId]/matches` that was assumed by the v3 modal rewrite.
+- Label seasons in the season picker as "Season 1", "Season 2", … instead
+  of using the start month/year. The currently active season still reads
+  "Current Season".
+
 ## 1.0.0
 
 - **Major:** v3 multi-tenancy migration. Breaking changes in both the
