@@ -36,6 +36,8 @@ jobs:
         with:
           appSourcePath: ${{ github.workspace }}/frontend
           acrName: ${{ secrets.ACR_NAME }}
+          acrUsername: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+          acrPassword: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
           buildArguments: |
             "PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}"
           containerAppName: ${{ secrets.UI_CONTAINER_APP_NAME }}
@@ -48,6 +50,8 @@ jobs:
         with:
           appSourcePath: ${{ github.workspace }}/api/MMRProject.Api
           acrName: ${{ secrets.ACR_NAME }}
+          acrUsername: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+          acrPassword: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
           containerAppName: ${{ secrets.API_CONTAINER_APP_NAME }}
           resourceGroup: ${{ secrets.RESOURCE_GROUP }}
 
@@ -57,5 +61,7 @@ jobs:
         with:
           appSourcePath: ${{ github.workspace }}/mmr-api
           acrName: ${{ secrets.ACR_NAME }}
+          acrUsername: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+          acrPassword: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
           containerAppName: ${{ secrets.MMR_API_CONTAINER_APP_NAME }}
           resourceGroup: ${{ secrets.RESOURCE_GROUP }}
