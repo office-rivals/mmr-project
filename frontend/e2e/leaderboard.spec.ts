@@ -101,4 +101,27 @@ test.describe('Leaderboard page', () => {
     await expect(dialog.getByText('Rank')).toBeVisible();
     await expect(dialog.getByText('# Wins')).toBeVisible();
   });
+
+  test('opening the report-match modal loads recent matches', async ({
+    page,
+  }) => {
+    // Regression: the v3 rewrite of the modal pointed its client-side
+    // fetch at /api/v3/... but no SvelteKit endpoint matched that path,
+    // so every open showed "Failed to load matches".
+    await page.goto(LEAGUE_URL);
+
+    await page.getByRole('button', { name: 'Report match' }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Report a match')).toBeVisible();
+
+    await expect(dialog.getByText('Failed to load matches')).toHaveCount(0);
+
+    // The seed has 15 current-season matches; at least one match button
+    // must render inside the dialog.
+    await expect(
+      dialog.locator('button.w-full.rounded-lg.border').first()
+    ).toBeVisible({ timeout: 10_000 });
+  });
 });
