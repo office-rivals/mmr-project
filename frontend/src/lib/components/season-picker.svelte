@@ -24,30 +24,24 @@
       : currentSeason
   );
 
-  function seasonLabel(
-    season: SeasonResponse,
-    currentSeason: SeasonResponse
-  ): string {
-    if (season.id === currentSeason.id) return 'Current Season';
-    return new Date(season.startsAt).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-    });
+  let seasonNumbers = $derived(
+    new Map(seasons.map((season, index) => [season.id, seasons.length - index]))
+  );
+
+  function seasonLabel(season: SeasonResponse): string {
+    return `Season ${seasonNumbers.get(season.id) ?? '?'}`;
   }
 
   function mapSeasonToItem(
-    season: SeasonResponse,
-    currentSeason: SeasonResponse
+    season: SeasonResponse
   ): NonNullable<SelectRootProps['items']>[number] {
     return {
-      label: seasonLabel(season, currentSeason),
+      label: seasonLabel(season),
       value: season.id,
     };
   }
 
-  let seasonValues = $derived(
-    seasons.map((season) => mapSeasonToItem(season, currentSeason))
-  );
+  let seasonValues = $derived(seasons.map(mapSeasonToItem));
 
   function getSeason(): string {
     return (seasons.find((s) => s.id === selectedSeason.id) ?? currentSeason)
@@ -80,7 +74,7 @@
     class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
     aria-label="Select a season"
   >
-    {seasonLabel(selectedSeason, currentSeason)}
+    {seasonLabel(selectedSeason)}
     <ChevronsUpDown class="ml-2 h-4 w-4 text-muted-foreground" />
   </Select.Trigger>
 
