@@ -1,6 +1,12 @@
 package server
 
+import "os"
+
 func Init() {
 	router := NewRouter()
-	router.Run(":8080")
+	port := os.Getenv("MMR_API_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	router.Run(":" + port)
 }
