@@ -22,10 +22,17 @@ setup('apply seed and sign in', async ({ page }) => {
   // 1. Reset DB to vendored seed, with the test user's Clerk identity.
   // execFileSync (with shell: false by default) bypasses shell parsing so
   // unusual characters in projectRoot can't be interpreted as commands.
+  // DB_HOST/DB_PORT are forced to the e2e Postgres (5433 by default) so
+  // we never accidentally seed against the local dev DB on 5432.
   execFileSync(path.join(projectRoot, 'scripts', 'seed-local.sh'), [], {
     stdio: 'inherit',
     env: {
       ...process.env,
+      DB_HOST: process.env.E2E_DB_HOST ?? 'localhost',
+      DB_PORT: process.env.E2E_DB_PORT ?? '5433',
+      DB_NAME: process.env.E2E_DB_NAME ?? 'mmr_project',
+      DB_USER: process.env.E2E_DB_USER ?? 'postgres',
+      DB_PASS: process.env.E2E_DB_PASS ?? 'this_is_a_hard_password1337',
       IDENTITY_USER_ID: identityUserId,
       USER_EMAIL: userEmail,
     },

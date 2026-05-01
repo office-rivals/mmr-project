@@ -1,0 +1,16 @@
+name: mmr-e2e
+
+services:
+  db-e2e:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: this_is_a_hard_password1337
+      POSTGRES_DB: mmr_project
+    ports:
+      - "5433:5432"
+    volumes:
+      - mmr-e2e-db:/var/lib/postgresql/data
+
+volumes:
+  mmr-e2e-db:
