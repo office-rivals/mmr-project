@@ -7,3 +7,59 @@ services:
       POSTGRES_DB: mmr_project
     ports:
       - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mmr-api:
+    build:
+      context: ../mmr-api
+    ports:
+      - "8080:8080"
+    environment:
+      ADMIN_SECRET: ${ADMIN_SECRET:-local-dev-secret}
+
+  api:
+    build:
+      context: ../api/MMRProject.Api
+    ports:
+      - "8081:8081"
+    depends_on:
+      db:
+        condition: service_healthy
+      mmr-api:
+        condition: service_started
+    environment:
+      ASPNETCORE_URLS: http://+:8081
+      ConnectionStrings__ApiDbContext: Host=db;Database=mmr_project;Username=postgres;Password=this_is_a_hard_password1337
+      Migration__Enabled: "true"
+      Admin__Secret: ${ADMIN_SECRET:-local-dev-secret}
+      MMRCalculationAPI__BaseUrl: http://mmr-api:8080
+      MMRCalculationAPI__ApiKey: ${ADMIN_SECRET:-local-dev-secret}
+      Authorization__Issuer: ${CLERK_ISSUER_URL:?Set CLERK_ISSUER_URL in .env}
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        PUBLIC_CLERK_PUBLISHABLE_KEY: ${PUBLIC_CLERK_PUBLISHABLE_KEY:?Set PUBLIC_CLERK_PUBLISHABLE_KEY in .env}
+    expose:
+      - "3000"
+    depends_on:
+      - api
+    environment:
+      API_BASE_PATH: http://api:8081
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?Set CLERK_SECRET_KEY in .env}
+      PUBLIC_CLERK_PUBLISHABLE_KEY: ${PUBLIC_CLERK_PUBLISHABLE_KEY:?Set PUBLIC_CLERK_PUBLISHABLE_KEY in .env}
+
+  https-proxy:
+    image: nginx:alpine
+    ports:
+      - "443:443"
+    depends_on:
+      - frontend
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/ssl/certs/local:ro
