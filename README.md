@@ -119,6 +119,24 @@ The application uses Clerk for authentication. Follow these steps to get started
 - Swagger documentation
 - Testing utilities
 
+## Observability
+
+Both backend services are instrumented with OpenTelemetry and export traces, metrics, and logs over OTLP. The exporters are gated on `OTEL_EXPORTER_OTLP_ENDPOINT` — when it is unset, the services run with stdout-only logging exactly as without instrumentation, so local development and CI are unaffected by default.
+
+What's emitted:
+
+- **Traces**: inbound HTTP, outbound HTTP, EF Core queries (api), Gin handlers (mmr-api).
+- **Metrics**: ASP.NET Core, HttpClient, EF Core, .NET runtime, and Go runtime via the OpenTelemetry contrib instrumentations.
+- **Logs**: structured per-request entries on both services, correlated to traces via `trace_id` / `span_id`. The `mmr-api` calculation handler additionally logs every MMR calculation's full request and response, so any rating result can be traced back to the inputs that produced it.
+
+To enable export against any OpenTelemetry-compatible backend (Grafana, Honeycomb, Datadog, a local OTel Collector, etc.), set the standard OTel environment variables before starting each service:
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://your-otlp-endpoint
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=..."   # if your backend requires auth
+export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=local-$USER"
+```
+
 ## Testing
 
 - API tests using Bruno collection

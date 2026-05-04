@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
@@ -9,11 +10,14 @@ using MMRProject.Api.BackgroundServices;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.Exceptions;
+using MMRProject.Api.Extensions;
 using MMRProject.Api.MMRCalculationApi;
 using MMRProject.Api.Services.V3;
 using MMRProject.Api.UserContext;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddObservability();
 
 // Add services to the container.
 builder.Services.AddDbContextPool<ApiDbContext>(opt =>
@@ -26,6 +30,16 @@ builder.Services.AddDbContextPool<ApiDbContext>(opt =>
 builder.AddAuth();
 
 builder.Services.AddMemoryCache();
+
+builder.Services.AddHttpLogging(o =>
+{
+    o.LoggingFields = HttpLoggingFields.RequestMethod
+                      | HttpLoggingFields.RequestPath
+                      | HttpLoggingFields.RequestQuery
+                      | HttpLoggingFields.ResponseStatusCode
+                      | HttpLoggingFields.Duration;
+    o.CombineLogs = true;
+});
 
 builder.Services.AddAuthorization(options =>
 {
@@ -98,6 +112,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+app.UseHttpLogging();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

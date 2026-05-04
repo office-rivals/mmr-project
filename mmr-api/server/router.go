@@ -3,16 +3,19 @@ package server
 import (
 	"mmr/backend/controllers"
 	"mmr/backend/middleware"
+	"mmr/backend/telemetry"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func NewRouter() *gin.Engine {
 	router := gin.New()
-	router.Use(gin.Logger())
+	router.Use(otelgin.Middleware(telemetry.ServiceName))
+	router.Use(middleware.AccessLog())
 	router.Use(gin.Recovery())
 
 	v1 := router.Group("/api/v1")

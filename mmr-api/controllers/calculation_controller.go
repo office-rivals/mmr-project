@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"log/slog"
 	"mmr/backend/mmr"
 	view "mmr/backend/models"
 	"net/http"
@@ -36,7 +37,11 @@ func (m CalculationController) SubmitMMRCalculation(c *gin.Context) {
 	team1, team2 := m.calculateMatch(c, req, nil)
 	response := m.GenerateResponse(req, team1, team2)
 
-	// Respond with the updated team data
+	slog.InfoContext(c.Request.Context(), "mmr calculation",
+		"request", req,
+		"response", response,
+	)
+
 	c.JSON(http.StatusOK, response)
 }
 
