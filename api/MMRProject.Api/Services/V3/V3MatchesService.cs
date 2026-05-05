@@ -633,10 +633,26 @@ public class V3MatchesService(
         HashSet<Guid> playersWithCurrentSeasonHistory)
     {
         // Each match must be evaluated against the *previous* match's updated
-        // ratings, so we have to walk sequentially. The chunking here only
-        // bounds how many SaveChangesAsync calls we make per outer caller.
-        // The MMR API is keyed on long IDs, so we use a per-match int counter
-        // since IDs only need to be unique within a single request.
+        // ratings. The MMR API's batch endpoint preserves that carry-forward
+        // semantic via its internal player map keyed on player.Id, so we send
+        // the entire chunk as a single request to cut HTTP round-trips.
+        // The MMR API is keyed on long IDs, so we assign a stable long per
+        // LeaguePlayer for the duration of the batch — the API then ignores
+        // mu/sigma/IsPreviousSeasonRating on subsequent appearances and uses
+        // the carried-forward state instead.
+        var guidToId = new Dictionary<Guid, long>();
+        var idToGuid = new Dictionary<long, Guid>();
+        long nextId = 1;
+
+        // playersWithCurrentSeasonHistory captures the state at batch start; it
+        // only gets mutated when we apply responses below. To set
+        // IsPreviousSeasonRating correctly per-match while building requests up
+        // front, virtually track in-batch first appearances here.
+        var seenInBatch = new HashSet<Guid>(playersWithCurrentSeasonHistory);
+
+        var validMatches = new List<V3Match>(matches.Count);
+        var requests = new List<MMRCalculationRequest>(matches.Count);
+
         foreach (var match in matches)
         {
             var teams = match.Teams.OrderBy(t => t.Index).ToList();
@@ -646,30 +662,61 @@ public class V3MatchesService(
                 continue;
             }
 
-            var guidToIndex = new Dictionary<Guid, long>();
-            var indexToGuid = new Dictionary<long, Guid>();
-            long index = 1;
             foreach (var team in teams)
             {
                 foreach (var player in team.Players.OrderBy(p => p.Index))
                 {
-                    guidToIndex[player.LeaguePlayerId] = index;
-                    indexToGuid[index] = player.LeaguePlayerId;
-                    index++;
+                    if (guidToId.ContainsKey(player.LeaguePlayerId)) continue;
+                    guidToId[player.LeaguePlayerId] = nextId;
+                    idToGuid[nextId] = player.LeaguePlayerId;
+                    nextId++;
                 }
             }
 
-            var request = new MMRCalculationRequest
+            validMatches.Add(match);
+            requests.Add(new MMRCalculationRequest
             {
-                Team1 = BuildTeam(teams[0], guidToIndex, leaguePlayerLookup, playersWithCurrentSeasonHistory),
-                Team2 = BuildTeam(teams[1], guidToIndex, leaguePlayerLookup, playersWithCurrentSeasonHistory),
-            };
+                Team1 = BuildTeam(teams[0], guidToId, leaguePlayerLookup, seenInBatch),
+                Team2 = BuildTeam(teams[1], guidToId, leaguePlayerLookup, seenInBatch),
+            });
 
-            var response = await mmrCalculationApiClient.CalculateMMRAsync(request);
+            foreach (var team in teams)
+            {
+                foreach (var player in team.Players)
+                {
+                    seenInBatch.Add(player.LeaguePlayerId);
+                }
+            }
+        }
+
+        if (requests.Count == 0)
+        {
+            return;
+        }
+
+        var responses = await mmrCalculationApiClient.CalculateMMRBatchAsync(requests);
+        if (responses.Count != requests.Count)
+        {
+            logger.LogCritical(
+                "MMR batch returned {ResponseCount} responses for {RequestCount} requests; aborting recalc",
+                responses.Count, requests.Count);
+            // Subsequent batches in the recalc loop reuse leaguePlayerLookup and
+            // playersWithCurrentSeasonHistory; if we skip applying this batch
+            // silently the next batch starts from stale state and the recalc
+            // ends up half-applied. Throwing aborts the whole operation before
+            // any SaveChangesAsync runs.
+            throw new InvalidOperationException(
+                $"MMR batch returned {responses.Count} responses for {requests.Count} requests");
+        }
+
+        for (var i = 0; i < responses.Count; i++)
+        {
+            var match = validMatches[i];
+            var response = responses[i];
 
             var playerResults = response.Team1.Players
                 .Concat(response.Team2.Players)
-                .ToDictionary(r => indexToGuid[r.Id]);
+                .ToDictionary(r => idToGuid[r.Id]);
 
             foreach (var (leaguePlayerId, result) in playerResults)
             {

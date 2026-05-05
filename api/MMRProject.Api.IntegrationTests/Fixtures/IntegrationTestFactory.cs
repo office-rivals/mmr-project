@@ -81,15 +81,38 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
 public class StubMMRCalculationApiClient : IMMRCalculationApiClient
 {
     private readonly List<MMRCalculationRequest> _requests = [];
+    private readonly List<int> _batchSizes = [];
+    private int _singleCallCount;
+    private int _batchCallCount;
 
     public bool ThrowOnCalculate { get; set; }
 
+    /// When set, batch calls return this many responses regardless of request count.
+    /// Used to exercise the count-mismatch failure path.
+    public int? BatchResponseCountOverride { get; set; }
+
     public IReadOnlyList<MMRCalculationRequest> Requests => _requests;
 
-    public void ResetRequests() => _requests.Clear();
+    public int SingleCallCount => _singleCallCount;
+    public int BatchCallCount => _batchCallCount;
+    public IReadOnlyList<int> BatchSizes => _batchSizes;
+
+    public void ResetRequests()
+    {
+        lock (_requests) _requests.Clear();
+    }
+
+    public void ResetCallCounters()
+    {
+        Interlocked.Exchange(ref _singleCallCount, 0);
+        Interlocked.Exchange(ref _batchCallCount, 0);
+        lock (_batchSizes) _batchSizes.Clear();
+    }
 
     public Task<MMRCalculationResponse> CalculateMMRAsync(MMRCalculationRequest request)
     {
+        Interlocked.Increment(ref _singleCallCount);
+
         if (ThrowOnCalculate)
             throw new InvalidOperationException("MMR calculation failed");
 
@@ -99,8 +122,53 @@ public class StubMMRCalculationApiClient : IMMRCalculationApiClient
 
     public Task<List<MMRCalculationResponse>> CalculateMMRBatchAsync(List<MMRCalculationRequest> requests)
     {
+        Interlocked.Increment(ref _batchCallCount);
+        lock (_batchSizes) _batchSizes.Add(requests.Count);
+
         _requests.AddRange(requests);
-        return Task.FromResult(requests.Select(BuildResponse).ToList());
+
+        // Mirror the real mmr-api batch endpoint's carry-forward semantic: a
+        // player's first appearance uses the request mu/sigma; subsequent
+        // appearances inherit the previous match's output for the same Id.
+        var carry = new Dictionary<long, (decimal Mu, decimal Sigma)>();
+        var responses = requests.Select(req => BuildBatchResponse(req, carry)).ToList();
+
+        if (BatchResponseCountOverride is { } cap)
+        {
+            responses = responses.Take(cap).ToList();
+        }
+        return Task.FromResult(responses);
+    }
+
+    private static MMRCalculationResponse BuildBatchResponse(
+        MMRCalculationRequest request,
+        Dictionary<long, (decimal Mu, decimal Sigma)> carry)
+    {
+        MMRCalculationPlayerRating WithCarry(MMRCalculationPlayerRating p) =>
+            carry.TryGetValue(p.Id, out var s)
+                ? new MMRCalculationPlayerRating { Id = p.Id, Mu = s.Mu, Sigma = s.Sigma }
+                : p;
+
+        var carriedRequest = new MMRCalculationRequest
+        {
+            Team1 = new MMRCalculationTeam
+            {
+                Score = request.Team1.Score,
+                Players = request.Team1.Players.Select(WithCarry).ToList(),
+            },
+            Team2 = new MMRCalculationTeam
+            {
+                Score = request.Team2.Score,
+                Players = request.Team2.Players.Select(WithCarry).ToList(),
+            },
+        };
+
+        var response = BuildResponse(carriedRequest);
+        foreach (var pr in response.Team1.Players.Concat(response.Team2.Players))
+        {
+            carry[pr.Id] = (pr.Mu, pr.Sigma);
+        }
+        return response;
     }
 
     // Deterministic placeholder response. Tests should assert on the inputs the
