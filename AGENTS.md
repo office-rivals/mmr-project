@@ -172,6 +172,8 @@ ADMIN_SECRET=<admin_secret>
 
 Releases are managed through lightweight changeset files in `.changeset/`. Feature PRs include a changeset markdown file specifying component bump types, and merging to main triggers an automated release PR. Merging the release PR creates per-component GitHub Releases. Deployment to Azure Container Apps is manual via the `Deploy Release` workflow, selecting a component and version from an existing GitHub Release tag.
 
+**Do not manually bump component versions.** The release PR workflow (`scripts/release/apply-changesets.mjs`) owns the `version` field in `frontend/package.json`, `api/package.json`, `mmr-api/package.json`, the `<Version>` element in `MMRProject.Api.csproj`, and the per-component `CHANGELOG.md` files. Add a `.changeset/*.md` describing the change and let the release PR compute the bump. Manual edits to these fields will be overwritten on the next release PR. (Editing entries under `dependencies` / `devDependencies` is unrelated and remains a manual operation.)
+
 ## Important Notes
 
 - Migrations run automatically on API startup when `Migration:Enabled` is true
