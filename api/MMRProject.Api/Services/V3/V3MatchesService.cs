@@ -697,7 +697,7 @@ public class V3MatchesService(
         var responses = await mmrCalculationApiClient.CalculateMMRBatchAsync(requests);
         if (responses.Count != requests.Count)
         {
-            logger.LogCritical(
+            logger.LogError(
                 "MMR batch returned {ResponseCount} responses for {RequestCount} requests; aborting recalc",
                 responses.Count, requests.Count);
             // Subsequent batches in the recalc loop reuse leaguePlayerLookup and

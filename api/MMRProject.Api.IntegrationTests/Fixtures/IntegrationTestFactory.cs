@@ -97,21 +97,18 @@ public class StubMMRCalculationApiClient : IMMRCalculationApiClient
     public int BatchCallCount => _batchCallCount;
     public IReadOnlyList<int> BatchSizes => _batchSizes;
 
-    public void ResetRequests()
-    {
-        lock (_requests) _requests.Clear();
-    }
+    public void ResetRequests() => _requests.Clear();
 
     public void ResetCallCounters()
     {
-        Interlocked.Exchange(ref _singleCallCount, 0);
-        Interlocked.Exchange(ref _batchCallCount, 0);
-        lock (_batchSizes) _batchSizes.Clear();
+        _singleCallCount = 0;
+        _batchCallCount = 0;
+        _batchSizes.Clear();
     }
 
     public Task<MMRCalculationResponse> CalculateMMRAsync(MMRCalculationRequest request)
     {
-        Interlocked.Increment(ref _singleCallCount);
+        _singleCallCount++;
 
         if (ThrowOnCalculate)
             throw new InvalidOperationException("MMR calculation failed");
@@ -122,8 +119,8 @@ public class StubMMRCalculationApiClient : IMMRCalculationApiClient
 
     public Task<List<MMRCalculationResponse>> CalculateMMRBatchAsync(List<MMRCalculationRequest> requests)
     {
-        Interlocked.Increment(ref _batchCallCount);
-        lock (_batchSizes) _batchSizes.Add(requests.Count);
+        _batchCallCount++;
+        _batchSizes.Add(requests.Count);
 
         _requests.AddRange(requests);
 
