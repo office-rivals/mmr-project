@@ -613,7 +613,7 @@ public class V3MatchesService(
         const int batchSize = 200;
         for (var i = 0; i < matchesToReplay.Count; i += batchSize)
         {
-            var batch = matchesToReplay.Skip(i).Take(batchSize).ToList();
+            var batch = matchesToReplay.GetRange(i, Math.Min(batchSize, matchesToReplay.Count - i));
             await CalculateAndApplyMmrBatch(orgId, batch, leaguePlayerLookup, playersWithCurrentSeasonHistory);
         }
 
@@ -650,8 +650,7 @@ public class V3MatchesService(
         // front, virtually track in-batch first appearances here.
         var seenInBatch = new HashSet<Guid>(playersWithCurrentSeasonHistory);
 
-        var validMatches = new List<V3Match>(matches.Count);
-        var requests = new List<MMRCalculationRequest>(matches.Count);
+        var batchItems = new List<(V3Match Match, MMRCalculationRequest Request)>(matches.Count);
 
         foreach (var match in matches)
         {
@@ -673,12 +672,11 @@ public class V3MatchesService(
                 }
             }
 
-            validMatches.Add(match);
-            requests.Add(new MMRCalculationRequest
+            batchItems.Add((match, new MMRCalculationRequest
             {
                 Team1 = BuildTeam(teams[0], guidToId, leaguePlayerLookup, seenInBatch),
                 Team2 = BuildTeam(teams[1], guidToId, leaguePlayerLookup, seenInBatch),
-            });
+            }));
 
             foreach (var team in teams)
             {
@@ -689,37 +687,35 @@ public class V3MatchesService(
             }
         }
 
-        if (requests.Count == 0)
+        if (batchItems.Count == 0)
         {
             return;
         }
 
+        var requests = batchItems.Select(b => b.Request).ToList();
         var responses = await mmrCalculationApiClient.CalculateMMRBatchAsync(requests);
-        if (responses.Count != requests.Count)
+        if (responses.Count != batchItems.Count)
         {
             logger.LogError(
                 "MMR batch returned {ResponseCount} responses for {RequestCount} requests; aborting recalc",
-                responses.Count, requests.Count);
+                responses.Count, batchItems.Count);
             // Subsequent batches in the recalc loop reuse leaguePlayerLookup and
             // playersWithCurrentSeasonHistory; if we skip applying this batch
             // silently the next batch starts from stale state and the recalc
             // ends up half-applied. Throwing aborts the whole operation before
             // any SaveChangesAsync runs.
             throw new InvalidOperationException(
-                $"MMR batch returned {responses.Count} responses for {requests.Count} requests");
+                $"MMR batch returned {responses.Count} responses for {batchItems.Count} requests");
         }
 
         for (var i = 0; i < responses.Count; i++)
         {
-            var match = validMatches[i];
+            var match = batchItems[i].Match;
             var response = responses[i];
 
-            var playerResults = response.Team1.Players
-                .Concat(response.Team2.Players)
-                .ToDictionary(r => idToGuid[r.Id]);
-
-            foreach (var (leaguePlayerId, result) in playerResults)
+            foreach (var result in response.Team1.Players.Concat(response.Team2.Players))
             {
+                var leaguePlayerId = idToGuid[result.Id];
                 var lp = leaguePlayerLookup[leaguePlayerId];
                 var isFirstMatchOfSeason = !playersWithCurrentSeasonHistory.Contains(leaguePlayerId);
                 var delta = isFirstMatchOfSeason ? 0 : result.MMR - lp.Mmr;
