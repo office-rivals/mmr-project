@@ -7,7 +7,6 @@
   import {
     AcceptanceStatus,
     type ActiveMatchResponse,
-    type PendingMatchResponse,
     type QueueStatusResponse,
   } from '$api3';
   import { LoaderCircle, Pause, Play } from 'lucide-svelte';

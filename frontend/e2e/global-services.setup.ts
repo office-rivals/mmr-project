@@ -64,7 +64,8 @@ export default async function globalSetup() {
     throw new Error(
       `Failed to start e2e docker-compose stack in ${composeDir}: ${
         (error as Error).message
-      }`
+      }`,
+      { cause: error }
     );
   }
 

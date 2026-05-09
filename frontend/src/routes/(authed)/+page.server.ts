@@ -2,12 +2,13 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { apiClientV3 } }) => {
-  let organizations: Array<{
+  type OrgSummary = {
     name: string;
     slug: string;
     leagues: Array<{ name: string; slug: string }>;
-  }> = [];
+  };
 
+  let organizations: OrgSummary[];
   try {
     const me = await apiClientV3.meApi.getMe();
     organizations = (me.organizations ?? []).map((org) => ({

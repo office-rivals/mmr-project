@@ -27,7 +27,9 @@ export async function getApiErrorDetails(
             message: text,
           };
         }
-      } catch {}
+      } catch {
+        // ignore — fall through to fallback
+      }
     }
 
     return {

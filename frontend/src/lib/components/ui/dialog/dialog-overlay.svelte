@@ -3,11 +3,8 @@
   import { Dialog as DialogPrimitive } from 'bits-ui';
   import { fade } from 'svelte/transition';
 
-  let {
-    class: className = undefined,
-    child,
-    ...rest
-  }: DialogPrimitive.OverlayProps = $props();
+  let { class: className = undefined, ...rest }: DialogPrimitive.OverlayProps =
+    $props();
 </script>
 
 <DialogPrimitive.Overlay

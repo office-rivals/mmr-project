@@ -1,6 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getApiErrorDetails } from '$lib/server/api/apiError';
+import { MatchFlagStatus } from '$api3';
 
 export const load: PageServerLoad = async ({
   parent,
@@ -15,7 +16,7 @@ export const load: PageServerLoad = async ({
       apiClientV3.adminMatchFlagsApi.listAllFlags(
         orgId,
         leagueId,
-        statusFilter as any
+        statusFilter as MatchFlagStatus | undefined
       ),
       apiClientV3.leaguePlayersApi.listPlayers(orgId, leagueId),
     ]);
@@ -49,7 +50,7 @@ export const actions = {
         leagueId,
         flagId,
         {
-          status: status as any,
+          status: status as MatchFlagStatus,
           resolutionNote: note,
         }
       );
