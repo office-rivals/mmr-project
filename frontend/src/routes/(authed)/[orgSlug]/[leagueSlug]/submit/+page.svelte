@@ -46,7 +46,6 @@
     team2_player2: null,
   });
 
-  // Hydrate primary player from localStorage on mount
   $effect(() => {
     if (!browser) return;
     const primaryId = window.localStorage.getItem(PRIMARY_PLAYER_KEY);
@@ -66,36 +65,40 @@
   let team1Score = $state(-1);
   let team2Score = $state(-1);
 
-  let dialogOpen = $state(false);
-  let dialogSlot = $state<SlotName>('team1_player1');
-  let dialogDisplayName = $state('');
-  let dialogUsername = $state('');
-  let dialogEmail = $state('');
-  let dialogError = $state('');
+  let dialog = $state({
+    open: false,
+    slot: 'team1_player1' as SlotName,
+    displayName: '',
+    username: '',
+    email: '',
+    error: '',
+  });
 
   let submitting = $state(false);
 
   function openNewPlayerDialog(slot: SlotName, suggested: string) {
-    dialogSlot = slot;
-    dialogDisplayName = suggested;
-    dialogUsername = '';
-    dialogEmail = '';
-    dialogError = '';
-    dialogOpen = true;
+    dialog = {
+      open: true,
+      slot,
+      displayName: suggested,
+      username: '',
+      email: '',
+      error: '',
+    };
   }
 
   function saveNewPlayer() {
-    if (dialogDisplayName.trim() === '') {
-      dialogError = 'Display name is required';
+    if (dialog.displayName.trim() === '') {
+      dialog.error = 'Display name is required';
       return;
     }
-    slots[dialogSlot] = {
+    slots[dialog.slot] = {
       kind: 'new',
-      displayName: dialogDisplayName.trim(),
-      username: dialogUsername.trim(),
-      email: dialogEmail.trim(),
+      displayName: dialog.displayName.trim(),
+      username: dialog.username.trim(),
+      email: dialog.email.trim(),
     };
-    dialogOpen = false;
+    dialog.open = false;
   }
 
   function slotToFormValue(value: SlotValue): string {
@@ -142,13 +145,24 @@
   }
 
   function previewMatch(): MatchResponse {
-    const playerName = (slot: SlotValue) => {
-      if (slot === null) return 'Unknown';
+    const playerNames = (
+      slot: SlotValue
+    ): { displayName?: string; username?: string } => {
+      if (slot === null) return { displayName: 'Unknown' };
       if (slot.kind === 'league')
-        return slot.player.displayName ?? slot.player.username ?? 'Unknown';
+        return {
+          displayName: slot.player.displayName,
+          username: slot.player.username,
+        };
       if (slot.kind === 'member')
-        return slot.member.displayName ?? slot.member.username ?? 'Unknown';
-      return slot.displayName;
+        return {
+          displayName: slot.member.displayName,
+          username: slot.member.username,
+        };
+      return {
+        displayName: slot.displayName,
+        username: slot.username || undefined,
+      };
     };
 
     return {
@@ -168,7 +182,7 @@
           players: [slots.team1_player1, slots.team1_player2].map((s, i) => ({
             id: `t1p${i}`,
             leaguePlayerId: '',
-            displayName: playerName(s),
+            ...playerNames(s),
             index: i,
           })),
         },
@@ -180,7 +194,7 @@
           players: [slots.team2_player1, slots.team2_player2].map((s, i) => ({
             id: `t2p${i}`,
             leaguePlayerId: '',
-            displayName: playerName(s),
+            ...playerNames(s),
             index: i,
           })),
         },
@@ -188,7 +202,6 @@
     };
   }
 
-  // Persist primary + latest on submit
   function onBeforeSubmit() {
     if (!browser) return;
     const enteredIds = SLOTS.map((s) => {
@@ -242,64 +255,37 @@
     <input type="hidden" name="team1_score" value={team1Score} />
     <input type="hidden" name="team2_score" value={team2Score} />
 
+    {#snippet field(slot: SlotName, label: string, autofocus = false)}
+      <TeamMemberField
+        {label}
+        {autofocus}
+        value={slots[slot]}
+        onChange={(v) => (slots[slot] = v)}
+        leaguePlayers={data.players}
+        orgMembers={data.members}
+        {latestPlayerIds}
+        excludeIds={exclusions}
+        onCreateUser={(suggested) => openNewPlayerDialog(slot, suggested)}
+      />
+    {/snippet}
+
     <div class="flex flex-col gap-2">
       <div class="flex gap-3">
         <div id="team1-step" class="flex flex-1 flex-col gap-4">
           <h3 class="mb-2 text-center text-2xl">Team 1</h3>
-          <TeamMemberField
-            label="You"
-            value={slots.team1_player1}
-            onChange={(v) => (slots.team1_player1 = v)}
-            leaguePlayers={data.players}
-            orgMembers={data.members}
-            {latestPlayerIds}
-            excludeIds={exclusions}
-            onCreateUser={(suggested) =>
-              openNewPlayerDialog('team1_player1', suggested)}
-            autofocus
-          />
+          {@render field('team1_player1', 'You', true)}
           {#if slots.team1_player1 !== null || slots.team1_player2 !== null}
-            <TeamMemberField
-              label="Your teammate"
-              value={slots.team1_player2}
-              onChange={(v) => (slots.team1_player2 = v)}
-              leaguePlayers={data.players}
-              orgMembers={data.members}
-              {latestPlayerIds}
-              excludeIds={exclusions}
-              onCreateUser={(suggested) =>
-                openNewPlayerDialog('team1_player2', suggested)}
-            />
+            {@render field('team1_player2', 'Your teammate')}
           {/if}
         </div>
         <div class="min-h-full w-px bg-border"></div>
         <div id="team2-step" class="flex flex-1 flex-col gap-4">
           <h3 class="mb-2 text-center text-2xl">Team 2</h3>
           {#if team1Filled || slots.team2_player1 !== null}
-            <TeamMemberField
-              label="Opponent 1"
-              value={slots.team2_player1}
-              onChange={(v) => (slots.team2_player1 = v)}
-              leaguePlayers={data.players}
-              orgMembers={data.members}
-              {latestPlayerIds}
-              excludeIds={exclusions}
-              onCreateUser={(suggested) =>
-                openNewPlayerDialog('team2_player1', suggested)}
-            />
+            {@render field('team2_player1', 'Opponent 1')}
           {/if}
           {#if slots.team2_player1 !== null || slots.team2_player2 !== null}
-            <TeamMemberField
-              label="Opponent 2"
-              value={slots.team2_player2}
-              onChange={(v) => (slots.team2_player2 = v)}
-              leaguePlayers={data.players}
-              orgMembers={data.members}
-              {latestPlayerIds}
-              excludeIds={exclusions}
-              onCreateUser={(suggested) =>
-                openNewPlayerDialog('team2_player2', suggested)}
-            />
+            {@render field('team2_player2', 'Opponent 2')}
           {/if}
         </div>
       </div>
@@ -370,7 +356,7 @@
   </form>
 </div>
 
-<Dialog.Root bind:open={dialogOpen}>
+<Dialog.Root bind:open={dialog.open}>
   <Dialog.Content>
     <Dialog.Header>
       <Dialog.Title>Add new player</Dialog.Title>
@@ -381,15 +367,15 @@
     </Dialog.Header>
 
     <div class="mt-4 flex flex-col gap-4">
-      {#if dialogError}
-        <Alert variant="destructive">{dialogError}</Alert>
+      {#if dialog.error}
+        <Alert variant="destructive">{dialog.error}</Alert>
       {/if}
 
       <div class="space-y-2">
         <Label for="new-player-display-name">Display name</Label>
         <Input
           id="new-player-display-name"
-          bind:value={dialogDisplayName}
+          bind:value={dialog.displayName}
           placeholder="New teammate"
         />
       </div>
@@ -397,7 +383,7 @@
         <Label for="new-player-username">Username (optional)</Label>
         <Input
           id="new-player-username"
-          bind:value={dialogUsername}
+          bind:value={dialog.username}
           placeholder="short-handle"
         />
       </div>
@@ -405,7 +391,7 @@
         <Label for="new-player-email">Email (optional)</Label>
         <Input
           id="new-player-email"
-          bind:value={dialogEmail}
+          bind:value={dialog.email}
           type="email"
           placeholder="new.player@example.com"
         />
@@ -416,7 +402,7 @@
       <Button
         type="button"
         variant="outline"
-        onclick={() => (dialogOpen = false)}
+        onclick={() => (dialog.open = false)}
       >
         Cancel
       </Button>
