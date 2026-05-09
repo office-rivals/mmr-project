@@ -363,7 +363,11 @@
     >
       <div class="flex min-w-0 flex-col">
         <h1 class="text-lg font-bold leading-tight">Random Teams</h1>
-        <p class="truncate text-xs text-muted-foreground">{headerSubtitle}</p>
+        <p
+          class="line-clamp-2 min-h-[2lh] text-xs leading-snug text-muted-foreground"
+        >
+          {headerSubtitle}
+        </p>
       </div>
       {@render pillTabs()}
     </header>
