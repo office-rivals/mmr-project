@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -38,13 +38,13 @@ jobs:
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Setup Node 22
+      - name: Setup Node
         if: steps.frontend_changes.outputs.has_changes == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-          node-version: 22
+          node-version-file: .nvmrc
       - name: Install
         if: steps.frontend_changes.outputs.has_changes == 'true'
         run: npm ci
