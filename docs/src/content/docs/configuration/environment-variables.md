@@ -39,6 +39,19 @@ The Go MMR service currently has one checked-in example variable in [`mmr-api/.e
 | --- | --- | --- | --- |
 | `ADMIN_SECRET` | Yes | mmr-api runtime | Shared secret expected by the MMR API. This must match `MMRCalculationAPI__ApiKey` in the ASP.NET API. |
 
+## Observability Variables
+
+Both backend services accept the standard OpenTelemetry SDK environment variables. They are optional — leaving `OTEL_EXPORTER_OTLP_ENDPOINT` unset disables telemetry export entirely.
+
+| Variable | Required | Used by | Notes |
+| --- | --- | --- | --- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | API and MMR API | OTLP endpoint. Acts as the on/off switch. The .NET API defaults to gRPC (bare host), the Go MMR API uses HTTP and typically needs an `/otlp`-suffixed endpoint. |
+| `OTEL_EXPORTER_OTLP_HEADERS` | If your backend needs auth | API and MMR API | Headers sent on every OTLP request, formatted as `key=value,key2=value2`. |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | No | API only | Set to `http/protobuf` to force the .NET service to use HTTP transport (useful on macOS). The Go MMR API is HTTP-only and ignores this. |
+| `OTEL_RESOURCE_ATTRIBUTES` | No | API and MMR API | Free-form attributes attached to every signal, for example `deployment.environment=prod,region=eu-north`. |
+
+For a full setup guide and gotchas, see [Observability](/operations/observability/).
+
 ## Development Defaults In The Repo
 
 Useful checked-in defaults:

@@ -35,6 +35,7 @@ export default defineConfig({
           label: 'Operations',
           items: [
             { label: 'Backups and Upgrades', slug: 'operations/backups-and-upgrades' },
+            { label: 'Observability', slug: 'operations/observability' },
           ],
         },
         {
