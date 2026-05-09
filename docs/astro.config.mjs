@@ -45,6 +45,7 @@ export default defineConfig({
             { label: 'Organizations and Leagues', slug: 'features/organizations-and-leagues' },
             { label: 'Match Submission', slug: 'features/match-submission' },
             { label: 'Matchmaking', slug: 'features/matchmaking' },
+            { label: 'Admin Operations', slug: 'features/admin-operations' },
             { label: 'Access Control and Tokens', slug: 'features/access-control-and-tokens' },
           ],
         },

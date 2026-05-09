@@ -12,7 +12,7 @@ Office Rivals is built around tenant-safe competitive play inside organizations.
 - Match submission
 - Matchmaking queue flow
 - Leaderboards and rating history
-- Match flags and moderation
+- Match flags and moderation (see [Admin Operations](/features/admin-operations/))
 - Personal access tokens for API access
 
 ## Tenant Model

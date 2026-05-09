@@ -68,7 +68,7 @@ This includes things like:
 
 ## What Moderators And Owners Can Access
 
-Moderators and owners are org-scoped. They can access league-scoped data across the organization without being individually enrolled in every league.
+Moderators and owners are org-scoped. They can access league-scoped data across the organization without being individually enrolled in every league. The dedicated admin surface at `/admin/[orgSlug]/...` exposes member management, invite links, seasons, match edit and recalculation, and match flag triage — see [Admin Operations](/features/admin-operations/) for the full surface and the role required for each action.
 
 ## Removed and Rejoined Members
 
