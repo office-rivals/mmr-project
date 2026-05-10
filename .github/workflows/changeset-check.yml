@@ -18,23 +18,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Require changeset for releaseable changes
+      - name: Check changesets
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_LABELS: ${{ toJson(github.event.pull_request.labels) }}
         run: |
+          # Decision matrix:
+          #   no-release label + changeset present       → fail (mutually exclusive)
+          #   no-release label + no changeset            → pass
+          #   no label        + changeset present        → validate; fail if invalid
+          #   no label        + releaseable code, none   → fail (missing changeset)
+          #   no label        + only non-releaseable     → pass
+          changed_files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          # Match .changeset/<name>.md, excluding the directory's README and config files like config.json.
+          pr_changesets="$(echo "$changed_files" | grep -P '^\.changeset/.+\.md$' | grep -v '^\.changeset/README\.md$' || true)"
+
           if echo "$PR_LABELS" | jq -e '.[] | select(.name == "no-release")' >/dev/null; then
+            if [ -n "$pr_changesets" ]; then
+              echo "This pull request is labeled 'no-release' but includes a changeset:"
+              echo "$pr_changesets"
+              echo "Remove the changeset or remove the 'no-release' label."
+              exit 1
+            fi
             exit 0
           fi
 
-          changed_files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          if [ -n "$pr_changesets" ]; then
+            xargs -r node scripts/release/validate-changesets.mjs <<< "$pr_changesets"
+            exit 0
+          fi
 
           if ! echo "$changed_files" | grep -qE '^(frontend/|api/|mmr-api/)'; then
-            exit 0
-          fi
-
-          if echo "$changed_files" | grep -P '^\.changeset/.+\.md$' | grep -vq '^\.changeset/README\.md$'; then
             exit 0
           fi
 
