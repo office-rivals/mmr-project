@@ -137,6 +137,16 @@ export OTEL_EXPORTER_OTLP_HEADERS="Authorization=..."   # if your backend requir
 export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=local-$USER"
 ```
 
+### Production environment variables (mmr-api)
+
+The Container App running `mmr-api` should also have:
+
+- `GIN_MODE=release` — switches Gin out of its default debug mode so it doesn't log `[GIN-debug]` warnings or print routes on startup.
+
+## Health checks
+
+`mmr-api` exposes `GET /health` returning `200 OK`. The endpoint is excluded from the access log and is intended as the liveness/readiness probe target for the `mmr-api-prod` Container App.
+
 ## Testing
 
 - API tests using Bruno collection
