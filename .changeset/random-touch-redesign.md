@@ -1,5 +1,5 @@
 ---
-'frontend': minor
+"frontend": minor
 ---
 
 Redesign the `/random` page with a bespoke touch UI. On touch devices the page
