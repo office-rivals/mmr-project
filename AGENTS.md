@@ -57,7 +57,7 @@ docker-compose up
 
 ### Authentication Flow
 
-- Uses Clerk for authentication (migrated from Supabase)
+- Uses Clerk for authentication
 - Frontend: `hooks.server.ts` handles auth middleware with `svelte-clerk`
 - API: JWT bearer token validation configured in `Program.cs` via `builder.AddAuth()`
 - Protected routes in frontend under `routes/(authed)/`
