@@ -24,11 +24,9 @@ describe("parseFrontmatter", () => {
     assert.equal(result.description, "Some change.");
   });
 
-  it("parses single-quoted keys", () => {
+  it("rejects single-quoted keys", () => {
     const content = "---\n'mmr-api': patch\n---\n\nSome change.";
-    const result = parseFrontmatter(content);
-    assert.deepEqual(result.bumps, bumps({ "mmr-api": "patch" }));
-    assert.equal(result.description, "Some change.");
+    assert.throws(() => parseFrontmatter(content), /Invalid changeset frontmatter line/);
   });
 
   it("parses multiple components", () => {
