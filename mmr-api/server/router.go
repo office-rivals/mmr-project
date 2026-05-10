@@ -28,6 +28,10 @@ func NewRouter() *gin.Engine {
 		}
 	}
 
+	router.GET("/health", func(ctx *gin.Context) {
+		ctx.Status(http.StatusOK)
+	})
+
 	router.GET("/swagger", func(ctx *gin.Context) {
 		ctx.Redirect(http.StatusPermanentRedirect, "/swagger/index.html")
 	})
