@@ -30,7 +30,12 @@ jobs:
           #   no label        + changeset present        → validate; fail if invalid
           #   no label        + releaseable code, none   → fail (missing changeset)
           #   no label        + only non-releaseable     → pass
-          changed_files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          # Use three-dot diff so the comparison is "merge-base...HEAD" — only files this PR
+          # actually changed, not files that diverged on main since the branch point. Without
+          # this, a stale PR branch reports past-release changesets as "added", and
+          # validate-changesets.mjs ENOENTs trying to read them. --diff-filter=ACMRT also
+          # excludes self-deletions on the PR side.
+          changed_files="$(git diff --name-only --diff-filter=ACMRT "$BASE_SHA"..."$HEAD_SHA")"
           # Match .changeset/<name>.md, excluding the directory's README and config files like config.json.
           pr_changesets="$(echo "$changed_files" | grep -P '^\.changeset/.+\.md$' | grep -v '^\.changeset/README\.md$' || true)"
 
