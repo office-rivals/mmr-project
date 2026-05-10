@@ -1,5 +1,5 @@
 ---
-'frontend': patch
+"frontend": patch
 ---
 
 Upgrade frontend ESLint stack: ESLint 8 → 10, eslint-plugin-svelte 2 → 3,
