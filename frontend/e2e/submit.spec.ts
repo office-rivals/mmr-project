@@ -50,11 +50,15 @@ test.describe('Submit match', () => {
     await expect(dialog.getByLabel('Email (optional)')).toBeVisible();
   });
 
-  test('full happy path: fill 4 players → we won → score → submit', async ({
+  // Regression: previewMatch() previously spread {displayName, username} onto
+  // each player, letting MatchCard prefer the username (short handle). The new
+  // code only populates displayName so the preview shows the full display name.
+  test('preview renders displayName, not username, for league players', async ({
     page,
   }) => {
     await page.goto(SUBMIT_URL);
 
+    // Fill all four slots with seeded players.
     await pickPlayer(page, 'Alice Anderson');
     await pickPlayer(page, 'Bob Brown');
     await pickPlayer(page, 'Carol Carter');
@@ -69,22 +73,91 @@ test.describe('Submit match', () => {
     await page.getByRole('button', { name: '5', exact: true }).click();
 
     await expect(page.getByRole('heading', { name: 'Submit?' })).toBeVisible();
-    // MatchCard renders username (short handle) when present, not displayName —
-    // so seeded players Alice/Bob/Carol/Dave appear as alia/bobr/caca/dada.
+
     const preview = page.locator('#submit-step');
-    await expect(preview.getByText('alia')).toBeVisible();
-    await expect(preview.getByText('dada')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Submit the match' }).click();
+    // The preview must show full display names …
+    await expect(preview.getByText('Alice Anderson')).toBeVisible();
+    await expect(preview.getByText('Dave Davies')).toBeVisible();
 
-    // Server-side action redirects to the league leaderboard on success. The
-    // URL keeps a `#submit-step` fragment from earlier in-page anchor scrolls,
-    // so we check the destination by content instead.
+    // … not the short username handles that real match cards show.
+    await expect(preview.getByText('alia', { exact: true })).toHaveCount(0);
+    await expect(preview.getByText('dada', { exact: true })).toHaveCount(0);
+  });
+
+  test('dialog cancel closes without saving the player', async ({ page }) => {
+    await page.goto(SUBMIT_URL);
+
+    const youField = page.locator('input[placeholder="Filter..."]').first();
+    await youField.fill('zzzzznoplayer');
+    await page.getByRole('button', { name: 'Add new player' }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // Fill in a display name then cancel — the slot must remain empty.
+    await dialog.getByLabel('Display name').fill('Should Not Save');
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+
+    await expect(dialog).not.toBeVisible();
+    // The "You" slot filter input re-appears, confirming the slot is still empty.
     await expect(
-      page.getByRole('heading', { level: 1, name: 'Leaderboard' })
+      page.locator('input[placeholder="Filter..."]').first()
     ).toBeVisible();
-    await expect(
-      page.getByRole('heading', { name: 'Recent Matches' })
-    ).toBeVisible();
+  });
+
+  test('dialog shows validation error when display name is empty', async ({
+    page,
+  }) => {
+    await page.goto(SUBMIT_URL);
+
+    const youField = page.locator('input[placeholder="Filter..."]').first();
+    await youField.fill('zzzzznoplayer');
+    await page.getByRole('button', { name: 'Add new player' }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+
+    // Attempt to save without entering a display name.
+    await dialog.getByRole('button', { name: 'Use player' }).click();
+
+    // The dialog must stay open and show the error.
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Display name is required')).toBeVisible();
+  });
+
+  test('new player created via dialog appears in preview with their displayName', async ({
+    page,
+  }) => {
+    await page.goto(SUBMIT_URL);
+
+    // Pick three seeded players first (team 1 + two opponents).
+    await pickPlayer(page, 'Alice Anderson');
+    await pickPlayer(page, 'Bob Brown');
+    await pickPlayer(page, 'Carol Carter');
+
+    // For the fourth slot, create a brand-new player via the dialog.
+    const lastInput = page.locator('input[placeholder="Filter..."]').first();
+    await lastInput.fill('zzzzznoplayer');
+    await page.getByRole('button', { name: 'Add new player' }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByLabel('Display name').fill('Zara Zulu');
+    await dialog.getByLabel('Username (optional)').fill('zz99');
+    await dialog.getByRole('button', { name: 'Use player' }).click();
+    await expect(dialog).not.toBeVisible();
+
+    // Proceed to preview.
+    await page.getByRole('button', { name: /We won/ }).click();
+    await page.getByRole('button', { name: '3', exact: true }).click();
+
+    await expect(page.getByRole('heading', { name: 'Submit?' })).toBeVisible();
+    const preview = page.locator('#submit-step');
+
+    // The new player's displayName must appear in the preview — not the
+    // username that was entered alongside it.
+    await expect(preview.getByText('Zara Zulu')).toBeVisible();
+    await expect(preview.getByText('zz99', { exact: true })).toHaveCount(0);
   });
 });
