@@ -24,6 +24,13 @@ describe("parseFrontmatter", () => {
     assert.equal(result.description, "Some change.");
   });
 
+  it("parses single-quoted keys", () => {
+    const content = "---\n'mmr-api': patch\n---\n\nSome change.";
+    const result = parseFrontmatter(content);
+    assert.deepEqual(result.bumps, bumps({ "mmr-api": "patch" }));
+    assert.equal(result.description, "Some change.");
+  });
+
   it("parses multiple components", () => {
     const content = '---\n"frontend": minor\n"api": patch\n---\n\nMulti bump.';
     const result = parseFrontmatter(content);
