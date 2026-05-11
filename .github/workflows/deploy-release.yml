@@ -33,7 +33,7 @@ jobs:
           RELEASE_TAG: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
         run: gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
 

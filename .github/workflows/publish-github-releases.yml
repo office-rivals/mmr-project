@@ -15,15 +15,15 @@ jobs:
     if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'changeset-release/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.merge_commit_sha }}
 
-      - name: Setup Node 22
-        uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version-file: .nvmrc
 
       - name: Create GitHub releases
         run: node ./scripts/release/create-releases.mjs "$BASE_SHA" "$HEAD_SHA"
