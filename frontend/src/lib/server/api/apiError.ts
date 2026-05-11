@@ -4,6 +4,7 @@ export async function getApiErrorDetails(
 ) {
   if (error && typeof error === 'object' && 'response' in error) {
     const response = (error as { response: Response }).response;
+    const responseForTextFallback = response.clone();
 
     try {
       const body = await response.json();
@@ -20,7 +21,7 @@ export async function getApiErrorDetails(
       }
     } catch {
       try {
-        const text = await response.text();
+        const text = await responseForTextFallback.text();
         if (text) {
           return {
             status: response.status,
