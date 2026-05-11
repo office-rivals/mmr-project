@@ -32,7 +32,7 @@ jobs:
       # ---------------- mmr-api (Go) ----------------
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.23"
+          go-version-file: mmr-api/go.mod
       - name: Build mmr-api
         working-directory: ./mmr-api
         run: go build -o /tmp/mmr-api .
