@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2
+
+- Add a `GET /health` endpoint to `mmr-api` that returns `200 OK`. The access-log middleware already excluded `/health` from logging in anticipation of this route, but no handler was registered, so probes pointed at it would 404 instead. With this in place, the Container App liveness/readiness probes can target `/health` cleanly.
+- Bake the released version into the `mmr-api` binary so OpenTelemetry resource attributes report the actual `service.version` (e.g. `1.1.2`) instead of the hardcoded `dev`. The Dockerfile now accepts a `VERSION` build arg that is injected via `-ldflags "-X main.version=…"`, and the deploy workflow forwards `inputs.version`. Without this, every emitted log/metric/trace from the deployed `mmr-api` was tagged `service_version=dev`, which made it impossible to attribute production telemetry to a specific release.
+
 ## 1.1.1
 
 - Switch the `mmr-api` Docker base image from `debian:bookworm` to `gcr.io/distroless/static-debian12:nonroot`. The previous Debian base shipped without `ca-certificates`, so every outbound HTTPS call from the Go binary failed TLS verification — which silently broke OTLP log/metric/trace export to Grafana Cloud (since the SDK's error reporting is itself routed through the broken slog→OTel pipeline). Distroless static includes a CA bundle, runs as non-root, and shrinks the image to ~42 MB. The build now uses `CGO_ENABLED=0` since `mmr-api`'s dependencies are all pure Go.

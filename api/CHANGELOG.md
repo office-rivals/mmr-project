@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- Restore batch MMR endpoint usage in v3 season recalculations. v3 had regressed to one HTTP call per match; this rebuilds the chunk into a single batch request and aborts the recalc if the response count doesn't match, preventing half-applied recalculations.
+
 ## 1.1.0
 
 - Instrument both backend services with OpenTelemetry, exporting logs, metrics, and traces to Grafana Cloud via OTLP. Includes structured per-request logs (HttpLogging on .NET, slog middleware on Go) and a structured `mmr calculation` log line capturing every MMR calc's inputs and outputs for diagnosis.
