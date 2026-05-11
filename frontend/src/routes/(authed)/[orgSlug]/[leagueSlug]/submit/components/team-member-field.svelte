@@ -100,6 +100,9 @@
       bind:value={filter}
       placeholder="Filter..."
       autofocus={autofocus ? autofocus : undefined}
+      spellcheck={false}
+      autocorrect="off"
+      autocapitalize="none"
     />
     {#if filter.length === 0 && latestPlayers.length > 0}
       <p class="text-sm">Recent players</p>

@@ -377,6 +377,8 @@
           id="new-player-display-name"
           bind:value={dialog.displayName}
           placeholder="New teammate"
+          spellcheck={false}
+          autocorrect="off"
         />
       </div>
       <div class="space-y-2">
@@ -385,6 +387,9 @@
           id="new-player-username"
           bind:value={dialog.username}
           placeholder="short-handle"
+          spellcheck={false}
+          autocorrect="off"
+          autocapitalize="none"
         />
       </div>
       <div class="space-y-2">
