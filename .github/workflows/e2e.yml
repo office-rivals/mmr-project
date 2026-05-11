@@ -37,6 +37,19 @@ jobs:
         working-directory: ./frontend
         run: npx playwright install --with-deps chromium
 
+      # Bring the e2e Postgres up explicitly so it's already accepting
+      # connections by the time Playwright launches the .NET API (which
+      # migrates the DB on startup). Playwright's globalSetup races with
+      # webServer launch — the docker-compose `up -d` is asynchronous and
+      # the API would otherwise crash on a refused connection.
+      - name: Start e2e Postgres
+        working-directory: ./local-development
+        run: |
+          docker compose -f docker-compose.e2e.yml up -d
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5433 -U postgres && break || sleep 1
+          done
+
       # `npm run e2e` is fully self-contained: playwright.config.ts uses
       # `global-services.setup.ts` to bring up the dedicated e2e Postgres via
       # docker-compose (port 5433) and Playwright's webServer block starts
