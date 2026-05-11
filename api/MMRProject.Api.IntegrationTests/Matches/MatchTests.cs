@@ -1159,6 +1159,97 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
     }
 
     [Fact]
+    public async Task RecalculateMatches_UsesBatchEndpoint()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, player3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, player4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        const int matchCount = 5;
+        for (var i = 0; i < matchCount; i++)
+        {
+            var response = await Client.PostAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+                new SubmitMatchRequest
+                {
+                    Teams =
+                    [
+                        new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                    ]
+                });
+            response.EnsureSuccessStatusCode();
+        }
+
+        // Match submissions use the single endpoint; counters track recalc only.
+        Factory.StubMmrCalculationApiClient.ResetCallCounters();
+
+        var recalcResponse = await Client.PostAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/recalculate",
+            null);
+        recalcResponse.EnsureSuccessStatusCode();
+
+        Assert.Equal(0, Factory.StubMmrCalculationApiClient.SingleCallCount);
+        Assert.Equal(1, Factory.StubMmrCalculationApiClient.BatchCallCount);
+        Assert.Equal([matchCount], Factory.StubMmrCalculationApiClient.BatchSizes);
+    }
+
+    [Fact]
+    public async Task RecalculateMatches_AbortsWhenBatchResponseCountMismatches()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, player3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, player4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        var submitResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                ]
+            });
+        submitResponse.EnsureSuccessStatusCode();
+
+        Factory.StubMmrCalculationApiClient.ResetCallCounters();
+        Factory.StubMmrCalculationApiClient.BatchResponseCountOverride = 0;
+        try
+        {
+            var recalcResponse = await Client.PostAsync(
+                $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/recalculate",
+                null);
+
+            // Surfaces as 500 — preferable to a silent 200 that leaves the DB
+            // half-recalculated and the next batch starting from stale state.
+            Assert.Equal(HttpStatusCode.InternalServerError, recalcResponse.StatusCode);
+            Assert.Equal(1, Factory.StubMmrCalculationApiClient.BatchCallCount);
+        }
+        finally
+        {
+            Factory.StubMmrCalculationApiClient.BatchResponseCountOverride = null;
+            Factory.StubMmrCalculationApiClient.ResetCallCounters();
+        }
+    }
+
+    [Fact]
     public async Task RecalculateMatches_AsMember_Returns403()
     {
         var org = await CreateOrganization();
