@@ -13,12 +13,12 @@ export function parseFrontmatter(content) {
   for (const line of match[1].split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    const m = trimmed.match(/^(?:"([^"]+)"|'([^']+)'|([^"':\s][^:]*?)):\s*(major|minor|patch)\s*$/);
+    const m = trimmed.match(/^(?:"([^"]+)"|([^"':\s][^:]*?)):\s*(major|minor|patch)\s*$/);
     if (!m) {
       throw new Error(`Invalid changeset frontmatter line: ${line}`);
     }
-    const name = m[1] ?? m[2] ?? m[3];
-    bumps[name] = m[4];
+    const name = m[1] ?? m[2];
+    bumps[name] = m[3];
   }
 
   if (Object.keys(bumps).length === 0) {
