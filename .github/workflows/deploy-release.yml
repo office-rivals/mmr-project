@@ -69,5 +69,7 @@ jobs:
         with:
           appSourcePath: ${{ github.workspace }}/mmr-api
           acrName: ${{ secrets.ACR_NAME }}
+          buildArguments: |
+            VERSION=${{ inputs.version }}
           containerAppName: ${{ secrets.MMR_API_CONTAINER_APP_NAME }}
           resourceGroup: ${{ secrets.RESOURCE_GROUP }}
