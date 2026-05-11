@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.0
+
+- Fix GitHub (and other OAuth) sign-up getting stuck on `external_account_not_found`. Adds a `/sign-up` route mounting Clerk's `<SignUp />` component so the prebuilt `<SignIn />` flow can complete the OAuth → sign-up transfer for first-time users. Also allowlists `/sign-up` in the server-side auth guard so the redirect isn't bounced back to `/login`.
+- Bump frontend Docker base image to `node:24-alpine` (current Node LTS).
+  CI workflows now read the Node version from a single root-level `.nvmrc`.
+- Redesign the `/random` page with a bespoke touch UI. On touch devices the page
+  now opens a full-bleed surface where users drop fingers and two random fingers
+  become the white team while two become the brown team (extras are ignored,
+  minimum four). Desktop visitors keep the original names form. A pill toggle in
+  the header lets touch users switch back to the names form without leaving the
+  page.
+- Disable spellcheck and autocorrect on player name inputs in the match submit flow so Safari doesn't flag initials and short handles as typos. Also disables iOS autocapitalization on the player filter and username inputs.
+- Fix submit-page preview to render the same player name (short handle / username) as every other match card. The preview now populates both `displayName` and `username` and lets the match-card pick its own priority, so a player previously shown as `Foo Bar` in the preview now correctly matches the `foob` rendered after submit.
+
 ## 1.0.2
 
 - Bump svelte-clerk from 0.20.6 to 1.1.5 (Clerk Core 3 alignment). Pulls in
