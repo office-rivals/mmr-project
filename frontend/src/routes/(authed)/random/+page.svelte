@@ -312,7 +312,7 @@
 
 {#snippet namesForm()}
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-    {#each players as player, idx}
+    {#each players as _, idx}
       <div class="flex flex-col gap-2">
         <Label for="player-{idx}">Player {idx + 1}</Label>
         <Input id="player-{idx}" bind:value={players[idx]} />

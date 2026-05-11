@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { page } from '$app/state';
   import { ChevronDown, Building2, Trophy } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import type {

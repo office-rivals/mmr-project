@@ -80,10 +80,8 @@ export const actions: Actions = {
     const formData = await request.formData();
 
     const team1Player1 = formData.get('team1_player1') as string;
-    const team1Player2 = formData.get('team1_player2') as string;
     const team1Score = Number(formData.get('team1_score'));
     const team2Player1 = formData.get('team2_player1') as string;
-    const team2Player2 = formData.get('team2_player2') as string;
     const team2Score = Number(formData.get('team2_score'));
 
     if (!team1Player1 || !team2Player1) {

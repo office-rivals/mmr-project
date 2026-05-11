@@ -8,7 +8,6 @@
 
   interface Props extends WithoutChildrenOrChild<DialogPrimitive.DescriptionProps> {
     children?: Snippet;
-    [key: string]: any;
   }
 
   let { class: className = undefined, children, ...rest }: Props = $props();

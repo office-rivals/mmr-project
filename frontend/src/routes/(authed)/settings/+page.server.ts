@@ -1,10 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({
-  locals: { apiClientV3 },
-  fetch,
-}) => {
+export const load: PageServerLoad = async ({ locals: { apiClientV3 } }) => {
   try {
     const response = await apiClientV3.personalAccessTokensApi.listTokens();
     return { tokens: response };
