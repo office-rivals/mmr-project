@@ -8,7 +8,9 @@ import { env } from '$env/dynamic/private';
 const authGuard: Handle = async ({ event, resolve }) => {
   const { userId } = event.locals.auth();
 
-  const isNonAuthedPathname = event.url.pathname.startsWith('/login');
+  const isNonAuthedPathname =
+    event.url.pathname.startsWith('/login') ||
+    event.url.pathname.startsWith('/sign-up');
   if (!userId && !isNonAuthedPathname) {
     return redirect(303, '/login');
   }
