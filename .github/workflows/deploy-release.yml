@@ -73,3 +73,38 @@ jobs:
             VERSION=${{ inputs.version }}
           containerAppName: ${{ secrets.MMR_API_CONTAINER_APP_NAME }}
           resourceGroup: ${{ secrets.RESOURCE_GROUP }}
+
+      - name: Apply mmr-api health probes
+        if: inputs.component == 'mmr-api'
+        env:
+          APP: ${{ secrets.MMR_API_CONTAINER_APP_NAME }}
+          RG: ${{ secrets.RESOURCE_GROUP }}
+        run: |
+          set -euo pipefail
+          tmp=$(mktemp --suffix=.yaml)
+          az containerapp show -n "$APP" -g "$RG" -o yaml > "$tmp"
+
+          yq -i '
+            .properties.template.containers[0].probes = [
+              {
+                "type": "Liveness",
+                "httpGet": { "path": "/health", "port": 8080, "scheme": "HTTP" },
+                "initialDelaySeconds": 10,
+                "periodSeconds": 30,
+                "timeoutSeconds": 3,
+                "failureThreshold": 3,
+                "successThreshold": 1
+              },
+              {
+                "type": "Readiness",
+                "httpGet": { "path": "/health", "port": 8080, "scheme": "HTTP" },
+                "initialDelaySeconds": 5,
+                "periodSeconds": 10,
+                "timeoutSeconds": 3,
+                "failureThreshold": 3,
+                "successThreshold": 1
+              }
+            ]
+          ' "$tmp"
+
+          az containerapp update -n "$APP" -g "$RG" --yaml "$tmp" --output none
