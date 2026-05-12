@@ -90,7 +90,7 @@
     identifier: number;
     x: number;
     y: number;
-    color: 'white' | 'brown' | null;
+    color: 'white' | 'red' | null;
   }
 
   let touches = $state<TouchMarker[]>([]);
@@ -229,7 +229,7 @@
       touches[shuffled[i]].color = 'white';
     }
     for (let i = 0; i < TEAM_SIZE; i++) {
-      touches[shuffled[TEAM_SIZE + i]].color = 'brown';
+      touches[shuffled[TEAM_SIZE + i]].color = 'red';
     }
 
     // Intentionally do NOT filter out the uncolored extras. They are still
@@ -397,7 +397,7 @@
               countdown, two random fingers become
               <span class="font-semibold text-foreground">white team</span>
               and two become
-              <span class="font-semibold text-foreground">brown team</span>.
+              <span class="font-semibold text-foreground">red team</span>.
             </p>
           </div>
         {/if}
@@ -430,8 +430,8 @@
               </span>
               <span class="text-muted-foreground">vs</span>
               <span class="inline-flex items-center gap-2">
-                <span class="h-4 w-4 rounded-full bg-amber-900"></span>
-                Brown
+                <span class="h-4 w-4 rounded-full bg-red-600"></span>
+                Red
               </span>
             </div>
           </div>
@@ -439,7 +439,7 @@
 
         {#if showingResult}
           {@const whiteTouches = touches.filter((t) => t.color === 'white')}
-          {@const brownTouches = touches.filter((t) => t.color === 'brown')}
+          {@const redTouches = touches.filter((t) => t.color === 'red')}
           <svg
             class="pointer-events-none absolute inset-0 z-[5] h-full w-full"
             aria-hidden="true"
@@ -456,13 +456,13 @@
                 stroke-dasharray="14 10"
               />
             {/if}
-            {#if brownTouches.length === 2}
+            {#if redTouches.length === 2}
               <line
-                x1={brownTouches[0].x}
-                y1={brownTouches[0].y}
-                x2={brownTouches[1].x}
-                y2={brownTouches[1].y}
-                stroke="#78350f"
+                x1={redTouches[0].x}
+                y1={redTouches[0].y}
+                x2={redTouches[1].x}
+                y2={redTouches[1].y}
+                stroke="#dc2626"
                 stroke-width="6"
                 stroke-linecap="round"
                 stroke-dasharray="14 10"
@@ -477,14 +477,14 @@
               class="pointer-events-none absolute flex h-28 w-28 items-center justify-center rounded-full border-4 shadow-lg transition-colors duration-500"
               class:pulse-scale={countdown !== null && countdown > 0}
               class:border-white={touch.color === 'white'}
-              class:border-amber-900={touch.color === 'brown'}
+              class:border-red-600={touch.color === 'red'}
               class:border-primary={touch.color === null}
               style="left: {touch.x}px; top: {touch.y}px; transform: translate(-50%, -50%);"
             >
               <div
                 class="rounded-full transition-colors duration-500"
                 class:bg-white={touch.color === 'white'}
-                class:bg-amber-900={touch.color === 'brown'}
+                class:bg-red-600={touch.color === 'red'}
                 class:bg-primary={touch.color === null}
                 class:opacity-30={touch.color === null}
                 style="width: 88px; height: 88px;"
