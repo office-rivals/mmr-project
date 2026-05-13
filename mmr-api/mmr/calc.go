@@ -32,18 +32,25 @@ func CalculateNewMMR(team1 *Team, team2 *Team) (Team, Team) {
 }
 
 func CalculateNewMMRV2(team1 *TeamV2, team2 *TeamV2) (TeamV2, TeamV2) {
+	team1Ratings := make(types.Team, len(team1.Players))
+	for i, p := range team1.Players {
+		team1Ratings[i] = p.Player
+	}
+	team2Ratings := make(types.Team, len(team2.Players))
+	for i, p := range team2.Players {
+		team2Ratings[i] = p.Player
+	}
 
-	ratingResults := rating.Rate([]types.Team{
-		{team1.Players[0].Player, team1.Players[1].Player},
-		{team2.Players[0].Player, team2.Players[1].Player},
-	}, &types.OpenSkillOptions{
+	ratingResults := rating.Rate([]types.Team{team1Ratings, team2Ratings}, &types.OpenSkillOptions{
 		Score: []int{int(team1.Score), int(team2.Score)}, // it uses these scores to determine the winner
 	})
 
-	team1.Players[0].Player = ratingResults[0][0]
-	team1.Players[1].Player = ratingResults[0][1]
-	team2.Players[0].Player = ratingResults[1][0]
-	team2.Players[1].Player = ratingResults[1][1]
+	for i := range team1.Players {
+		team1.Players[i].Player = ratingResults[0][i]
+	}
+	for i := range team2.Players {
+		team2.Players[i].Player = ratingResults[1][i]
+	}
 
 	return *team1, *team2
 }

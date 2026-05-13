@@ -26,10 +26,10 @@ WHERE NOT EXISTS (SELECT 1 FROM organizations WHERE slug = 'default');
 -- =============================================================================
 -- Step 2: Create default League
 -- =============================================================================
-INSERT INTO leagues (id, created_at, organization_id, name, slug, queue_size)
+INSERT INTO leagues (id, created_at, organization_id, name, slug, team_size)
 SELECT gen_random_uuid(), now(),
        (SELECT id FROM organizations WHERE slug = 'default'),
-       'Default', 'default', 4
+       'Default', 'default', 2
 WHERE NOT EXISTS (
     SELECT 1 FROM leagues l
     JOIN organizations o ON o.id = l.organization_id

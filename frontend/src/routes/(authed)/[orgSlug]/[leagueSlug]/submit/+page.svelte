@@ -29,15 +29,30 @@
     | 'team2_player1'
     | 'team2_player2';
 
-  const SLOTS: SlotName[] = [
-    'team1_player1',
-    'team1_player2',
-    'team2_player1',
-    'team2_player2',
-  ];
+  let teamSize = $derived(data.leagueTeamSize);
+  // 1v1 leagues only use the player1 slots; the player2 entries stay null and
+  // the server action filters them out.
+  let team1Slots: SlotName[] = $derived(
+    teamSize >= 2 ? ['team1_player1', 'team1_player2'] : ['team1_player1']
+  );
+  let team2Slots: SlotName[] = $derived(
+    teamSize >= 2 ? ['team2_player1', 'team2_player2'] : ['team2_player1']
+  );
+  let SLOTS: SlotName[] = $derived([...team1Slots, ...team2Slots]);
+  let opponentLabel = $derived(teamSize >= 2 ? 'Opponent 1' : 'Opponent');
 
-  const PRIMARY_PLAYER_KEY = 'primaryLeaguePlayerId';
-  const LATEST_PLAYERS_KEY = 'latestLeaguePlayerIds';
+  // Stored values are LeaguePlayer ids, which are scoped to a single league —
+  // a user has a different LeaguePlayer row in each league they've joined.
+  // The legacy unscoped keys silently no-op across leagues; keeping them as a
+  // read-only fallback preserves auto-fill for users on whichever league they
+  // last submitted in before this change shipped.
+  // TODO(remove-after-next-release): drop the legacy keys.
+  const primaryPlayerKey = (leagueId: string) =>
+    `primaryLeaguePlayerId:${leagueId}`;
+  const latestPlayersKey = (leagueId: string) =>
+    `latestLeaguePlayerIds:${leagueId}`;
+  const LEGACY_PRIMARY_PLAYER_KEY = 'primaryLeaguePlayerId';
+  const LEGACY_LATEST_PLAYERS_KEY = 'latestLeaguePlayerIds';
 
   let slots = $state<Record<SlotName, SlotValue>>({
     team1_player1: null,
@@ -45,25 +60,42 @@
     team2_player1: null,
     team2_player2: null,
   });
+  let latestPlayerIds = $state<string[]>([]);
+  let team1Score = $state(-1);
+  let team2Score = $state(-1);
 
+  // The page component is reused across league navigations, so per-league
+  // selections must be cleared when data.leagueId changes; otherwise the form
+  // would submit a LeaguePlayer.id that belongs to the previous league.
+  let hydratedLeagueId: string | null = null;
   $effect(() => {
     if (!browser) return;
-    const primaryId = window.localStorage.getItem(PRIMARY_PLAYER_KEY);
-    if (primaryId && slots.team1_player1 === null) {
+    if (hydratedLeagueId === data.leagueId) return;
+    hydratedLeagueId = data.leagueId;
+
+    slots = {
+      team1_player1: null,
+      team1_player2: null,
+      team2_player1: null,
+      team2_player2: null,
+    };
+    team1Score = -1;
+    team2Score = -1;
+    latestPlayerIds = [];
+
+    const primaryId =
+      window.localStorage.getItem(primaryPlayerKey(data.leagueId)) ??
+      window.localStorage.getItem(LEGACY_PRIMARY_PLAYER_KEY);
+    if (primaryId) {
       const player = data.players.find((p) => p.id === primaryId);
       if (player) slots.team1_player1 = { kind: 'league', player };
     }
-  });
 
-  let latestPlayerIds = $state<string[]>([]);
-  $effect(() => {
-    if (!browser) return;
-    const stored = window.localStorage.getItem(LATEST_PLAYERS_KEY);
+    const stored =
+      window.localStorage.getItem(latestPlayersKey(data.leagueId)) ??
+      window.localStorage.getItem(LEGACY_LATEST_PLAYERS_KEY);
     if (stored) latestPlayerIds = stored.split(',').filter(Boolean);
   });
-
-  let team1Score = $state(-1);
-  let team2Score = $state(-1);
 
   let dialog = $state({
     open: false,
@@ -116,9 +148,7 @@
   }
 
   let allFilled = $derived(SLOTS.every((s) => slots[s] !== null));
-  let team1Filled = $derived(
-    slots.team1_player1 !== null && slots.team1_player2 !== null
-  );
+  let team1Filled = $derived(team1Slots.every((s) => slots[s] !== null));
 
   let exclusions = $derived(
     SLOTS.map((s) => slotExclusion(slots[s])).filter((v): v is string => !!v)
@@ -165,6 +195,9 @@
       };
     };
 
+    const team1Players = team1Slots.map((s) => slots[s]);
+    const team2Players = team2Slots.map((s) => slots[s]);
+
     return {
       id: 'preview',
       leagueId: data.leagueId,
@@ -179,7 +212,7 @@
           index: 0,
           score: team1Score === -1 ? 0 : team1Score,
           isWinner: team1Score === 10,
-          players: [slots.team1_player1, slots.team1_player2].map((s, i) => ({
+          players: team1Players.map((s, i) => ({
             id: `t1p${i}`,
             leaguePlayerId: '',
             ...playerNames(s),
@@ -191,7 +224,7 @@
           index: 1,
           score: team2Score === -1 ? 0 : team2Score,
           isWinner: team2Score === 10,
-          players: [slots.team2_player1, slots.team2_player2].map((s, i) => ({
+          players: team2Players.map((s, i) => ({
             id: `t2p${i}`,
             leaguePlayerId: '',
             ...playerNames(s),
@@ -210,13 +243,16 @@
     }).filter((v): v is string => !!v);
 
     if (enteredIds[0]) {
-      window.localStorage.setItem(PRIMARY_PLAYER_KEY, enteredIds[0]);
+      window.localStorage.setItem(primaryPlayerKey(data.leagueId), enteredIds[0]);
     }
     const merged = [
       ...enteredIds,
       ...latestPlayerIds.filter((id) => !enteredIds.includes(id)),
     ].slice(0, 10);
-    window.localStorage.setItem(LATEST_PLAYERS_KEY, merged.join(','));
+    window.localStorage.setItem(
+      latestPlayersKey(data.leagueId),
+      merged.join(',')
+    );
   }
 </script>
 
@@ -274,7 +310,7 @@
         <div id="team1-step" class="flex flex-1 flex-col gap-4">
           <h3 class="mb-2 text-center text-2xl">Team 1</h3>
           {@render field('team1_player1', 'You', true)}
-          {#if slots.team1_player1 !== null || slots.team1_player2 !== null}
+          {#if teamSize >= 2 && (slots.team1_player1 !== null || slots.team1_player2 !== null)}
             {@render field('team1_player2', 'Your teammate')}
           {/if}
         </div>
@@ -282,9 +318,9 @@
         <div id="team2-step" class="flex flex-1 flex-col gap-4">
           <h3 class="mb-2 text-center text-2xl">Team 2</h3>
           {#if team1Filled || slots.team2_player1 !== null}
-            {@render field('team2_player1', 'Opponent 1')}
+            {@render field('team2_player1', opponentLabel)}
           {/if}
-          {#if slots.team2_player1 !== null || slots.team2_player2 !== null}
+          {#if teamSize >= 2 && (slots.team2_player1 !== null || slots.team2_player2 !== null)}
             {@render field('team2_player2', 'Opponent 2')}
           {/if}
         </div>

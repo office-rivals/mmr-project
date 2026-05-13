@@ -24,6 +24,10 @@ export function getPlayerDisplayName(
   return p?.displayName ?? p?.username ?? fallback;
 }
 
+export function formatLeagueFormat(teamSize: number): string {
+  return `${teamSize}v${teamSize}`;
+}
+
 type FlyAndScaleParams = {
   y?: number;
   x?: number;

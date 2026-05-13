@@ -462,6 +462,78 @@ func TestSerializationPrecision(t *testing.T) {
 	}
 }
 
+// TestSubmitMMRCalculation1v1 verifies the endpoint handles 1v1 matches (one player per team).
+func TestSubmitMMRCalculation1v1(t *testing.T) {
+	router := setupRouter()
+
+	calculationController := controllers.CalculationController{}
+	router.POST("/v1/mmr-calculation", calculationController.SubmitMMRCalculation)
+
+	team1Score := 100
+	team2Score := 200
+	requestBody := view.MMRCalculationRequest{
+		Team1: view.MMRCalculationTeam{
+			Score: &team1Score,
+			Players: []view.MMRCalculationPlayerRating{
+				{Id: 1, Mu: nil, Sigma: nil},
+			},
+		},
+		Team2: view.MMRCalculationTeam{
+			Score: &team2Score,
+			Players: []view.MMRCalculationPlayerRating{
+				{Id: 2, Mu: nil, Sigma: nil},
+			},
+		},
+	}
+
+	rr := postRequest(router, "/v1/mmr-calculation", requestBody)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var response view.MMRCalculationResponse
+	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal response body: %v", err)
+	}
+
+	assert.Equal(t, 1, len(response.Team1.Players))
+	assert.Equal(t, 1, len(response.Team2.Players))
+	// Loser's Mu drops, winner's Mu rises (symmetric around the default 25).
+	assert.Less(t, response.Team1.Players[0].Mu, 25.0)
+	assert.Greater(t, response.Team2.Players[0].Mu, 25.0)
+}
+
+// TestSubmitMMRCalculationMismatchedTeamSizesRejected verifies 1v2-style asymmetric
+// matches are rejected (we only support equal-sized teams).
+func TestSubmitMMRCalculationMismatchedTeamSizesRejected(t *testing.T) {
+	router := setupRouter()
+
+	calculationController := controllers.CalculationController{}
+	router.POST("/v1/mmr-calculation", calculationController.SubmitMMRCalculation)
+
+	team1Score := 100
+	team2Score := 200
+	requestBody := view.MMRCalculationRequest{
+		Team1: view.MMRCalculationTeam{
+			Score: &team1Score,
+			Players: []view.MMRCalculationPlayerRating{
+				{Id: 1, Mu: nil, Sigma: nil},
+			},
+		},
+		Team2: view.MMRCalculationTeam{
+			Score: &team2Score,
+			Players: []view.MMRCalculationPlayerRating{
+				{Id: 2, Mu: nil, Sigma: nil},
+				{Id: 3, Mu: nil, Sigma: nil},
+			},
+		},
+	}
+
+	rr := postRequest(router, "/v1/mmr-calculation", requestBody)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
 // Helper function to create a pointer to a float64 value
 func float64Ptr(f float64) *float64 {
 	return &f

@@ -96,17 +96,19 @@ public class V3PendingMatchCoordinator(
 
     private async Task<int> CreatePendingMatchesAsync(CancellationToken cancellationToken)
     {
+        // A match fills both teams of size TeamSize, so a league needs
+        // `TeamSize * 2` queued players before we can pair them up.
         var candidateLeagues = await dbContext.Leagues
             .AsNoTracking()
             .Where(l => !dbContext.V3PendingMatches.Any(pm => pm.LeagueId == l.Id && pm.Status == AcceptanceStatus.Pending))
-            .Where(l => dbContext.QueueEntries.Count(q => q.LeagueId == l.Id) >= l.QueueSize)
-            .Select(l => new PendingMatchLeagueCandidate(l.OrganizationId, l.Id, l.QueueSize))
+            .Where(l => dbContext.QueueEntries.Count(q => q.LeagueId == l.Id) >= l.TeamSize * 2)
+            .Select(l => new PendingMatchLeagueCandidate(l.OrganizationId, l.Id, l.TeamSize * 2))
             .ToListAsync(cancellationToken);
 
         var createdCount = 0;
         foreach (var candidate in candidateLeagues)
         {
-            if (await TryCreatePendingMatchAsync(candidate.OrganizationId, candidate.LeagueId, candidate.QueueSize, cancellationToken))
+            if (await TryCreatePendingMatchAsync(candidate.OrganizationId, candidate.LeagueId, candidate.RequiredPlayers, cancellationToken))
             {
                 createdCount++;
             }
@@ -118,7 +120,7 @@ public class V3PendingMatchCoordinator(
     private async Task<bool> TryCreatePendingMatchAsync(
         Guid orgId,
         Guid leagueId,
-        int queueSize,
+        int requiredPlayers,
         CancellationToken cancellationToken)
     {
         var hasPendingMatch = await dbContext.V3PendingMatches
@@ -133,10 +135,10 @@ public class V3PendingMatchCoordinator(
             .Where(q => q.LeagueId == leagueId)
             .Include(q => q.LeaguePlayer)
             .OrderBy(q => q.JoinedAt)
-            .Take(queueSize)
+            .Take(requiredPlayers)
             .ToListAsync(cancellationToken);
 
-        if (queueEntries.Count < queueSize)
+        if (queueEntries.Count < requiredPlayers)
         {
             return false;
         }
@@ -208,5 +210,5 @@ public class V3PendingMatchCoordinator(
         }).ToList();
     }
 
-    private sealed record PendingMatchLeagueCandidate(Guid OrganizationId, Guid LeagueId, int QueueSize);
+    private sealed record PendingMatchLeagueCandidate(Guid OrganizationId, Guid LeagueId, int RequiredPlayers);
 }
