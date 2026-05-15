@@ -16,14 +16,14 @@ public class LeagueTests(PostgresFixture postgres) : IntegrationTestBase(postgre
         AuthenticateAs("owner-1");
 
         var response = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/leagues",
-            new CreateLeagueRequest { Name = "Foosball", Slug = "foosball", QueueSize = 4 });
+            new CreateLeagueRequest { Name = "Foosball", Slug = "foosball", TeamSize = 2 });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var league = await ReadJsonAsync<LeagueResponse>(response);
         Assert.NotNull(league);
         Assert.Equal("Foosball", league.Name);
         Assert.Equal("foosball", league.Slug);
-        Assert.Equal(4, league.QueueSize);
+        Assert.Equal(2, league.TeamSize);
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public class LeagueTests(PostgresFixture postgres) : IntegrationTestBase(postgre
         AuthenticateAs("owner-1");
 
         var response = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/leagues",
-            new CreateLeagueRequest { Name = "Second League", Slug = "first-league", QueueSize = 4 });
+            new CreateLeagueRequest { Name = "Second League", Slug = "first-league", TeamSize = 2 });
 
         Assert.True(response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict);
     }

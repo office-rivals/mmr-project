@@ -11,6 +11,7 @@
     CardTitle,
   } from '$lib/components/ui/card';
   import { Trophy, Users } from 'lucide-svelte';
+  import { formatLeagueFormat } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -38,7 +39,7 @@
               {league.name}
             </CardTitle>
             <CardDescription>
-              Queue size {league.queueSize}
+              {formatLeagueFormat(league.teamSize)}
             </CardDescription>
           </div>
           <Badge variant={league.isJoined ? 'default' : 'outline'}>

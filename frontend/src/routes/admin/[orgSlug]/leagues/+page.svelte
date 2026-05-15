@@ -13,6 +13,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Plus, Trophy } from 'lucide-svelte';
+  import { formatLeagueFormat } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -76,14 +77,15 @@
             <Input id="slug" name="slug" required pattern="[a-z0-9-]+" />
           </div>
           <div class="space-y-2">
-            <Label for="queueSize">Queue size</Label>
-            <Input
-              id="queueSize"
-              name="queueSize"
-              type="number"
-              min="2"
-              placeholder="4"
-            />
+            <Label for="teamSize">Format</Label>
+            <select
+              id="teamSize"
+              name="teamSize"
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <option value="2" selected>2v2</option>
+              <option value="1">1v1</option>
+            </select>
           </div>
           <div class="sm:col-span-3">
             <Button type="submit">Create league</Button>
@@ -106,7 +108,7 @@
             <p class="text-xs text-muted-foreground">{league.slug}</p>
           </div>
         </div>
-        <Badge variant="outline">Queue {league.queueSize}</Badge>
+        <Badge variant="outline">{formatLeagueFormat(league.teamSize)}</Badge>
       </a>
     {/each}
     {#if data.leagues.length === 0}

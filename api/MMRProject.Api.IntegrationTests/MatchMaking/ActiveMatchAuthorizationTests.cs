@@ -62,7 +62,7 @@ public class ActiveMatchAuthorizationTests(PostgresFixture postgres) : Integrati
     private async Task<(Organization Organization, League League, Guid ActiveMatchId)> CreateActiveMatchAsync()
     {
         var org = await CreateOrganization("Org", Guid.NewGuid().ToString("n")[..8]);
-        var league = await CreateLeague(org.Id, "League", Guid.NewGuid().ToString("n")[..8], 4);
+        var league = await CreateLeague(org.Id, "League", Guid.NewGuid().ToString("n")[..8], teamSize: 2);
         await CreateSeason(org.Id, league.Id);
 
         foreach (var playerId in new[] { "p1", "p2", "p3", "p4" })

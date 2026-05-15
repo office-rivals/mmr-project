@@ -25,15 +25,14 @@ public class LeagueService(ApiDbContext dbContext) : ILeagueService
         if (existingLeague != null)
             throw new InvalidArgumentException($"A league with slug '{request.Slug}' already exists in this organization");
 
-        if (request.QueueSize < 2)
-            throw new InvalidArgumentException("Queue size must be at least 2");
+        ValidateTeamSize(request.TeamSize);
 
         var league = new League
         {
             OrganizationId = orgId,
             Name = request.Name,
             Slug = request.Slug,
-            QueueSize = request.QueueSize
+            TeamSize = request.TeamSize
         };
 
         dbContext.Leagues.Add(league);
@@ -96,16 +95,25 @@ public class LeagueService(ApiDbContext dbContext) : ILeagueService
             league.Slug = request.Slug;
         }
 
-        if (request.QueueSize.HasValue)
+        if (request.TeamSize.HasValue)
         {
-            if (request.QueueSize.Value < 2)
-                throw new InvalidArgumentException("Queue size must be at least 2");
-            league.QueueSize = request.QueueSize.Value;
+            ValidateTeamSize(request.TeamSize.Value);
+            league.TeamSize = request.TeamSize.Value;
         }
 
         await dbContext.SaveChangesAsync();
 
         return MapToResponse(league);
+    }
+
+    // Capped at the submit form's current 1v1/2v2 support. Lift this when the
+    // submit form learns to render >2 player slots per team.
+    private const int MaxSupportedTeamSize = 2;
+
+    private static void ValidateTeamSize(int teamSize)
+    {
+        if (teamSize < 1 || teamSize > MaxSupportedTeamSize)
+            throw new InvalidArgumentException($"Team size must be between 1 and {MaxSupportedTeamSize}");
     }
 
     private static LeagueResponse MapToResponse(League league)
@@ -116,7 +124,7 @@ public class LeagueService(ApiDbContext dbContext) : ILeagueService
             OrganizationId = league.OrganizationId,
             Name = league.Name,
             Slug = league.Slug,
-            QueueSize = league.QueueSize,
+            TeamSize = league.TeamSize,
             CreatedAt = league.CreatedAt
         };
     }

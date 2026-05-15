@@ -17,7 +17,7 @@ namespace MMRProject.Api.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -542,14 +542,14 @@ namespace MMRProject.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("organization_id");
 
-                    b.Property<int>("QueueSize")
-                        .HasColumnType("integer")
-                        .HasColumnName("queue_size");
-
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("slug");
+
+                    b.Property<int>("TeamSize")
+                        .HasColumnType("integer")
+                        .HasColumnName("team_size");
 
                     b.HasKey("Id");
 

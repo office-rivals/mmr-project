@@ -117,6 +117,7 @@ public class SessionService(
             Id = lp.League.Id,
             Name = lp.League.Name,
             Slug = lp.League.Slug,
+            TeamSize = lp.League.TeamSize,
             LeaguePlayerId = lp.Id
         };
     }

@@ -77,6 +77,24 @@ public class V3MatchesService(
     private async Task<List<List<LeaguePlayer>>> ResolveAndValidateTeamsAsync(
         Guid orgId, Guid leagueId, SubmitMatchRequest request)
     {
+        if (request.Teams.Count != 2)
+            throw new InvalidArgumentException("A match must have exactly two teams");
+
+        var leagueTeamSize = await dbContext.Leagues
+            .Where(l => l.Id == leagueId && l.OrganizationId == orgId)
+            .Select(l => (int?)l.TeamSize)
+            .FirstOrDefaultAsync()
+            ?? throw new NotFoundException($"League with ID '{leagueId}' not found");
+
+        // Shape checks first so a malformed payload short-circuits before any
+        // per-player resolution (which can each hit the DB).
+        foreach (var team in request.Teams)
+        {
+            if (team.Players.Count != leagueTeamSize)
+                throw new InvalidArgumentException(
+                    $"Each team must have exactly {leagueTeamSize} players for this league");
+        }
+
         var resolvedTeams = new List<List<LeaguePlayer>>();
         foreach (var team in request.Teams)
         {
@@ -90,7 +108,7 @@ public class V3MatchesService(
         }
 
         var allPlayerIds = resolvedTeams.SelectMany(t => t).Select(lp => lp.Id).ToList();
-        if (allPlayerIds.Distinct().Count() != allPlayerIds.Count)
+        if (new HashSet<Guid>(allPlayerIds).Count != allPlayerIds.Count)
             throw new InvalidArgumentException("Players must be unique across all teams");
 
         return resolvedTeams;
