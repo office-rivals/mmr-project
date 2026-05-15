@@ -30,6 +30,11 @@
     | 'team2_player2';
 
   let teamSize = $derived(data.leagueTeamSize);
+  // Fixed-target leagues (foosball: 10) use the "we won / they won" + loser
+  // 0..N picker. Free-form leagues (winningScore === null) take two raw scores
+  // — the higher one wins, both are derived server-side.
+  let winningScore = $derived(data.leagueWinningScore);
+  let isFreeForm = $derived(winningScore === null);
   // 1v1 leagues only use the player1 slots; the player2 entries stay null and
   // the server action filters them out.
   let team1Slots: SlotName[] = $derived(
@@ -154,22 +159,38 @@
     SLOTS.map((s) => slotExclusion(slots[s])).filter((v): v is string => !!v)
   );
 
+  let loserScoreOptions = $derived(
+    winningScore == null ? [] : Array.from({ length: winningScore }, (_, i) => i)
+  );
+
+  // In fixed-target leagues exactly one side's score equals winningScore; that
+  // identifies the loser whose 0..(winningScore - 1) picker we show next.
+  // In free-form leagues there's no "losing slot" — both scores are entered
+  // directly and the server decides who won from the magnitudes.
   let losingTeam: 'team1' | 'team2' | null = $derived(
-    team1Score === 10 ? 'team2' : team2Score === 10 ? 'team1' : null
+    isFreeForm
+      ? null
+      : team1Score === winningScore
+        ? 'team2'
+        : team2Score === winningScore
+          ? 'team1'
+          : null
   );
 
   let isPreviewVisible = $derived(
-    losingTeam !== null && team1Score !== -1 && team2Score !== -1
+    isFreeForm
+      ? team1Score >= 0 && team2Score >= 0 && team1Score !== team2Score
+      : losingTeam !== null && team1Score !== -1 && team2Score !== -1
   );
 
   function setTeam1Wins() {
-    team1Score = 10;
+    team1Score = winningScore ?? 0;
     team2Score = -1;
     goto('#score-step');
   }
 
   function setTeam2Wins() {
-    team2Score = 10;
+    team2Score = winningScore ?? 0;
     team1Score = -1;
     goto('#score-step');
   }
@@ -198,6 +219,9 @@
     const team1Players = team1Slots.map((s) => slots[s]);
     const team2Players = team2Slots.map((s) => slots[s]);
 
+    const safeT1 = team1Score === -1 ? 0 : team1Score;
+    const safeT2 = team2Score === -1 ? 0 : team2Score;
+
     return {
       id: 'preview',
       leagueId: data.leagueId,
@@ -210,8 +234,8 @@
         {
           id: 't1',
           index: 0,
-          score: team1Score === -1 ? 0 : team1Score,
-          isWinner: team1Score === 10,
+          score: safeT1,
+          isWinner: safeT1 > safeT2,
           players: team1Players.map((s, i) => ({
             id: `t1p${i}`,
             leaguePlayerId: '',
@@ -222,8 +246,8 @@
         {
           id: 't2',
           index: 1,
-          score: team2Score === -1 ? 0 : team2Score,
-          isWinner: team2Score === 10,
+          score: safeT2,
+          isWinner: safeT2 > safeT1,
           players: team2Players.map((s, i) => ({
             id: `t2p${i}`,
             leaguePlayerId: '',
@@ -326,7 +350,7 @@
         </div>
       </div>
 
-      {#if allFilled}
+      {#if allFilled && !isFreeForm}
         <div id="winner-step" class="mt-6 flex flex-col gap-4" transition:fade>
           <h2 class="text-center text-4xl">Who won?</h2>
           <div class="flex flex-row gap-4">
@@ -335,7 +359,7 @@
               onclick={setTeam1Wins}
               class="flex-1"
               variant="default"
-              disabled={team1Score === 10}
+              disabled={team1Score === winningScore}
             >
               We won &nbsp; 🎉
             </Button>
@@ -345,7 +369,7 @@
               onclick={setTeam2Wins}
               class="flex-1"
               variant="destructive"
-              disabled={team2Score === 10}
+              disabled={team2Score === winningScore}
             >
               They won &nbsp; 😓
             </Button>
@@ -359,7 +383,7 @@
             What was {losingTeam === 'team1' ? 'your' : 'their'} score?
           </h2>
           <div class="grid grid-cols-5 gap-2">
-            {#each Array.from({ length: 10 }, (_, i) => i) as score}
+            {#each loserScoreOptions as score}
               <Button
                 type="button"
                 variant={(losingTeam === 'team1' ? team1Score : team2Score) ===
@@ -375,6 +399,45 @@
                 {score === 0 ? '🥚' : score}
               </Button>
             {/each}
+          </div>
+        </div>
+      {/if}
+
+      {#if allFilled && isFreeForm}
+        <div id="score-step" class="mt-6 flex flex-col gap-4" transition:fade>
+          <h2 class="text-center text-4xl">What was the final score?</h2>
+          <div class="flex flex-row items-end gap-3">
+            <div class="flex flex-1 flex-col gap-2">
+              <Label for="team1-score-input">Your score</Label>
+              <Input
+                id="team1-score-input"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                value={team1Score === -1 ? '' : team1Score}
+                oninput={(e) => {
+                  const n = (e.currentTarget as HTMLInputElement).valueAsNumber;
+                  const next = Number.isFinite(n) && n >= 0 ? n : -1;
+                  if (next !== team1Score) team1Score = next;
+                }}
+              />
+            </div>
+            <div class="pb-2 text-2xl">–</div>
+            <div class="flex flex-1 flex-col gap-2">
+              <Label for="team2-score-input">Their score</Label>
+              <Input
+                id="team2-score-input"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                value={team2Score === -1 ? '' : team2Score}
+                oninput={(e) => {
+                  const n = (e.currentTarget as HTMLInputElement).valueAsNumber;
+                  const next = Number.isFinite(n) && n >= 0 ? n : -1;
+                  if (next !== team2Score) team2Score = next;
+                }}
+              />
+            </div>
           </div>
         </div>
       {/if}

@@ -4,6 +4,8 @@
   import PageTitle from '$lib/components/page-title.svelte';
   import { Alert } from '$lib/components/ui/alert';
   import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
   import { fade } from 'svelte/transition';
   import type { ActionData, PageData } from './$types';
 
@@ -60,20 +62,35 @@
   let team2Score = $state(-1);
   let submitting = $state(false);
 
+  let winningScore = $derived(data.leagueWinningScore);
+  let isFreeForm = $derived(winningScore === null);
+  let loserScoreOptions = $derived(
+    winningScore == null ? [] : Array.from({ length: winningScore }, (_, i) => i)
+  );
+
   let losingTeam: TeamOption | null = $derived(
-    team1Score === 10 ? 'team2' : team2Score === 10 ? 'team1' : null
+    isFreeForm
+      ? null
+      : team1Score === winningScore
+        ? 'team2'
+        : team2Score === winningScore
+          ? 'team1'
+          : null
   );
 
   let isPreviewVisible = $derived(
-    losingTeam !== null && team1Score !== -1 && team2Score !== -1
+    isFreeForm
+      ? team1Score >= 0 && team2Score >= 0 && team1Score !== team2Score
+      : losingTeam !== null && team1Score !== -1 && team2Score !== -1
   );
 
   function setWinner(which: TeamOption) {
+    const target = winningScore ?? 0;
     if (which === 'team1') {
-      team1Score = 10;
+      team1Score = target;
       team2Score = -1;
     } else {
-      team2Score = 10;
+      team2Score = target;
       team1Score = -1;
     }
     goto('#score-step');
@@ -131,31 +148,34 @@
       {/each}
     </div>
 
-    <div id="winner-step" class="mt-6 flex flex-col gap-4" transition:fade>
-      <h2 class="text-center text-4xl">Who won?</h2>
-      <div class="flex flex-row gap-4">
-        <Button
-          type="button"
-          onclick={() => setWinner(currentUserTeam)}
-          class="flex-1"
-          variant="default"
-          disabled={(currentUserTeam === 'team1' ? team1Score : team2Score) ===
-            10}
-        >
-          We won &nbsp; 🎉
-        </Button>
-        <div class="min-h-full w-px bg-border"></div>
-        <Button
-          type="button"
-          onclick={() => setWinner(otherTeam)}
-          class="flex-1"
-          variant="destructive"
-          disabled={(otherTeam === 'team1' ? team1Score : team2Score) === 10}
-        >
-          They won &nbsp; 😓
-        </Button>
+    {#if !isFreeForm}
+      <div id="winner-step" class="mt-6 flex flex-col gap-4" transition:fade>
+        <h2 class="text-center text-4xl">Who won?</h2>
+        <div class="flex flex-row gap-4">
+          <Button
+            type="button"
+            onclick={() => setWinner(currentUserTeam)}
+            class="flex-1"
+            variant="default"
+            disabled={(currentUserTeam === 'team1' ? team1Score : team2Score) ===
+              winningScore}
+          >
+            We won &nbsp; 🎉
+          </Button>
+          <div class="min-h-full w-px bg-border"></div>
+          <Button
+            type="button"
+            onclick={() => setWinner(otherTeam)}
+            class="flex-1"
+            variant="destructive"
+            disabled={(otherTeam === 'team1' ? team1Score : team2Score) ===
+              winningScore}
+          >
+            They won &nbsp; 😓
+          </Button>
+        </div>
       </div>
-    </div>
+    {/if}
 
     {#if losingTeam}
       <div id="score-step" class="mt-6 flex flex-col gap-4" transition:fade>
@@ -163,7 +183,7 @@
           What was {losingTeam === currentUserTeam ? 'your' : 'their'} score?
         </h2>
         <div class="grid grid-cols-5 gap-2">
-          {#each Array.from({ length: 10 }, (_, i) => i) as score}
+          {#each loserScoreOptions as score}
             <Button
               type="button"
               variant={(losingTeam === 'team1' ? team1Score : team2Score) ===
@@ -175,6 +195,45 @@
               {score === 0 ? '🥚' : score}
             </Button>
           {/each}
+        </div>
+      </div>
+    {/if}
+
+    {#if isFreeForm}
+      <div id="score-step" class="mt-6 flex flex-col gap-4" transition:fade>
+        <h2 class="text-center text-4xl">What was the final score?</h2>
+        <div class="flex flex-row items-end gap-3">
+          <div class="flex flex-1 flex-col gap-2">
+            <Label for="team1-score-input">{teamHeading('team1')}</Label>
+            <Input
+              id="team1-score-input"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              value={team1Score === -1 ? '' : team1Score}
+              oninput={(e) => {
+                const n = (e.currentTarget as HTMLInputElement).valueAsNumber;
+                const next = Number.isFinite(n) && n >= 0 ? n : -1;
+                if (next !== team1Score) team1Score = next;
+              }}
+            />
+          </div>
+          <div class="pb-2 text-2xl">–</div>
+          <div class="flex flex-1 flex-col gap-2">
+            <Label for="team2-score-input">{teamHeading('team2')}</Label>
+            <Input
+              id="team2-score-input"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              value={team2Score === -1 ? '' : team2Score}
+              oninput={(e) => {
+                const n = (e.currentTarget as HTMLInputElement).valueAsNumber;
+                const next = Number.isFinite(n) && n >= 0 ? n : -1;
+                if (next !== team2Score) team2Score = next;
+              }}
+            />
+          </div>
         </div>
       </div>
     {/if}

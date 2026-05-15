@@ -28,5 +28,6 @@ public record MeLeagueResponse
     [Required] public required string Name { get; init; }
     [Required] public required string Slug { get; init; }
     [Required] public required int TeamSize { get; init; }
+    public int? WinningScore { get; init; }
     [Required] public required Guid LeaguePlayerId { get; init; }
 }

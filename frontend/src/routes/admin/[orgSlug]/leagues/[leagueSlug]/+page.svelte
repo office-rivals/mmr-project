@@ -63,6 +63,11 @@
         <div class="text-2xl font-bold">
           {formatLeagueFormat(data.league.teamSize)}
         </div>
+        <p class="text-xs text-muted-foreground">
+          {data.league.winningScore == null
+            ? 'Free-form scoring'
+            : `First to ${data.league.winningScore}`}
+        </p>
       </CardContent>
     </Card>
 
