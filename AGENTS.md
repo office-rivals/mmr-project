@@ -183,6 +183,8 @@ Releases are managed through lightweight changeset files in `.changeset/`. Featu
 
 **Do not manually bump component versions.** The release PR workflow (`scripts/release/apply-changesets.mjs`) owns the `version` field in `frontend/package.json`, `api/package.json`, `mmr-api/package.json`, the `<Version>` element in `MMRProject.Api.csproj`, and the per-component `CHANGELOG.md` files. Add a `.changeset/*.md` describing the change and let the release PR compute the bump. Manual edits to these fields will be overwritten on the next release PR. (Editing entries under `dependencies` / `devDependencies` is unrelated and remains a manual operation.)
 
+**Infra/test-only PRs** (seed fixtures, e2e specs, CI, internal scripts, docs that don't affect a deployed component) skip the changeset and apply the `no-release` label on the PR instead. The release PR workflow only fires when a changeset file exists, so omitting the changeset is the no-op path.
+
 ## Important Notes
 
 - Migrations run automatically on API startup when `Migration:Enabled` is true
