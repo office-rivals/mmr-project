@@ -30,6 +30,7 @@ export const load: LayoutServerLoad = async ({
     orgId: org.id as string,
     leagueId: league.id as string,
     leagueTeamSize: league.teamSize as number,
+    leagueWinningScore: league.winningScore ?? null,
     leaguePlayerId: league.leaguePlayerId as string | undefined,
     orgSlug: params.orgSlug,
     leagueSlug: params.leagueSlug,

@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 // The seed gives Test Org two leagues:
-//   - test-league    (2v2 — team_size 2)
-//   - singles-league (1v1 — team_size 1, 3 league players, 3 seeded matches)
+//   - test-league    (2v2 — team_size 2, fixed winning_score 10)
+//   - singles-league (1v1 — team_size 1, free-form scoring, 3 league players)
 // All assertions in this file are scoped to singles-league.
 
 const ORG_URL = '/test-org';
@@ -73,7 +73,31 @@ test.describe('1v1 league', () => {
     await expect(page.getByText('You', { exact: true })).toBeVisible();
   });
 
-  test('full 1v1 match submission redirects to the league overview', async ({
+  test('submit form renders free-form numeric score inputs (no fixed-target picker)', async ({
+    page,
+  }) => {
+    await page.goto(SUBMIT_URL);
+    await page.evaluate(() => window.localStorage.clear());
+    await page.reload();
+
+    const team1 = page.locator('#team1-step');
+    const team2 = page.locator('#team2-step');
+    await team1.locator('input[placeholder="Filter..."]').fill('tuser');
+    await team1.getByRole('button', { name: /Test User/ }).click();
+    await team2.locator('input[placeholder="Filter..."]').fill('alia');
+    await team2.getByRole('button', { name: /Alice Anderson/ }).click();
+
+    // Free-form: no "Who won?" prompt and no 0-9 button picker. The score-step
+    // panel goes straight to the two numeric inputs.
+    await expect(page.getByText('Who won?')).toHaveCount(0);
+    await expect(
+      page.getByRole('heading', { name: /What was the final score?/ })
+    ).toBeVisible();
+    await expect(page.locator('#team1-score-input')).toBeVisible();
+    await expect(page.locator('#team2-score-input')).toBeVisible();
+  });
+
+  test('full free-form 1v1 match submission redirects to the league overview', async ({
     page,
   }) => {
     // Mutates singles-league state. Placed last in the file so prior assertions
@@ -87,8 +111,6 @@ test.describe('1v1 league', () => {
     await page.evaluate(() => window.localStorage.clear());
     await page.reload();
 
-    // Scope each input to its team container so the assertions don't rely on
-    // .first() picking the right field after the You slot turns into a chip.
     const team1 = page.locator('#team1-step');
     const team2 = page.locator('#team2-step');
 
@@ -100,11 +122,9 @@ test.describe('1v1 league', () => {
     await team2.locator('input[placeholder="Filter..."]').fill('alia');
     await team2.getByRole('button', { name: /Alice Anderson/ }).click();
 
-    // Who won? — we won.
-    await page.getByRole('button', { name: /We won/ }).click();
-
-    // What was their score? — pick 7.
-    await page.getByRole('button', { name: '7', exact: true }).first().click();
+    // Free-form scoring: enter raw scores. 21-19 is a typical table-tennis end.
+    await page.locator('#team1-score-input').fill('21');
+    await page.locator('#team2-score-input').fill('19');
 
     // Submit. The action POSTs to the API and redirects to the league page.
     await page.getByRole('button', { name: /Submit the match/ }).click();

@@ -66,7 +66,7 @@
               if (result.type === 'success') showCreate = false;
             };
           }}
-          class="grid gap-4 sm:grid-cols-3"
+          class="grid gap-4 sm:grid-cols-4"
         >
           <div class="space-y-2">
             <Label for="name">Name</Label>
@@ -87,7 +87,18 @@
               <option value="1">1v1</option>
             </select>
           </div>
-          <div class="sm:col-span-3">
+          <div class="space-y-2">
+            <Label for="winningScore">Winning score</Label>
+            <Input
+              id="winningScore"
+              name="winningScore"
+              type="number"
+              min="1"
+              placeholder="e.g. 10 (blank = free-form)"
+              value="10"
+            />
+          </div>
+          <div class="sm:col-span-4">
             <Button type="submit">Create league</Button>
           </div>
         </form>

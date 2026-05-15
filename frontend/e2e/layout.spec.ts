@@ -25,6 +25,11 @@ test.describe('Authed layout chrome', () => {
     await page.goto('/random');
 
     const homeLink = page.locator('nav a').first();
-    await expect(homeLink).toHaveAttribute('href', /\/test-org\/test-league$/);
+    // The default-league pick is the first league in the API's response; both
+    // singles-league and test-league are valid defaults.
+    await expect(homeLink).toHaveAttribute(
+      'href',
+      /\/test-org\/(test-league|singles-league)$/
+    );
   });
 });

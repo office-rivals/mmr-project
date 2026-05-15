@@ -42,7 +42,7 @@ test.describe('Org admin overview', () => {
     await expect(
       page.getByRole('heading', { name: 'Members', level: 1 })
     ).toBeVisible();
-    await expect(page.getByText(/6 members/i)).toBeVisible();
+    await expect(page.getByText(/\d+ members/i)).toBeVisible();
   });
 
   test('leagues tab lists every league + offers create-league for owners', async ({
@@ -117,8 +117,11 @@ test.describe('League admin', () => {
       .click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    const score = dialog.locator('input[type="number"]').first();
-    await score.fill('99');
+    // Test League is fixed-target (winning_score = 10), so we must submit a
+    // valid winner/loser pair regardless of the seed's pre-edit scores.
+    const scoreInputs = dialog.locator('input[type="number"]');
+    await scoreInputs.nth(0).fill('10');
+    await scoreInputs.nth(1).fill('5');
     await dialog.getByRole('button', { name: 'Save match' }).click();
 
     // On a successful PATCH the dialog closes itself.

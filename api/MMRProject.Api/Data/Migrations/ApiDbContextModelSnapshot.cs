@@ -551,6 +551,10 @@ namespace MMRProject.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("team_size");
 
+                    b.Property<int?>("WinningScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("winning_score");
+
                     b.HasKey("Id");
 
                     b.HasIndex(new[] { "OrganizationId", "Slug" }, "ix_leagues_org_slug")
