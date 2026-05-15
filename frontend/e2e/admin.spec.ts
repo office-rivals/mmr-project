@@ -77,10 +77,9 @@ test.describe('League admin', () => {
       page.getByRole('heading', { name: 'Matches', level: 2 })
     ).toBeVisible();
     const rows = page.getByTestId('admin-match-row');
-    // The page lists every match in the league regardless of season — the seed
-    // ships 15 current-season + 3 past-season = 18 total. Pinning to >=18 is
-    // robust to anyone bumping the seed counts in either direction.
-    await expect(rows).toHaveCount(18);
+    // The matches page paginates at PAGE_SIZE=25. The seed has thousands of
+    // matches so the first page is always full.
+    await expect(rows).toHaveCount(25);
     await expect(page.getByText('Latest', { exact: true })).toBeVisible();
   });
 

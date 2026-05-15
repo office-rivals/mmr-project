@@ -8,17 +8,16 @@ running the end-to-end Playwright suite.
 `scripts/seed-data.sql` is a deterministic test fixture that wipes all v3 data
 and inserts:
 
-- 1 organization (`Test Org` / `test-org`)
-- 1 league (`Test League` / `test-league`, 4-player queue)
-- 3 seasons (one current, two past)
-- 6 league players, including 1 test user account
-- 18 matches (15 in current season, 3 in past season) with realistic
-  rating-history deltas so sparklines, MMR, wins/losses, and streaks all
-  populate
+- 2 organizations: `Test Org` / `test-org` (test user is Owner) and
+  `Other Org` / `other-org` (test user is Member; used by RBAC e2e tests)
+- 2 leagues: `Test League` (2v2) under Test Org and `Other League` under Other Org
+- 3 seasons in Test League (2 past + 1 current)
+- 65 league players, including the test user
+- ~2050 matches with rating histories whose `(mmr, mu, sigma)` triplet on
+  each player is self-consistent under `RankingDisplayValue`, so submitting
+  a new match produces sensible deltas
 
-This is the recommended starting point for local development if you don't have
-access to the production database (`scripts/import-prod-data.sh` is gated on
-Azure credentials).
+The seed is the recommended starting point for local development.
 
 ### Apply the seed
 
@@ -36,12 +35,15 @@ Stable IDs you can use in URLs and tests:
 
 | Entity                    | UUID                                       |
 | ------------------------- | ------------------------------------------ |
-| Organization              | `11111111-1111-1111-1111-111111111111`     |
-| League                    | `22222222-2222-2222-2222-222222222222`     |
-| Past season               | `33333333-3333-3333-3333-333333333302`     |
-| Current season            | `33333333-3333-3333-3333-333333333303`     |
+| Test Org                  | `11111111-1111-1111-1111-111111111111`     |
+| Test League               | `22222222-2222-2222-2222-222222222222`     |
 | Test user (`tuser`)       | `44444444-4444-4444-4444-444444444401`     |
+| Test user membership      | `55555555-5555-5555-5555-555555555501`     |
 | Test user (league player) | `66666666-6666-6666-6666-666666666601`     |
+| Other Org                 | `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa`     |
+| Other League              | `bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb`     |
+
+Season UUIDs are deterministic — re-applying the seed gives the same IDs.
 
 The route to the test user's profile is therefore
 `http://localhost:5173/test-org/test-league/player/66666666-6666-6666-6666-666666666601`.

@@ -1,5 +1,14 @@
 # AGENTS.md
 
+## Public repo
+
+This repository is public. Do not check in references to specific deployments
+or production data — including org/league slugs, tenant/subscription IDs,
+resource group names, server names, database names, admin usernames, real
+user emails, or anything that names a particular live environment. Use
+placeholders in docs and require deployment-specific values via env vars or
+CLI args in scripts.
+
 ## Project Overview
 
 Three-service matchmaking and rating system:
