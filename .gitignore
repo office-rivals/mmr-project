@@ -9,6 +9,3 @@ memory-bank/
 
 # Browser automation state
 .clerk-auth-state.json
-
-# Ignore CLAUDE.md since we use AGENTS.md
-CLAUDE.md
