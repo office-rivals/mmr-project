@@ -77,7 +77,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
     }
 
     protected async Task<League> CreateLeague(Guid organizationId, string name = "Test League",
-        string slug = "test-league", int teamSize = 2)
+        string slug = "test-league", int teamSize = 2, int? winningScore = 10)
     {
         using var scope = Factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
@@ -88,6 +88,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             Name = name,
             Slug = slug,
             TeamSize = teamSize,
+            WinningScore = winningScore,
         };
         dbContext.Leagues.Add(league);
         await dbContext.SaveChangesAsync();

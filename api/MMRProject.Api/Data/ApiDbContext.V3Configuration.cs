@@ -86,6 +86,7 @@ public partial class ApiDbContext
             entity.Property(e => e.Name).HasColumnName("name");
             entity.Property(e => e.Slug).HasColumnName("slug");
             entity.Property(e => e.TeamSize).HasColumnName("team_size");
+            entity.Property(e => e.WinningScore).HasColumnName("winning_score");
 
             entity.HasIndex(e => new { e.OrganizationId, e.Slug }, "ix_leagues_org_slug").IsUnique();
 
