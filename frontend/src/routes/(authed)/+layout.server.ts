@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
+import type { MeOrganizationResponse } from '$lib/../api-v3/models';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
   const { userId } = locals.auth();
@@ -8,6 +9,10 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     return redirect(307, '/login');
   }
 
+  let organizations: MeOrganizationResponse[] = [];
+  let displayName: string | null = null;
+  let username: string | null = null;
+  let email: string | null = null;
   let defaultOrgSlug: string | null = null;
   let defaultLeagueSlug: string | null = null;
   let defaultOrgId: string | null = null;
@@ -16,7 +21,11 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
   try {
     const me = await locals.apiClientV3.meApi.getMe();
-    const org = me.organizations?.[0];
+    organizations = me.organizations ?? [];
+    displayName = me.displayName ?? null;
+    username = me.username ?? null;
+    email = me.email ?? null;
+    const org = organizations[0];
     const league = org?.leagues?.[0];
     if (org && league) {
       defaultOrgSlug = org.slug;
@@ -31,6 +40,10 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
   return {
     userId,
+    organizations,
+    displayName,
+    username,
+    email,
     defaultOrgSlug,
     defaultLeagueSlug,
     defaultOrgId,
