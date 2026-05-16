@@ -140,6 +140,7 @@ export const load: PageServerLoad = async ({
       isCurrentUser: playerId === leaguePlayerId,
       stats: {
         mmr,
+        rank: playerEntry?.rank ?? null,
         totalMatches,
         wins,
         lost,

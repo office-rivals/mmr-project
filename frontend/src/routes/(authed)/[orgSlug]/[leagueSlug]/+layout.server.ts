@@ -1,37 +1,25 @@
 import { error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({
-  params,
-  locals: { apiClientV3 },
-}) => {
-  let me;
-  try {
-    me = await apiClientV3.meApi.getMe();
-  } catch {
-    throw error(401, 'Failed to load user profile');
-  }
+export const load: LayoutServerLoad = async ({ params, parent }) => {
+  const { organizations } = await parent();
 
-  const org = me.organizations?.find(
-    (o: { slug: string }) => o.slug === params.orgSlug
-  );
+  const org = organizations.find((o) => o.slug === params.orgSlug);
   if (!org) {
     throw error(404, 'Organization not found');
   }
 
-  const league = org.leagues?.find(
-    (l: { slug: string }) => l.slug === params.leagueSlug
-  );
+  const league = org.leagues?.find((l) => l.slug === params.leagueSlug);
   if (!league) {
     throw error(404, 'League not found');
   }
 
   return {
-    orgId: org.id as string,
-    leagueId: league.id as string,
-    leaguePlayerId: league.leaguePlayerId as string | undefined,
+    orgId: org.id,
+    leagueId: league.id,
+    leaguePlayerId: league.leaguePlayerId,
     orgSlug: params.orgSlug,
     leagueSlug: params.leagueSlug,
-    orgRole: org.role as string,
+    orgRole: org.role,
   };
 };
