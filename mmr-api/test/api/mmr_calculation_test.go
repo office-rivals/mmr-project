@@ -532,6 +532,14 @@ func TestSubmitMMRCalculationMismatchedTeamSizesRejected(t *testing.T) {
 	rr := postRequest(router, "/v1/mmr-calculation", requestBody)
 
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
+
+	// Body must be a single, well-formed error JSON — not the error followed by
+	// an appended success body from a calculation that wasn't aborted.
+	var errBody struct {
+		Error string `json:"error"`
+	}
+	assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &errBody))
+	assert.NotEmpty(t, errBody.Error)
 }
 
 // Helper function to create a pointer to a float64 value
