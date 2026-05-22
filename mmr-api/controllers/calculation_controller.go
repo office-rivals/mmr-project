@@ -71,7 +71,7 @@ func (m CalculationController) SubmitMMRCalculationsBatch(c *gin.Context) {
 	for i, r := range req {
 		team1, team2, err := m.calculateMatch(r, playerMap)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error(), "batch.index": i})
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error(), "batchIndex": i})
 			return
 		}
 		response := m.GenerateResponse(r, team1, team2)
