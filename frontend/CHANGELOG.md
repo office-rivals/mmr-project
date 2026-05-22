@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.2.0
+
+- Add support for 1v1 leagues, and replace `League.QueueSize` with `League.TeamSize` (the per-team player count) — `QueueSize` was the inverted way to think about the same concept. The queue requires `2 * teamSize` players. Migrating: existing `queue_size` values are halved into the new `team_size` column.
+  
+  - **api**: rename `League.QueueSize` → `TeamSize` (column `queue_size` → `team_size`, values halved); validate `TeamSize >= 1`; enforce exactly two teams of equal size on match submission; expose `teamSize` on `MeLeagueResponse`. Wire format renames: `CreateLeagueRequest.queueSize` → `teamSize`, `LeagueResponse.queueSize` → `teamSize`, `MeLeagueResponse.queueSize` → `teamSize`.
+  - **mmr-api**: drop the hard-coded "exactly 4 unique players" rule and build team-player slices dynamically; both teams must still have ≥1 player and equal sizes.
+  - **frontend**: regenerated client (`teamSize` field); the create-league form has a 1v1 / 2v2 selector; the matchmaking page derives the required queue length from `teamSize * 2`; admin/league overviews display the format label ("1v1"/"2v2") instead of "Queue size N".
+- Actually fix GitHub (and other OAuth) sign-up by mounting Clerk's `<SignIn />` and `<SignUp />` under SvelteKit rest routes (`/login/[...rest]` and `/sign-up/[...rest]`). The earlier fix added a `/sign-up` page but kept `/login` as an exact-match route, so after GitHub OAuth the browser was redirected to `/login/sso-callback` — which 404'd. Clerk's prebuilt components own their own internal sub-routes (`sso-callback`, `factor-one`, `verify`, …); the `signUp.create({ transfer: true })` call that converts a transferable OAuth verification into a real sign-up lives in the `sso-callback` UI, so without that sub-route mounted it never runs and first-time GitHub users stay stuck on `external_account_not_found`. Also wires `signUpUrl="/sign-up"` and `signInUrl="/login"` props explicitly so the link between the two flows doesn't depend on dashboard configuration.
+- Upgrade frontend ESLint stack: ESLint 8 → 10, eslint-plugin-svelte 2 → 3,
+  typescript-eslint 7 → 8 (unified package), eslint-config-prettier 9 → 10.
+  Migrate from `.eslintrc.cjs` legacy config to flat `eslint.config.js`. Drop
+  `@types/eslint` (now built in) and `.eslintignore` (replaced by `ignores` in
+  flat config). New strict defaults from eslint-plugin-svelte v3
+  (`require-each-key`, `no-navigation-without-resolve`,
+  `prefer-svelte-reactivity`) are reported as warnings to be addressed
+  incrementally.
+- Switch the touch randomizer's team colors from white/brown to white/red so they are reliably distinguishable for colorblind users (white is achromatic, giving strong luminance contrast against red across all common color vision deficiencies).
+
 ## 1.1.0
 
 - Fix GitHub (and other OAuth) sign-up getting stuck on `external_account_not_found`. Adds a `/sign-up` route mounting Clerk's `<SignUp />` component so the prebuilt `<SignIn />` flow can complete the OAuth → sign-up transfer for first-time users. Also allowlists `/sign-up` in the server-side auth guard so the redirect isn't bounced back to `/login`.
