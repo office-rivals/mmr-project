@@ -35,7 +35,7 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
     public async Task PendingMatch_CreatedByCoordinatorWhenQueueFull()
     {
         var org = await CreateOrganization();
-        var league = await CreateLeague(org.Id, queueSize: 4);
+        var league = await CreateLeague(org.Id, teamSize: 2);
 
         var (_, _, _) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com");
         var (_, _, _) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
@@ -71,7 +71,7 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
     public async Task ExpiredPendingMatch_AllPlayersAccepted_DoesNotDecline()
     {
         var org = await CreateOrganization();
-        var league = await CreateLeague(org.Id, queueSize: 2);
+        var league = await CreateLeague(org.Id, teamSize: 1);
         var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com");
         var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
 
@@ -135,7 +135,7 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
     public async Task AcceptDeclineFlow()
     {
         var org = await CreateOrganization();
-        var league = await CreateLeague(org.Id, queueSize: 4);
+        var league = await CreateLeague(org.Id, teamSize: 2);
 
         var (_, _, _) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com");
         var (_, _, _) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
@@ -205,7 +205,7 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
     public async Task FullFlow_QueueToActiveToSubmit()
     {
         var org = await CreateOrganization();
-        var league = await CreateLeague(org.Id, queueSize: 4);
+        var league = await CreateLeague(org.Id, teamSize: 2);
         await CreateSeason(org.Id, league.Id);
 
         var (_, _, _) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com", OrganizationRole.Owner);
@@ -272,7 +272,7 @@ public class MatchMakingTests(PostgresFixture postgres) : IntegrationTestBase(po
     public async Task CancelActiveMatch_Succeeds()
     {
         var org = await CreateOrganization();
-        var league = await CreateLeague(org.Id, queueSize: 4);
+        var league = await CreateLeague(org.Id, teamSize: 2);
         await CreateSeason(org.Id, league.Id);
 
         var (_, _, _) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com", OrganizationRole.Owner);

@@ -32,9 +32,11 @@ func (m CalculationController) SubmitMMRCalculation(c *gin.Context) {
 		return
 	}
 
-	ensurePlayers(c, req)
-
-	team1, team2 := m.calculateMatch(c, req, nil)
+	team1, team2, err := m.calculateMatch(req, nil)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	response := m.GenerateResponse(req, team1, team2)
 
 	slog.InfoContext(c.Request.Context(), "mmr calculation",
@@ -67,7 +69,11 @@ func (m CalculationController) SubmitMMRCalculationsBatch(c *gin.Context) {
 	responses := make([]view.MMRCalculationResponse, len(req))
 	playerMap := make(PlayerMMRResultMap)
 	for i, r := range req {
-		team1, team2 := m.calculateMatch(c, r, playerMap)
+		team1, team2, err := m.calculateMatch(r, playerMap)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error(), "batchIndex": i})
+			return
+		}
 		response := m.GenerateResponse(r, team1, team2)
 		responses[i] = response
 
@@ -99,61 +105,51 @@ func (m CalculationController) GenerateResponse(r view.MMRCalculationRequest, te
 
 type PlayerMMRResultMap map[int64]types.Rating
 
-func (m CalculationController) calculateMatch(c *gin.Context, req view.MMRCalculationRequest, playerMap PlayerMMRResultMap) (mmr.TeamV2, mmr.TeamV2) {
-	ensurePlayers(c, req)
-
-	// Create players for Team 1
-	player1 := m.createPlayer(req.Team1.Players[0], playerMap)
-	player2 := m.createPlayer(req.Team1.Players[1], playerMap)
-
-	team1 := mmr.TeamV2{
-		Players: []mmr.PlayerV2{player1, player2},
-		Score:   int16(*req.Team1.Score),
+func (m CalculationController) calculateMatch(req view.MMRCalculationRequest, playerMap PlayerMMRResultMap) (mmr.TeamV2, mmr.TeamV2, error) {
+	if err := ensurePlayers(req); err != nil {
+		return mmr.TeamV2{}, mmr.TeamV2{}, err
 	}
 
-	// Create players for Team 2
-	player3 := m.createPlayer(req.Team2.Players[0], playerMap)
-	player4 := m.createPlayer(req.Team2.Players[1], playerMap)
-
+	team1 := mmr.TeamV2{
+		Players: m.buildTeamPlayers(req.Team1.Players, playerMap),
+		Score:   int16(*req.Team1.Score),
+	}
 	team2 := mmr.TeamV2{
-		Players: []mmr.PlayerV2{player3, player4},
+		Players: m.buildTeamPlayers(req.Team2.Players, playerMap),
 		Score:   int16(*req.Team2.Score),
 	}
 
-	// Calculate new MMR
-	return mmr.CalculateNewMMRV2(&team1, &team2)
+	t1, t2 := mmr.CalculateNewMMRV2(&team1, &team2)
+	return t1, t2, nil
 }
 
-// Checks if the player IDs from both teams are unique and that there are exactly 4 unique players.
-// If any validation fails, it responds with an appropriate error message and aborts the request.
-func ensurePlayers(c *gin.Context, req view.MMRCalculationRequest) {
-	// Check for duplicates using a map
+func (m CalculationController) buildTeamPlayers(ratings []view.MMRCalculationPlayerRating, playerMap PlayerMMRResultMap) []mmr.PlayerV2 {
+	players := make([]mmr.PlayerV2, len(ratings))
+	for i, r := range ratings {
+		players[i] = m.createPlayer(r, playerMap)
+	}
+	return players
+}
+
+func ensurePlayers(req view.MMRCalculationRequest) error {
+	if len(req.Team1.Players) == 0 || len(req.Team2.Players) == 0 {
+		return fmt.Errorf("each team must have at least one player")
+	}
+	if len(req.Team1.Players) != len(req.Team2.Players) {
+		return fmt.Errorf("both teams must have the same number of players")
+	}
+
 	playerMap := make(map[int64]struct{})
-
-	// Add all player IDs from Team 1 and Team 2
-	// Ensure there are no duplicates
-	for _, player := range req.Team1.Players {
-		if _, exists := playerMap[player.Id]; exists {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Player ID %d is duplicated", player.Id)})
-			return
+	for _, team := range []view.MMRCalculationTeam{req.Team1, req.Team2} {
+		for _, player := range team.Players {
+			if _, exists := playerMap[player.Id]; exists {
+				return fmt.Errorf("player ID %d is duplicated", player.Id)
+			}
+			playerMap[player.Id] = struct{}{}
 		}
-		playerMap[player.Id] = struct{}{}
 	}
 
-	// Add all player IDs from Team 2
-	for _, player := range req.Team2.Players {
-		if _, exists := playerMap[player.Id]; exists {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Player ID %d is duplicated", player.Id)})
-			return
-		}
-		playerMap[player.Id] = struct{}{}
-	}
-
-	// Ensure there are exactly 4 unique players
-	if len(playerMap) != 4 {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "There must be exactly 4 unique players across both teams"})
-		return
-	}
+	return nil
 }
 
 // Creates a player instance from the given MMRCalculationPlayerRating

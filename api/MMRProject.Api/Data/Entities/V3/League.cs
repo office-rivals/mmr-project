@@ -6,7 +6,7 @@ public class League : TenantEntity
 
     public required string Slug { get; set; }
 
-    public int QueueSize { get; set; } = 4;
+    public int TeamSize { get; set; } = 2;
 
     public virtual Organization Organization { get; set; } = null!;
 }

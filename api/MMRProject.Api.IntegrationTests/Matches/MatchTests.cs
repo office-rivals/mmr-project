@@ -50,6 +50,96 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
     }
 
     [Fact]
+    public async Task SubmitMatch_1v1League_CreatesSinglePlayerTeams()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id, teamSize: 1);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+
+        AuthenticateAs("p1");
+
+        var response = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player2.Id], Score = 5 }
+                ]
+            });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var match = await ReadJsonAsync<MatchResponse>(response);
+        Assert.NotNull(match);
+        Assert.Equal(2, match.Teams.Count);
+        Assert.All(match.Teams, t => Assert.Single(t.Players));
+        Assert.True(match.Teams.First(t => t.Score == 10).IsWinner);
+    }
+
+    [Fact]
+    public async Task SubmitMatch_MismatchedTeamSizes_ReturnsBadRequest()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, p1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, p2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, p3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+
+        AuthenticateAs("p1");
+
+        var response = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [p1.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [p2.Id, p3.Id], Score = 5 }
+                ]
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SubmitMatch_TeamSizeDoesNotMatchLeague_ReturnsBadRequest()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id, teamSize: 1);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, p1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, p2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, p3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, p4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        // 2v2 submission in a 1v1 league.
+        var response = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 5 }
+                ]
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetMatches_FilterByLeaguePlayerId_ReturnsOnlyParticipantMatches()
     {
         var org = await CreateOrganization();

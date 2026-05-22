@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { getApiErrorDetails } from '$lib/server/api/apiError';
 import { resolveOrgIdBySlug } from '$lib/server/resolveIds';
 
 export const load: PageServerLoad = async ({
@@ -16,14 +17,10 @@ export const actions: Actions = {
     const formData = await request.formData();
     const name = (formData.get('name') as string)?.trim();
     const slug = (formData.get('slug') as string)?.trim();
-    const queueSizeRaw = formData.get('queueSize') as string;
-    const queueSize = queueSizeRaw ? parseInt(queueSizeRaw, 10) : undefined;
+    const teamSize = Number(formData.get('teamSize'));
 
     if (!name) return fail(400, { error: 'Name is required' });
     if (!slug) return fail(400, { error: 'Slug is required' });
-    if (queueSize !== undefined && (Number.isNaN(queueSize) || queueSize < 2)) {
-      return fail(400, { error: 'Queue size must be at least 2' });
-    }
 
     const orgId = await resolveOrgIdBySlug(apiClientV3, params.orgSlug);
     if (!orgId) return fail(404, { error: 'Organization not found' });
@@ -32,11 +29,15 @@ export const actions: Actions = {
       await apiClientV3.leaguesApi.createLeague(orgId, {
         name,
         slug,
-        queueSize,
+        teamSize,
       });
       return { success: 'League created' };
-    } catch {
-      return fail(400, { error: 'Failed to create league' });
+    } catch (err) {
+      const { status, message } = await getApiErrorDetails(
+        err,
+        'Failed to create league'
+      );
+      return fail(status, { error: message });
     }
   },
 };

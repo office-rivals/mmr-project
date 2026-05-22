@@ -9,6 +9,7 @@
     CardTitle,
   } from '$lib/components/ui/card';
   import { Flag, Trophy, UserCircle, Users } from 'lucide-svelte';
+  import { formatLeagueFormat } from '$lib/utils';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -103,7 +104,7 @@
               <div>
                 <div class="font-medium">{league.name}</div>
                 <p class="text-xs text-muted-foreground">
-                  Queue size {league.queueSize} · {league.slug}
+                  {formatLeagueFormat(league.teamSize)} · {league.slug}
                 </p>
               </div>
               <div class="flex items-center gap-2">

@@ -9,6 +9,7 @@
     type ActiveMatchResponse,
     type QueueStatusResponse,
   } from '$api3';
+  import { formatLeagueFormat } from '$lib/utils';
   import { LoaderCircle, Pause, Play } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import type { ActionData, PageData } from './$types';
@@ -20,7 +21,8 @@
 
   let { data, form }: Props = $props();
 
-  const PLAYERS_REQUIRED_FOR_MATCH = 4;
+  let playersRequiredForMatch = $derived(data.leagueTeamSize * 2);
+  let formatLabel = $derived(formatLeagueFormat(data.leagueTeamSize));
 
   let queueStatus = $state<QueueStatusResponse | null>(data.queueStatus);
   let activeMatches = $state<ActiveMatchResponse[]>(data.activeMatches ?? []);
@@ -32,7 +34,7 @@
   );
   let playersInQueue = $derived(queueStatus?.queuedPlayers?.length ?? 0);
   let remainingPlayers = $derived(
-    Math.max(PLAYERS_REQUIRED_FOR_MATCH - playersInQueue, 0)
+    Math.max(playersRequiredForMatch - playersInQueue, 0)
   );
 
   let pendingMatch = $derived(queueStatus?.pendingMatch);
@@ -110,11 +112,11 @@
 
 <div class="mt-6 flex flex-col gap-4">
   <p>
-    Matchmaking is a feature where you queue up for a game against other people
-    that are also ready for a game.
+    Matchmaking is a feature where you queue up for a {formatLabel} game against
+    other people that are also ready for a game.
   </p>
   <p>
-    Once <strong>{PLAYERS_REQUIRED_FOR_MATCH} players</strong> are in the queue, a
+    Once <strong>{playersRequiredForMatch} players</strong> are in the queue, a
     match will be created and you will be notified.
   </p>
   <p>

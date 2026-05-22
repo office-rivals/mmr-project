@@ -54,6 +54,7 @@ export interface MeLeagueResponse {
   id: string;
   name: string;
   slug: string;
+  teamSize: number;
   leaguePlayerId: string;
 }
 
@@ -108,13 +109,13 @@ export interface UpdateMemberProfileRequest {
 export interface CreateLeagueRequest {
   name: string;
   slug: string;
-  queueSize?: number;
+  teamSize?: number;
 }
 
 export interface UpdateLeagueRequest {
   name?: string;
   slug?: string;
-  queueSize?: number;
+  teamSize?: number;
 }
 
 export interface LeagueResponse {
@@ -122,7 +123,7 @@ export interface LeagueResponse {
   organizationId: string;
   name: string;
   slug: string;
-  queueSize: number;
+  teamSize: number;
   createdAt: string;
 }
 
