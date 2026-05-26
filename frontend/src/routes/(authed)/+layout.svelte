@@ -13,16 +13,22 @@
   }
 
   let { data, children }: Props = $props();
-
-  // Mark <html> with a class while the authed shell is mounted so the
-  // shell-specific scroll-padding-top doesn't leak to /login or /admin.
-  $effect(() => {
-    document.documentElement.classList.add('authed-shell');
-    return () => {
-      document.documentElement.classList.remove('authed-shell');
-    };
-  });
 </script>
+
+<!--
+  Offset native anchor scrolling (goto('#step'), or landing on a URL
+  with a hash) so the target isn't occluded by the fixed header. Lives
+  in svelte:head so SvelteKit ties it to the (authed) layout's lifetime
+  — added on SSR'd pages, removed when the user navigates to /login or
+  /admin (which use different layouts and don't have this header).
+-->
+<svelte:head>
+  <style>
+    html {
+      scroll-padding-top: calc(env(safe-area-inset-top) + 5rem);
+    }
+  </style>
+</svelte:head>
 
 <Header
   organizations={data.organizations}
@@ -47,12 +53,5 @@
 <style lang="postcss">
   :global(body) {
     @apply min-h-screen;
-  }
-
-  /* Offset native anchor scrolling (goto('#step')) by the fixed-header height
-     so the target isn't occluded by the header. Scoped to authed-shell so
-     the rule doesn't leak to /login or /admin. */
-  :global(html.authed-shell) {
-    scroll-padding-top: calc(env(safe-area-inset-top) + 5rem);
   }
 </style>
