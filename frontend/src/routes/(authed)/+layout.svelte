@@ -40,4 +40,10 @@
   :global(body) {
     @apply min-h-screen;
   }
+
+  /* Offset native anchor scrolling (goto('#step')) by the fixed-header height
+     so the target isn't occluded by the header. */
+  :global(html) {
+    scroll-padding-top: calc(env(safe-area-inset-top) + 5rem);
+  }
 </style>

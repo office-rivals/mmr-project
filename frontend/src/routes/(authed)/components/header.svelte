@@ -70,15 +70,19 @@
   const adminOrgSlug = $derived(menuOrg?.slug ?? null);
 
   function leagueRelativePath(targetLeague: MeLeagueResponse): string {
-    if (!orgSlug || !leagueSlug) return '';
-    const prefix = `/${orgSlug}/${leagueSlug}`;
+    // Only attempt sub-route preservation when the user is actually on a
+    // league route — otherwise the rest of the path (or its query) belongs
+    // to a different context (/settings, /random, …) and isn't portable.
+    if (!page.params.orgSlug || !page.params.leagueSlug) return '';
+    const prefix = `/${page.params.orgSlug}/${page.params.leagueSlug}`;
     const path = page.url.pathname;
     if (!path.startsWith(prefix)) return '';
     const rest = path.slice(prefix.length);
-    const suffix = page.url.search + page.url.hash;
 
     // /player/[id] — the id is league-scoped. If viewing self, jump to the
     // user's profile in the target league; otherwise fall back to the root.
+    // Query/hash are intentionally dropped: filters like ?season=<id> are
+    // league-scoped and would 404 / mis-render in the destination league.
     const playerMatch = rest.match(/^\/player\/([^/]+)(.*)$/);
     if (playerMatch) {
       const [, viewingId, tail] = playerMatch;
@@ -86,7 +90,7 @@
         viewingId === currentLeague?.leaguePlayerId &&
         targetLeague.leaguePlayerId
       ) {
-        return `/player/${targetLeague.leaguePlayerId}${tail}${suffix}`;
+        return `/player/${targetLeague.leaguePlayerId}${tail}`;
       }
       return '';
     }
@@ -94,7 +98,7 @@
     // /active-match/[id] — match id is league-scoped, not portable.
     if (rest.startsWith('/active-match/')) return '';
 
-    return `${rest}${suffix}`;
+    return rest;
   }
 
   function navigateLeague(
@@ -102,7 +106,14 @@
     targetLeague: MeLeagueResponse
   ) {
     switcherOpen = false;
-    if (targetOrgSlug === orgSlug && targetLeague.slug === leagueSlug) return;
+    // Only short-circuit when the user is actually on the target league's
+    // URL — otherwise (e.g. on /settings showing the default league as
+    // 'active') the click should navigate, not silently no-op.
+    if (
+      page.params.orgSlug === targetOrgSlug &&
+      page.params.leagueSlug === targetLeague.slug
+    )
+      return;
     const rest = leagueRelativePath(targetLeague);
     goto(`/${targetOrgSlug}/${targetLeague.slug}${rest}`, {
       invalidateAll: true,
