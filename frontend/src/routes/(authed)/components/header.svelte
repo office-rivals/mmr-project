@@ -26,7 +26,6 @@
     displayName: string | null;
     username: string | null;
     defaultOrgSlug: string | null;
-    defaultLeagueSlug: string | null;
   }
 
   let {
@@ -34,7 +33,6 @@
     displayName,
     username,
     defaultOrgSlug,
-    defaultLeagueSlug,
   }: Props = $props();
 
   let switcherOpen = $state(false);
@@ -42,15 +40,15 @@
 
   const orgSlug = $derived(page.params.orgSlug ?? defaultOrgSlug);
   const currentOrg = $derived(organizations.find((o) => o.slug === orgSlug));
-  // Prefer the current org's first league as fallback over the global default,
-  // so users on a non-default org don't see a cross-org league name in the header.
-  const fallbackLeagueSlug = $derived(
-    currentOrg ? (currentOrg.leagues[0]?.slug ?? null) : defaultLeagueSlug
-  );
-  const leagueSlug = $derived(page.params.leagueSlug ?? fallbackLeagueSlug);
-
+  // Display state for the trigger: only resolve a league when the user is
+  // actually on a league route. On /settings, /random, etc. the trigger
+  // should show 'Select league' rather than the default league, since the
+  // user is not in any league context.
+  const routeLeagueSlug = $derived(page.params.leagueSlug ?? null);
   const currentLeague = $derived(
-    currentOrg?.leagues.find((l) => l.slug === leagueSlug)
+    routeLeagueSlug
+      ? currentOrg?.leagues.find((l) => l.slug === routeLeagueSlug)
+      : undefined
   );
   const menuOrg = $derived(currentOrg ?? organizations[0]);
 
@@ -180,7 +178,8 @@
                 </div>
                 {#each org.leagues as league (league.id)}
                   {@const isActive =
-                    org.slug === orgSlug && league.slug === leagueSlug}
+                    org.slug === page.params.orgSlug &&
+                    league.slug === page.params.leagueSlug}
                   <button
                     type="button"
                     class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActive

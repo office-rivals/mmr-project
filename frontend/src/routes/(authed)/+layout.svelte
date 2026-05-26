@@ -13,6 +13,15 @@
   }
 
   let { data, children }: Props = $props();
+
+  // Mark <html> with a class while the authed shell is mounted so the
+  // shell-specific scroll-padding-top doesn't leak to /login or /admin.
+  $effect(() => {
+    document.documentElement.classList.add('authed-shell');
+    return () => {
+      document.documentElement.classList.remove('authed-shell');
+    };
+  });
 </script>
 
 <Header
@@ -20,7 +29,6 @@
   displayName={data.displayName}
   username={data.username}
   defaultOrgSlug={data.defaultOrgSlug}
-  defaultLeagueSlug={data.defaultLeagueSlug}
 />
 <main
   class="mx-auto max-w-screen-sm overflow-auto p-4 pb-24"
@@ -42,8 +50,9 @@
   }
 
   /* Offset native anchor scrolling (goto('#step')) by the fixed-header height
-     so the target isn't occluded by the header. */
-  :global(html) {
+     so the target isn't occluded by the header. Scoped to authed-shell so
+     the rule doesn't leak to /login or /admin. */
+  :global(html.authed-shell) {
     scroll-padding-top: calc(env(safe-area-inset-top) + 5rem);
   }
 </style>
