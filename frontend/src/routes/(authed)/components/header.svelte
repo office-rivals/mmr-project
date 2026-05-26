@@ -25,7 +25,6 @@
     organizations: MeOrganizationResponse[];
     displayName: string | null;
     username: string | null;
-    email: string | null;
     defaultOrgSlug: string | null;
     defaultLeagueSlug: string | null;
   }
@@ -34,7 +33,6 @@
     organizations,
     displayName,
     username,
-    email,
     defaultOrgSlug,
     defaultLeagueSlug,
   }: Props = $props();
@@ -43,30 +41,33 @@
   let userMenuOpen = $state(false);
 
   const orgSlug = $derived(page.params.orgSlug ?? defaultOrgSlug);
-  const leagueSlug = $derived(page.params.leagueSlug ?? defaultLeagueSlug);
-
   const currentOrg = $derived(organizations.find((o) => o.slug === orgSlug));
+  // Prefer the current org's first league as fallback over the global default,
+  // so users on a non-default org don't see a cross-org league name in the header.
+  const fallbackLeagueSlug = $derived(
+    currentOrg ? (currentOrg.leagues[0]?.slug ?? null) : defaultLeagueSlug
+  );
+  const leagueSlug = $derived(page.params.leagueSlug ?? fallbackLeagueSlug);
+
   const currentLeague = $derived(
     currentOrg?.leagues.find((l) => l.slug === leagueSlug)
   );
   const menuOrg = $derived(currentOrg ?? organizations[0]);
 
   const primaryName = $derived(
-    getPlayerDisplayName({ displayName, username }, email ?? 'You')
+    getPlayerDisplayName({ displayName, username }, 'You')
   );
   const secondaryName = $derived(
-    displayName && username
-      ? `@${username}`
-      : displayName || username
-        ? email
-        : null
+    displayName && username ? `@${username}` : null
   );
 
   const hasAdminAccess = $derived(
     menuOrg?.role === OrganizationRole.Owner ||
       menuOrg?.role === OrganizationRole.Moderator
   );
-  const adminOrgSlug = $derived(orgSlug ?? menuOrg?.slug ?? null);
+  // Admin link must target the same org as the role check. Falling back to
+  // page.params.orgSlug would decohere if currentOrg is stale.
+  const adminOrgSlug = $derived(menuOrg?.slug ?? null);
 
   function leagueRelativePath(targetLeague: MeLeagueResponse): string {
     if (!orgSlug || !leagueSlug) return '';
@@ -74,6 +75,7 @@
     const path = page.url.pathname;
     if (!path.startsWith(prefix)) return '';
     const rest = path.slice(prefix.length);
+    const suffix = page.url.search + page.url.hash;
 
     // /player/[id] — the id is league-scoped. If viewing self, jump to the
     // user's profile in the target league; otherwise fall back to the root.
@@ -84,7 +86,7 @@
         viewingId === currentLeague?.leaguePlayerId &&
         targetLeague.leaguePlayerId
       ) {
-        return `/player/${targetLeague.leaguePlayerId}${tail}`;
+        return `/player/${targetLeague.leaguePlayerId}${tail}${suffix}`;
       }
       return '';
     }
@@ -92,7 +94,7 @@
     // /active-match/[id] — match id is league-scoped, not portable.
     if (rest.startsWith('/active-match/')) return '';
 
-    return rest;
+    return `${rest}${suffix}`;
   }
 
   function navigateLeague(
@@ -111,18 +113,28 @@
     userMenuOpen = false;
     goto(href);
   }
+
+  function onSwitcherOpenChange(open: boolean) {
+    switcherOpen = open;
+    if (open) userMenuOpen = false;
+  }
+
+  function onUserMenuOpenChange(open: boolean) {
+    userMenuOpen = open;
+    if (open) switcherOpen = false;
+  }
 </script>
 
 <header
-  class="fixed left-0 right-0 top-0 z-30 flex w-screen flex-row justify-center border-b bg-card"
+  class="fixed left-0 right-0 top-0 z-30 flex flex-row justify-center border-b bg-card"
   style="padding-top: env(safe-area-inset-top)"
 >
   <div
     class="flex h-16 w-full max-w-screen-sm items-center justify-between gap-3 px-4"
   >
     <div class="flex min-w-0 flex-1">
-      {#if currentOrg && currentLeague}
-        <Popover.Root bind:open={switcherOpen}>
+      {#if currentOrg}
+        <Popover.Root open={switcherOpen} onOpenChange={onSwitcherOpenChange}>
           <Popover.Trigger
             class="-mx-2 -my-1 flex min-w-0 max-w-full items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Switch organization or league"
@@ -134,7 +146,7 @@
                 {currentOrg.name}
               </span>
               <span class="truncate text-base font-semibold leading-tight">
-                {currentLeague.name}
+                {currentLeague?.name ?? 'Select league'}
               </span>
             </div>
             <ChevronDown class="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -186,7 +198,7 @@
       {/if}
     </div>
 
-    <Popover.Root bind:open={userMenuOpen}>
+    <Popover.Root open={userMenuOpen} onOpenChange={onUserMenuOpenChange}>
       <Popover.Trigger
         class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Settings menu"
@@ -212,7 +224,10 @@
                 class="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground"
               >
                 <span class="truncate">{menuOrg.name}</span>
-                <Badge variant="secondary" class="shrink-0 uppercase tracking-wider">
+                <Badge
+                  variant="secondary"
+                  class="shrink-0 uppercase tracking-wider"
+                >
                   {menuOrg.role}
                 </Badge>
               </div>

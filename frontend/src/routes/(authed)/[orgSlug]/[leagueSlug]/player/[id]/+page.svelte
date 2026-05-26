@@ -132,7 +132,11 @@
   {/if}
 
   <div class="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
-    <Kpi title="Rank">{data.stats.rank != null ? `#${data.stats.rank}` : '—'}</Kpi>
+    <Kpi title="Rank"
+      >{data.stats.rank != null && data.stats.rank > 0
+        ? `#${data.stats.rank}`
+        : '—'}</Kpi
+    >
     <Kpi title="MMR">{data.stats.mmr ?? '🐣'}</Kpi>
     <Kpi title="# Matches">{data.stats.totalMatches}</Kpi>
     <Kpi title="# Wins">{data.stats.wins}</Kpi>

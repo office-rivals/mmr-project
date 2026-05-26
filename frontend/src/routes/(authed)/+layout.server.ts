@@ -18,6 +18,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   let defaultOrgId: string | null = null;
   let defaultLeagueId: string | null = null;
   let defaultLeaguePlayerId: string | null = null;
+  let profileLoadFailed = false;
 
   try {
     const me = await locals.apiClientV3.meApi.getMe();
@@ -35,12 +36,13 @@ export const load: LayoutServerLoad = async ({ locals }) => {
       defaultLeaguePlayerId = league.leaguePlayerId ?? null;
     }
   } catch {
-    // user has no orgs yet — that's fine
+    profileLoadFailed = true;
   }
 
   return {
     userId,
     organizations,
+    profileLoadFailed,
     displayName,
     username,
     email,

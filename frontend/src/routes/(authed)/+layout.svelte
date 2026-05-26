@@ -19,11 +19,13 @@
   organizations={data.organizations}
   displayName={data.displayName}
   username={data.username}
-  email={data.email}
   defaultOrgSlug={data.defaultOrgSlug}
   defaultLeagueSlug={data.defaultLeagueSlug}
 />
-<main class="mx-auto max-w-screen-sm overflow-auto p-4 pb-24 pt-20">
+<main
+  class="mx-auto max-w-screen-sm overflow-auto p-4 pb-24"
+  style="padding-top: calc(env(safe-area-inset-top) + 5rem);"
+>
   {@render children?.()}
 </main>
 <Navbar

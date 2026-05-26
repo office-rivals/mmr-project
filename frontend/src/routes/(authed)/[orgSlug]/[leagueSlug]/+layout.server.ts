@@ -2,7 +2,11 @@ import { error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ params, parent }) => {
-  const { organizations } = await parent();
+  const { organizations, profileLoadFailed } = await parent();
+
+  if (profileLoadFailed) {
+    throw error(401, 'Failed to load user profile');
+  }
 
   const org = organizations.find((o) => o.slug === params.orgSlug);
   if (!org) {
@@ -19,7 +23,7 @@ export const load: LayoutServerLoad = async ({ params, parent }) => {
     leagueId: league.id as string,
     leagueTeamSize: league.teamSize as number,
     leagueWinningScore: league.winningScore ?? null,
-    leaguePlayerId: league.leaguePlayerId as string | undefined,
+    leaguePlayerId: (league.leaguePlayerId || null) as string | null,
     orgSlug: params.orgSlug,
     leagueSlug: params.leagueSlug,
     orgRole: org.role,
