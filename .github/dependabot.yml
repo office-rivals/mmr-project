@@ -4,6 +4,10 @@ updates:
     directory: "/mmr-api"
     schedule:
       interval: "weekly"
+    groups:
+      opentelemetry:
+        patterns:
+          - "go.opentelemetry.io/*"
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
