@@ -1,0 +1,85 @@
+name: Dependency Changeset
+
+# Auto-generates a patch changeset on dependency PRs (any PR labeled
+# `dependencies`, which Dependabot applies automatically) so the regular
+# release pipeline picks them up without manual intervention.
+#
+# Scope: only same-repo PRs (Dependabot opens its branches in this repo,
+# not from a fork). Fork PRs are skipped — add a changeset manually.
+#
+# Limitation: pushes use the default GITHUB_TOKEN, which does NOT trigger
+# downstream workflows. After this workflow pushes, the previously-failed
+# Changeset Check must be re-run manually (one click in the PR's Checks
+# tab). Swap `secrets.GITHUB_TOKEN` for a PAT or GitHub App token below
+# to make the re-trigger automatic.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  generate:
+    if: |
+      contains(github.event.pull_request.labels.*.name, 'dependencies') &&
+      !contains(github.event.pull_request.labels.*.name, 'no-release') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate changeset if missing
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+
+          # Skip if the PR already has its own changeset.
+          existing="$(git diff --name-only --diff-filter=ACMRT "$BASE_SHA"...HEAD \
+              | grep -E '^\.changeset/.+\.md$' \
+              | grep -v '^\.changeset/README\.md$' || true)"
+          if [ -n "$existing" ]; then
+            echo "PR already includes a changeset:"
+            echo "$existing"
+            exit 0
+          fi
+
+          # Map changed paths to releaseable components.
+          changed="$(git diff --name-only --diff-filter=ACMRT "$BASE_SHA"...HEAD)"
+          components=()
+          if echo "$changed" | grep -qE '^frontend/'; then components+=("frontend"); fi
+          if echo "$changed" | grep -qE '^api/';      then components+=("api");      fi
+          if echo "$changed" | grep -qE '^mmr-api/';  then components+=("mmr-api");  fi
+
+          if [ ${#components[@]} -eq 0 ]; then
+            echo "No releaseable component changed — nothing to do."
+            exit 0
+          fi
+
+          changeset_path=".changeset/dependabot-pr-${PR_NUMBER}.md"
+          {
+            echo "---"
+            for c in "${components[@]}"; do
+              printf '"%s": patch\n' "$c"
+            done
+            echo "---"
+            echo
+            printf '%s\n' "$PR_TITLE"
+          } > "$changeset_path"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$changeset_path"
+          git commit -m "chore: auto-generate changeset for #${PR_NUMBER}"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
