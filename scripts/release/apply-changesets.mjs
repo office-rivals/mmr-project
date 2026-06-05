@@ -50,6 +50,33 @@ export function incrementVersion(version, bumpType) {
   }
 }
 
+export function syncReleaseGroup(aggregated, groupNames, bumpPriority) {
+  const groupUpdates = groupNames
+    .map((name) => [name, aggregated[name]])
+    .filter(([, update]) => update);
+
+  if (groupUpdates.length === 0) {
+    return;
+  }
+
+  const highestBump = groupUpdates.reduce((highest, [, update]) => {
+    return bumpPriority[update.bumpType] > bumpPriority[highest] ? update.bumpType : highest;
+  }, groupUpdates[0][1].bumpType);
+
+  const changedNames = groupUpdates.map(([name]) => name).join(" and ");
+
+  for (const name of groupNames) {
+    if (aggregated[name]) {
+      aggregated[name].bumpType = highestBump;
+    } else {
+      aggregated[name] = {
+        bumpType: highestBump,
+        descriptions: [`Sync release version with ${changedNames}.`]
+      };
+    }
+  }
+}
+
 export function updateChangelog(changelogPath, version, descriptions) {
   const formatDescription = (description) => {
     const [firstLine, ...rest] = description.split(/\r?\n/);
@@ -122,6 +149,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       }
     }
   }
+
+  syncReleaseGroup(aggregated, ["frontend", "api", "mmr-api"], bumpPriority);
 
   const plannedUpdates = [];
   for (const [name, { bumpType, descriptions }] of Object.entries(aggregated)) {
