@@ -1,14 +1,11 @@
-name: Publish docker Images
+name: Publish Docker Images
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - frontend/package.json
-      - api/package.json
-      - api/MMRProject.Api/MMRProject.Api.csproj
-      - mmr-api/package.json
+  workflow_run:
+    workflows:
+      - Publish GitHub Releases
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -16,14 +13,17 @@ permissions:
   packages: write
 
 concurrency:
-  group: cd-${{ github.ref }}
+  group: cd-${{ github.event.workflow_run.head_sha || github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'changeset-release/main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
       - name: Read release versions
         id: versions
