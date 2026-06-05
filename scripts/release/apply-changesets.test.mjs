@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { parseFrontmatter, incrementVersion, updateChangelog } from "./apply-changesets.mjs";
+import { parseFrontmatter, incrementVersion, syncReleaseGroup, updateChangelog } from "./apply-changesets.mjs";
 
 function bumps(obj) {
   return Object.assign(Object.create(null), obj);
@@ -117,6 +117,58 @@ describe("incrementVersion", () => {
 
   it("throws on invalid bump type", () => {
     assert.throws(() => incrementVersion("1.0.0", "huge"), /Invalid bump type/);
+  });
+});
+
+describe("syncReleaseGroup", () => {
+  const bumpPriority = { major: 3, minor: 2, patch: 1 };
+
+  it("adds missing components using the existing component bump", () => {
+    const aggregated = {
+      frontend: { bumpType: "patch", descriptions: ["Frontend change"] }
+    };
+
+    syncReleaseGroup(aggregated, ["frontend", "api", "mmr-api"], bumpPriority);
+
+    assert.deepEqual(aggregated, {
+      frontend: { bumpType: "patch", descriptions: ["Frontend change"] },
+      api: {
+        bumpType: "patch",
+        descriptions: ["Sync release version with frontend."]
+      },
+      "mmr-api": {
+        bumpType: "patch",
+        descriptions: ["Sync release version with frontend."]
+      }
+    });
+  });
+
+  it("uses the highest bump when multiple grouped components changed", () => {
+    const aggregated = {
+      frontend: { bumpType: "patch", descriptions: ["Frontend change"] },
+      api: { bumpType: "minor", descriptions: ["API change"] }
+    };
+
+    syncReleaseGroup(aggregated, ["frontend", "api", "mmr-api"], bumpPriority);
+
+    assert.equal(aggregated.frontend.bumpType, "minor");
+    assert.equal(aggregated.api.bumpType, "minor");
+    assert.equal(aggregated["mmr-api"].bumpType, "minor");
+    assert.deepEqual(aggregated.frontend.descriptions, ["Frontend change"]);
+    assert.deepEqual(aggregated.api.descriptions, ["API change"]);
+    assert.deepEqual(aggregated["mmr-api"].descriptions, ["Sync release version with frontend and api."]);
+  });
+
+  it("does nothing when no grouped component changed", () => {
+    const aggregated = {
+      docs: { bumpType: "patch", descriptions: ["Docs change"] }
+    };
+
+    syncReleaseGroup(aggregated, ["frontend", "api", "mmr-api"], bumpPriority);
+
+    assert.deepEqual(aggregated, {
+      docs: { bumpType: "patch", descriptions: ["Docs change"] }
+    });
   });
 });
 

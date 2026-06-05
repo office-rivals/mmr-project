@@ -15,6 +15,18 @@ export function syncCsprojVersion(projectPath, version) {
   fs.writeFileSync(projectPath, updatedProjectFile);
 }
 
+export function requireMatchingVersions(versions, componentNames) {
+  const selected = versions.filter(({ name }) => componentNames.includes(name));
+  const distinctVersions = new Set(selected.map(({ version }) => version));
+
+  if (distinctVersions.size === 1) {
+    return;
+  }
+
+  const details = selected.map(({ name, version }) => `- ${name}: ${version}`).join("\n");
+  throw new Error(`Release versions must match:\n${details}`);
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -39,6 +51,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   });
 
   const majors = new Set(versions.map(({ version }) => version.split(".")[0]));
+
+  try {
+    requireMatchingVersions(versions, ["frontend", "api", "mmr-api"]);
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
 
   if (majors.size !== 1) {
     console.error("Release versions must share the same major:");

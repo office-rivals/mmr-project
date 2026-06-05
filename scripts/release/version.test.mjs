@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { syncCsprojVersion } from "./version.mjs";
+import { requireMatchingVersions, syncCsprojVersion } from "./version.mjs";
 
 describe("syncCsprojVersion", () => {
   let tmpDir;
@@ -81,5 +81,35 @@ describe("syncCsprojVersion", () => {
     const result = fs.readFileSync(csproj, "utf8");
     assert.match(result, /<Version>0\.2\.0<\/Version>/);
     assert.doesNotMatch(result, /0\.1\.0/);
+  });
+});
+
+describe("requireMatchingVersions", () => {
+  it("allows matching selected component versions", () => {
+    assert.doesNotThrow(() =>
+      requireMatchingVersions(
+        [
+          { name: "frontend", version: "1.2.0" },
+          { name: "api", version: "1.2.0" },
+          { name: "mmr-api", version: "1.2.0" }
+        ],
+        ["frontend", "api", "mmr-api"]
+      )
+    );
+  });
+
+  it("throws when selected component versions differ", () => {
+    assert.throws(
+      () =>
+        requireMatchingVersions(
+          [
+            { name: "frontend", version: "1.2.0" },
+            { name: "api", version: "1.2.0" },
+            { name: "mmr-api", version: "1.2.1" }
+          ],
+          ["frontend", "api", "mmr-api"]
+        ),
+      /Release versions must match/
+    );
   });
 });
