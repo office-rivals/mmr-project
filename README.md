@@ -96,6 +96,95 @@ The application uses Clerk for authentication. Follow these steps to get started
    npm run dev
    ```
 
+### Try Locally With Docker Compose
+
+Create a `.env` file next to the compose file with your Clerk values and local secrets:
+
+```bash
+PUBLIC_CLERK_PUBLISHABLE_KEY=<your_clerk_publishable_key>
+CLERK_SECRET_KEY=<your_clerk_secret_key>
+CLERK_ISSUER_URL=<your_clerk_issuer_url>
+POSTGRES_PASSWORD=local-postgres-password
+MMR_ADMIN_SECRET=local-admin-secret
+```
+
+Then run this compose file from the repository root:
+
+```yaml
+name: mmr-project-local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: mmr_project
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mmr_project"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mmr-api:
+    image: ghcr.io/andersspringborg/mmr-project/mmr-api:1.2.1
+    restart: unless-stopped
+    environment:
+      ADMIN_SECRET: ${MMR_ADMIN_SECRET}
+      MMR_API_PORT: 8080
+    ports:
+      - "8080:8080"
+
+  api:
+    image: ghcr.io/andersspringborg/mmr-project/api:1.2.1
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mmr-api:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__ApiDbContext: Host=postgres;Port=5432;Database=mmr_project;Username=postgres;Password=${POSTGRES_PASSWORD}
+      Authorization__Issuer: ${CLERK_ISSUER_URL}
+      Migration__Enabled: "true"
+      MMRCalculationAPI__BaseUrl: http://mmr-api:8080
+      MMRCalculationAPI__ApiKey: ${MMR_ADMIN_SECRET}
+    ports:
+      - "8081:8080"
+
+  frontend:
+    image: ghcr.io/andersspringborg/mmr-project/frontend:1.2.1
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      ORIGIN: http://localhost:3000
+      API_BASE_PATH: http://api:8080
+      PUBLIC_CLERK_PUBLISHABLE_KEY: ${PUBLIC_CLERK_PUBLISHABLE_KEY}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres-data:
+```
+
+Save it as `docker-compose.local.yml`, then start everything:
+
+```bash
+docker compose --env-file .env -f docker-compose.local.yml up
+```
+
+Open `http://localhost:3000`. The API is also available at `http://localhost:8081/swagger`.
+
 ## Development
 
 ### Frontend (SvelteKit)
