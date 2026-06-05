@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.1
+
+- chore(deps-dev): bump ip-address from 10.1.0 to 10.2.0 in /frontend
+- chore(deps-dev): bump prettier-plugin-tailwindcss from 0.7.3 to 0.8.0 in /frontend
+- chore(deps-dev): bump eslint-plugin-svelte from 3.17.1 to 3.18.0 in /frontend
+- chore(deps-dev): bump @sveltejs/kit from 2.58.0 to 2.61.1 in /frontend
+- chore(deps-dev): bump @playwright/test from 1.59.1 to 1.60.0 in /frontend
+- chore(deps): bump svelte-clerk from 1.1.5 to 1.1.9 in /frontend
+- chore(deps-dev): bump @sveltejs/adapter-auto from 3.3.1 to 7.0.1 in /frontend
+
 ## 1.2.0
 
 - Add support for 1v1 leagues, and replace `League.QueueSize` with `League.TeamSize` (the per-team player count) — `QueueSize` was the inverted way to think about the same concept. The queue requires `2 * teamSize` players. Migrating: existing `queue_size` values are halved into the new `team_size` column.
