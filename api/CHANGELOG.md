@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- Sync release version with frontend and mmr-api.
+
 ## 1.2.0
 
 - Add support for 1v1 leagues, and replace `League.QueueSize` with `League.TeamSize` (the per-team player count) — `QueueSize` was the inverted way to think about the same concept. The queue requires `2 * teamSize` players. Migrating: existing `queue_size` values are halved into the new `team_size` column.
