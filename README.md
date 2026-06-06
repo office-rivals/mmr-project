@@ -185,6 +185,39 @@ docker compose --env-file .env -f docker-compose.local.yml up
 
 Open `http://localhost:3000`. The API is also available at `http://localhost:8081/swagger`.
 
+#### Create the first organization
+
+The deployed UI does not currently include a first-run organization creation
+screen. Create the first organization through the API after signing in locally.
+The authenticated user that creates the organization becomes its `Owner` and
+can then use the admin UI.
+
+1. Open `http://localhost:3000` and sign in with Clerk.
+2. Open your browser devtools console on the local frontend.
+3. Get a Clerk token:
+
+   ```js
+   await window.Clerk.session.getToken()
+   ```
+
+4. Use that token to create the organization through the local API:
+
+   ```bash
+   curl -X POST "http://localhost:8081/api/v3/organizations" \
+     -H "Authorization: Bearer <clerk_token_from_browser>" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "Local Organization",
+       "slug": "local-org"
+     }'
+   ```
+
+5. Open `http://localhost:3000/admin`. The organization should be listed there.
+
+The `slug` becomes the organization URL segment, for example
+`http://localhost:3000/local-org`. Avoid reserved slugs such as `admin`,
+`api`, `login`, `join`, `profile`, `settings`, and `submit`.
+
 ## Development
 
 ### Frontend (SvelteKit)
