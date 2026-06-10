@@ -97,6 +97,74 @@ public class LeagueTests(PostgresFixture postgres) : IntegrationTestBase(postgre
     }
 
     [Fact]
+    public async Task UpdateLeague_ChangeWinningScore_WithMatchesInCurrentSeason_Fails()
+    {
+        var org = await CreateOrganization("Guarded Org", "guarded-org");
+        var league = await CreateLeague(org.Id, teamSize: 1, winningScore: 10);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, p1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, p2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        AuthenticateAs("p1");
+
+        var submit = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [p1.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [p2.Id], Score = 5 }
+                ]
+            });
+        Assert.Equal(HttpStatusCode.Created, submit.StatusCode);
+
+        // Recorded matches validate against the league's current winning score,
+        // so changing it now would make them uneditable.
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}",
+            new UpdateLeagueRequest { UpdateWinningScore = true, WinningScore = 15 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateLeague_ResubmitSameWinningScore_WithMatchesInCurrentSeason_Succeeds()
+    {
+        var org = await CreateOrganization("Noop Org", "noop-org");
+        var league = await CreateLeague(org.Id, teamSize: 1, winningScore: 10);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, p1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, p2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        AuthenticateAs("p1");
+
+        var submit = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [p1.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [p2.Id], Score = 5 }
+                ]
+            });
+        Assert.Equal(HttpStatusCode.Created, submit.StatusCode);
+
+        // Setting the value the league already has is a no-op, not a change.
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}",
+            new UpdateLeagueRequest { UpdateWinningScore = true, WinningScore = 10 });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await ReadJsonAsync<LeagueResponse>(response);
+        Assert.NotNull(body);
+        Assert.Equal(10, body.WinningScore);
+    }
+
+    [Fact]
     public async Task UpdateLeague_WithInvalidWinningScore_Fails()
     {
         var org = await CreateOrganization("Invalid Org", "invalid-org");

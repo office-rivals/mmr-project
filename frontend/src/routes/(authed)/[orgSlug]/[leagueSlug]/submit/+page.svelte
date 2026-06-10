@@ -3,6 +3,12 @@
   import { goto } from '$app/navigation';
   import FreeFormScoreInputs from '$lib/components/free-form-score-inputs.svelte';
   import LoadingOverlay from '$lib/components/loading-overlay.svelte';
+  import {
+    deriveLosingTeam,
+    isScorePairComplete,
+    loserScoreOptions,
+    type TeamSide,
+  } from '$lib/scoring';
   import MatchCard from '$lib/components/match-card/match-card.svelte';
   import PageTitle from '$lib/components/page-title.svelte';
   import { MatchSource, type MatchResponse } from '$api3';
@@ -160,40 +166,28 @@
     SLOTS.map((s) => slotExclusion(slots[s])).filter((v): v is string => !!v)
   );
 
-  let loserScoreOptions = $derived(
-    winningScore == null
-      ? []
-      : Array.from({ length: winningScore }, (_, i) => i)
-  );
+  let loserScores = $derived(loserScoreOptions(winningScore));
 
-  // In fixed-target leagues exactly one side's score equals winningScore; that
-  // identifies the loser whose 0..(winningScore - 1) picker we show next.
-  // In free-form leagues there's no "losing slot" — both scores are entered
-  // directly and the server decides who won from the magnitudes.
-  let losingTeam: 'team1' | 'team2' | null = $derived(
-    isFreeForm
-      ? null
-      : team1Score === winningScore
-        ? 'team2'
-        : team2Score === winningScore
-          ? 'team1'
-          : null
+  let losingTeam: TeamSide | null = $derived(
+    deriveLosingTeam(team1Score, team2Score, winningScore)
   );
 
   let isPreviewVisible = $derived(
-    isFreeForm
-      ? team1Score >= 0 && team2Score >= 0 && team1Score !== team2Score
-      : losingTeam !== null && team1Score !== -1 && team2Score !== -1
+    isScorePairComplete(team1Score, team2Score, winningScore)
   );
 
+  // Only reachable from the fixed-target winner buttons; the null check
+  // narrows the type and fails closed if that ever changes.
   function setTeam1Wins() {
-    team1Score = winningScore ?? 0;
+    if (winningScore === null) return;
+    team1Score = winningScore;
     team2Score = -1;
     goto('#score-step');
   }
 
   function setTeam2Wins() {
-    team2Score = winningScore ?? 0;
+    if (winningScore === null) return;
+    team2Score = winningScore;
     team1Score = -1;
     goto('#score-step');
   }
@@ -389,7 +383,7 @@
             What was {losingTeam === 'team1' ? 'your' : 'their'} score?
           </h2>
           <div class="grid grid-cols-5 gap-2">
-            {#each loserScoreOptions as score}
+            {#each loserScores as score}
               <Button
                 type="button"
                 variant={(losingTeam === 'team1' ? team1Score : team2Score) ===
@@ -410,7 +404,11 @@
       {/if}
 
       {#if allFilled && isFreeForm}
-        <div id="score-step" class="mt-6 flex flex-col gap-4" transition:fade>
+        <div
+          id="free-form-score-step"
+          class="mt-6 flex flex-col gap-4"
+          transition:fade
+        >
           <h2 class="text-center text-4xl">What was the final score?</h2>
           <FreeFormScoreInputs
             team1Label="Your score"

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
+  import { MAX_SCORE } from '$lib/scoring';
 
   let {
     team1Label,
@@ -14,12 +15,12 @@
     team2Score: number;
   } = $props();
 
-  // Scores are non-negative integers; -1 is the pages' "not entered yet"
-  // sentinel, so anything unparsable (empty, decimals) maps back to it and
-  // keeps the submit step hidden.
+  // Scores are integers in 0..MAX_SCORE (the API's cap); -1 is the pages'
+  // "not entered yet" sentinel, so anything unparsable or out of range maps
+  // back to it and keeps the submit step hidden.
   function parseScore(target: HTMLInputElement): number {
     const n = target.valueAsNumber;
-    return Number.isInteger(n) && n >= 0 ? n : -1;
+    return Number.isInteger(n) && n >= 0 && n <= MAX_SCORE ? n : -1;
   }
 </script>
 
@@ -31,6 +32,7 @@
       type="number"
       inputmode="numeric"
       min="0"
+      max={MAX_SCORE}
       step="1"
       value={team1Score === -1 ? '' : team1Score}
       oninput={(e) => {
@@ -47,6 +49,7 @@
       type="number"
       inputmode="numeric"
       min="0"
+      max={MAX_SCORE}
       step="1"
       value={team2Score === -1 ? '' : team2Score}
       oninput={(e) => {

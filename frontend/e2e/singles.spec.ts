@@ -111,6 +111,8 @@ test.describe('1v1 league', () => {
     await page.evaluate(() => window.localStorage.clear());
     await page.reload();
 
+    // Scope each input to its team container so the assertions don't rely on
+    // .first() picking the right field after the You slot turns into a chip.
     const team1 = page.locator('#team1-step');
     const team2 = page.locator('#team2-step');
 

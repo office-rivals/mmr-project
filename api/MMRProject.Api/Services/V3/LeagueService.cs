@@ -15,7 +15,7 @@ public interface ILeagueService
     Task<LeagueResponse> UpdateLeagueAsync(Guid orgId, Guid leagueId, UpdateLeagueRequest request);
 }
 
-public class LeagueService(ApiDbContext dbContext) : ILeagueService
+public class LeagueService(ApiDbContext dbContext, IV3SeasonService seasonService) : ILeagueService
 {
     public async Task<LeagueResponse> CreateLeagueAsync(Guid orgId, CreateLeagueRequest request)
     {
@@ -106,6 +106,24 @@ public class LeagueService(ApiDbContext dbContext) : ILeagueService
         if (request.UpdateWinningScore)
         {
             ValidateWinningScore(request.WinningScore);
+
+            // Matches are validated against the league's current winning_score
+            // (including on edit), so changing it would strand already-recorded
+            // matches as uneditable. Only block actual changes — re-submitting
+            // the current value stays a no-op.
+            if (league.WinningScore != request.WinningScore)
+            {
+                var currentSeason = await seasonService.GetCurrentSeasonAsync(orgId, leagueId);
+                if (currentSeason != null)
+                {
+                    var hasMatches = await dbContext.V3Matches
+                        .AnyAsync(m => m.LeagueId == leagueId && m.SeasonId == currentSeason.Id);
+                    if (hasMatches)
+                        throw new InvalidArgumentException(
+                            "Cannot change the winning score while the current season has recorded matches");
+                }
+            }
+
             league.WinningScore = request.WinningScore;
         }
 
