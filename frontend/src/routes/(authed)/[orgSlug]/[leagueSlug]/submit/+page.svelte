@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
+  import FreeFormScoreInputs from '$lib/components/free-form-score-inputs.svelte';
   import LoadingOverlay from '$lib/components/loading-overlay.svelte';
   import MatchCard from '$lib/components/match-card/match-card.svelte';
   import PageTitle from '$lib/components/page-title.svelte';
@@ -160,7 +161,9 @@
   );
 
   let loserScoreOptions = $derived(
-    winningScore == null ? [] : Array.from({ length: winningScore }, (_, i) => i)
+    winningScore == null
+      ? []
+      : Array.from({ length: winningScore }, (_, i) => i)
   );
 
   // In fixed-target leagues exactly one side's score equals winningScore; that
@@ -267,7 +270,10 @@
     }).filter((v): v is string => !!v);
 
     if (enteredIds[0]) {
-      window.localStorage.setItem(primaryPlayerKey(data.leagueId), enteredIds[0]);
+      window.localStorage.setItem(
+        primaryPlayerKey(data.leagueId),
+        enteredIds[0]
+      );
     }
     const merged = [
       ...enteredIds,
@@ -406,39 +412,12 @@
       {#if allFilled && isFreeForm}
         <div id="score-step" class="mt-6 flex flex-col gap-4" transition:fade>
           <h2 class="text-center text-4xl">What was the final score?</h2>
-          <div class="flex flex-row items-end gap-3">
-            <div class="flex flex-1 flex-col gap-2">
-              <Label for="team1-score-input">Your score</Label>
-              <Input
-                id="team1-score-input"
-                type="number"
-                inputmode="numeric"
-                min="0"
-                value={team1Score === -1 ? '' : team1Score}
-                oninput={(e) => {
-                  const n = (e.currentTarget as HTMLInputElement).valueAsNumber;
-                  const next = Number.isFinite(n) && n >= 0 ? n : -1;
-                  if (next !== team1Score) team1Score = next;
-                }}
-              />
-            </div>
-            <div class="pb-2 text-2xl">–</div>
-            <div class="flex flex-1 flex-col gap-2">
-              <Label for="team2-score-input">Their score</Label>
-              <Input
-                id="team2-score-input"
-                type="number"
-                inputmode="numeric"
-                min="0"
-                value={team2Score === -1 ? '' : team2Score}
-                oninput={(e) => {
-                  const n = (e.currentTarget as HTMLInputElement).valueAsNumber;
-                  const next = Number.isFinite(n) && n >= 0 ? n : -1;
-                  if (next !== team2Score) team2Score = next;
-                }}
-              />
-            </div>
-          </div>
+          <FreeFormScoreInputs
+            team1Label="Your score"
+            team2Label="Their score"
+            bind:team1Score
+            bind:team2Score
+          />
         </div>
       {/if}
 

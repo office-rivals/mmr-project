@@ -124,8 +124,9 @@ public class LeagueService(ApiDbContext dbContext) : ILeagueService
             throw new InvalidArgumentException($"Team size must be between 1 and {MaxSupportedTeamSize}");
     }
 
-    // Sanity ceiling, well above the longest racket-sport set anyone would seed here.
-    private const int MaxWinningScore = 255;
+    // Sanity ceiling, well above the longest racket-sport set anyone would seed
+    // here. Shared with match submission so free-form scores get the same cap.
+    internal const int MaxWinningScore = 255;
 
     // Null = free-form scoring; otherwise the winning team must end at exactly this score.
     private static void ValidateWinningScore(int? winningScore)

@@ -1,11 +1,10 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import FreeFormScoreInputs from '$lib/components/free-form-score-inputs.svelte';
   import LoadingOverlay from '$lib/components/loading-overlay.svelte';
   import PageTitle from '$lib/components/page-title.svelte';
   import { Alert } from '$lib/components/ui/alert';
   import { Button } from '$lib/components/ui/button';
-  import { Input } from '$lib/components/ui/input';
-  import { Label } from '$lib/components/ui/label';
   import { fade } from 'svelte/transition';
   import type { ActionData, PageData } from './$types';
 
@@ -65,7 +64,9 @@
   let winningScore = $derived(data.leagueWinningScore);
   let isFreeForm = $derived(winningScore === null);
   let loserScoreOptions = $derived(
-    winningScore == null ? [] : Array.from({ length: winningScore }, (_, i) => i)
+    winningScore == null
+      ? []
+      : Array.from({ length: winningScore }, (_, i) => i)
   );
 
   let losingTeam: TeamOption | null = $derived(
@@ -157,8 +158,9 @@
             onclick={() => setWinner(currentUserTeam)}
             class="flex-1"
             variant="default"
-            disabled={(currentUserTeam === 'team1' ? team1Score : team2Score) ===
-              winningScore}
+            disabled={(currentUserTeam === 'team1'
+              ? team1Score
+              : team2Score) === winningScore}
           >
             We won &nbsp; 🎉
           </Button>
@@ -202,39 +204,12 @@
     {#if isFreeForm}
       <div id="score-step" class="mt-6 flex flex-col gap-4" transition:fade>
         <h2 class="text-center text-4xl">What was the final score?</h2>
-        <div class="flex flex-row items-end gap-3">
-          <div class="flex flex-1 flex-col gap-2">
-            <Label for="team1-score-input">{teamHeading('team1')}</Label>
-            <Input
-              id="team1-score-input"
-              type="number"
-              inputmode="numeric"
-              min="0"
-              value={team1Score === -1 ? '' : team1Score}
-              oninput={(e) => {
-                const n = (e.currentTarget as HTMLInputElement).valueAsNumber;
-                const next = Number.isFinite(n) && n >= 0 ? n : -1;
-                if (next !== team1Score) team1Score = next;
-              }}
-            />
-          </div>
-          <div class="pb-2 text-2xl">–</div>
-          <div class="flex flex-1 flex-col gap-2">
-            <Label for="team2-score-input">{teamHeading('team2')}</Label>
-            <Input
-              id="team2-score-input"
-              type="number"
-              inputmode="numeric"
-              min="0"
-              value={team2Score === -1 ? '' : team2Score}
-              oninput={(e) => {
-                const n = (e.currentTarget as HTMLInputElement).valueAsNumber;
-                const next = Number.isFinite(n) && n >= 0 ? n : -1;
-                if (next !== team2Score) team2Score = next;
-              }}
-            />
-          </div>
-        </div>
+        <FreeFormScoreInputs
+          team1Label={teamHeading('team1')}
+          team2Label={teamHeading('team2')}
+          bind:team1Score
+          bind:team2Score
+        />
       </div>
     {/if}
 

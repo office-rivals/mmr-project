@@ -121,6 +121,11 @@ public class V3MatchesService(
         if (team1Score < 0 || team2Score < 0)
             throw new InvalidArgumentException("Scores must be non-negative");
 
+        // Fixed-target leagues are implicitly bounded by winning_score below;
+        // this keeps free-form scores within the same sanity ceiling.
+        if (team1Score > LeagueService.MaxWinningScore || team2Score > LeagueService.MaxWinningScore)
+            throw new InvalidArgumentException($"Scores must be at most {LeagueService.MaxWinningScore}");
+
         if (team1Score == team2Score)
             throw new InvalidArgumentException("A match must have a clear winner — scores cannot be equal");
 

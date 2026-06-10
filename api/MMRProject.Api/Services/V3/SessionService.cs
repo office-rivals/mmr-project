@@ -73,6 +73,7 @@ public class SessionService(
             .Include(lp => lp.League)
             .Where(lp => lp.OrganizationId == organizationId
                          && lp.OrganizationMembershipId == membership.Id)
+            .OrderBy(lp => lp.CreatedAt).ThenBy(lp => lp.League.Slug)
             .ToListAsync();
 
         return leaguePlayers.Select(MapToLeagueResponse).ToList();
@@ -80,9 +81,12 @@ public class SessionService(
 
     private async Task<List<MeOrganizationResponse>> BuildOrganizationResponsesAsync(Guid userId)
     {
+        // Stable join-order so consumers (e.g. the frontend's default org/league
+        // pick, which takes the first entry) don't depend on DB row order.
         var memberships = await dbContext.OrganizationMemberships
             .Include(m => m.Organization)
             .Where(m => m.UserId == userId && m.Status == Data.Entities.V3.MembershipStatus.Active)
+            .OrderBy(m => m.CreatedAt).ThenBy(m => m.Organization.Slug)
             .ToListAsync();
 
         var orgIds = memberships.Select(m => m.OrganizationId).ToList();
@@ -92,6 +96,7 @@ public class SessionService(
             .Include(lp => lp.League)
             .Where(lp => orgIds.Contains(lp.OrganizationId)
                          && membershipIds.Contains(lp.OrganizationMembershipId))
+            .OrderBy(lp => lp.CreatedAt).ThenBy(lp => lp.League.Slug)
             .ToListAsync();
 
         var leaguePlayersByOrg = leaguePlayers

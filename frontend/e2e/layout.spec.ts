@@ -25,11 +25,9 @@ test.describe('Authed layout chrome', () => {
     await page.goto('/random');
 
     const homeLink = page.locator('nav a').first();
-    // The default-league pick is the first league in the API's response; both
-    // singles-league and test-league are valid defaults.
-    await expect(homeLink).toHaveAttribute(
-      'href',
-      /\/test-org\/(test-league|singles-league)$/
-    );
+    // The default league is the first in the API's response, which orders by
+    // when the player joined — the seed joins test-league long before
+    // singles-league, so test-league is the deterministic default.
+    await expect(homeLink).toHaveAttribute('href', /\/test-org\/test-league$/);
   });
 });

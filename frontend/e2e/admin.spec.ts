@@ -5,7 +5,8 @@ const ORG_ADMIN = '/admin/test-org';
 const LEAGUE_ADMIN = '/admin/test-org/leagues/test-league';
 
 // Each spec assumes the Owner test user wired up by global.setup.ts. The seed
-// gives us 1 org / 1 league / 6 members / 15 current-season matches.
+// gives Test Org 2 leagues, 65 members and 15 current-season matches in
+// test-league.
 
 test.describe('Admin landing', () => {
   test('shows organisations the user can administer', async ({ page }) => {
@@ -42,7 +43,7 @@ test.describe('Org admin overview', () => {
     await expect(
       page.getByRole('heading', { name: 'Members', level: 1 })
     ).toBeVisible();
-    await expect(page.getByText(/\d+ members/i)).toBeVisible();
+    await expect(page.getByText(/65 members/i)).toBeVisible();
   });
 
   test('leagues tab lists every league + offers create-league for owners', async ({

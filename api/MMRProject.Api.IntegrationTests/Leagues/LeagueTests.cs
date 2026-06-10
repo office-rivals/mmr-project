@@ -41,6 +41,77 @@ public class LeagueTests(PostgresFixture postgres) : IntegrationTestBase(postgre
     }
 
     [Fact]
+    public async Task UpdateLeague_SetWinningScore_Persists()
+    {
+        var org = await CreateOrganization("Update Org", "update-org");
+        var league = await CreateLeague(org.Id, winningScore: 10);
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("owner-1");
+
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}",
+            new UpdateLeagueRequest { UpdateWinningScore = true, WinningScore = 21 });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await ReadJsonAsync<LeagueResponse>(response);
+        Assert.NotNull(body);
+        Assert.Equal(21, body.WinningScore);
+    }
+
+    [Fact]
+    public async Task UpdateLeague_ClearWinningScore_SwitchesToFreeForm()
+    {
+        var org = await CreateOrganization("Clear Org", "clear-org");
+        var league = await CreateLeague(org.Id, winningScore: 10);
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("owner-1");
+
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}",
+            new UpdateLeagueRequest { UpdateWinningScore = true, WinningScore = null });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await ReadJsonAsync<LeagueResponse>(response);
+        Assert.NotNull(body);
+        Assert.Null(body.WinningScore);
+    }
+
+    [Fact]
+    public async Task UpdateLeague_WithoutUpdateFlag_LeavesWinningScoreUntouched()
+    {
+        var org = await CreateOrganization("Untouched Org", "untouched-org");
+        var league = await CreateLeague(org.Id, winningScore: 10);
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("owner-1");
+
+        // WinningScore null + flag false must be a no-op for the score, not a clear.
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}",
+            new UpdateLeagueRequest { Name = "Renamed League" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await ReadJsonAsync<LeagueResponse>(response);
+        Assert.NotNull(body);
+        Assert.Equal("Renamed League", body.Name);
+        Assert.Equal(10, body.WinningScore);
+    }
+
+    [Fact]
+    public async Task UpdateLeague_WithInvalidWinningScore_Fails()
+    {
+        var org = await CreateOrganization("Invalid Org", "invalid-org");
+        var league = await CreateLeague(org.Id, winningScore: 10);
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("owner-1");
+
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}",
+            new UpdateLeagueRequest { UpdateWinningScore = true, WinningScore = 0 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ListLeagues_ReturnsOnlyOrgLeagues()
     {
         var org1 = await CreateOrganization("Org One", "org-one");

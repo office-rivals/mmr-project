@@ -30,7 +30,8 @@ export const actions: Actions = {
       const parsed = Number(winningScoreRaw);
       if (!Number.isInteger(parsed) || parsed < 1) {
         return fail(400, {
-          error: 'Winning score must be a positive integer, or blank for free-form',
+          error:
+            'Winning score must be a positive integer, or blank for free-form',
         });
       }
       winningScore = parsed;
