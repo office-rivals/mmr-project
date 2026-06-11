@@ -111,7 +111,10 @@ export interface CreateLeagueRequest {
   name: string;
   slug: string;
   teamSize?: number;
-  /** Score the winning team must reach. null = free-form (highest score wins). */
+  /**
+   * Score the winning team must reach. Omitted = server default of 10;
+   * explicit null = free-form (highest score wins).
+   */
   winningScore?: number | null;
 }
 

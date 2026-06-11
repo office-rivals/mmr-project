@@ -193,6 +193,12 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
             });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        // Free-form derives the winner from score magnitude — 21 beats 19.
+        var match = await ReadJsonAsync<MatchResponse>(response);
+        Assert.NotNull(match);
+        var winner = Assert.Single(match!.Teams.Where(t => t.IsWinner));
+        Assert.Equal(21, winner.Score);
     }
 
     [Fact]

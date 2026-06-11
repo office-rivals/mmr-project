@@ -9,8 +9,9 @@ public record CreateLeagueRequest
     public int TeamSize { get; init; } = 2;
     /// <summary>
     /// Fixed score that the winning team must reach (e.g. 10 for foosball).
-    /// Omit or pass null to allow free-form scoring (highest score wins, no
-    /// shape constraint — useful for table tennis, badminton, etc.).
+    /// Defaults to 10 when omitted; pass an explicit null for free-form
+    /// scoring (highest score wins, no shape constraint — useful for table
+    /// tennis, badminton, etc.).
     /// </summary>
     public int? WinningScore { get; init; } = 10;
 }
