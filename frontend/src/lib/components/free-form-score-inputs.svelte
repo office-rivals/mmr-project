@@ -22,40 +22,58 @@
     const n = target.valueAsNumber;
     return Number.isInteger(n) && n >= 0 && n <= MAX_SCORE ? n : -1;
   }
+
+  // Both scores entered but equal: the submit step stays hidden (the server
+  // rejects ties) so call out why, instead of leaving the button to silently
+  // vanish.
+  let isTie = $derived(
+    team1Score !== -1 && team2Score !== -1 && team1Score === team2Score
+  );
 </script>
 
-<div class="flex flex-row items-end gap-3">
-  <div class="flex flex-1 flex-col gap-2">
-    <Label for="team1-score-input">{team1Label}</Label>
-    <Input
-      id="team1-score-input"
-      type="number"
-      inputmode="numeric"
-      min="0"
-      max={MAX_SCORE}
-      step="1"
-      value={team1Score === -1 ? '' : team1Score}
-      oninput={(e) => {
-        const next = parseScore(e.currentTarget as HTMLInputElement);
-        if (next !== team1Score) team1Score = next;
-      }}
-    />
+<div class="flex flex-col gap-2">
+  <div class="flex flex-row items-end gap-3">
+    <div class="flex flex-1 flex-col gap-2">
+      <Label for="team1-score-input">{team1Label}</Label>
+      <Input
+        id="team1-score-input"
+        type="number"
+        inputmode="numeric"
+        min="0"
+        max={MAX_SCORE}
+        step="1"
+        value={team1Score === -1 ? '' : team1Score}
+        oninput={(e) => {
+          const next = parseScore(e.currentTarget as HTMLInputElement);
+          if (next !== team1Score) team1Score = next;
+        }}
+      />
+    </div>
+    <div class="pb-2 text-2xl">–</div>
+    <div class="flex flex-1 flex-col gap-2">
+      <Label for="team2-score-input">{team2Label}</Label>
+      <Input
+        id="team2-score-input"
+        type="number"
+        inputmode="numeric"
+        min="0"
+        max={MAX_SCORE}
+        step="1"
+        value={team2Score === -1 ? '' : team2Score}
+        oninput={(e) => {
+          const next = parseScore(e.currentTarget as HTMLInputElement);
+          if (next !== team2Score) team2Score = next;
+        }}
+      />
+    </div>
   </div>
-  <div class="pb-2 text-2xl">–</div>
-  <div class="flex flex-1 flex-col gap-2">
-    <Label for="team2-score-input">{team2Label}</Label>
-    <Input
-      id="team2-score-input"
-      type="number"
-      inputmode="numeric"
-      min="0"
-      max={MAX_SCORE}
-      step="1"
-      value={team2Score === -1 ? '' : team2Score}
-      oninput={(e) => {
-        const next = parseScore(e.currentTarget as HTMLInputElement);
-        if (next !== team2Score) team2Score = next;
-      }}
-    />
-  </div>
+  {#if isTie}
+    <p class="text-center text-sm text-destructive" role="alert">
+      Scores can't be equal — there must be a clear winner.
+    </p>
+  {:else}
+    <p class="text-center text-sm text-muted-foreground">
+      Whole numbers from 0 to {MAX_SCORE}. The higher score wins.
+    </p>
+  {/if}
 </div>

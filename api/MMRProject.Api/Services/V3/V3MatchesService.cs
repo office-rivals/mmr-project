@@ -94,7 +94,7 @@ public class V3MatchesService(
         {
             if (team.Players.Count != leagueConfig.TeamSize)
                 throw new InvalidArgumentException(
-                    $"Each team must have exactly {leagueConfig.TeamSize} players for this league");
+                    $"Each team must have exactly {leagueConfig.TeamSize} {(leagueConfig.TeamSize == 1 ? "player" : "players")} for this league");
         }
 
         var resolvedTeams = new List<List<LeaguePlayer>>();
