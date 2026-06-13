@@ -328,6 +328,25 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
     }
 
     [Fact]
+    public async Task CreateInviteLink_GeneratesTwelveCharUnbiasedCode()
+    {
+        const string allowedChars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+        var org = await CreateOrganization("Invite Code Org", "invite-code-org");
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+
+        AuthenticateAs("owner-1");
+        var response = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/invite-links",
+            new CreateInviteLinkRequest());
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var inviteLink = await ReadJsonAsync<InviteLinkResponse>(response);
+        Assert.NotNull(inviteLink);
+        Assert.Equal(12, inviteLink.Code.Length);
+        Assert.All(inviteLink.Code, c => Assert.Contains(c, allowedChars));
+    }
+
+    [Fact]
     public async Task InviteLinkRejoin_ReactivatesExistingMembershipAndLeagueProfile()
     {
         var org = await CreateOrganization("Invite Rejoin Org", "invite-rejoin-org");

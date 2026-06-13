@@ -3,6 +3,7 @@ using System;
 using MMRProject.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MMRProject.Api.Data.Migrations
 {
     [DbContext(typeof(ApiDbContext))]
-    partial class ApiDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260613143100_IncreaseInviteCodeLength")]
+    partial class IncreaseInviteCodeLength
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -550,10 +553,6 @@ namespace MMRProject.Api.Data.Migrations
                     b.Property<int>("TeamSize")
                         .HasColumnType("integer")
                         .HasColumnName("team_size");
-
-                    b.Property<int?>("WinningScore")
-                        .HasColumnType("integer")
-                        .HasColumnName("winning_score");
 
                     b.HasKey("Id");
 
