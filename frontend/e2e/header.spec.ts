@@ -254,3 +254,60 @@ test.describe('Header — settings menu', () => {
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
   });
 });
+
+test.describe('Header — mobile viewport', () => {
+  // iPhone-class logical width. The desktop layout is covered above; this block
+  // guards only the mobile-specific concerns: the fixed header staying pinned
+  // and full-width, the content clearing it, and the popovers not overflowing a
+  // narrow screen. safe-area insets are 0 under headless Chromium, so the notch
+  // padding itself still has to be eyeballed on a real device — these assert the
+  // --header-height offset and the responsive width clamp around it.
+  const MOBILE_WIDTH = 390;
+  test.use({ viewport: { width: MOBILE_WIDTH, height: 844 } });
+
+  test('keeps the bar pinned full-width with both controls reachable', async ({
+    page,
+  }) => {
+    await page.goto(TEST_LEAGUE);
+    await expect(
+      page.getByRole('button', { name: 'Switch organization or league' })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Settings menu' })
+    ).toBeVisible();
+
+    const box = await page.locator('header').first().boundingBox();
+    expect(box).not.toBeNull();
+    // Pinned to the very top, spanning the full viewport width.
+    expect(box!.y).toBe(0);
+    expect(box!.width).toBe(MOBILE_WIDTH);
+  });
+
+  test('content clears the fixed header (no occlusion)', async ({ page }) => {
+    // The player profile keeps a visible <h1> at the top of the content, so it's
+    // the cleanest probe for the layout's header offset (the league home title
+    // is sr-only). If the offset regresses, this heading slides under the bar.
+    await page.goto(`${TEST_LEAGUE}/player/${SELF_PLAYER_TEST_LEAGUE}`);
+    const heading = page.locator('h1').first();
+    await expect(heading).toBeVisible();
+
+    const headerBox = await page.locator('header').first().boundingBox();
+    const headingBox = await heading.boundingBox();
+    expect(headerBox).not.toBeNull();
+    expect(headingBox).not.toBeNull();
+    // The heading's top edge sits at or below the header's bottom edge.
+    expect(headingBox!.y).toBeGreaterThanOrEqual(
+      headerBox!.y + headerBox!.height
+    );
+  });
+
+  test('the switcher popover stays within the viewport', async ({ page }) => {
+    await page.goto(TEST_LEAGUE);
+    await openSwitcher(page);
+    const box = await page.getByRole('menu').boundingBox();
+    expect(box).not.toBeNull();
+    // No horizontal overflow: the popover is clamped to min(20rem, 100vw-2rem).
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(MOBILE_WIDTH);
+  });
+});
