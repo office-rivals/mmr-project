@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0
+
+- chore(deps-dev): bump axios from 1.15.2 to 1.16.1 in /frontend
+- chore(deps-dev): bump eslint-plugin-svelte from 3.18.0 to 3.19.0 in /frontend
+- chore(deps-dev): bump @openapitools/openapi-generator-cli from 2.31.1 to 2.38.0 in /frontend
+- Add a fixed top header to the authenticated app shell showing the current organization and league, with a popover that lets the user switch between any organization and league they belong to. Mirrors the bottom navbar's full-width, fixed positioning and groups leagues under their parent org (inspired by Slack/Linear workspace switchers).
+- Organization invite codes are now 12 characters with unbiased random
+  sampling (previously 6 characters), making code enumeration impractical.
+  Existing 6-character codes keep working.
+
 ## 1.3.0
 
 - Make the per-match winning score configurable per league. Leagues now expose a nullable `winningScore` field; when set (e.g. 10 for foosball, default), the winning team must score exactly that and the loser scores 0..(winning_score-1), matching the previous behaviour. When null, scoring is free-form: both teams enter raw scores and the higher score wins — useful for table tennis, badminton, etc. The submit form switches between the existing button picker and dual numeric inputs based on the league's config. Existing leagues are backfilled to 10 by the migration; the API derives `is_winner` server-side from the scores. No MMR recalc needed — score magnitudes don't affect openskill output.
