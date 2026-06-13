@@ -410,7 +410,7 @@ public partial class ApiDbContext
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.OrganizationId).HasColumnName("organization_id");
-            entity.Property(e => e.Code).HasColumnName("code").HasMaxLength(6);
+            entity.Property(e => e.Code).HasColumnName("code").HasMaxLength(12);
             entity.Property(e => e.CreatedByMembershipId).HasColumnName("created_by_membership_id");
             entity.Property(e => e.MaxUses).HasColumnName("max_uses");
             entity.Property(e => e.UseCount).HasColumnName("use_count");

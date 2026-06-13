@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MMRProject.Api.Authorization.V3;
 using MMRProject.Api.DTOs.V3;
+using MMRProject.Api.RateLimiting;
 using MMRProject.Api.Services.V3;
 
 namespace MMRProject.Api.Controllers.V3;
@@ -10,6 +12,7 @@ namespace MMRProject.Api.Controllers.V3;
 [ApiExplorerSettings(GroupName = "v3")]
 [Route("api/v3/invites")]
 [Authorize]
+[EnableRateLimiting(RateLimitPolicies.InviteLookup)]
 public class InviteController(IInviteLinkService inviteLinkService) : ControllerBase
 {
     [HttpGet("{code}")]

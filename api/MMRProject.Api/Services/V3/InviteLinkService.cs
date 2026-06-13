@@ -25,6 +25,7 @@ public class InviteLinkService(
     IV3UserService userService) : IInviteLinkService
 {
     private const string AllowedChars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    private const int CodeLength = 12;
 
     public async Task<InviteLinkResponse> CreateInviteLinkAsync(Guid orgId, CreateInviteLinkRequest request)
     {
@@ -228,15 +229,7 @@ public class InviteLinkService(
 
     private static string GenerateCode()
     {
-        return string.Create(6, AllowedChars, (span, chars) =>
-        {
-            Span<byte> randomBytes = stackalloc byte[6];
-            RandomNumberGenerator.Fill(randomBytes);
-            for (var i = 0; i < span.Length; i++)
-            {
-                span[i] = chars[randomBytes[i] % chars.Length];
-            }
-        });
+        return RandomNumberGenerator.GetString(AllowedChars, CodeLength);
     }
 
     private static bool IsLinkValid(OrganizationInviteLink link)

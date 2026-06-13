@@ -11,8 +11,8 @@
 
   function handleSubmit() {
     const trimmed = code.trim().toUpperCase();
-    if (trimmed.length !== 6) {
-      error = 'Invite code must be 6 characters';
+    if (trimmed.length < 6 || trimmed.length > 12) {
+      error = 'Invite code must be 6-12 characters';
       return;
     }
     error = '';
@@ -41,8 +41,8 @@
       <Input
         id="invite-code"
         bind:value={code}
-        placeholder="e.g. ABC123"
-        maxlength={6}
+        placeholder="e.g. ABCD2345WXYZ"
+        maxlength={12}
         class="text-center text-2xl uppercase tracking-widest"
       />
     </div>
