@@ -49,6 +49,10 @@ jobs:
         if: steps.frontend_changes.outputs.has_changes == 'true'
         run: npm ci
         working-directory: ./frontend
+      - name: Unit Test
+        if: steps.frontend_changes.outputs.has_changes == 'true'
+        run: npm run test
+        working-directory: ./frontend
       - name: Build
         if: steps.frontend_changes.outputs.has_changes == 'true'
         run: npm run build
