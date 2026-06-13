@@ -1,6 +1,7 @@
 <script lang="ts">
   import Kpi from '$lib/components/kpi.svelte';
   import MatchCard from '$lib/components/match-card/match-card.svelte';
+  import PageTitle from '$lib/components/page-title.svelte';
   import SeasonPicker from '$lib/components/season-picker.svelte';
   import { Alert } from '$lib/components/ui/alert';
   import { Badge } from '$lib/components/ui/badge';
@@ -94,9 +95,7 @@
 
 <div class="flex flex-col gap-6">
   <div class="flex flex-col items-center gap-1 text-center">
-    <h1 class="text-4xl font-extrabold md:text-6xl">
-      {getPlayerDisplayName(data.player, 'Player')}
-    </h1>
+    <PageTitle>{getPlayerDisplayName(data.player, 'Player')}</PageTitle>
     <div class="flex items-center justify-center gap-2">
       {#if data.player?.username && data.player?.displayName}
         <p class="text-base text-muted-foreground">@{data.player.username}</p>

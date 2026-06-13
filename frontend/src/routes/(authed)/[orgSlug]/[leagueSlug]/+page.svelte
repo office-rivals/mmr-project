@@ -54,6 +54,8 @@
 </script>
 
 <div class="flex flex-col gap-4">
+  <h1 class="sr-only">Leaderboard and recent matches</h1>
+
   {#if form?.success && form.message}
     <Alert variant="default">
       <div class="flex items-center gap-2">

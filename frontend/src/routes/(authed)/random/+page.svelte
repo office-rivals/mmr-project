@@ -356,7 +356,7 @@
 {#if isTouchDevice === true}
   <div
     class="fixed inset-x-0 z-20 flex flex-col bg-background"
-    style="top: calc(env(safe-area-inset-top) + 4rem); bottom: calc(env(safe-area-inset-bottom) + 64px);"
+    style="top: calc(env(safe-area-inset-top) + var(--header-height)); bottom: calc(env(safe-area-inset-bottom) + 64px);"
   >
     <header
       class="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-4 py-3"

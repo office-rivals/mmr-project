@@ -12,12 +12,15 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   let organizations: MeOrganizationResponse[] = [];
   let displayName: string | null = null;
   let username: string | null = null;
-  let email: string | null = null;
   let defaultOrgSlug: string | null = null;
   let defaultLeagueSlug: string | null = null;
   let defaultOrgId: string | null = null;
   let defaultLeagueId: string | null = null;
   let defaultLeaguePlayerId: string | null = null;
+  // True when getMe() itself errored (transient API/auth failure) — distinct
+  // from a successful load that returns zero organizations. Routes that need a
+  // loaded profile (e.g. the league layout) must check this and fail loudly;
+  // profile-independent routes (/settings, /random) can ignore it and degrade.
   let profileLoadFailed = false;
 
   try {
@@ -25,8 +28,10 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     organizations = me.organizations ?? [];
     displayName = me.displayName ?? null;
     username = me.username ?? null;
-    email = me.email ?? null;
-    const org = organizations[0];
+    // Default to the first org that actually has a league — organizations[0]
+    // may be a league-less org (e.g. freshly created / invite-only), which
+    // would otherwise leave the defaults null and hide the header switcher.
+    const org = organizations.find((o) => (o.leagues?.length ?? 0) > 0);
     const league = org?.leagues?.[0];
     if (org && league) {
       defaultOrgSlug = org.slug;
@@ -45,7 +50,6 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     profileLoadFailed,
     displayName,
     username,
-    email,
     defaultOrgSlug,
     defaultLeagueSlug,
     defaultOrgId,

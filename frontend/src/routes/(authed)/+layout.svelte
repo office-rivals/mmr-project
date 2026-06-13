@@ -25,7 +25,9 @@
 <svelte:head>
   <style>
     html {
-      scroll-padding-top: calc(env(safe-area-inset-top) + 5rem);
+      scroll-padding-top: calc(
+        env(safe-area-inset-top) + var(--header-height) + 1rem
+      );
     }
   </style>
 </svelte:head>
@@ -38,7 +40,7 @@
 />
 <main
   class="mx-auto max-w-screen-sm overflow-auto p-4 pb-24"
-  style="padding-top: calc(env(safe-area-inset-top) + 5rem);"
+  style="padding-top: calc(env(safe-area-inset-top) + var(--header-height) + 1rem);"
 >
   {@render children?.()}
 </main>

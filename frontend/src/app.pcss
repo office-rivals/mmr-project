@@ -6,6 +6,10 @@
 
 @layer base {
   :root {
+    /* Height of the fixed app-shell header (excludes the safe-area inset,
+       which is added separately). Single source of truth for header offsets
+       in the (authed) layout and the random-teams overlay. */
+    --header-height: 4rem;
     --background: 0 0% 100%;
     --foreground: 20 14.3% 4.1%;
     --card: 0 0% 100%;
