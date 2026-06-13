@@ -160,6 +160,7 @@
                     org.slug === page.params.orgSlug &&
                     league.slug === page.params.leagueSlug}
                   <DropdownMenu.Item
+                    aria-current={isActive ? 'true' : undefined}
                     class={cn(
                       isActive &&
                         'bg-accent text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground'
