@@ -112,12 +112,12 @@
 
 <div class="mt-6 flex flex-col gap-4">
   <p>
-    Matchmaking is a feature where you queue up for a {formatLabel} game against
-    other people that are also ready for a game.
+    Matchmaking is a feature where you queue up for a {formatLabel} game against other
+    people that are also ready for a game.
   </p>
   <p>
-    Once <strong>{playersRequiredForMatch} players</strong> are in the queue, a
-    match will be created and you will be notified.
+    Once <strong>{playersRequiredForMatch} players</strong> are in the queue, a match
+    will be created and you will be notified.
   </p>
   <p>
     If you do not accept the match within <strong>30 seconds</strong>, you will

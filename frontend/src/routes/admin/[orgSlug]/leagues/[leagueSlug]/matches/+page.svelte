@@ -107,11 +107,7 @@
                   Edit
                 </Button>
                 <form method="POST" action="?/recalculate" use:enhance>
-                  <input
-                    type="hidden"
-                    name="fromMatchId"
-                    value={match.id}
-                  />
+                  <input type="hidden" name="fromMatchId" value={match.id} />
                   <Button
                     type="submit"
                     size="sm"
