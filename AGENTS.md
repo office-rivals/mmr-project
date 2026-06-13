@@ -174,7 +174,7 @@ ADMIN_SECRET=<admin_secret>
 ## Testing
 
 - **API**: Bruno collection in `api-collection/` for API testing
-- **MMR API**: Go tests in `mmr-api/test/` organized by package (api, custom, mmr, openskill)
+- **MMR API**: Go tests in `mmr-api/test/` organized by package (api, custom, middleware, mmr, openskill)
 - **Frontend**: Component testing with Vitest (configured but not extensively used)
 
 ## Deployment
