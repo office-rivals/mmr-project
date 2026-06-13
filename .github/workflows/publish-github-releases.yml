@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   publish:
@@ -26,9 +27,83 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Create GitHub releases
+        id: releases
         run: node ./scripts/release/create-releases.mjs "$BASE_SHA" "$HEAD_SHA"
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           HEAD_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+
+      # Each released component is published as its own image tagged with its own
+      # version, mirroring the per-component GitHub releases created above. Only
+      # components whose version changed in this release are built.
+      - name: Read component versions
+        id: versions
+        if: steps.releases.outputs.released != '[]'
+        run: |
+          {
+            echo "frontend=$(node -p "require('./frontend/package.json').version")"
+            echo "api=$(node -p "require('./api/package.json').version")"
+            echo "mmr_api=$(node -p "require('./mmr-api/package.json').version")"
+            echo "repo=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          } >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Set up QEMU
+        if: steps.releases.outputs.released != '[]'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: steps.releases.outputs.released != '[]'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: steps.releases.outputs.released != '[]'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push frontend
+        if: contains(fromJson(steps.releases.outputs.released || '[]'), 'frontend')
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+          tags: |
+            ghcr.io/${{ steps.versions.outputs.repo }}/frontend:${{ steps.versions.outputs.frontend }}
+            ghcr.io/${{ steps.versions.outputs.repo }}/frontend:latest
+
+      - name: Build and push api
+        if: contains(fromJson(steps.releases.outputs.released || '[]'), 'api')
+        uses: docker/build-push-action@v6
+        with:
+          context: ./api/MMRProject.Api
+          push: true
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+          tags: |
+            ghcr.io/${{ steps.versions.outputs.repo }}/api:${{ steps.versions.outputs.api }}
+            ghcr.io/${{ steps.versions.outputs.repo }}/api:latest
+
+      - name: Build and push mmr-api
+        if: contains(fromJson(steps.releases.outputs.released || '[]'), 'mmr-api')
+        uses: docker/build-push-action@v6
+        with:
+          context: ./mmr-api
+          push: true
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha,scope=mmr-api
+          cache-to: type=gha,mode=max,scope=mmr-api
+          build-args: |
+            VERSION=${{ steps.versions.outputs.mmr_api }}
+          tags: |
+            ghcr.io/${{ steps.versions.outputs.repo }}/mmr-api:${{ steps.versions.outputs.mmr_api }}
+            ghcr.io/${{ steps.versions.outputs.repo }}/mmr-api:latest
