@@ -14,7 +14,11 @@ import (
 
 func NewRouter() *gin.Engine {
 	router := gin.New()
-	router.Use(otelgin.Middleware(telemetry.ServiceName))
+	// Skip tracing for the health probe; frequent liveness/readiness polls would
+	// otherwise flood the trace backend (the access log skips it too).
+	router.Use(otelgin.Middleware(telemetry.ServiceName, otelgin.WithGinFilter(func(c *gin.Context) bool {
+		return c.Request.URL.Path != "/health"
+	})))
 	router.Use(middleware.AccessLog())
 	router.Use(gin.Recovery())
 
