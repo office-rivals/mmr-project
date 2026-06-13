@@ -56,14 +56,17 @@ var mmrApi = builder.AddGolangApp("mmr-api", "../../mmr-api")
 
 // --- API (ASP.NET Core) ------------------------------------------------------
 
+// Startup is gated only on the database (EF migrations run at boot). The api
+// talks to mmr-api lazily on request paths, so its base URL resolves without
+// waiting for mmr-api to be healthy — letting the two start in parallel.
 var api = builder.AddProject<Projects.MMRProject_Api>("api", launchProfileName: "http")
     .WithReference(database).WaitFor(database)
-    .WaitFor(mmrApi)
     .WithEnvironment("Admin__Secret", adminSecret)
     .WithEnvironment("MMRCalculationAPI__ApiKey", adminSecret)
     .WithEnvironment("MMRCalculationAPI__BaseUrl", mmrApi.GetEndpoint("http"))
     .WithEnvironment("Authorization__Issuer", clerkIssuer)
-    .WithHttpHealthCheck("/health")
+    // Gate dependents on readiness (DB reachable), not bare liveness.
+    .WithHttpHealthCheck("/ready")
     // Pin OTLP to http/protobuf (same as mmr-api). The api otherwise defaults to
     // gRPC, whose per-request dashboard API key isn't forwarded through the DCP
     // proxy in this setup, so its telemetry would be rejected. The HTTP endpoint
@@ -75,6 +78,9 @@ var api = builder.AddProject<Projects.MMRProject_Api>("api", launchProfileName: 
 builder.AddViteApp("frontend", "../../frontend")
     .WithNpm() // npm package manager + install on first run
     .WaitFor(api)
+    // Lets vite.config.ts force a clean dep pre-bundle only under Aspire, where a
+    // mid-request re-optimize otherwise crashes esbuild with write EPIPE.
+    .WithEnvironment("ASPIRE_MANAGED", "true")
     .WithEnvironment("API_BASE_PATH", api.GetEndpoint("http"))
     .WithEnvironment("PUBLIC_CLERK_PUBLISHABLE_KEY", clerkPublishableKey)
     .WithEnvironment("CLERK_SECRET_KEY", clerkSecretKey)

@@ -253,7 +253,9 @@ The Container App running `mmr-api` should also have:
 
 ## Health checks
 
-Both backend services expose `GET /health` returning `200 OK` (the API via ASP.NET Core health checks, `mmr-api` via a Gin route). The endpoint is excluded from request tracing (and, on `mmr-api`, the access log), and is the intended liveness/readiness probe target for the Container Apps. The Aspire AppHost uses `/health` on both services for readiness gating, so dependent services start only once their dependencies are healthy.
+Both backend services expose `GET /health` (the API via ASP.NET Core health checks, `mmr-api` via a Gin route) returning `200 OK` whenever the process is up — a pure **liveness** signal with no dependency checks, so a transient blip never trips a restart. The API additionally exposes `GET /ready`, which returns `200` only when the database is also reachable (**readiness**). All are anonymous and excluded from request tracing (and, on `mmr-api`, the access log).
+
+Use `/health` as the liveness probe and `/ready` as the readiness/traffic-gating probe for the Container Apps. The Aspire AppHost gates the API on `/ready` and `mmr-api` on `/health`, so dependent services start only once their dependencies are actually serviceable.
 
 ## Testing
 
