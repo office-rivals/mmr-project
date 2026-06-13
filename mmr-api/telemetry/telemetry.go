@@ -34,8 +34,12 @@ func Init(ctx context.Context, version string) (ShutdownFunc, error) {
 		return func(context.Context) error { return nil }, nil
 	}
 
-	res, err := resource.Merge(resource.Default(), resource.NewWithAttributes(
-		semconv.SchemaURL,
+	// Build the service resource without its own schema URL. resource.Merge fails
+	// when both resources carry a non-empty, differing schema URL, and
+	// resource.Default() tracks whatever semconv version the OTel SDK bundles —
+	// which drifts from our pinned semconv import on SDK upgrades. A schemaless
+	// resource merges cleanly regardless, so telemetry init can't crash on it.
+	res, err := resource.Merge(resource.Default(), resource.NewSchemaless(
 		semconv.ServiceName(ServiceName),
 		semconv.ServiceVersion(version),
 	))
