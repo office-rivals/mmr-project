@@ -37,6 +37,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
+  // Components whose version changed in this release. Collected independently of
+  // whether the GitHub release already exists, so a workflow re-run still reports
+  // them to downstream steps (e.g. image builds) after a transient failure.
+  const released = [];
+
   for (const component of components) {
     const currentPackage = readPackage(path.join(repoRoot, component.packageJsonPath));
     const previousPackage = readPackageFromGit(baseSha, component.packageJsonPath);
@@ -44,6 +49,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (previousPackage && previousPackage.version === currentPackage.version) {
       continue;
     }
+
+    released.push({ name: component.name, version: currentPackage.version });
 
     const tag = `${component.name}@${currentPackage.version}`;
     if (releaseExists(tag)) {
@@ -80,6 +87,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     } finally {
       fs.rmSync(notesDir, { recursive: true });
     }
+  }
+
+  if (process.env.GITHUB_OUTPUT) {
+    const releasedNames = released.map(({ name }) => name);
+    fs.appendFileSync(process.env.GITHUB_OUTPUT, `released=${JSON.stringify(releasedNames)}\n`);
   }
 
   function readPackage(packageJsonPath) {
