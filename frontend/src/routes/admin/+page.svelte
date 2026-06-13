@@ -10,14 +10,13 @@
     CardTitle,
   } from '$lib/components/ui/card';
   import { ArrowRight, Building2, ShieldAlert } from 'lucide-svelte';
+  import { getRoleBadgeVariant, isModeratorOrAbove } from '$lib/utils';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
 
   const adminableOrgs = $derived(
-    (data.me.organizations ?? []).filter(
-      (org) => org.role === 'Owner' || org.role === 'Moderator'
-    )
+    (data.me.organizations ?? []).filter((org) => isModeratorOrAbove(org.role))
   );
 </script>
 
@@ -64,7 +63,7 @@
                 <CardDescription>{org.slug}</CardDescription>
               </CardHeader>
               <CardContent class="flex items-center justify-between">
-                <Badge variant={org.role === 'Owner' ? 'default' : 'secondary'}>
+                <Badge variant={getRoleBadgeVariant(org.role)}>
                   {org.role}
                 </Badge>
                 <ArrowRight class="h-4 w-4 text-muted-foreground" />

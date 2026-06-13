@@ -9,7 +9,7 @@
     CardTitle,
   } from '$lib/components/ui/card';
   import { Flag, Trophy, UserCircle, Users } from 'lucide-svelte';
-  import { formatLeagueFormat } from '$lib/utils';
+  import { formatLeagueFormat, getRoleBadgeVariant } from '$lib/utils';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -74,7 +74,7 @@
         <UserCircle class="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <Badge variant={data.orgRole === 'Owner' ? 'default' : 'secondary'}>
+        <Badge variant={getRoleBadgeVariant(data.orgRole)}>
           {data.orgRole}
         </Badge>
       </CardContent>

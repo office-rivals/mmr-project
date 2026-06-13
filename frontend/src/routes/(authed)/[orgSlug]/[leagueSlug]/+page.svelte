@@ -1,6 +1,7 @@
 <script lang="ts">
   import Leaderboard from '$lib/components/leaderboard/leaderboard.svelte';
   import MatchCard from '$lib/components/match-card/match-card.svelte';
+  import PageTitle from '$lib/components/page-title.svelte';
   import ReportMatchModal from '$lib/components/report-match-modal.svelte';
   import SeasonPicker from '$lib/components/season-picker.svelte';
   import UserStatsModal from '$lib/components/user-stats-modal.svelte';
@@ -54,7 +55,7 @@
 </script>
 
 <div class="flex flex-col gap-4">
-  <h1 class="sr-only">Leaderboard and recent matches</h1>
+  <PageTitle srOnly>Leaderboard and recent matches</PageTitle>
 
   {#if form?.success && form.message}
     <Alert variant="default">

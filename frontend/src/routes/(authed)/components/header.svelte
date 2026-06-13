@@ -1,7 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { DropdownMenu } from 'bits-ui';
   import {
     Building2,
     Check,
@@ -13,12 +12,17 @@
     Trophy,
   } from 'lucide-svelte';
   import { Badge } from '$lib/components/ui/badge';
+  import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import { SignOutButton } from 'svelte-clerk';
-  import { getPlayerDisplayName, getRoleBadgeVariant } from '$lib/utils';
   import {
-    OrganizationRole,
-    type MeLeagueResponse,
-    type MeOrganizationResponse,
+    cn,
+    getPlayerDisplayName,
+    getRoleBadgeVariant,
+    isModeratorOrAbove,
+  } from '$lib/utils';
+  import type {
+    MeLeagueResponse,
+    MeOrganizationResponse,
   } from '../../../api-v3/models';
 
   interface Props {
@@ -51,18 +55,17 @@
     displayName && username ? `@${username}` : null
   );
 
-  const isAdminRole = (role: OrganizationRole) =>
-    role === OrganizationRole.Owner || role === OrganizationRole.Moderator;
-
   // Show the Admin link if the user administers *any* org.
   const hasAdminAccess = $derived(
-    organizations.some((o) => isAdminRole(o.role))
+    organizations.some((o) => isModeratorOrAbove(o.role))
   );
   // Deep-link to the current org's admin when the user administers it;
   // otherwise fall back to the generic /admin landing, which lists every org
   // the user can administer.
   const adminHref = $derived(
-    menuOrg && isAdminRole(menuOrg.role) ? `/admin/${menuOrg.slug}` : '/admin'
+    menuOrg && isModeratorOrAbove(menuOrg.role)
+      ? `/admin/${menuOrg.slug}`
+      : '/admin'
   );
 
   // Sub-routes whose path is identical across leagues (no league-scoped IDs),
@@ -71,9 +74,6 @@
   // id-bearing route — falls back to the league root rather than risk a stale,
   // league-scoped id 404ing in the destination league.
   const PORTABLE_SUBROUTES = ['matchmaking', 'statistics', 'submit'];
-
-  const menuItemClass =
-    'flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-muted';
 
   function leagueRelativePath(targetLeague: MeLeagueResponse): string {
     if (!page.params.orgSlug || !page.params.leagueSlug) return '';
@@ -145,48 +145,44 @@
             <ChevronDown class="h-4 w-4 shrink-0 text-muted-foreground" />
           </DropdownMenu.Trigger>
 
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              class="z-50 max-h-[70vh] w-[min(20rem,calc(100vw-2rem))] overflow-auto rounded-md border border-muted bg-popover p-1 text-popover-foreground shadow-lg focus:outline-none"
-              sideOffset={6}
-              align="start"
-            >
-              {#each organizations as org (org.id)}
-                <DropdownMenu.Group>
-                  <DropdownMenu.GroupHeading
-                    class="flex items-center gap-2 px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+          <DropdownMenu.Content
+            class="max-h-[70vh] w-[min(20rem,calc(100vw-2rem))] overflow-auto"
+            align="start"
+          >
+            {#each organizations as org (org.id)}
+              <DropdownMenu.Group>
+                <DropdownMenu.GroupHeading>
+                  <Building2 class="h-3 w-3" />
+                  <span class="truncate">{org.name}</span>
+                </DropdownMenu.GroupHeading>
+                {#each org.leagues as league (league.id)}
+                  {@const isActive =
+                    org.slug === page.params.orgSlug &&
+                    league.slug === page.params.leagueSlug}
+                  <DropdownMenu.Item
+                    class={cn(
+                      isActive &&
+                        'bg-accent text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground'
+                    )}
+                    onSelect={() => navigateLeague(org.slug, league)}
                   >
-                    <Building2 class="h-3 w-3" />
-                    <span class="truncate">{org.name}</span>
-                  </DropdownMenu.GroupHeading>
-                  {#each org.leagues as league (league.id)}
-                    {@const isActive =
-                      org.slug === page.params.orgSlug &&
-                      league.slug === page.params.leagueSlug}
-                    <DropdownMenu.Item
-                      class="{menuItemClass} {isActive
-                        ? 'bg-accent text-accent-foreground'
-                        : ''}"
-                      onSelect={() => navigateLeague(org.slug, league)}
-                    >
-                      <Trophy
-                        class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                      />
-                      <span class="truncate">{league.name}</span>
-                      {#if isActive}
-                        <Check class="ml-auto h-4 w-4 text-ring" />
-                      {/if}
-                    </DropdownMenu.Item>
-                  {/each}
-                  {#if org.leagues.length === 0}
-                    <div class="px-3 py-2 text-sm text-muted-foreground">
-                      No leagues
-                    </div>
-                  {/if}
-                </DropdownMenu.Group>
-              {/each}
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
+                    <Trophy
+                      class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                    />
+                    <span class="truncate">{league.name}</span>
+                    {#if isActive}
+                      <Check class="ml-auto h-4 w-4 text-ring" />
+                    {/if}
+                  </DropdownMenu.Item>
+                {/each}
+                {#if org.leagues.length === 0}
+                  <DropdownMenu.Item disabled class="text-muted-foreground">
+                    No leagues
+                  </DropdownMenu.Item>
+                {/if}
+              </DropdownMenu.Group>
+            {/each}
+          </DropdownMenu.Content>
         </DropdownMenu.Root>
       {/if}
     </div>
@@ -199,67 +195,58 @@
         <Settings class="h-5 w-5" />
       </DropdownMenu.Trigger>
 
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          class="z-50 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-md border border-muted bg-popover text-popover-foreground shadow-lg focus:outline-none"
-          sideOffset={6}
-          align="end"
-        >
-          <div class="border-b border-muted px-4 py-3">
-            <div class="truncate text-sm font-semibold">{primaryName}</div>
-            {#if secondaryName}
-              <div class="truncate text-xs text-muted-foreground">
-                {secondaryName}
-              </div>
-            {/if}
-            {#if menuOrg}
-              <div
-                class="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground"
-              >
-                <span class="truncate">{menuOrg.name}</span>
-                <Badge
-                  variant={getRoleBadgeVariant(menuOrg.role)}
-                  class="shrink-0 uppercase tracking-wider"
-                >
-                  {menuOrg.role}
-                </Badge>
-              </div>
-            {/if}
-          </div>
-
-          <DropdownMenu.Group class="p-1">
-            <DropdownMenu.Item
-              class={menuItemClass}
-              onSelect={() => goto('/settings')}
+      <DropdownMenu.Content
+        class="w-[min(18rem,calc(100vw-2rem))] overflow-hidden p-0"
+        align="end"
+      >
+        <div class="border-b border-muted px-4 py-3">
+          <div class="truncate text-sm font-semibold">{primaryName}</div>
+          {#if secondaryName}
+            <div class="truncate text-xs text-muted-foreground">
+              {secondaryName}
+            </div>
+          {/if}
+          {#if menuOrg}
+            <div
+              class="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground"
             >
-              <KeyRound class="h-4 w-4 text-muted-foreground" />
-              Personal Access Tokens
-            </DropdownMenu.Item>
-            {#if hasAdminAccess}
-              <DropdownMenu.Item
-                class={menuItemClass}
-                onSelect={() => goto(adminHref)}
+              <span class="truncate">{menuOrg.name}</span>
+              <Badge
+                variant={getRoleBadgeVariant(menuOrg.role)}
+                class="shrink-0 uppercase tracking-wider"
               >
-                <Shield class="h-4 w-4 text-muted-foreground" />
-                Admin
+                {menuOrg.role}
+              </Badge>
+            </div>
+          {/if}
+        </div>
+
+        <div class="p-1">
+          <DropdownMenu.Item onSelect={() => goto('/settings')}>
+            <KeyRound class="h-4 w-4 text-muted-foreground" />
+            Personal Access Tokens
+          </DropdownMenu.Item>
+          {#if hasAdminAccess}
+            <DropdownMenu.Item onSelect={() => goto(adminHref)}>
+              <Shield class="h-4 w-4 text-muted-foreground" />
+              Admin
+            </DropdownMenu.Item>
+          {/if}
+        </div>
+
+        <DropdownMenu.Separator />
+
+        <div class="p-1">
+          <SignOutButton asChild>
+            {#snippet children({ signOut }: { signOut: () => void })}
+              <DropdownMenu.Item onSelect={signOut}>
+                <LogOut class="h-4 w-4 text-muted-foreground" />
+                Sign out
               </DropdownMenu.Item>
-            {/if}
-          </DropdownMenu.Group>
-
-          <DropdownMenu.Separator class="my-1 h-px bg-muted" />
-
-          <div class="p-1">
-            <SignOutButton asChild>
-              {#snippet children({ signOut }: { signOut: () => void })}
-                <DropdownMenu.Item class={menuItemClass} onSelect={signOut}>
-                  <LogOut class="h-4 w-4 text-muted-foreground" />
-                  Sign out
-                </DropdownMenu.Item>
-              {/snippet}
-            </SignOutButton>
-          </div>
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
+            {/snippet}
+          </SignOutButton>
+        </div>
+      </DropdownMenu.Content>
     </DropdownMenu.Root>
   </div>
 </header>

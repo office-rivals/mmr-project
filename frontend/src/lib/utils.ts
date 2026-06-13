@@ -39,6 +39,12 @@ export function getRoleBadgeVariant(
   return 'outline';
 }
 
+// Whether an organization role grants admin access (Owner or Moderator).
+// Accepts the OrganizationRole string enum or a raw role string.
+export function isModeratorOrAbove(role: string): boolean {
+  return role === 'Owner' || role === 'Moderator';
+}
+
 type FlyAndScaleParams = {
   y?: number;
   x?: number;

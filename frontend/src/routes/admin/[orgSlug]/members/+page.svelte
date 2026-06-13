@@ -22,15 +22,13 @@
     UserPlus,
   } from 'lucide-svelte';
   import { Alert } from '$lib/components/ui/alert';
-  import { getRoleBadgeVariant } from '$lib/utils';
+  import { getRoleBadgeVariant, isModeratorOrAbove } from '$lib/utils';
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
   const isOwner = $derived(data.org.role === 'Owner');
-  const isModeratorOrAbove = $derived(
-    data.org.role === 'Owner' || data.org.role === 'Moderator'
-  );
+  const canModerate = $derived(isModeratorOrAbove(data.org.role));
 
   let showCreateLink = $state(false);
   let copiedCode = $state<string | null>(null);
@@ -73,7 +71,7 @@
     <Alert variant="success">{form.success}</Alert>
   {/if}
 
-  {#if isModeratorOrAbove}
+  {#if canModerate}
     <Card>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
@@ -365,7 +363,7 @@
                   {/if}
                 </div>
 
-                {#if isModeratorOrAbove}
+                {#if canModerate}
                   <div class="ml-4 flex items-center gap-2">
                     <Button
                       type="button"

@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { isModeratorOrAbove } from '$lib/utils';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ params, parent }) => {
@@ -9,7 +10,7 @@ export const load: LayoutServerLoad = async ({ params, parent }) => {
     throw error(404, `Organization '${params.orgSlug}' not found`);
   }
 
-  if (org.role !== 'Owner' && org.role !== 'Moderator') {
+  if (!isModeratorOrAbove(org.role)) {
     throw error(403, 'Admin access requires Owner or Moderator role');
   }
 
