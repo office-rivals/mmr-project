@@ -1,7 +1,11 @@
+using System.Globalization;
+using System.Security.Claims;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using MMRProject.Api.Auth;
@@ -12,6 +16,7 @@ using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.Exceptions;
 using MMRProject.Api.Extensions;
 using MMRProject.Api.MMRCalculationApi;
+using MMRProject.Api.RateLimiting;
 using MMRProject.Api.Services.V3;
 using MMRProject.Api.UserContext;
 
@@ -62,6 +67,34 @@ builder.Services.AddSingleton<IAuthorizationHandler, LeagueAccessAuthorizationHa
 builder.Services.AddSingleton<IAuthorizationHandler, PatAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, DenyPatAuthenticationHandler>();
 builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = (context, _) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                ((int)retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
+        }
+
+        return ValueTask.CompletedTask;
+    };
+
+    // Partition per authenticated user (these endpoints deny PAT auth, so a
+    // user id is always present); fall back to IP only as a safety net.
+    options.AddPolicy(RateLimitPolicies.InviteLookup, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "anonymous",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+            }));
+});
 
 builder.Services.AddUserContextResolver();
 
@@ -128,6 +161,9 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// After auth so the limiter can partition on the authenticated user.
+app.UseRateLimiter();
 
 app.MapControllers().RequireAuthorization();
 
