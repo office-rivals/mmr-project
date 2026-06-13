@@ -3,8 +3,9 @@
 "mmr-api": patch
 ---
 
-Add a `GET /health` liveness endpoint to the API via ASP.NET Core health checks
-(returns `200`), excluded from request tracing. Both backend services now expose
-`GET /health` for liveness/readiness probes. The MMR API's existing `/health`
-probe is now also excluded from tracing so frequent health polls don't flood the
-trace backend.
+Add liveness and readiness endpoints to the API via ASP.NET Core health checks:
+`GET /health` returns `200` whenever the process is up (no dependency checks) and
+`GET /ready` returns `200` only when the database is also reachable. Both are
+anonymous and excluded from request tracing. The MMR API continues to expose
+`GET /health`, now also excluded from tracing so frequent health polls don't
+flood the trace backend.

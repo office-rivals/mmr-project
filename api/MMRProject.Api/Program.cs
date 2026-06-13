@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.RateLimiting;
@@ -128,7 +129,10 @@ builder.Services
     .AddJsonOptions(options => { options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()); });
 builder.Services.AddExceptionHandler<HttpExceptionHandler>();
 builder.Services.AddProblemDetails();
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    // Readiness only: confirms the database is reachable. Tagged so the liveness
+    // probe can exclude it.
+    .AddDbContextCheck<ApiDbContext>("database", tags: ["ready"]);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -166,9 +170,16 @@ app.UseAuthorization();
 // After auth so the limiter can partition on the authenticated user.
 app.UseRateLimiter();
 
-// Anonymous liveness probe (200 "Healthy" while the app is up). Used by the
-// Aspire AppHost and available as a Container App probe target.
-app.MapHealthChecks("/health");
+// Liveness: 200 while the process is up, with no dependency checks — so a
+// transient dependency blip never trips a container/pod restart.
+app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
+
+// Readiness: 200 only when the app can also reach its dependencies (the DB).
+// Gate traffic and dependent-service startup on this, not /health.
+app.MapHealthChecks("/ready", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("ready"),
+});
 
 app.MapControllers().RequireAuthorization();
 
