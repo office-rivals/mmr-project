@@ -21,10 +21,10 @@ export const actions: Actions = {
     const formData = await request.formData();
     const email = formData.get('email') as string;
     const role = formData.get('role') as string;
-    const displayName =
-      ((formData.get('displayName') as string | null) ?? '').trim();
-    const username =
-      ((formData.get('username') as string | null) ?? '').trim();
+    const displayName = (
+      (formData.get('displayName') as string | null) ?? ''
+    ).trim();
+    const username = ((formData.get('username') as string | null) ?? '').trim();
 
     const orgId = await resolveOrgIdBySlug(apiClientV3, params.orgSlug);
     if (!orgId) return fail(404, { error: 'Organization not found' });

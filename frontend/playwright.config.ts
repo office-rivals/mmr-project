@@ -25,7 +25,8 @@ const E2E_FRONTEND_PORT = process.env.E2E_PORT ?? '5180';
 
 const MMR_API_URL = `http://localhost:${E2E_MMR_API_PORT}`;
 const API_URL = `http://localhost:${E2E_API_PORT}`;
-const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${E2E_FRONTEND_PORT}`;
+const BASE_URL =
+  process.env.E2E_BASE_URL ?? `http://localhost:${E2E_FRONTEND_PORT}`;
 
 const API_CONNECTION_STRING =
   `Host=${E2E_DB_HOST};Port=${E2E_DB_PORT};` +

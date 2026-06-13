@@ -40,12 +40,12 @@ The e2e stack is fully isolated from local development. You can have
 your dev stack running and start `npm run e2e` without anything
 colliding.
 
-| Service     | Local dev | e2e   | Override env var      |
-| ----------- | --------- | ----- | --------------------- |
-| Postgres    | 5432      | 5433  | `E2E_DB_PORT`         |
-| mmr-api     | 8080      | 8090  | `E2E_MMR_API_PORT`    |
-| .NET API    | 8081      | 8091  | `E2E_API_PORT`        |
-| Vite dev    | 5173      | 5180  | `E2E_PORT`            |
+| Service  | Local dev | e2e  | Override env var   |
+| -------- | --------- | ---- | ------------------ |
+| Postgres | 5432      | 5433 | `E2E_DB_PORT`      |
+| mmr-api  | 8080      | 8090 | `E2E_MMR_API_PORT` |
+| .NET API | 8081      | 8091 | `E2E_API_PORT`     |
+| Vite dev | 5173      | 5180 | `E2E_PORT`         |
 
 The e2e Postgres data lives in a named docker volume (`mmr-e2e-db`) so
 EF migrations only run on first boot. To wipe the e2e DB completely:

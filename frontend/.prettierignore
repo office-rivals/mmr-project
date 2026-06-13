@@ -2,3 +2,8 @@
 pnpm-lock.yaml
 package-lock.json
 yarn.lock
+
+# Release tooling (scripts/release/apply-changesets.mjs) owns this file and writes
+# entries without a prettier pass; policing it here would red the auto-generated
+# release PR. Keep it out of the formatter.
+CHANGELOG.md
