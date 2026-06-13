@@ -128,6 +128,7 @@ builder.Services
     .AddJsonOptions(options => { options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()); });
 builder.Services.AddExceptionHandler<HttpExceptionHandler>();
 builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -164,6 +165,10 @@ app.UseAuthorization();
 
 // After auth so the limiter can partition on the authenticated user.
 app.UseRateLimiter();
+
+// Anonymous liveness probe (200 "Healthy" while the app is up). Used by the
+// Aspire AppHost and available as a Container App probe target.
+app.MapHealthChecks("/health");
 
 app.MapControllers().RequireAuthorization();
 
