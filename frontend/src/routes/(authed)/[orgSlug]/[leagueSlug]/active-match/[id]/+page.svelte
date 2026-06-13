@@ -1,6 +1,12 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import FreeFormScoreInputs from '$lib/components/free-form-score-inputs.svelte';
   import LoadingOverlay from '$lib/components/loading-overlay.svelte';
+  import {
+    deriveLosingTeam,
+    isScorePairComplete,
+    loserScoreOptions,
+  } from '$lib/scoring';
   import PageTitle from '$lib/components/page-title.svelte';
   import { Alert } from '$lib/components/ui/alert';
   import { Button } from '$lib/components/ui/button';
@@ -60,20 +66,27 @@
   let team2Score = $state(-1);
   let submitting = $state(false);
 
+  let winningScore = $derived(data.leagueWinningScore);
+  let isFreeForm = $derived(winningScore === null);
+  let loserScores = $derived(loserScoreOptions(winningScore));
+
   let losingTeam: TeamOption | null = $derived(
-    team1Score === 10 ? 'team2' : team2Score === 10 ? 'team1' : null
+    deriveLosingTeam(team1Score, team2Score, winningScore)
   );
 
   let isPreviewVisible = $derived(
-    losingTeam !== null && team1Score !== -1 && team2Score !== -1
+    isScorePairComplete(team1Score, team2Score, winningScore)
   );
 
+  // Only reachable from the fixed-target winner buttons; the null check
+  // narrows the type and fails closed if that ever changes.
   function setWinner(which: TeamOption) {
+    if (winningScore === null) return;
     if (which === 'team1') {
-      team1Score = 10;
+      team1Score = winningScore;
       team2Score = -1;
     } else {
-      team2Score = 10;
+      team2Score = winningScore;
       team1Score = -1;
     }
     goto('#score-step');
@@ -131,31 +144,35 @@
       {/each}
     </div>
 
-    <div id="winner-step" class="mt-6 flex flex-col gap-4" transition:fade>
-      <h2 class="text-center text-4xl">Who won?</h2>
-      <div class="flex flex-row gap-4">
-        <Button
-          type="button"
-          onclick={() => setWinner(currentUserTeam)}
-          class="flex-1"
-          variant="default"
-          disabled={(currentUserTeam === 'team1' ? team1Score : team2Score) ===
-            10}
-        >
-          We won &nbsp; 🎉
-        </Button>
-        <div class="min-h-full w-px bg-border"></div>
-        <Button
-          type="button"
-          onclick={() => setWinner(otherTeam)}
-          class="flex-1"
-          variant="destructive"
-          disabled={(otherTeam === 'team1' ? team1Score : team2Score) === 10}
-        >
-          They won &nbsp; 😓
-        </Button>
+    {#if !isFreeForm}
+      <div id="winner-step" class="mt-6 flex flex-col gap-4" transition:fade>
+        <h2 class="text-center text-4xl">Who won?</h2>
+        <div class="flex flex-row gap-4">
+          <Button
+            type="button"
+            onclick={() => setWinner(currentUserTeam)}
+            class="flex-1"
+            variant="default"
+            disabled={(currentUserTeam === 'team1'
+              ? team1Score
+              : team2Score) === winningScore}
+          >
+            We won &nbsp; 🎉
+          </Button>
+          <div class="min-h-full w-px bg-border"></div>
+          <Button
+            type="button"
+            onclick={() => setWinner(otherTeam)}
+            class="flex-1"
+            variant="destructive"
+            disabled={(otherTeam === 'team1' ? team1Score : team2Score) ===
+              winningScore}
+          >
+            They won &nbsp; 😓
+          </Button>
+        </div>
       </div>
-    </div>
+    {/if}
 
     {#if losingTeam}
       <div id="score-step" class="mt-6 flex flex-col gap-4" transition:fade>
@@ -163,7 +180,7 @@
           What was {losingTeam === currentUserTeam ? 'your' : 'their'} score?
         </h2>
         <div class="grid grid-cols-5 gap-2">
-          {#each Array.from({ length: 10 }, (_, i) => i) as score}
+          {#each loserScores as score}
             <Button
               type="button"
               variant={(losingTeam === 'team1' ? team1Score : team2Score) ===
@@ -176,6 +193,22 @@
             </Button>
           {/each}
         </div>
+      </div>
+    {/if}
+
+    {#if isFreeForm}
+      <div
+        id="free-form-score-step"
+        class="mt-6 flex flex-col gap-4"
+        transition:fade
+      >
+        <h2 class="text-center text-4xl">What was the final score?</h2>
+        <FreeFormScoreInputs
+          team1Label={teamHeading('team1')}
+          team2Label={teamHeading('team2')}
+          bind:team1Score
+          bind:team2Score
+        />
       </div>
     {/if}
 

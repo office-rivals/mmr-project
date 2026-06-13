@@ -55,6 +55,7 @@ export interface MeLeagueResponse {
   name: string;
   slug: string;
   teamSize: number;
+  winningScore?: number | null;
   leaguePlayerId: string;
 }
 
@@ -110,12 +111,20 @@ export interface CreateLeagueRequest {
   name: string;
   slug: string;
   teamSize?: number;
+  /**
+   * Score the winning team must reach. Omitted = server default of 10;
+   * explicit null = free-form (highest score wins).
+   */
+  winningScore?: number | null;
 }
 
 export interface UpdateLeagueRequest {
   name?: string;
   slug?: string;
   teamSize?: number;
+  /** Set together with winningScore to actually persist the change. */
+  updateWinningScore?: boolean;
+  winningScore?: number | null;
 }
 
 export interface LeagueResponse {
@@ -124,6 +133,7 @@ export interface LeagueResponse {
   name: string;
   slug: string;
   teamSize: number;
+  winningScore?: number | null;
   createdAt: string;
 }
 

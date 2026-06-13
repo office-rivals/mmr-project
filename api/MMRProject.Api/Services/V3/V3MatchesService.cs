@@ -80,19 +80,21 @@ public class V3MatchesService(
         if (request.Teams.Count != 2)
             throw new InvalidArgumentException("A match must have exactly two teams");
 
-        var leagueTeamSize = await dbContext.Leagues
+        var leagueConfig = await dbContext.Leagues
             .Where(l => l.Id == leagueId && l.OrganizationId == orgId)
-            .Select(l => (int?)l.TeamSize)
+            .Select(l => new { l.TeamSize, l.WinningScore })
             .FirstOrDefaultAsync()
             ?? throw new NotFoundException($"League with ID '{leagueId}' not found");
+
+        ValidateScores(request.Teams[0].Score, request.Teams[1].Score, leagueConfig.WinningScore);
 
         // Shape checks first so a malformed payload short-circuits before any
         // per-player resolution (which can each hit the DB).
         foreach (var team in request.Teams)
         {
-            if (team.Players.Count != leagueTeamSize)
+            if (team.Players.Count != leagueConfig.TeamSize)
                 throw new InvalidArgumentException(
-                    $"Each team must have exactly {leagueTeamSize} players for this league");
+                    $"Each team must have exactly {leagueConfig.TeamSize} {(leagueConfig.TeamSize == 1 ? "player" : "players")} for this league");
         }
 
         var resolvedTeams = new List<List<LeaguePlayer>>();
@@ -112,6 +114,33 @@ public class V3MatchesService(
             throw new InvalidArgumentException("Players must be unique across all teams");
 
         return resolvedTeams;
+    }
+
+    private static void ValidateScores(int team1Score, int team2Score, int? winningScore)
+    {
+        if (team1Score < 0 || team2Score < 0)
+            throw new InvalidArgumentException("Scores must be non-negative");
+
+        // Fixed-target leagues are implicitly bounded by winning_score below;
+        // this keeps free-form scores within the same sanity ceiling.
+        if (team1Score > LeagueService.MaxWinningScore || team2Score > LeagueService.MaxWinningScore)
+            throw new InvalidArgumentException($"Scores must be at most {LeagueService.MaxWinningScore}");
+
+        if (team1Score == team2Score)
+            throw new InvalidArgumentException("A match must have a clear winner — scores cannot be equal");
+
+        if (winningScore is null) return; // Free-form league.
+
+        var higher = Math.Max(team1Score, team2Score);
+        var lower = Math.Min(team1Score, team2Score);
+
+        if (higher != winningScore.Value)
+            throw new InvalidArgumentException(
+                $"The winning team must score exactly {winningScore.Value} in this league");
+
+        if (lower >= winningScore.Value)
+            throw new InvalidArgumentException(
+                $"The losing team's score must be less than {winningScore.Value}");
     }
 
     private static IEnumerable<MatchTeam> BuildMatchTeams(

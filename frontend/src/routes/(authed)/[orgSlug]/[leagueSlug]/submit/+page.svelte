@@ -1,7 +1,14 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
+  import FreeFormScoreInputs from '$lib/components/free-form-score-inputs.svelte';
   import LoadingOverlay from '$lib/components/loading-overlay.svelte';
+  import {
+    deriveLosingTeam,
+    isScorePairComplete,
+    loserScoreOptions,
+    type TeamSide,
+  } from '$lib/scoring';
   import MatchCard from '$lib/components/match-card/match-card.svelte';
   import PageTitle from '$lib/components/page-title.svelte';
   import { MatchSource, type MatchResponse } from '$api3';
@@ -30,6 +37,11 @@
     | 'team2_player2';
 
   let teamSize = $derived(data.leagueTeamSize);
+  // Fixed-target leagues (foosball: 10) use the "we won / they won" + loser
+  // 0..N picker. Free-form leagues (winningScore === null) take two raw scores
+  // — the higher one wins, both are derived server-side.
+  let winningScore = $derived(data.leagueWinningScore);
+  let isFreeForm = $derived(winningScore === null);
   // 1v1 leagues only use the player1 slots; the player2 entries stay null and
   // the server action filters them out.
   let team1Slots: SlotName[] = $derived(
@@ -154,22 +166,28 @@
     SLOTS.map((s) => slotExclusion(slots[s])).filter((v): v is string => !!v)
   );
 
-  let losingTeam: 'team1' | 'team2' | null = $derived(
-    team1Score === 10 ? 'team2' : team2Score === 10 ? 'team1' : null
+  let loserScores = $derived(loserScoreOptions(winningScore));
+
+  let losingTeam: TeamSide | null = $derived(
+    deriveLosingTeam(team1Score, team2Score, winningScore)
   );
 
   let isPreviewVisible = $derived(
-    losingTeam !== null && team1Score !== -1 && team2Score !== -1
+    isScorePairComplete(team1Score, team2Score, winningScore)
   );
 
+  // Only reachable from the fixed-target winner buttons; the null check
+  // narrows the type and fails closed if that ever changes.
   function setTeam1Wins() {
-    team1Score = 10;
+    if (winningScore === null) return;
+    team1Score = winningScore;
     team2Score = -1;
     goto('#score-step');
   }
 
   function setTeam2Wins() {
-    team2Score = 10;
+    if (winningScore === null) return;
+    team2Score = winningScore;
     team1Score = -1;
     goto('#score-step');
   }
@@ -198,6 +216,9 @@
     const team1Players = team1Slots.map((s) => slots[s]);
     const team2Players = team2Slots.map((s) => slots[s]);
 
+    const safeT1 = team1Score === -1 ? 0 : team1Score;
+    const safeT2 = team2Score === -1 ? 0 : team2Score;
+
     return {
       id: 'preview',
       leagueId: data.leagueId,
@@ -210,8 +231,8 @@
         {
           id: 't1',
           index: 0,
-          score: team1Score === -1 ? 0 : team1Score,
-          isWinner: team1Score === 10,
+          score: safeT1,
+          isWinner: safeT1 > safeT2,
           players: team1Players.map((s, i) => ({
             id: `t1p${i}`,
             leaguePlayerId: '',
@@ -222,8 +243,8 @@
         {
           id: 't2',
           index: 1,
-          score: team2Score === -1 ? 0 : team2Score,
-          isWinner: team2Score === 10,
+          score: safeT2,
+          isWinner: safeT2 > safeT1,
           players: team2Players.map((s, i) => ({
             id: `t2p${i}`,
             leaguePlayerId: '',
@@ -243,7 +264,10 @@
     }).filter((v): v is string => !!v);
 
     if (enteredIds[0]) {
-      window.localStorage.setItem(primaryPlayerKey(data.leagueId), enteredIds[0]);
+      window.localStorage.setItem(
+        primaryPlayerKey(data.leagueId),
+        enteredIds[0]
+      );
     }
     const merged = [
       ...enteredIds,
@@ -326,7 +350,7 @@
         </div>
       </div>
 
-      {#if allFilled}
+      {#if allFilled && !isFreeForm}
         <div id="winner-step" class="mt-6 flex flex-col gap-4" transition:fade>
           <h2 class="text-center text-4xl">Who won?</h2>
           <div class="flex flex-row gap-4">
@@ -335,7 +359,7 @@
               onclick={setTeam1Wins}
               class="flex-1"
               variant="default"
-              disabled={team1Score === 10}
+              disabled={team1Score === winningScore}
             >
               We won &nbsp; 🎉
             </Button>
@@ -345,7 +369,7 @@
               onclick={setTeam2Wins}
               class="flex-1"
               variant="destructive"
-              disabled={team2Score === 10}
+              disabled={team2Score === winningScore}
             >
               They won &nbsp; 😓
             </Button>
@@ -359,7 +383,7 @@
             What was {losingTeam === 'team1' ? 'your' : 'their'} score?
           </h2>
           <div class="grid grid-cols-5 gap-2">
-            {#each Array.from({ length: 10 }, (_, i) => i) as score}
+            {#each loserScores as score}
               <Button
                 type="button"
                 variant={(losingTeam === 'team1' ? team1Score : team2Score) ===
@@ -376,6 +400,22 @@
               </Button>
             {/each}
           </div>
+        </div>
+      {/if}
+
+      {#if allFilled && isFreeForm}
+        <div
+          id="free-form-score-step"
+          class="mt-6 flex flex-col gap-4"
+          transition:fade
+        >
+          <h2 class="text-center text-4xl">What was the final score?</h2>
+          <FreeFormScoreInputs
+            team1Label="Your score"
+            team2Label="Their score"
+            bind:team1Score
+            bind:team2Score
+          />
         </div>
       {/if}
 

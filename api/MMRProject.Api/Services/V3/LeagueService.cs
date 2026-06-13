@@ -15,7 +15,7 @@ public interface ILeagueService
     Task<LeagueResponse> UpdateLeagueAsync(Guid orgId, Guid leagueId, UpdateLeagueRequest request);
 }
 
-public class LeagueService(ApiDbContext dbContext) : ILeagueService
+public class LeagueService(ApiDbContext dbContext, IV3SeasonService seasonService) : ILeagueService
 {
     public async Task<LeagueResponse> CreateLeagueAsync(Guid orgId, CreateLeagueRequest request)
     {
@@ -26,13 +26,15 @@ public class LeagueService(ApiDbContext dbContext) : ILeagueService
             throw new InvalidArgumentException($"A league with slug '{request.Slug}' already exists in this organization");
 
         ValidateTeamSize(request.TeamSize);
+        ValidateWinningScore(request.WinningScore);
 
         var league = new League
         {
             OrganizationId = orgId,
             Name = request.Name,
             Slug = request.Slug,
-            TeamSize = request.TeamSize
+            TeamSize = request.TeamSize,
+            WinningScore = request.WinningScore
         };
 
         dbContext.Leagues.Add(league);
@@ -101,6 +103,30 @@ public class LeagueService(ApiDbContext dbContext) : ILeagueService
             league.TeamSize = request.TeamSize.Value;
         }
 
+        if (request.UpdateWinningScore)
+        {
+            ValidateWinningScore(request.WinningScore);
+
+            // Matches are validated against the league's current winning_score
+            // (including on edit), so changing it would strand already-recorded
+            // matches as uneditable. Only block actual changes — re-submitting
+            // the current value stays a no-op.
+            if (league.WinningScore != request.WinningScore)
+            {
+                var currentSeason = await seasonService.GetCurrentSeasonAsync(orgId, leagueId);
+                if (currentSeason != null)
+                {
+                    var hasMatches = await dbContext.V3Matches
+                        .AnyAsync(m => m.LeagueId == leagueId && m.SeasonId == currentSeason.Id);
+                    if (hasMatches)
+                        throw new InvalidArgumentException(
+                            "Cannot change the winning score while the current season has recorded matches");
+                }
+            }
+
+            league.WinningScore = request.WinningScore;
+        }
+
         await dbContext.SaveChangesAsync();
 
         return MapToResponse(league);
@@ -116,6 +142,18 @@ public class LeagueService(ApiDbContext dbContext) : ILeagueService
             throw new InvalidArgumentException($"Team size must be between 1 and {MaxSupportedTeamSize}");
     }
 
+    // Sanity ceiling, well above the longest racket-sport set anyone would seed
+    // here. Shared with match submission so free-form scores get the same cap.
+    internal const int MaxWinningScore = 255;
+
+    // Null = free-form scoring; otherwise the winning team must end at exactly this score.
+    private static void ValidateWinningScore(int? winningScore)
+    {
+        if (winningScore is null) return;
+        if (winningScore < 1 || winningScore > MaxWinningScore)
+            throw new InvalidArgumentException($"Winning score must be between 1 and {MaxWinningScore}, or null for free-form scoring");
+    }
+
     private static LeagueResponse MapToResponse(League league)
     {
         return new LeagueResponse
@@ -125,6 +163,7 @@ public class LeagueService(ApiDbContext dbContext) : ILeagueService
             Name = league.Name,
             Slug = league.Slug,
             TeamSize = league.TeamSize,
+            WinningScore = league.WinningScore,
             CreatedAt = league.CreatedAt
         };
     }

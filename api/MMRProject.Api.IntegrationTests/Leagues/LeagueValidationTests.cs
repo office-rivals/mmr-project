@@ -51,6 +51,50 @@ public class LeagueValidationTests(PostgresFixture postgres) : IntegrationTestBa
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    [InlineData(256)]
+    public async Task CreateLeague_WithInvalidWinningScore_ShouldFail(int winningScore)
+    {
+        var org = await CreateOrganization("Score Org", $"score-org-{winningScore}");
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("owner-1");
+
+        var response = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/leagues",
+            new CreateLeagueRequest
+            {
+                Name = "Score League",
+                Slug = "score-league",
+                TeamSize = 2,
+                WinningScore = winningScore,
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateLeague_WithNullWinningScore_PersistsAsFreeForm()
+    {
+        var org = await CreateOrganization("Free Org", "free-org");
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("owner-1");
+
+        var response = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/leagues",
+            new CreateLeagueRequest
+            {
+                Name = "Free League",
+                Slug = "free-league",
+                TeamSize = 1,
+                WinningScore = null,
+            });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<LeagueResponse>();
+        Assert.NotNull(body);
+        Assert.Null(body!.WinningScore);
+    }
+
     [Fact]
     public async Task CreateLeague_DuplicateSlug_WithValidRequest_ReturnsConflictOrBadRequest()
     {
