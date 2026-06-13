@@ -19,7 +19,30 @@ Three-service matchmaking and rating system:
 
 ## Development Commands
 
-### Frontend (SvelteKit with Svelte 5)
+### Local development (recommended): the Aspire AppHost
+
+One command starts and wires the whole stack — PostgreSQL, the MMR API (Go), the
+API (ASP.NET Core) and the frontend (SvelteKit):
+
+```bash
+dotnet run --project local-dev/MMRProject.AppHost
+```
+
+This launches the .NET Aspire dashboard (logs, traces, metrics and endpoint
+links for every service). The AppHost injects the shared admin secret, the
+Postgres connection string, the MMR API base URL and the frontend's API base
+path, so no per-service `.env` wiring is required. One-time setup (prerequisites
+and Clerk keys for sign-in) is documented in
+[`local-dev/README.md`](local-dev/README.md).
+
+### Advanced: running a single service
+
+The commands below run one service in isolation — useful for fast iteration on a
+single service. Outside the AppHost you must supply each service's configuration
+yourself (connection string, `ADMIN_SECRET`, Clerk issuer, …); see
+[Configuration](#configuration).
+
+#### Frontend (SvelteKit with Svelte 5)
 
 ```bash
 cd frontend
@@ -32,7 +55,7 @@ npm run format           # Format code with Prettier
 npm run generate-api     # Generate TypeScript API client from http://localhost:8081/swagger/v1/swagger.json
 ```
 
-### API (ASP.NET Core)
+#### API (ASP.NET Core)
 
 ```bash
 cd api/MMRProject.Api
@@ -42,7 +65,7 @@ dotnet build             # Build the project
 dotnet ef migrations add <MigrationName> -o Data/Migrations -c ApiDbContext  # Create migration
 ```
 
-### MMR API (Go)
+#### MMR API (Go)
 
 ```bash
 cd mmr-api
@@ -53,12 +76,13 @@ go test ./test/mmr       # Run specific test package
 
 ### Database Management
 
-```bash
-# Start local PostgreSQL
-cd local-development
-docker-compose up
+The Aspire AppHost provisions PostgreSQL (persisted in a Docker volume) and the
+API applies EF Core migrations automatically on startup, so the local database
+needs no manual setup. Inspect or open a shell on it from the Postgres resource
+in the Aspire dashboard.
 
-# Import production data
+```bash
+# Import production data into a target database
 ./scripts/import-prod-data.sh <resource-group> <server-name> <db-name> <tenant-id> <subscription-id> <username>
 ```
 
@@ -66,7 +90,7 @@ docker-compose up
 
 ### Authentication Flow
 
-- Uses Clerk for authentication (migrated from Supabase)
+- Uses Clerk for authentication
 - Frontend: `hooks.server.ts` handles auth middleware with `svelte-clerk`
 - API: JWT bearer token validation configured in `Program.cs` via `builder.AddAuth()`
 - Protected routes in frontend under `routes/(authed)/`
@@ -128,6 +152,12 @@ Core entities in `api/MMRProject.Api/Data/Entities/`:
 
 ## Configuration
 
+> In the recommended Aspire flow the AppHost injects all of the values below
+> (connection string, shared admin secret, MMR API base URL, frontend API base
+> path) — the only thing you set yourself is Clerk keys, via AppHost
+> user-secrets (see [`local-dev/README.md`](local-dev/README.md)). The sections
+> below document the configuration each service reads when run standalone.
+
 ### Frontend (.env)
 
 ```
@@ -174,7 +204,7 @@ ADMIN_SECRET=<admin_secret>
 ## Testing
 
 - **API**: Bruno collection in `api-collection/` for API testing
-- **MMR API**: Go tests in `mmr-api/test/` organized by package (api, custom, middleware, mmr, openskill)
+- **MMR API**: Go tests in `mmr-api/test/` organized by package (api, custom, mmr, openskill)
 - **Frontend**: Component testing with Vitest (configured but not extensively used)
 
 ## Deployment
@@ -190,5 +220,5 @@ Releases are managed through lightweight changeset files in `.changeset/`. Featu
 - Migrations run automatically on API startup when `Migration:Enabled` is true
 - Swagger UI available at http://localhost:8081/swagger for API documentation
 - Frontend API clients must be regenerated after API changes using `npm run generate-api`
-- Local PostgreSQL runs on port 5432 with credentials in docker-compose
-- All services use environment-based configuration (appsettings.json, .env files, user-secrets)
+- Local PostgreSQL is provisioned by the Aspire AppHost and persisted in a Docker volume
+- All services use environment-based configuration (appsettings.json, .env files, user-secrets); the Aspire AppHost supplies these locally

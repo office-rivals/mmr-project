@@ -11,92 +11,72 @@ This repository contains a matchmaking and rating system split into three main c
 ```
 /
 ├── frontend/           # SvelteKit web application
-├── api/               # ASP.NET Core API service
-├── mmr-api/           # Go MMR calculation service
-├── local-development/ # Local development setup
-└── api-collection/    # API test collection
+├── api/                # ASP.NET Core API service
+├── mmr-api/            # Go MMR calculation service
+├── local-dev/          # .NET Aspire AppHost (one-command local stack)
+├── local-development/  # e2e/CI database compose
+└── api-collection/     # API test collection
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 22+ for frontend and release tooling
-- .NET 8+ for API
-- Go 1.23+ for MMR API
-- Docker for local services
-- PostgreSQL client
+- .NET 10 SDK — runs the API and the Aspire AppHost
+- Node.js 24+ — frontend and release tooling
+- Go 1.25+ — MMR API
+- Docker — the AppHost runs PostgreSQL in a container
+
+No separate Aspire workload or CLI is required: the AppHost restores everything
+it needs from NuGet, so `dotnet run` is enough.
 
 ### Local Development
 
-The application uses Clerk for authentication. Follow these steps to get started:
+The whole stack runs from a single **.NET Aspire AppHost** — PostgreSQL, the MMR
+API (Go), the API (ASP.NET Core) and the frontend (SvelteKit) — orchestrated
+together with shared configuration, service discovery, and a telemetry
+dashboard. This is the one supported local-development workflow.
 
-1. Set up a Clerk account at [clerk.com](https://clerk.com) and create an application
-2. Start local PostgreSQL database:
-   ```bash
-   cd local-development
-   docker-compose up
-   ```
-3. Configure environment variables:
-   - Frontend (.env):
-     ```bash
-     PUBLIC_CLERK_PUBLISHABLE_KEY=<your_clerk_publishable_key>
-     CLERK_SECRET_KEY=<your_clerk_secret_key>
-     API_BASE_PATH=http://localhost:8081
-     ```
-   - API (appsettings.Development.json):
-     ```json
-     {
-       "ConnectionStrings": {
-         "ApiDbContext": "Host=localhost;Database=mmr_project;Username=postgres;Password=<your_db_password>"
-       },
-       "Admin": {
-         "Secret": "<your_admin_secret>"
-       },
-       "Migration": {
-         "Enabled": true
-       },
-       "MMRCalculationAPI": {
-         "BaseUrl": "http://localhost:8080",
-         "ApiKey": "<your_mmr_api_key>"
-       }
-     }
-     ```
-   - API (user-secrets - required for Clerk):
-     ```bash
-     cd api/MMRProject.Api
-     dotnet user-secrets set "Authorization:Issuer" "<your_clerk_issuer_url>"
-     ```
-     Note: The Clerk issuer URL can be found in your Clerk Dashboard under API Keys (e.g., `https://your-app.clerk.accounts.dev`)
-   - MMR API (.env):
-     ```bash
-     ADMIN_SECRET=<your_admin_secret>
-     ```
+```bash
+dotnet run --project local-dev/MMRProject.AppHost
+```
 
-### Starting the Services
+That single command builds and starts every service and opens the Aspire
+dashboard with a clickable link to each one (frontend, API `/swagger`, and the
+Postgres resource). The AppHost injects the shared admin secret, the Postgres
+connection string, the MMR API base URL and the frontend's API base path, and
+the API applies its EF Core migrations automatically against the fresh database.
+Postgres data persists across runs in a Docker volume.
 
-1. Start the MMR API:
+#### Clerk sign-in (optional, one-time)
 
-   ```bash
-   cd mmr-api
-   go run main.go
-   ```
+The stack boots with placeholder Clerk values so you can explore it immediately.
+To actually sign in, create an application at [clerk.com](https://clerk.com) and
+store your keys in the AppHost's user-secrets:
 
-2. Start the API:
+```bash
+cd local-dev/MMRProject.AppHost
+dotnet user-secrets set "Parameters:clerk-publishable-key" "pk_test_..."
+dotnet user-secrets set "Parameters:clerk-secret-key" "sk_test_..."
+dotnet user-secrets set "Parameters:clerk-issuer" "https://your-app.clerk.accounts.dev"
+```
 
-   ```bash
-   cd api/MMRProject.Api
-   dotnet run
-   ```
+The Clerk issuer URL is in your Clerk Dashboard under **API Keys**. You can
+override the shared `admin-secret` parameter the same way if needed. See
+[`local-dev/README.md`](local-dev/README.md) for the full reference.
 
-3. Start the frontend:
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
+#### Running a single service (advanced)
 
-### Try Locally With Docker Compose
+To iterate on one service without the AppHost, run it directly — see the
+per-service commands and the configuration each one expects in
+[AGENTS.md](AGENTS.md#development-commands). You are then responsible for
+supplying that service's configuration yourself.
+
+### Try the released images with Docker Compose
+
+This path runs the **published release images** (no source checkout or local
+toolchain needed) and is meant for evaluation, not development — for development
+use the Aspire AppHost above.
 
 Each release publishes container images for the frontend, API, and MMR API to
 the GitHub Container Registry under `ghcr.io/office-rivals/mmr-project`. You can
@@ -273,7 +253,7 @@ The Container App running `mmr-api` should also have:
 
 ## Health checks
 
-`mmr-api` exposes `GET /health` returning `200 OK`. The endpoint is excluded from the access log and is intended as the liveness/readiness probe target for the `mmr-api-prod` Container App.
+Both backend services expose `GET /health` returning `200 OK` (the API via ASP.NET Core health checks, `mmr-api` via a Gin route). The endpoint is excluded from request tracing (and, on `mmr-api`, the access log), and is the intended liveness/readiness probe target for the Container Apps. The Aspire AppHost uses `/health` on both services for readiness gating, so dependent services start only once their dependencies are healthy.
 
 ## Testing
 
@@ -329,6 +309,5 @@ Note: Username must have access to the production database.
 
 ## Additional Resources
 
-- [Swagger UI](http://localhost:5000/swagger) for API documentation
 - [Bruno Collection](./api-collection) for API testing
-- [Local Development](./local-development) for development setup
+- [Local Dev (Aspire AppHost)](./local-dev) for the one-command local stack
