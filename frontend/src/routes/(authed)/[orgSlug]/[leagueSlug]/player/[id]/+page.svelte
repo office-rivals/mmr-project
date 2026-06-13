@@ -4,6 +4,7 @@
   import PageTitle from '$lib/components/page-title.svelte';
   import SeasonPicker from '$lib/components/season-picker.svelte';
   import { Alert } from '$lib/components/ui/alert';
+  import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import * as Dialog from '$lib/components/ui/dialog';
@@ -15,12 +16,11 @@
     CheckCircle,
     Flag,
     Handshake,
-    Settings,
     Swords,
     Trash2,
     X,
   } from 'lucide-svelte';
-  import { SignOutButton } from 'svelte-clerk';
+  import { getPlayerDisplayName } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
   import Filter from './components/filter.svelte';
 
@@ -64,8 +64,6 @@
     })) ?? []
   );
 
-  const profileSuffix = data.isCurrentUser ? ' - You' : '';
-
   const myFlagForMatch = (matchId: string) =>
     data.myFlags?.find((f: { matchId: string }) => f.matchId === matchId);
 
@@ -96,13 +94,19 @@
 </script>
 
 <div class="flex flex-col gap-6">
-  {#if data.player?.displayName}
-    <PageTitle>
-      {data.player.displayName} ({data.player.username}){profileSuffix}
-    </PageTitle>
-  {:else}
-    <PageTitle>{data.player?.username ?? 'Player'}{profileSuffix}</PageTitle>
-  {/if}
+  <div class="flex flex-col items-center gap-1 text-center">
+    <PageTitle>{getPlayerDisplayName(data.player, 'Player')}</PageTitle>
+    <div class="flex items-center justify-center gap-2">
+      {#if data.player?.username && data.player?.displayName}
+        <p class="text-base text-muted-foreground">@{data.player.username}</p>
+      {/if}
+      {#if data.isCurrentUser}
+        <Badge variant="secondary" class="shrink-0 uppercase tracking-wider"
+          >You</Badge
+        >
+      {/if}
+    </div>
+  </div>
 
   {#if form?.success && form.message}
     <Alert variant="default">
@@ -120,18 +124,6 @@
     </Alert>
   {/if}
 
-  {#if data.isCurrentUser}
-    <div class="flex justify-end gap-2">
-      <Button href="/settings" class="gap-2" variant="outline">
-        <Settings size={16} />
-        Settings
-      </Button>
-      <SignOutButton>
-        <Button variant="secondary">Logout</Button>
-      </SignOutButton>
-    </div>
-  {/if}
-
   {#if data.seasons != null && data.seasons.length > 1 && data.currentSeason}
     <div class="self-end">
       <SeasonPicker seasons={data.seasons} currentSeason={data.currentSeason} />
@@ -139,6 +131,11 @@
   {/if}
 
   <div class="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
+    <Kpi title="Rank"
+      >{data.stats.rank != null && data.stats.rank > 0
+        ? `#${data.stats.rank}`
+        : '—'}</Kpi
+    >
     <Kpi title="MMR">{data.stats.mmr ?? '🐣'}</Kpi>
     <Kpi title="# Matches">{data.stats.totalMatches}</Kpi>
     <Kpi title="# Wins">{data.stats.wins}</Kpi>

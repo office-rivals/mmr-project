@@ -2,6 +2,13 @@ import { fontFamily } from 'tailwindcss/defaultTheme';
 
 /** @type {import('tailwindcss').Config} */
 const config = {
+  // iOS Safari applies :hover on the first tap and only fires the click on the
+  // second tap, so any hover-styled control (e.g. the header org/league picker)
+  // needs a double-tap to open. Gating hover utilities behind
+  // @media (hover: hover) means they never apply on touch, restoring first-tap.
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   darkMode: ['class'],
   content: ['./src/**/*.{html,js,svelte,ts}'],
   safelist: ['dark'],

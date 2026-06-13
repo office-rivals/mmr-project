@@ -55,7 +55,7 @@
 </script>
 
 <div class="flex flex-col gap-4">
-  <PageTitle>Leaderboard</PageTitle>
+  <PageTitle srOnly>Leaderboard</PageTitle>
 
   {#if form?.success && form.message}
     <Alert variant="default">

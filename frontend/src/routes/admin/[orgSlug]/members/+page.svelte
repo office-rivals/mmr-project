@@ -12,26 +12,27 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
-  import { Check, Copy, Link, Pencil, Plus, Trash2, UserPlus } from 'lucide-svelte';
+  import {
+    Check,
+    Copy,
+    Link,
+    Pencil,
+    Plus,
+    Trash2,
+    UserPlus,
+  } from 'lucide-svelte';
   import { Alert } from '$lib/components/ui/alert';
+  import { getRoleBadgeVariant, isModeratorOrAbove } from '$lib/utils';
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
   const isOwner = $derived(data.org.role === 'Owner');
-  const isModeratorOrAbove = $derived(
-    data.org.role === 'Owner' || data.org.role === 'Moderator'
-  );
+  const canModerate = $derived(isModeratorOrAbove(data.org.role));
 
   let showCreateLink = $state(false);
   let copiedCode = $state<string | null>(null);
   let editingMembershipId = $state<string | null>(null);
-
-  function getRoleBadgeVariant(role: string) {
-    if (role === 'Owner') return 'default';
-    if (role === 'Moderator') return 'secondary';
-    return 'outline';
-  }
 
   function getStatusBadgeVariant(status: string) {
     if (status === 'Active') return 'default';
@@ -70,7 +71,7 @@
     <Alert variant="success">{form.success}</Alert>
   {/if}
 
-  {#if isModeratorOrAbove}
+  {#if canModerate}
     <Card>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
@@ -279,11 +280,7 @@
                 }}
                 class="flex flex-col gap-3"
               >
-                <input
-                  type="hidden"
-                  name="membershipId"
-                  value={member.id}
-                />
+                <input type="hidden" name="membershipId" value={member.id} />
                 <div class="grid gap-3 sm:grid-cols-2">
                   <div class="space-y-1">
                     <Label for="displayName-{member.id}">Display name</Label>
@@ -312,8 +309,7 @@
                         disabled
                       />
                       <p class="text-xs text-muted-foreground">
-                        Linked to a user account — email is owned by the
-                        user.
+                        Linked to a user account — email is owned by the user.
                       </p>
                     {:else}
                       <Input
@@ -367,7 +363,7 @@
                   {/if}
                 </div>
 
-                {#if isModeratorOrAbove}
+                {#if canModerate}
                   <div class="ml-4 flex items-center gap-2">
                     <Button
                       type="button"
@@ -388,8 +384,7 @@
                       <select
                         name="role"
                         class="h-8 rounded-md border border-input bg-background px-2 text-sm"
-                        onchange={(e) =>
-                          e.currentTarget.form?.requestSubmit()}
+                        onchange={(e) => e.currentTarget.form?.requestSubmit()}
                         value={member.role}
                       >
                         <option value="Member">Member</option>

@@ -18,7 +18,10 @@ export function formatDateTime(d: string | null | undefined): string {
 }
 
 export function getPlayerDisplayName(
-  p: { displayName?: string | null; username?: string | null } | null | undefined,
+  p:
+    | { displayName?: string | null; username?: string | null }
+    | null
+    | undefined,
   fallback = 'Unknown'
 ): string {
   return p?.displayName ?? p?.username ?? fallback;
@@ -26,6 +29,20 @@ export function getPlayerDisplayName(
 
 export function formatLeagueFormat(teamSize: number): string {
   return `${teamSize}v${teamSize}`;
+}
+
+export function getRoleBadgeVariant(
+  role: string
+): 'default' | 'secondary' | 'outline' {
+  if (role === 'Owner') return 'default';
+  if (role === 'Moderator') return 'secondary';
+  return 'outline';
+}
+
+// Whether an organization role grants admin access (Owner or Moderator).
+// Accepts the OrganizationRole string enum or a raw role string.
+export function isModeratorOrAbove(role: string): boolean {
+  return role === 'Owner' || role === 'Moderator';
 }
 
 type FlyAndScaleParams = {

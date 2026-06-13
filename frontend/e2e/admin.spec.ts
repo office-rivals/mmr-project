@@ -145,11 +145,22 @@ test.describe('League admin', () => {
       page.getByRole('heading', { name: 'Seasons', level: 2 })
     ).toBeVisible();
     await expect(page.getByText('Current', { exact: true })).toBeVisible();
-    // Create form is hidden by default; clicking the button reveals it.
-    await page.getByRole('button', { name: /New season/ }).click();
-    await expect(
-      page.getByRole('heading', { name: 'Start a new season' })
-    ).toBeVisible();
+    // Create form is hidden by default; clicking the button reveals it. The
+    // button is a client-side toggle, so the click only takes effect once
+    // SvelteKit has hydrated — under load the SSR'd button can be clicked
+    // before its handler is attached and the click is lost. Retry until the
+    // form opens; once open the button relabels to "Cancel", so the
+    // visibility guard prevents toggling it back closed on a retry.
+    const newSeasonButton = page.getByRole('button', { name: 'New season' });
+    await expect(newSeasonButton).toBeVisible();
+    await expect(async () => {
+      if (await newSeasonButton.isVisible()) {
+        await newSeasonButton.click();
+      }
+      await expect(
+        page.getByRole('heading', { name: 'Start a new season' })
+      ).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 15_000 });
   });
 });
 
