@@ -51,13 +51,19 @@
     displayName && username ? `@${username}` : null
   );
 
+  const isAdminRole = (role: OrganizationRole) =>
+    role === OrganizationRole.Owner || role === OrganizationRole.Moderator;
+
+  // Show the Admin link if the user administers *any* org.
   const hasAdminAccess = $derived(
-    menuOrg?.role === OrganizationRole.Owner ||
-      menuOrg?.role === OrganizationRole.Moderator
+    organizations.some((o) => isAdminRole(o.role))
   );
-  // Admin link must target the same org as the role check. hasAdminAccess
-  // already implies menuOrg exists, so this is non-null whenever the link shows.
-  const adminOrgSlug = $derived(menuOrg?.slug ?? null);
+  // Deep-link to the current org's admin when the user administers it;
+  // otherwise fall back to the generic /admin landing, which lists every org
+  // the user can administer.
+  const adminHref = $derived(
+    menuOrg && isAdminRole(menuOrg.role) ? `/admin/${menuOrg.slug}` : '/admin'
+  );
 
   // Sub-routes whose path is identical across leagues (no league-scoped IDs),
   // so they can be carried over when switching. Anything else —
@@ -232,7 +238,7 @@
             {#if hasAdminAccess}
               <DropdownMenu.Item
                 class={menuItemClass}
-                onSelect={() => goto(`/admin/${adminOrgSlug}`)}
+                onSelect={() => goto(adminHref)}
               >
                 <Shield class="h-4 w-4 text-muted-foreground" />
                 Admin
