@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1
+
+- chore(deps): bump go.opentelemetry.io/otel/sdk from 1.43.0 to 1.44.0 in /mmr-api
+- chore(deps): bump the opentelemetry group in /mmr-api with 7 updates
+
 ## 1.2.0
 
 - Add support for 1v1 leagues, and replace `League.QueueSize` with `League.TeamSize` (the per-team player count) — `QueueSize` was the inverted way to think about the same concept. The queue requires `2 * teamSize` players. Migrating: existing `queue_size` values are halved into the new `team_size` column.

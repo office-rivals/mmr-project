@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0
+
+- Make the per-match winning score configurable per league. Leagues now expose a nullable `winningScore` field; when set (e.g. 10 for foosball, default), the winning team must score exactly that and the loser scores 0..(winning_score-1), matching the previous behaviour. When null, scoring is free-form: both teams enter raw scores and the higher score wins — useful for table tennis, badminton, etc. The submit form switches between the existing button picker and dual numeric inputs based on the league's config. Existing leagues are backfilled to 10 by the migration; the API derives `is_winner` server-side from the scores. No MMR recalc needed — score magnitudes don't affect openskill output.
+
 ## 1.2.0
 
 - Add support for 1v1 leagues, and replace `League.QueueSize` with `League.TeamSize` (the per-team player count) — `QueueSize` was the inverted way to think about the same concept. The queue requires `2 * teamSize` players. Migrating: existing `queue_size` values are halved into the new `team_size` column.
