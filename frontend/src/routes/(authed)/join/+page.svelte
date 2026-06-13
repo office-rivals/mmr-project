@@ -41,7 +41,7 @@
       <Input
         id="invite-code"
         bind:value={code}
-        placeholder="e.g. ABC123"
+        placeholder="e.g. ABCD2345WXYZ"
         maxlength={12}
         class="text-center text-2xl uppercase tracking-widest"
       />
