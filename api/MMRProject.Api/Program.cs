@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Security.Claims;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
@@ -82,11 +81,12 @@ builder.Services.AddRateLimiter(options =>
         return ValueTask.CompletedTask;
     };
 
-    // Partition per authenticated user (these endpoints deny PAT auth, so a
-    // user id is always present); fall back to IP only as a safety net.
+    // Partition per user so one caller can't exhaust another's budget. The
+    // invite endpoints require authentication, so a user id is normally
+    // present; fall back to IP only as a safety net.
     options.AddPolicy(RateLimitPolicies.InviteLookup, httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            httpContext.User.GetUserId()
                 ?? httpContext.Connection.RemoteIpAddress?.ToString()
                 ?? "anonymous",
             _ => new FixedWindowRateLimiterOptions
