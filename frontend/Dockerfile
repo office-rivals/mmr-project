@@ -4,9 +4,6 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 
-ARG PUBLIC_CLERK_PUBLISHABLE_KEY
-
-ENV PUBLIC_CLERK_PUBLISHABLE_KEY=${PUBLIC_CLERK_PUBLISHABLE_KEY}
 RUN DEPLOY_TO_AZURE=true npm run build
 RUN npm prune --production
 
