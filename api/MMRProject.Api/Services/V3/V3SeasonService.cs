@@ -9,7 +9,7 @@ namespace MMRProject.Api.Services.V3;
 public interface IV3SeasonService
 {
     Task<SeasonResponse> CreateSeasonAsync(Guid orgId, Guid leagueId, CreateSeasonRequest request);
-    Task<List<SeasonResponse>> GetSeasonsAsync(Guid orgId, Guid leagueId);
+    Task<List<SeasonResponse>> GetSeasonsAsync(Guid orgId, Guid leagueId, bool includeUpcoming = false);
     Task<SeasonResponse?> GetCurrentSeasonAsync(Guid orgId, Guid leagueId);
     Task<SeasonResponse> GetSeasonAsync(Guid orgId, Guid leagueId, Guid seasonId);
 }
@@ -33,12 +33,21 @@ public class V3SeasonService(ApiDbContext dbContext) : IV3SeasonService
         return MapToResponse(season);
     }
 
-    public async Task<List<SeasonResponse>> GetSeasonsAsync(Guid orgId, Guid leagueId)
+    public async Task<List<SeasonResponse>> GetSeasonsAsync(Guid orgId, Guid leagueId, bool includeUpcoming = false)
     {
         await EnsureLeagueExists(orgId, leagueId);
 
-        var seasons = await dbContext.Set<V3Season>()
-            .Where(s => s.OrganizationId == orgId && s.LeagueId == leagueId)
+        var query = dbContext.Set<V3Season>()
+            .Where(s => s.OrganizationId == orgId && s.LeagueId == leagueId);
+
+        // Members must not see not-yet-started seasons; only admins (includeUpcoming) do.
+        if (!includeUpcoming)
+        {
+            var now = DateTimeOffset.UtcNow;
+            query = query.Where(s => s.StartsAt <= now);
+        }
+
+        var seasons = await query
             .OrderByDescending(s => s.StartsAt)
             .ToListAsync();
 

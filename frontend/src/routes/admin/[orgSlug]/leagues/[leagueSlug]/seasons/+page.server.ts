@@ -8,7 +8,11 @@ export const load: PageServerLoad = async ({
   locals: { apiClientV3 },
 }) => {
   const { orgId, leagueId } = await parent();
-  const seasons = await apiClientV3.seasonsApi.listSeasons(orgId, leagueId);
+  // Admins manage upcoming seasons, so use the unfiltered admin endpoint.
+  const seasons = await apiClientV3.adminSeasonsApi.listAllSeasons(
+    orgId,
+    leagueId
+  );
   return { seasons };
 };
 
