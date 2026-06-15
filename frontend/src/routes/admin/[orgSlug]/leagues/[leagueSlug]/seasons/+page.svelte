@@ -14,6 +14,7 @@
   import { Label } from '$lib/components/ui/label';
   import { CalendarDays, Plus } from 'lucide-svelte';
   import { formatDateTime } from '$lib/utils';
+  import { selectCurrentSeason } from '$lib/util/season';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -26,10 +27,8 @@
     )
   );
 
-  // The current season is the most recent one whose startsAt is in the past.
   const currentSeasonId = $derived(
-    sortedSeasons.find((s) => new Date(s.startsAt).getTime() <= Date.now())
-      ?.id ?? null
+    selectCurrentSeason(data.seasons)?.id ?? null
   );
 </script>
 
