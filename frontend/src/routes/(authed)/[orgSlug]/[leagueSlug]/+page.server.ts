@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { matchFlagActions } from '$lib/server/actions/matchFlagActions';
+import { selectCurrentSeason } from '$lib/util/season';
 
 export const load: PageServerLoad = async ({
   parent,
@@ -12,7 +13,7 @@ export const load: PageServerLoad = async ({
 
   try {
     const seasons = await apiClientV3.seasonsApi.listSeasons(orgId, leagueId);
-    const currentSeason = seasons[0] ?? null;
+    const currentSeason = selectCurrentSeason(seasons);
     const seasonId = urlSeasonId ?? currentSeason?.id;
     const isCurrentSeason =
       urlSeasonId == null || urlSeasonId === currentSeason?.id;
