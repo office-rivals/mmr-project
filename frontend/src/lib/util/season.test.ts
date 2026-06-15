@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { selectCurrentSeason } from './season';
 
-// listSeasons() returns seasons ordered by startsAt DESC, so a not-yet-started
-// season sorts to index 0. NOW is fixed so the tests are deterministic.
+// NOW is fixed so the tests are deterministic.
 const NOW = Date.parse('2026-06-15T12:00:00Z');
 
 describe('selectCurrentSeason', () => {
@@ -23,9 +22,26 @@ describe('selectCurrentSeason', () => {
     expect(selectCurrentSeason(seasons, NOW)?.id).toBe('active');
   });
 
+  it('picks the latest started season regardless of list ordering', () => {
+    const seasons = [
+      { id: 'old', startsAt: '2025-01-01T00:00:00Z' },
+      { id: 'active', startsAt: '2026-03-01T00:00:00Z' },
+      { id: 'future', startsAt: '2026-09-01T00:00:00Z' },
+    ];
+    expect(selectCurrentSeason(seasons, NOW)?.id).toBe('active');
+  });
+
   it('includes a season that starts exactly now', () => {
     const seasons = [{ id: 'now', startsAt: '2026-06-15T12:00:00Z' }];
     expect(selectCurrentSeason(seasons, NOW)?.id).toBe('now');
+  });
+
+  it('ignores seasons with an unparseable startsAt', () => {
+    const seasons = [
+      { id: 'bad', startsAt: 'not-a-date' },
+      { id: 'active', startsAt: '2026-03-01T00:00:00Z' },
+    ];
+    expect(selectCurrentSeason(seasons, NOW)?.id).toBe('active');
   });
 
   it('returns null when every season is in the future', () => {

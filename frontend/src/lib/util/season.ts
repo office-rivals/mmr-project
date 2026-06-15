@@ -1,13 +1,26 @@
 /**
- * Selects the current season from a list ordered by `startsAt` descending.
+ * Selects the current season: the season with the latest `startsAt` at or before
+ * `now`.
  *
- * `listSeasons()` returns every season newest-first, so a not-yet-started
- * season sorts to index 0. The current season is the most recent one whose
- * `startsAt` is at or before `now`.
+ * Order-independent — it does not assume the input is sorted — and ignores
+ * entries whose `startsAt` cannot be parsed.
  */
 export function selectCurrentSeason<T extends { startsAt: string }>(
   seasons: readonly T[],
   now: number = Date.now()
 ): T | null {
-  return seasons.find((s) => new Date(s.startsAt).getTime() <= now) ?? null;
+  let current: T | null = null;
+  let currentStartsAt = -Infinity;
+
+  for (const season of seasons) {
+    const startsAtMs = Date.parse(season.startsAt);
+    if (Number.isNaN(startsAtMs)) continue;
+    if (startsAtMs > now) continue;
+    if (startsAtMs <= currentStartsAt) continue;
+
+    current = season;
+    currentStartsAt = startsAtMs;
+  }
+
+  return current;
 }
