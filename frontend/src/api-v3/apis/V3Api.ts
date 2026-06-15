@@ -289,6 +289,22 @@ export class V3SeasonsApi extends runtime.BaseAPI {
   }
 }
 
+// Admin Seasons API
+export class V3AdminSeasonsApi extends runtime.BaseAPI {
+  // Includes not-yet-started seasons; RequireOrgModerator.
+  async listAllSeasons(
+    orgId: string,
+    leagueId: string
+  ): Promise<SeasonResponse[]> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/admin/seasons`,
+      method: 'GET',
+      headers: {},
+    });
+    return await response.json();
+  }
+}
+
 // Matches API
 export class V3MatchesApi extends runtime.BaseAPI {
   async submitMatch(

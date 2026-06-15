@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { matchFlagActions } from '$lib/server/actions/matchFlagActions';
 import type { MatchResponse } from '$api3/models';
+import { selectCurrentSeason } from '$lib/util/season';
 import { movePlayerToTopLeft } from './utils';
 
 interface OpponentEntry {
@@ -29,7 +30,7 @@ export const load: PageServerLoad = async ({
       orgId,
       leagueId
     );
-    const currentSeason = seasonsList[0] ?? null;
+    const currentSeason = selectCurrentSeason(seasonsList);
     const seasonId = urlSeasonId ?? currentSeason?.id;
 
     const [
