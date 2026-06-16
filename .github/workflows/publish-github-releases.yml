@@ -53,7 +53,7 @@ jobs:
 
       - name: Set up QEMU
         if: steps.releases.outputs.released != '[]'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         if: steps.releases.outputs.released != '[]'
