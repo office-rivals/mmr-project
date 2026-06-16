@@ -57,7 +57,7 @@ jobs:
 
       - name: Set up Docker Buildx
         if: steps.releases.outputs.released != '[]'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
         if: steps.releases.outputs.released != '[]'
