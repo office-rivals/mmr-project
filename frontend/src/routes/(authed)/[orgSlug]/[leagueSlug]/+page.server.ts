@@ -16,7 +16,8 @@ export const load: PageServerLoad = async ({
     const currentSeason = selectCurrentSeason(seasons);
     const seasonId = urlSeasonId ?? currentSeason?.id;
     const isCurrentSeason =
-      urlSeasonId == null || urlSeasonId === currentSeason?.id;
+      currentSeason != null &&
+      (urlSeasonId == null || urlSeasonId === currentSeason.id);
 
     const ratingHistoryPromise = apiClientV3.ratingHistoryApi
       .getLeagueHistory(orgId, leagueId, seasonId)
