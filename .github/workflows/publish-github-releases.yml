@@ -69,7 +69,7 @@ jobs:
 
       - name: Build and push frontend
         if: contains(fromJson(steps.releases.outputs.released || '[]'), 'frontend')
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           push: true
@@ -82,7 +82,7 @@ jobs:
 
       - name: Build and push api
         if: contains(fromJson(steps.releases.outputs.released || '[]'), 'api')
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./api/MMRProject.Api
           push: true
@@ -95,7 +95,7 @@ jobs:
 
       - name: Build and push mmr-api
         if: contains(fromJson(steps.releases.outputs.released || '[]'), 'mmr-api')
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./mmr-api
           push: true
