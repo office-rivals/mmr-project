@@ -3,24 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { components } from "./components.mjs";
-
-export function extractReleaseNotes(changelogPath, version) {
-  const changelog = fs.readFileSync(changelogPath, "utf8");
-  const escapedVersion = escapeRegExp(version);
-  const matcher = new RegExp(`## ${escapedVersion}[\\s\\S]*?(?=\\n## |$)`);
-  const match = changelog.match(matcher);
-
-  if (!match) {
-    return `Release ${version}`;
-  }
-
-  return match[0].trim();
-}
-
-export function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+import { collectChangedComponents } from "./releases.mjs";
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [baseSha, headSha] = process.argv.slice(2);
@@ -40,26 +23,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // Components whose version changed in this release. Collected independently of
   // whether the GitHub release already exists, so a workflow re-run still reports
   // them to downstream steps (e.g. image builds) after a transient failure.
-  const released = [];
+  const changed = collectChangedComponents(repoRoot, baseSha);
 
-  for (const component of components) {
-    const currentPackage = readPackage(path.join(repoRoot, component.packageJsonPath));
-    const previousPackage = readPackageFromGit(baseSha, component.packageJsonPath);
-
-    if (previousPackage && previousPackage.version === currentPackage.version) {
-      continue;
-    }
-
-    released.push({ name: component.name, version: currentPackage.version });
-
-    const tag = `${component.name}@${currentPackage.version}`;
+  for (const { name, version, notes } of changed) {
+    const tag = `${name}@${version}`;
     if (releaseExists(tag)) {
       continue;
     }
 
-    const notes = extractReleaseNotes(path.join(repoRoot, component.changelogPath), currentPackage.version);
     const notesDir = fs.mkdtempSync(path.join(os.tmpdir(), "release-notes-"));
-    const notesFile = path.join(notesDir, `${component.name}.md`);
+    const notesFile = path.join(notesDir, `${name}.md`);
     fs.writeFileSync(notesFile, notes);
 
     try {
@@ -74,7 +47,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
           "--target",
           headSha,
           "--title",
-          `${component.name} v${currentPackage.version}`,
+          `${name} v${version}`,
           "--notes-file",
           notesFile
         ],
@@ -90,24 +63,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   if (process.env.GITHUB_OUTPUT) {
-    const releasedNames = released.map(({ name }) => name);
+    const releasedNames = changed.map(({ name }) => name);
     fs.appendFileSync(process.env.GITHUB_OUTPUT, `released=${JSON.stringify(releasedNames)}\n`);
-  }
-
-  function readPackage(packageJsonPath) {
-    return JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-  }
-
-  function readPackageFromGit(ref, packageJsonPath) {
-    try {
-      const file = execFileSync("git", ["show", `${ref}:${packageJsonPath}`], {
-        cwd: repoRoot,
-        encoding: "utf8"
-      });
-      return JSON.parse(file);
-    } catch {
-      return null;
-    }
   }
 
   function releaseExists(tag) {

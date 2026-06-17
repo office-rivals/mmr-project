@@ -1,9 +1,6 @@
-import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { components } from "./components.mjs";
-import { extractReleaseNotes } from "./create-releases.mjs";
+import { collectChangedComponents } from "./releases.mjs";
 
 const PREAMBLE =
   "This PR was automatically generated to apply pending changesets.\n\n" +
@@ -37,36 +34,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-  const releases = [];
-
-  for (const component of components) {
-    const current = readPackage(path.join(repoRoot, component.packageJsonPath));
-    const previous = readPackageFromGit(baseSha, component.packageJsonPath);
-
-    // A missing base package (new component) counts as changed.
-    if (previous && previous.version === current.version) {
-      continue;
-    }
-
-    const notes = extractReleaseNotes(path.join(repoRoot, component.changelogPath), current.version);
-    releases.push({ name: component.name, version: current.version, notes });
-  }
+  const releases = collectChangedComponents(repoRoot, baseSha);
 
   process.stdout.write(renderReleasePrBody(releases) + "\n");
-
-  function readPackage(packageJsonPath) {
-    return JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-  }
-
-  function readPackageFromGit(ref, packageJsonPath) {
-    try {
-      const file = execFileSync("git", ["show", `${ref}:${packageJsonPath}`], {
-        cwd: repoRoot,
-        encoding: "utf8"
-      });
-      return JSON.parse(file);
-    } catch {
-      return null;
-    }
-  }
 }
