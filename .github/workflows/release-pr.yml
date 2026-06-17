@@ -45,6 +45,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          # Captured before the release commit so the PR body diffs the new
+          # versions against what main currently ships.
+          BASE_SHA=$(git rev-parse HEAD)
+
           BRANCH="changeset-release/main"
           git checkout -B "$BRANCH"
 
@@ -59,15 +63,19 @@ jobs:
           git commit -m "Release"
           git push --force origin "$BRANCH"
 
+          BODY_FILE=$(mktemp)
+          node ./scripts/release/release-pr-body.mjs "$BASE_SHA" > "$BODY_FILE"
+
           existing_pr=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[0].number' || true)
           if [ -n "$existing_pr" ] && [ "$existing_pr" != "null" ]; then
+            gh pr edit "$existing_pr" --body-file "$BODY_FILE"
             echo "Release PR #$existing_pr updated"
           else
             gh pr create \
               --base main \
               --head "$BRANCH" \
               --title "Release" \
-              --body "This PR was automatically generated to apply pending changesets."
+              --body-file "$BODY_FILE"
           fi
 
       - name: Clean up stale release PR
