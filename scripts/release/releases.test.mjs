@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { extractReleaseNotes, escapeRegExp } from "./create-releases.mjs";
+import { extractReleaseNotes, escapeRegExp } from "./releases.mjs";
 
 describe("escapeRegExp", () => {
   it("escapes dots", () => {
