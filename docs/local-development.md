@@ -21,15 +21,18 @@ The seed is the recommended starting point for local development.
 
 ### Apply the seed
 
-Bring up Postgres and apply migrations once (the API runs migrations on
-startup), then run the seed:
+Start the stack with the Aspire AppHost (it brings up Postgres on `localhost:5432`
+and runs the API on `:8081`, applying migrations on startup), then run the seed:
 
 ```bash
-cd local-development && docker-compose up -d
-cd ../api/MMRProject.Api && dotnet run     # starts API on :8081 + applies migrations
-# In another terminal, once the API has started and migrations are done:
+dotnet run --project local-dev/MMRProject.AppHost
+# In another terminal, once the API is healthy:
 ./scripts/seed-local.sh
 ```
+
+`seed-local.sh` defaults (`localhost:5432`, user `postgres`, password
+`this_is_a_hard_password1337`, db `mmr_project`) match the AppHost's Postgres, so
+it works without extra config.
 
 Stable IDs you can use in URLs and tests:
 

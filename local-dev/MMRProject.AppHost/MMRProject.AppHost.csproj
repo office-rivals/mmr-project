@@ -1,0 +1,27 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.4.3">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>dc349d93-b4a6-4481-8ba0-65fdb94659da</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.4.3" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.4.3" />
+    <!--
+      Go is hosted via the Community Toolkit. The first-party Aspire.Hosting.Go
+      package only ships as a preview at the time of writing, so we stay on the
+      stable toolkit and tolerate the AddGolangApp obsolete warning (see AppHost.cs).
+    -->
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Golang" Version="13.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Generates the Projects.MMRProject_Api metadata used by AddProject<>. -->
+    <ProjectReference Include="..\..\api\MMRProject.Api\MMRProject.Api.csproj" />
+  </ItemGroup>
+
+</Project>

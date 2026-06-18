@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Apply the vendored seed (scripts/seed-data.sql) against the local Postgres
-# running in docker-compose. Wipes all v3 data and inserts a deterministic
-# fixture suitable for local UI development and the Playwright e2e suite.
+# Apply the vendored seed (scripts/seed-data.sql) against a local Postgres
+# (the Aspire AppHost's for UI dev, or the e2e compose stack's). Wipes all v3
+# data and inserts a deterministic fixture suitable for local UI development and
+# the Playwright e2e suite.
 #
 # Usage:
 #   ./scripts/seed-local.sh                                 # uses defaults
