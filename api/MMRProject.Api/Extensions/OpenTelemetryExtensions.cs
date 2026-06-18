@@ -31,6 +31,7 @@ public static class OpenTelemetryExtensions
                         var path = ctx.Request.Path.Value;
                         if (string.IsNullOrEmpty(path)) return true;
                         return path != "/health"
+                               && path != "/ready"
                                && !path.StartsWith("/swagger", StringComparison.Ordinal);
                     };
                 })
