@@ -17,6 +17,31 @@ export function formatDateTime(d: string | null | undefined): string {
   return new Date(d).toLocaleString();
 }
 
+export function isToday(d: string | null | undefined): boolean {
+  if (!d) return false;
+  const date = new Date(d);
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
+export function matchDateGroupLabel(d: string | null | undefined): string {
+  if (!d) return '';
+  const date = new Date(d);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return date.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 export function getPlayerDisplayName(
   p:
     | { displayName?: string | null; username?: string | null }
