@@ -9,25 +9,33 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 // --- Parameters --------------------------------------------------------------
 
+// Config-backed parameter with a dev fallback. The plain AddParameter(name, value)
+// overload binds a *literal* constant and never reads configuration, so
+// `dotnet user-secrets set Parameters:<name> ...` would be silently ignored. Reading
+// Configuration[$"Parameters:{name}"] first makes user-secrets (and any other config
+// source) win, while the fallback keeps first run a single command.
+IResourceBuilder<ParameterResource> Param(string name, string fallback, bool secret = false) =>
+    builder.AddParameter(name, () => builder.Configuration[$"Parameters:{name}"] ?? fallback, secret: secret);
+
 // The api and mmr-api authenticate with a SHARED secret. Injecting one parameter
 // into both (api's Admin:Secret + MMRCalculationAPI:ApiKey, mmr-api's ADMIN_SECRET)
 // makes it impossible for them to drift. Dev default keeps first run one command;
 // override via `dotnet user-secrets set Parameters:admin-secret <value>`.
-var adminSecret = builder.AddParameter("admin-secret", "super-secret-admin", secret: true);
+var adminSecret = Param("admin-secret", "super-secret-admin", secret: true);
 
 // Stable Postgres password so a persisted data volume keeps working across
 // restarts. Matches the repo's established local password (docker-compose.e2e.yml,
 // scripts/seed-local.sh) so the seed/inspect tooling works unchanged.
-var postgresPassword = builder.AddParameter("postgres-password", "this_is_a_hard_password1337", secret: true);
+var postgresPassword = Param("postgres-password", "this_is_a_hard_password1337", secret: true);
 
 // Clerk auth. Placeholders let the stack start; set real values via AppHost
 // user-secrets (Parameters:clerk-*) to actually sign in (see local-dev/README.md).
 // The publishable key is a valid-format placeholder (decodes to
 // example.clerk.accounts.dev) so Clerk's SDK parses it and SSR renders the
 // sign-in page rather than erroring.
-var clerkPublishableKey = builder.AddParameter("clerk-publishable-key", "pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk");
-var clerkSecretKey = builder.AddParameter("clerk-secret-key", "sk_test_placeholder", secret: true);
-var clerkIssuer = builder.AddParameter("clerk-issuer", "https://example.clerk.accounts.dev");
+var clerkPublishableKey = Param("clerk-publishable-key", "pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk");
+var clerkSecretKey = Param("clerk-secret-key", "sk_test_placeholder", secret: true);
+var clerkIssuer = Param("clerk-issuer", "https://example.clerk.accounts.dev");
 
 // --- Postgres ----------------------------------------------------------------
 
