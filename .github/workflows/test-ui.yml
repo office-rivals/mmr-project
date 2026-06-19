@@ -12,6 +12,9 @@ on:
       - "frontend/**/*"
       - ".github/workflows/test-ui.yml"
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
