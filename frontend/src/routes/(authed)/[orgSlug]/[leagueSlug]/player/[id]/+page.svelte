@@ -20,7 +20,7 @@
     Trash2,
     X,
   } from 'lucide-svelte';
-  import { getPlayerDisplayName, isToday, matchDateGroupLabel } from '$lib/utils';
+  import { getPlayerDisplayName } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
   import Filter from './components/filter.svelte';
 
@@ -53,20 +53,6 @@
       return filteredPlayers.every((id) =>
         match.teams.some((t) => t.players.some((p) => p.leaguePlayerId === id))
       );
-    })
-  );
-
-  const matchGroups = $derived(
-    matches.map((match, i, arr) => {
-      const today = isToday(match.playedAt);
-      const prev = arr[i - 1];
-      const newGroup =
-        !today &&
-        (prev == null ||
-          isToday(prev.playedAt) ||
-          matchDateGroupLabel(prev.playedAt) !==
-            matchDateGroupLabel(match.playedAt));
-      return { match, label: newGroup ? matchDateGroupLabel(match.playedAt) : null };
     })
   );
 
@@ -336,26 +322,19 @@
         {#if matches.length === 0}
           <p>No matches found</p>
         {/if}
-        {#each matchGroups as group (group.match.id)}
-          {#if group.label}
-            <div
-              class="text-muted-foreground px-2 pt-3 pb-1 text-xs font-medium tracking-wide uppercase"
-            >
-              {group.label}
-            </div>
-          {/if}
-          {@const existingFlag = myFlagForMatch(group.match.id)}
+        {#each matches as match (match.id)}
+          {@const existingFlag = myFlagForMatch(match.id)}
           <div class="rounded-lg {existingFlag ? 'ring-1 ring-red-400' : ''}">
             <div class="flex items-stretch gap-1">
               <div class="flex-1">
-                <MatchCard match={group.match} showMmr />
+                <MatchCard {match} showMmr />
               </div>
               <button
                 class="rounded p-2 transition-colors hover:bg-muted {existingFlag
                   ? 'text-red-500'
                   : 'text-muted-foreground'}"
                 title={existingFlag ? 'Edit flag' : 'Flag this match'}
-                onclick={() => openFlagDialog(group.match.id)}
+                onclick={() => openFlagDialog(match.id)}
               >
                 <Flag class="h-4 w-4" />
               </button>

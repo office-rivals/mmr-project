@@ -16,7 +16,6 @@
     LeagueRatingHistoryEntry,
     MatchResponse,
   } from '$api3/models';
-  import { isToday, matchDateGroupLabel } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
 
   interface Props {
@@ -30,20 +29,6 @@
   let selectedEntry = $state<LeaderboardEntryResponse | null>(null);
   let reportModalOpen = $state(false);
   let ratingHistory = $state<LeagueRatingHistoryEntry[] | undefined>(undefined);
-
-  const recentMatchGroups = $derived(
-    (data.recentMatches ?? []).map((match, i, arr) => {
-      const today = isToday(match.playedAt);
-      const prev = arr[i - 1];
-      const newGroup =
-        !today &&
-        (prev == null ||
-          isToday(prev.playedAt) ||
-          matchDateGroupLabel(prev.playedAt) !==
-            matchDateGroupLabel(match.playedAt));
-      return { match, label: newGroup ? matchDateGroupLabel(match.playedAt) : null };
-    })
-  );
 
   $effect(() => {
     data.ratingHistoryPromise.then((res) => (ratingHistory = res.entries));
@@ -127,15 +112,8 @@
   </div>
 
   <div class="flex flex-1 flex-col items-stretch gap-2">
-    {#each recentMatchGroups as group (group.match.id)}
-      {#if group.label}
-        <div
-          class="text-muted-foreground px-2 pt-3 pb-1 text-xs font-medium tracking-wide uppercase"
-        >
-          {group.label}
-        </div>
-      {/if}
-      <MatchCard match={group.match} showMmr={$showMmr} />
+    {#each data.recentMatches ?? [] as match (match.id)}
+      <MatchCard {match} showMmr={$showMmr} />
     {/each}
   </div>
 
