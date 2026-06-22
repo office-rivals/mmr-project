@@ -10,7 +10,15 @@
   import Label from '$lib/components/ui/label/label.svelte';
   import { showMmr } from '../../../../stores/show-mmr';
   import { Checkbox } from 'bits-ui';
-  import { AlertCircle, Check, CheckCircle, Flag, Minus } from 'lucide-svelte';
+  import { invalidateAll } from '$app/navigation';
+  import {
+    AlertCircle,
+    Check,
+    CheckCircle,
+    Flag,
+    Minus,
+    RefreshCw,
+  } from 'lucide-svelte';
   import type {
     LeaderboardEntryResponse,
     LeagueRatingHistoryEntry,
@@ -29,6 +37,7 @@
   let selectedEntry = $state<LeaderboardEntryResponse | null>(null);
   let reportModalOpen = $state(false);
   let ratingHistory = $state<LeagueRatingHistoryEntry[] | undefined>(undefined);
+  let isRefreshing = $state(false);
 
   $effect(() => {
     data.ratingHistoryPromise.then((res) => (ratingHistory = res.entries));
@@ -37,6 +46,16 @@
   function openStatsModal(entry: LeaderboardEntryResponse) {
     selectedEntry = entry;
     statsModalOpen = true;
+  }
+
+  async function refresh() {
+    if (isRefreshing) return;
+    isRefreshing = true;
+    try {
+      await invalidateAll();
+    } finally {
+      isRefreshing = false;
+    }
   }
 
   async function fetchRecentMatch(
@@ -73,11 +92,20 @@
     </Alert>
   {/if}
 
-  {#if data.seasons != null && data.seasons.length > 1 && data.currentSeason}
-    <div class="self-end">
+  <div class="flex justify-end gap-2">
+    {#if data.seasons != null && data.seasons.length > 1 && data.currentSeason}
       <SeasonPicker seasons={data.seasons} currentSeason={data.currentSeason} />
-    </div>
-  {/if}
+    {/if}
+    <Button
+      variant="outline"
+      size="icon"
+      onclick={refresh}
+      disabled={isRefreshing}
+      aria-label="Refresh"
+    >
+      <RefreshCw class="h-4 w-4 {isRefreshing ? 'animate-spin' : ''}" />
+    </Button>
+  </div>
 
   <div class="flex">
     <div class="flex flex-1 items-center gap-3">
