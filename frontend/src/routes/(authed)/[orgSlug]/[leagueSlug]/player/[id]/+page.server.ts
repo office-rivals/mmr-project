@@ -159,6 +159,7 @@ export const load: PageServerLoad = async ({
       currentSeason,
       isCurrentSeason: urlSeasonId == null || urlSeasonId === currentSeason?.id,
       myFlags,
+      now: Date.now(),
     };
   } catch {
     throw error(404, 'Player not found');

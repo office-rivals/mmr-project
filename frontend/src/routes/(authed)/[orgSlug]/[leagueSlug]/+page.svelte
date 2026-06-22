@@ -16,7 +16,7 @@
     LeagueRatingHistoryEntry,
     MatchResponse,
   } from '$api3/models';
-  import { isToday, matchDateGroupLabel } from '$lib/utils';
+  import { groupMatchesByDate } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
 
   interface Props {
@@ -32,17 +32,7 @@
   let ratingHistory = $state<LeagueRatingHistoryEntry[] | undefined>(undefined);
 
   const recentMatchGroups = $derived(
-    (data.recentMatches ?? []).map((match, i, arr) => {
-      const today = isToday(match.playedAt);
-      const prev = arr[i - 1];
-      const newGroup =
-        !today &&
-        (prev == null ||
-          isToday(prev.playedAt) ||
-          matchDateGroupLabel(prev.playedAt) !==
-            matchDateGroupLabel(match.playedAt));
-      return { match, label: newGroup ? matchDateGroupLabel(match.playedAt) : null };
-    })
+    groupMatchesByDate(data.recentMatches ?? [], data.now)
   );
 
   $effect(() => {
@@ -130,7 +120,7 @@
     {#each recentMatchGroups as group (group.match.id)}
       {#if group.label}
         <div
-          class="text-muted-foreground px-2 pt-3 pb-1 text-xs font-medium tracking-wide uppercase"
+          class="px-2 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground"
         >
           {group.label}
         </div>

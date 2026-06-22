@@ -20,7 +20,7 @@
     Trash2,
     X,
   } from 'lucide-svelte';
-  import { getPlayerDisplayName, isToday, matchDateGroupLabel } from '$lib/utils';
+  import { getPlayerDisplayName, groupMatchesByDate } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
   import Filter from './components/filter.svelte';
 
@@ -56,19 +56,7 @@
     })
   );
 
-  const matchGroups = $derived(
-    matches.map((match, i, arr) => {
-      const today = isToday(match.playedAt);
-      const prev = arr[i - 1];
-      const newGroup =
-        !today &&
-        (prev == null ||
-          isToday(prev.playedAt) ||
-          matchDateGroupLabel(prev.playedAt) !==
-            matchDateGroupLabel(match.playedAt));
-      return { match, label: newGroup ? matchDateGroupLabel(match.playedAt) : null };
-    })
-  );
+  const matchGroups = $derived(groupMatchesByDate(matches, data.now));
 
   const chartData = $derived(
     data.ratingHistory?.entries?.map((e) => ({
@@ -339,7 +327,7 @@
         {#each matchGroups as group (group.match.id)}
           {#if group.label}
             <div
-              class="text-muted-foreground px-2 pt-3 pb-1 text-xs font-medium tracking-wide uppercase"
+              class="px-2 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground"
             >
               {group.label}
             </div>
