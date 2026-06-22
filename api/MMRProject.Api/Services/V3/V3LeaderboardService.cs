@@ -14,6 +14,7 @@ public interface IV3LeaderboardService
 public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardService
 {
     private const int RankedMatchThreshold = 10;
+    private const int RecentFormLength = 5;
 
     public async Task<LeaderboardResponse> GetLeaderboardAsync(Guid orgId, Guid leagueId, Guid? seasonId)
     {
@@ -52,6 +53,7 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
                     Losses = losses,
                     WinningStreak = stat?.WinningStreak ?? 0,
                     LosingStreak = stat?.LosingStreak ?? 0,
+                    RecentForm = ParseRecentForm(stat?.RecentForm),
                 };
             })
             .Where(e => seasonId == null || stats.ContainsKey(e.LeaguePlayerId))
@@ -90,6 +92,13 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
                            ORDER BY played_at DESC, recorded_at DESC, match_created_at DESC, match_id DESC
                        ) AS match_seq
                 FROM player_matches
+            ),
+            recent_form AS (
+                SELECT player_id,
+                       string_agg(CASE WHEN is_winner THEN 'W' ELSE 'L' END, ''
+                                  ORDER BY match_seq) FILTER (WHERE match_seq <= {3}) AS form
+                FROM ordered_player_matches
+                GROUP BY player_id
             ),
             streak_groups AS (
                 SELECT player_id,
@@ -134,15 +143,17 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
                    COUNT(*) FILTER (WHERE NOT pm.is_winner)::int AS Losses,
                    COALESCE((SELECT streak_length FROM current_streaks cs WHERE cs.player_id = pm.player_id AND cs.is_winner), 0)::int AS WinningStreak,
                    COALESCE((SELECT streak_length FROM current_streaks cs WHERE cs.player_id = pm.player_id AND NOT cs.is_winner), 0)::int AS LosingStreak,
-                   ls.mmr AS Mmr
+                   ls.mmr AS Mmr,
+                   COALESCE(rf.form, '') AS Form
             FROM player_matches pm
             LEFT JOIN latest_season_mmr ls ON ls.league_player_id = pm.player_id
-            GROUP BY pm.player_id, ls.mmr
+            LEFT JOIN recent_form rf ON rf.player_id = pm.player_id
+            GROUP BY pm.player_id, ls.mmr, rf.form
         """;
 
         var seasonParam = seasonId.HasValue ? (object)seasonId.Value : DBNull.Value;
         var rows = await dbContext.Database
-            .SqlQueryRaw<PlayerStatsRow>(sql, orgId, leagueId, seasonParam)
+            .SqlQueryRaw<PlayerStatsRow>(sql, orgId, leagueId, seasonParam, RecentFormLength)
             .ToListAsync();
 
         return rows.ToDictionary(
@@ -154,7 +165,27 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
                 WinningStreak = r.WinningStreak,
                 LosingStreak = r.LosingStreak,
                 Mmr = r.Mmr,
+                RecentForm = r.Form,
             });
+    }
+
+    private static IReadOnlyList<bool> ParseRecentForm(string? form)
+    {
+        if (string.IsNullOrEmpty(form))
+            return Array.Empty<bool>();
+
+        var results = new List<bool>(form.Length);
+        foreach (var c in form)
+        {
+            results.Add(c switch
+            {
+                'W' => true,
+                'L' => false,
+                _ => throw new InvalidOperationException(
+                    $"Unexpected character '{c}' in recent form string '{form}'."),
+            });
+        }
+        return results;
     }
 
     private static List<LeaderboardEntryResponse> AssignRanks(List<LeaderboardEntryResponse> entries)
@@ -185,6 +216,7 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
         public int WinningStreak { get; init; }
         public int LosingStreak { get; init; }
         public long? Mmr { get; init; }
+        public string Form { get; init; } = string.Empty;
     }
 
     private record PlayerStats
@@ -194,5 +226,6 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
         public int WinningStreak { get; init; }
         public int LosingStreak { get; init; }
         public long? Mmr { get; init; }
+        public string? RecentForm { get; init; }
     }
 }

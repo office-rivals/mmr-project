@@ -10,6 +10,7 @@
   } from '../../api-v3/models';
   import Kpi from './kpi.svelte';
   import MatchCard from './match-card/match-card.svelte';
+  import RecentFormDots from './recent-form-dots';
   import * as Card from './ui/card';
 
   interface Props {
@@ -58,6 +59,9 @@
         <Kpi title="# Wins" class="col-start-1">{entry.wins}</Kpi>
         <Kpi title="# Losses">{entry.losses}</Kpi>
         <Kpi title="# Matches">{totalGames}</Kpi>
+        <Kpi title="Form">
+          <RecentFormDots results={entry.recentForm} />
+        </Kpi>
         <Kpi title="Streak">
           {#if entry.winningStreak > 0}🔥 {entry.winningStreak}{/if}
           {#if entry.losingStreak > 0}{entry.losingStreak >= 7 ? '⛈️' : '🌧️'}

@@ -41,7 +41,10 @@
           isToday(prev.playedAt) ||
           matchDateGroupLabel(prev.playedAt) !==
             matchDateGroupLabel(match.playedAt));
-      return { match, label: newGroup ? matchDateGroupLabel(match.playedAt) : null };
+      return {
+        match,
+        label: newGroup ? matchDateGroupLabel(match.playedAt) : null,
+      };
     })
   );
 
@@ -130,7 +133,7 @@
     {#each recentMatchGroups as group (group.match.id)}
       {#if group.label}
         <div
-          class="text-muted-foreground px-2 pt-3 pb-1 text-xs font-medium tracking-wide uppercase"
+          class="px-2 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground"
         >
           {group.label}
         </div>

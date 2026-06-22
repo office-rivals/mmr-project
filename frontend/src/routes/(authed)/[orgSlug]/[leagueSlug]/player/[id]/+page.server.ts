@@ -149,6 +149,7 @@ export const load: PageServerLoad = async ({
         daysSinceLastMatch,
         winningStreak: playerEntry?.winningStreak ?? 0,
         losingStreak: playerEntry?.losingStreak ?? 0,
+        recentForm: playerEntry?.recentForm ?? [],
       },
       teammates,
       opponents,

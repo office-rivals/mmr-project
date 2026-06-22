@@ -7,6 +7,7 @@
     LeaderboardEntryResponse,
     LeagueRatingHistoryEntry,
   } from '../../../api-v3/models';
+  import RecentFormDots from '../recent-form-dots';
   import Sparkline from '../ui/sparkline/sparkline.svelte';
 
   interface Props {
@@ -35,6 +36,7 @@
             <span class="sm:hidden">L</span>
             <span class="hidden sm:inline">Losses</span>
           </Table.Head>
+          <Table.Head>Form</Table.Head>
           <Table.Head class="text-right">Score</Table.Head>
         </Table.Row>
       </Table.Header>
@@ -42,7 +44,7 @@
         {#each entries as entry, index (entry.leaguePlayerId)}
           {#if entry.mmr == null && (index === 0 || entries[index - 1]?.mmr != null)}
             <Table.Row>
-              <Table.Cell colspan={5} class="text-center">Unranked</Table.Cell>
+              <Table.Cell colspan={6} class="text-center">Unranked</Table.Cell>
             </Table.Row>
           {/if}
           <Table.Row
@@ -89,6 +91,9 @@
                   </span>
                 {/if}
               </div>
+            </Table.Cell>
+            <Table.Cell>
+              <RecentFormDots results={entry.recentForm} />
             </Table.Cell>
             <Table.Cell>
               <div class="flex justify-end gap-2">

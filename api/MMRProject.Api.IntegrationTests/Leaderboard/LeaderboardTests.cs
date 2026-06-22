@@ -199,4 +199,124 @@ public class LeaderboardTests(PostgresFixture postgres) : IntegrationTestBase(po
         // No matches in the past season — entries shouldn't exist for it
         Assert.DoesNotContain(pastLb.Entries, e => e.LeaguePlayerId == p1.Id);
     }
+
+    [Fact]
+    public async Task Leaderboard_RecentForm_EmptyForPlayerWithNoMatches()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+
+        var (_, _, p1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, p2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+
+        AuthenticateAs("p1");
+
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/leaderboard");
+        var lb = await ReadJsonAsync<LeaderboardResponse>(response);
+        Assert.NotNull(lb);
+
+        var p1Entry = lb.Entries.Single(e => e.LeaguePlayerId == p1.Id);
+        Assert.Empty(p1Entry.RecentForm);
+
+        var p2Entry = lb.Entries.Single(e => e.LeaguePlayerId == p2.Id);
+        Assert.Empty(p2Entry.RecentForm);
+    }
+
+    [Fact]
+    public async Task Leaderboard_RecentForm_ReturnsLastFiveResultsMostRecentFirst()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, p1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, p2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, p3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, p4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        // p1+p2 win matches 1,2,3,5,6 and lose matches 4,7.
+        // Most-recent-first order for p1: 7(L), 6(W), 5(W), 4(L), 3(W) -> [L,W,W,L,W]
+        // Most-recent-first order for p3: 7(W), 6(L), 5(L), 4(W), 3(L) -> [W,L,L,W,L]
+        var outcomes = new[] { true, true, true, false, true, true, false };
+        foreach (var p1Wins in outcomes)
+        {
+            var resp = await Client.PostAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+                new SubmitMatchRequest
+                {
+                    Teams =
+                    [
+                        new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = p1Wins ? 10 : 5 },
+                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = p1Wins ? 5 : 10 }
+                    ]
+                });
+            Assert.Equal(HttpStatusCode.Created, resp.StatusCode);
+            // Small delay so played_at is strictly increasing across submissions.
+            await Task.Delay(2);
+        }
+
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/leaderboard");
+        var lb = await ReadJsonAsync<LeaderboardResponse>(response);
+        Assert.NotNull(lb);
+
+        var p1Entry = lb.Entries.Single(e => e.LeaguePlayerId == p1.Id);
+        Assert.Equal(new[] { false, true, true, false, true }, p1Entry.RecentForm);
+
+        var p3Entry = lb.Entries.Single(e => e.LeaguePlayerId == p3.Id);
+        Assert.Equal(new[] { true, false, false, true, false }, p3Entry.RecentForm);
+    }
+
+    [Fact]
+    public async Task Leaderboard_RecentForm_IsScopedToSeason()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        var pastSeason = await CreateSeason(org.Id, league.Id, DateTimeOffset.UtcNow.AddMonths(-6));
+        var currentSeason = await CreateSeason(org.Id, league.Id, DateTimeOffset.UtcNow);
+
+        var (_, _, p1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Owner);
+        var (_, _, p2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, p3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, p4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        // 6 matches in the current season with alternating outcomes: W, L, W, L, W, L
+        for (var i = 0; i < 6; i++)
+        {
+            var p1Wins = i % 2 == 0;
+            var resp = await Client.PostAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+                new SubmitMatchRequest
+                {
+                    Teams =
+                    [
+                        new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = p1Wins ? 10 : 5 },
+                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = p1Wins ? 5 : 10 }
+                    ]
+                });
+            Assert.Equal(HttpStatusCode.Created, resp.StatusCode);
+            await Task.Delay(2);
+        }
+
+        // Current season form is the last 5 of W,L,W,L,W,L -> [L,W,L,W,L]
+        var currentResp = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/leaderboard?seasonId={currentSeason.Id}");
+        var currentLb = await ReadJsonAsync<LeaderboardResponse>(currentResp);
+        var p1Current = currentLb!.Entries.Single(e => e.LeaguePlayerId == p1.Id);
+        Assert.Equal(new[] { false, true, false, true, false }, p1Current.RecentForm);
+
+        // Past season has no matches so p1 isn't listed
+        var pastResp = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/leaderboard?seasonId={pastSeason.Id}");
+        var pastLb = await ReadJsonAsync<LeaderboardResponse>(pastResp);
+        Assert.DoesNotContain(pastLb!.Entries, e => e.LeaguePlayerId == p1.Id);
+    }
 }

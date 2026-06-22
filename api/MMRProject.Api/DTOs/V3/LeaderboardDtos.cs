@@ -20,4 +20,5 @@ public record LeaderboardEntryResponse
     [Required] public required int Losses { get; init; }
     [Required] public required int WinningStreak { get; init; }
     [Required] public required int LosingStreak { get; init; }
+    [Required] public required IReadOnlyList<bool> RecentForm { get; init; }
 }

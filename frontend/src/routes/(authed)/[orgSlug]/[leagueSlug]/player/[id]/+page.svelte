@@ -2,6 +2,7 @@
   import Kpi from '$lib/components/kpi.svelte';
   import MatchCard from '$lib/components/match-card/match-card.svelte';
   import PageTitle from '$lib/components/page-title.svelte';
+  import RecentFormDots from '$lib/components/recent-form-dots';
   import SeasonPicker from '$lib/components/season-picker.svelte';
   import { Alert } from '$lib/components/ui/alert';
   import { Badge } from '$lib/components/ui/badge';
@@ -20,7 +21,11 @@
     Trash2,
     X,
   } from 'lucide-svelte';
-  import { getPlayerDisplayName, isToday, matchDateGroupLabel } from '$lib/utils';
+  import {
+    getPlayerDisplayName,
+    isToday,
+    matchDateGroupLabel,
+  } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
   import Filter from './components/filter.svelte';
 
@@ -66,7 +71,10 @@
           isToday(prev.playedAt) ||
           matchDateGroupLabel(prev.playedAt) !==
             matchDateGroupLabel(match.playedAt));
-      return { match, label: newGroup ? matchDateGroupLabel(match.playedAt) : null };
+      return {
+        match,
+        label: newGroup ? matchDateGroupLabel(match.playedAt) : null,
+      };
     })
   );
 
@@ -177,6 +185,9 @@
           {data.stats.losingStreak}{/if}
       </Kpi>
     {/if}
+    <Kpi title="Form">
+      <RecentFormDots results={data.stats.recentForm} />
+    </Kpi>
   </div>
 
   {#if chartData.length > 0}
@@ -339,7 +350,7 @@
         {#each matchGroups as group (group.match.id)}
           {#if group.label}
             <div
-              class="text-muted-foreground px-2 pt-3 pb-1 text-xs font-medium tracking-wide uppercase"
+              class="px-2 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground"
             >
               {group.label}
             </div>

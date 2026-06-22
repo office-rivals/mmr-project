@@ -237,6 +237,7 @@ export interface LeaderboardEntryResponse {
   losses: number;
   winningStreak: number;
   losingStreak: number;
+  recentForm: boolean[];
 }
 
 // Rating History DTOs
