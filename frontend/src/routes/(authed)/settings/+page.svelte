@@ -8,6 +8,7 @@
   import Card from '$lib/components/ui/card/card.svelte';
   import { AlertCircle, Check, Copy, Plus, Trash2 } from 'lucide-svelte';
   import type { ActionData, PageData } from './$types';
+  import { formatDate } from '$lib/utils';
 
   interface Props {
     data: PageData;
@@ -18,11 +19,6 @@
   let showCreateDialog = $state(false);
   let isCreating = $state(false);
   let copySuccess = $state(false);
-
-  function formatDate(dateStr?: string): string {
-    if (!dateStr) return 'Never';
-    return new Date(dateStr).toLocaleDateString();
-  }
 
   async function copyToClipboard(text: string) {
     try {
@@ -190,13 +186,13 @@
                   <tr class="border-b border-muted last:border-0">
                     <td class="px-4 py-3 font-medium">{token.name}</td>
                     <td class="px-4 py-3 text-sm text-muted-foreground"
-                      >{formatDate(token.lastUsedAt)}</td
+                      >{formatDate(token.lastUsedAt, 'Never')}</td
                     >
                     <td class="px-4 py-3 text-sm text-muted-foreground"
-                      >{formatDate(token.expiresAt)}</td
+                      >{formatDate(token.expiresAt, 'Never')}</td
                     >
                     <td class="px-4 py-3 text-sm text-muted-foreground"
-                      >{formatDate(token.createdAt)}</td
+                      >{formatDate(token.createdAt, 'Never')}</td
                     >
                     <td class="px-4 py-3 text-right">
                       <form
