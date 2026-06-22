@@ -54,15 +54,15 @@
 </script>
 
 <svelte:window
-  on:touchstart={onTouchStart}
-  on:touchmove={onTouchMove}
-  on:touchend={onTouchEnd}
+  ontouchstart={onTouchStart}
+  ontouchmove={onTouchMove}
+  ontouchend={onTouchEnd}
 />
 
 {#if pullDistance > 0}
   <div
     class="pointer-events-none fixed left-0 right-0 z-50 flex justify-center"
-    style="top: calc(env(safe-area-inset-top) + {pullDistance -
+    style="top: calc(env(safe-area-inset-top) + var(--header-height) + {pullDistance -
       40}px); opacity: {Math.min(pullDistance / THRESHOLD, 1)}"
   >
     <div class="rounded-full border bg-card p-2 shadow-md">
