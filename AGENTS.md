@@ -28,10 +28,9 @@ dotnet run --project local-dev/MMRProject.AppHost
 ```
 
 This launches the .NET Aspire dashboard (logs, traces, metrics and endpoint
-links) and injects every service's config — shared admin secret, Postgres
-connection string, MMR API base URL, frontend API base path — so no per-service
-`.env` wiring is required. One-time setup (prerequisites and Clerk keys for
-sign-in) is documented in [`local-dev/README.md`](local-dev/README.md).
+links) and injects every service's config, so no per-service `.env` wiring is
+required. One-time setup (prerequisites and Clerk keys for sign-in) is
+documented in [`local-dev/README.md`](local-dev/README.md).
 
 ### Running a single service
 
@@ -63,15 +62,14 @@ go run main.go           # MMR API on http://localhost:8080
 go test ./...            # all tests (single package: go test ./test/mmr)
 ```
 
-Migrations run automatically on API startup when `Migration:Enabled` is true.
 Regenerate the frontend API client (`npm run generate-api`) after any API change.
 
 ### Database
 
 The AppHost provisions PostgreSQL (persisted in a Docker volume) and the API
-applies EF Core migrations on startup, so the local database needs no manual
-setup — inspect or open a shell on it from the Postgres resource in the Aspire
-dashboard.
+applies EF Core migrations on startup when `Migration:Enabled` is true, so the
+local database needs no manual setup — inspect or open a shell on it from the
+Postgres resource in the Aspire dashboard.
 
 ```bash
 # Import production data into a target database
