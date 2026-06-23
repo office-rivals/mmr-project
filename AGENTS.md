@@ -12,9 +12,9 @@ deployment-specific values via env vars or CLI args in scripts.
 
 Three-service matchmaking and rating system:
 
-- **Frontend**: SvelteKit 2 / Svelte 5 + TypeScript + TailwindCSS
-- **API**: ASP.NET Core 8 — business logic and data persistence
-- **MMR API**: Go 1.23 — MMR calculations and team balancing
+- **Frontend**: SvelteKit + Svelte 5 + TypeScript + TailwindCSS
+- **API**: ASP.NET Core — business logic and data persistence
+- **MMR API**: Go — MMR calculations and team balancing
 
 ## Development Commands
 
