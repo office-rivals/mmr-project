@@ -377,6 +377,7 @@
         role="application"
         aria-label="Touch randomizer surface"
         class="relative flex-1 touch-none select-none overflow-hidden bg-muted"
+        data-no-pull-to-refresh
         ontouchstart={handleTouchStart}
         ontouchmove={handleTouchMove}
         ontouchend={handleTouchEnd}
