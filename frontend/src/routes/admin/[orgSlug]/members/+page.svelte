@@ -22,7 +22,11 @@
     UserPlus,
   } from 'lucide-svelte';
   import { Alert } from '$lib/components/ui/alert';
-  import { getRoleBadgeVariant, isModeratorOrAbove } from '$lib/utils';
+  import {
+    formatDate,
+    getRoleBadgeVariant,
+    isModeratorOrAbove,
+  } from '$lib/utils';
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -48,11 +52,6 @@
     } catch {
       alert(`Invite link: ${url}`);
     }
-  }
-
-  function formatDate(dateStr?: string): string {
-    if (!dateStr) return 'Never';
-    return new Date(dateStr).toLocaleDateString();
   }
 </script>
 
@@ -113,7 +112,7 @@
                     <p class="text-xs text-muted-foreground">
                       {link.useCount}{link.maxUses ? `/${link.maxUses}` : ''} uses
                       {#if link.expiresAt}
-                        · Expires {formatDate(link.expiresAt)}
+                        · Expires {formatDate(link.expiresAt, 'Never')}
                       {/if}
                     </p>
                   </div>

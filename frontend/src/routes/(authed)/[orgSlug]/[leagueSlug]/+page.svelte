@@ -16,6 +16,7 @@
     LeagueRatingHistoryEntry,
     MatchResponse,
   } from '$api3/models';
+  import { groupMatchesByDate } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
 
   interface Props {
@@ -29,6 +30,10 @@
   let selectedEntry = $state<LeaderboardEntryResponse | null>(null);
   let reportModalOpen = $state(false);
   let ratingHistory = $state<LeagueRatingHistoryEntry[] | undefined>(undefined);
+
+  const recentMatchGroups = $derived(
+    groupMatchesByDate(data.recentMatches ?? [], data.now)
+  );
 
   $effect(() => {
     data.ratingHistoryPromise.then((res) => (ratingHistory = res.entries));
@@ -112,8 +117,15 @@
   </div>
 
   <div class="flex flex-1 flex-col items-stretch gap-2">
-    {#each data.recentMatches ?? [] as match (match.id)}
-      <MatchCard {match} showMmr={$showMmr} />
+    {#each recentMatchGroups as group (group.match.id)}
+      {#if group.label}
+        <div
+          class="px-2 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+        >
+          {group.label}
+        </div>
+      {/if}
+      <MatchCard match={group.match} showMmr={$showMmr} />
     {/each}
   </div>
 

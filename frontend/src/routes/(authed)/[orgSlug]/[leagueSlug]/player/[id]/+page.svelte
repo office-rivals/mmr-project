@@ -20,7 +20,7 @@
     Trash2,
     X,
   } from 'lucide-svelte';
-  import { getPlayerDisplayName } from '$lib/utils';
+  import { getPlayerDisplayName, groupMatchesByDate } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
   import Filter from './components/filter.svelte';
 
@@ -55,6 +55,8 @@
       );
     })
   );
+
+  const matchGroups = $derived(groupMatchesByDate(matches, data.now));
 
   const chartData = $derived(
     data.ratingHistory?.entries?.map((e) => ({
@@ -322,19 +324,26 @@
         {#if matches.length === 0}
           <p>No matches found</p>
         {/if}
-        {#each matches as match (match.id)}
-          {@const existingFlag = myFlagForMatch(match.id)}
+        {#each matchGroups as group (group.match.id)}
+          {#if group.label}
+            <div
+              class="px-2 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            >
+              {group.label}
+            </div>
+          {/if}
+          {@const existingFlag = myFlagForMatch(group.match.id)}
           <div class="rounded-lg {existingFlag ? 'ring-1 ring-red-400' : ''}">
             <div class="flex items-stretch gap-1">
               <div class="flex-1">
-                <MatchCard {match} showMmr />
+                <MatchCard match={group.match} showMmr />
               </div>
               <button
                 class="rounded p-2 transition-colors hover:bg-muted {existingFlag
                   ? 'text-red-500'
                   : 'text-muted-foreground'}"
                 title={existingFlag ? 'Edit flag' : 'Flag this match'}
-                onclick={() => openFlagDialog(match.id)}
+                onclick={() => openFlagDialog(group.match.id)}
               >
                 <Flag class="h-4 w-4" />
               </button>

@@ -8,6 +8,7 @@
   import * as Table from '$lib/components/ui/table';
   import { Flag, CheckCircle, AlertCircle, XCircle } from 'lucide-svelte';
   import { page } from '$app/stores';
+  import { formatDate } from '$lib/utils';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -25,14 +26,6 @@
     resolutionNote = '';
     resolveStatus = 'Resolved';
     dialogOpen = true;
-  }
-
-  function formatDate(date: string): string {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
   }
 
   function truncate(text: string, max: number): string {
@@ -150,7 +143,11 @@
                 {/if}
               </Table.Cell>
               <Table.Cell class="whitespace-nowrap text-sm">
-                {formatDate(flag.createdAt)}
+                {formatDate(flag.createdAt, '—', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
               </Table.Cell>
               <Table.Cell class="text-right">
                 {#if flag.status === 'Open'}
