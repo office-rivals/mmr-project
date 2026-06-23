@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.4.1
+
+- chore(deps-dev): bump @sveltejs/kit from 2.61.1 to 2.65.1 in /frontend
+- chore(deps-dev): bump @sveltejs/vite-plugin-svelte from 7.0.0 to 7.1.2 in /frontend
+- chore(deps): bump dompurify from 3.4.1 to 3.4.10 in /frontend
+- chore(deps-dev): bump form-data from 4.0.5 to 4.0.6 in /frontend
+- chore(deps-dev): bump vite from 8.0.10 to 8.0.16 in /frontend
+- chore(deps): bump dompurify from 3.4.10 to 3.4.11 in /frontend
+- Hide not-yet-started seasons from members. `GET .../seasons` now returns only seasons that have already started, and a new moderator/owner-only `GET .../admin/seasons` returns the full list (including upcoming) for admin management. The frontend selects the current season defensively and the admin seasons page uses the new endpoint so upcoming seasons stay visible to admins.
+- Refactor date helpers in `src/lib/utils.ts` to remove duplication:
+  collapse the repeated null/empty/NaN guards behind a private
+  `parseLocalDate` helper, replace three local `formatDate`
+  redefinitions in `admin/members`, `admin/.../match-flags` and
+  `settings` with the shared one, and simplify the date-bucket boundary
+  check in `groupMatchesByDate`. Behaviour is unchanged except that the
+  admin match-flags page now formats dates in the user's locale instead
+  of forcing `en-US`.
+- Group matches in the recent-matches list on the league page and the match
+  history on the player page by date. A small uppercase header ("Yesterday" or
+  "Wednesday, Mar 5") appears above each new date bucket when the previous match
+  was either from today or from a different day, so users can scan older matches
+  without comparing per-row timestamps.
+- Force a clean Vite dependency pre-bundle (`optimizeDeps.force`) when the dev
+  server runs under the Aspire AppHost, so esbuild doesn't re-optimize dependencies
+  mid-request and crash with `write EPIPE` on the first page load. A standalone
+  `npm run dev` is unaffected and keeps its dependency cache.
+- Restore pull-to-refresh in the installed PWA. The gesture was silently dropped
+  during the v3 multi-tenancy migration, which rewrote the authenticated layout
+  and never re-mounted the `PullToRefresh` component. It is wired back into the
+  `(authed)` shell, and the refresh indicator now slides out from beneath the
+  fixed app-shell header instead of appearing behind it.
+- Hide the "Report match" affordance on a league with no active season (e.g. a
+  league whose only seasons are not yet started), and reuse the shared
+  `selectCurrentSeason` helper in the admin seasons page so current-season
+  selection has a single, order-independent definition.
+
 ## 1.4.0
 
 - chore(deps-dev): bump axios from 1.15.2 to 1.16.1 in /frontend

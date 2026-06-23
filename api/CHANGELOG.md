@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0
+
+- Hide not-yet-started seasons from members. `GET .../seasons` now returns only seasons that have already started, and a new moderator/owner-only `GET .../admin/seasons` returns the full list (including upcoming) for admin management. The frontend selects the current season defensively and the admin seasons page uses the new endpoint so upcoming seasons stay visible to admins.
+- Add liveness and readiness endpoints to the API via ASP.NET Core health checks:
+  `GET /health` returns `200` whenever the process is up (no dependency checks) and
+  `GET /ready` returns `200` only when the database is also reachable. Both are
+  anonymous and excluded from request tracing. The MMR API continues to expose
+  `GET /health`, now also excluded from tracing so frequent health polls don't
+  flood the trace backend.
+
 ## 1.3.1
 
 - Rate limit invite-code lookups and joins per user (10/minute), so codes can't
