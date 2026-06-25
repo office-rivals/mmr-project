@@ -29,7 +29,7 @@ test.describe('Leaderboard page', () => {
   }) => {
     await page.goto(LEAGUE_URL);
     const firstCard = page
-      .locator('.flex.flex-1.flex-col.items-stretch > div')
+      .locator('.flex.flex-1.flex-col.items-stretch > div.bg-card')
       .first();
 
     // The seed gives usernames `tuser` (test user), `alia`, `bobr`, etc.
@@ -69,7 +69,7 @@ test.describe('Leaderboard page', () => {
     await page.goto(LEAGUE_URL);
 
     const firstCard = page
-      .locator('.flex.flex-1.flex-col.items-stretch > div')
+      .locator('.flex.flex-1.flex-col.items-stretch > div.bg-card')
       .first();
     // MMR off by default — no "(+...)" delta text yet.
     await expect(
