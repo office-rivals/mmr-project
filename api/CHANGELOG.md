@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1
+
+- Fix match deletion failing for any match that has been flagged. `DeleteMatchAsync` now removes the match's `match_flags` rows inside the same transaction before deleting the match, so the restricted `fk_match_flags_match` foreign key no longer blocks the delete.
+
 ## 1.4.0
 
 - Hide not-yet-started seasons from members. `GET .../seasons` now returns only seasons that have already started, and a new moderator/owner-only `GET .../admin/seasons` returns the full list (including upcoming) for admin management. The frontend selects the current season defensively and the admin seasons page uses the new endpoint so upcoming seasons stay visible to admins.
