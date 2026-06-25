@@ -12,114 +12,71 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: this_is_a_hard_password1337
-          POSTGRES_DB: mmr_project
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
     steps:
       - uses: actions/checkout@v6
 
-      # ---------------- mmr-api (Go) ----------------
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.23"
-      - name: Build mmr-api
-        working-directory: ./mmr-api
-        run: go build -o /tmp/mmr-api .
-      - name: Run mmr-api
-        working-directory: ./mmr-api
-        env:
-          ADMIN_SECRET: e2e-admin-secret
-        run: |
-          /tmp/mmr-api &
-          echo $! > /tmp/mmr-api.pid
-          for i in {1..30}; do
-            curl -sf http://localhost:8080/swagger/index.html > /dev/null && break || sleep 1
-          done
+          go-version-file: mmr-api/go.mod
 
-      # ---------------- API (.NET) ----------------
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
-      - name: Build API
-        working-directory: ./api/MMRProject.Api
-        run: dotnet build --configuration Release
-      - name: Run API
-        working-directory: ./api/MMRProject.Api
-        env:
-          ConnectionStrings__ApiDbContext: Host=localhost;Database=mmr_project;Username=postgres;Password=this_is_a_hard_password1337
-          Migration__Enabled: "true"
-          MMRCalculationAPI__BaseUrl: http://localhost:8080
-          MMRCalculationAPI__ApiKey: e2e-admin-secret
-          Admin__Secret: e2e-admin-secret
-          Authorization__Issuer: ${{ secrets.E2E_CLERK_ISSUER }}
-        run: |
-          dotnet run --no-build --configuration Release &
-          echo $! > /tmp/api.pid
-          for i in {1..60}; do
-            curl -sf http://localhost:8081/swagger/index.html > /dev/null && break || sleep 2
-          done
 
-      # ---------------- Apply seed ----------------
-      - name: Apply seed
-        env:
-          IDENTITY_USER_ID: ${{ secrets.E2E_IDENTITY_USER_ID }}
-          USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
-        run: ./scripts/seed-local.sh
-
-      # ---------------- Frontend + Playwright ----------------
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Install
+
+      - name: Install frontend deps
         working-directory: ./frontend
         run: npm ci
+
       - name: Install Playwright browsers
         working-directory: ./frontend
         run: npx playwright install --with-deps chromium
-      - name: Build frontend
-        working-directory: ./frontend
-        env:
-          PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
-          API_BASE_PATH: http://localhost:8081
-        run: npm run build
-      - name: Start frontend
-        working-directory: ./frontend
-        env:
-          PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
-          API_BASE_PATH: http://localhost:8081
-          PORT: "5173"
+
+      # Bring the e2e Postgres up explicitly so it's already accepting
+      # connections by the time Playwright launches the .NET API (which
+      # migrates the DB on startup). Playwright's globalSetup races with
+      # webServer launch — the docker-compose `up -d` is asynchronous and
+      # the API would otherwise crash on a refused connection.
+      - name: Start e2e Postgres
+        working-directory: ./local-development
         run: |
-          npm run start &
-          echo $! > /tmp/frontend.pid
+          docker compose -f docker-compose.e2e.yml up -d
           for i in {1..30}; do
-            curl -sf http://localhost:5173/login > /dev/null && break || sleep 1
+            pg_isready -h localhost -p 5433 -U postgres && break || sleep 1
           done
 
+      # `npm run e2e` is fully self-contained: playwright.config.ts uses
+      # `global-services.setup.ts` to bring up the dedicated e2e Postgres via
+      # docker-compose (port 5433) and Playwright's webServer block starts
+      # mmr-api (8090), .NET API (8091) and Vite (5180) on isolated ports.
+      # The seed runs from `global.setup.ts` against the same Postgres.
+      # All this CI step has to do is supply the secrets that those child
+      # processes need — Playwright merges them into each webServer env.
       - name: Run Playwright
         working-directory: ./frontend
         env:
+          # Test user (sign-in via Clerk hosted UI)
           E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
           E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
           E2E_IDENTITY_USER_ID: ${{ secrets.E2E_IDENTITY_USER_ID }}
-          DB_HOST: localhost
-          DB_PORT: "5432"
-          DB_NAME: mmr_project
-          DB_USER: postgres
-          DB_PASS: this_is_a_hard_password1337
+
+          # mmr-api required env
+          ADMIN_SECRET: e2e-admin-secret
+
+          # .NET API required env (Clerk JWT issuer comes from secrets)
+          Admin__Secret: e2e-admin-secret
+          MMRCalculationAPI__ApiKey: e2e-admin-secret
+          Authorization__Issuer: ${{ secrets.E2E_CLERK_ISSUER }}
+          Migration__Enabled: "true"
+
+          # Frontend Clerk wiring
+          PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
         run: npm run e2e
 
       - name: Upload Playwright report
