@@ -45,7 +45,6 @@ npm run build            # production build
 npm run check            # type checking (svelte-check)
 npm run lint             # ESLint + Prettier
 npm run format           # Prettier
-npm run generate-api     # regenerate the TS API client from the API's swagger.json
 ```
 
 ```bash
@@ -62,7 +61,8 @@ go run main.go           # MMR API on http://localhost:8080
 go test ./...            # all tests (single package: go test ./test/mmr)
 ```
 
-Regenerate the frontend API client (`npm run generate-api`) after any API change.
+The frontend's v3 API client (`frontend/src/api-v3`) is hand-maintained — update
+it by hand when the v3 API changes (it is not generated).
 
 ### Database
 
@@ -89,7 +89,7 @@ Postgres resource in the Aspire dashboard.
 
 - Svelte 5 runes and snippets; TailwindCSS with HSL color variables; dark mode via a `dark` class on the root element (used by the admin UI).
 - Headless components from `bits-ui` plus custom styled components in `lib/components/ui/`; icons from `lucide-svelte`.
-- Typed API clients generated from the API's OpenAPI spec (`openapi-generator-cli`); created in `lib/server/api/apiClient.ts` with automatic JWT injection.
+- Typed v3 API client lives in `src/api-v3` (hand-maintained — see its header note); the request client is built in `lib/server/api/apiClientV3.ts` with automatic JWT injection.
 - Routes: `(authed)/` (shared layout — navbar, queue indicator), `admin/` (separate group, dark mode), `login/`.
 
 ### API
