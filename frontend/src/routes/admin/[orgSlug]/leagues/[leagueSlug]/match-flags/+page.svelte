@@ -5,10 +5,21 @@
   import { Alert } from '$lib/components/ui/alert';
   import * as Dialog from '$lib/components/ui/dialog';
   import { Label } from '$lib/components/ui/label';
-  import * as Table from '$lib/components/ui/table';
-  import { Flag, CheckCircle, AlertCircle, XCircle } from 'lucide-svelte';
+  import { Card, CardContent, CardHeader } from '$lib/components/ui/card';
+  import { Badge } from '$lib/components/ui/badge';
+  import MatchCard from '$lib/components/match-card/match-card.svelte';
+  import EditMatchDialog from '$lib/components/admin/edit-match-dialog.svelte';
+  import {
+    Flag,
+    CheckCircle,
+    AlertCircle,
+    XCircle,
+    Pencil,
+    RefreshCw,
+  } from 'lucide-svelte';
   import { page } from '$app/stores';
   import { formatDate } from '$lib/utils';
+  import type { MatchResponse, MatchFlagStatus } from '$api3';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -17,8 +28,14 @@
   let resolutionNote = $state('');
   let resolveStatus = $state('Resolved');
 
+  let editing = $state<MatchResponse | null>(null);
+  let editDialogOpen = $state(false);
+
   const selectedFlag = $derived(
     data.flags?.find((f: { id: string }) => f.id === selectedFlagId)
+  );
+  const selectedMatch = $derived(
+    selectedFlag ? (data.matchesById[selectedFlag.matchId] ?? null) : null
   );
 
   function handleResolve(flagId: string) {
@@ -28,9 +45,40 @@
     dialogOpen = true;
   }
 
-  function truncate(text: string, max: number): string {
-    return text.length > max ? text.slice(0, max) + '...' : text;
+  function openEdit(match: MatchResponse) {
+    editing = match;
+    editDialogOpen = true;
   }
+
+  const dateOpts = {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  } as const;
+
+  const STATUS_META: Record<
+    MatchFlagStatus,
+    { label: string; icon: typeof Flag; class: string }
+  > = {
+    Open: {
+      label: 'Open',
+      icon: Flag,
+      class:
+        'border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    },
+    Resolved: {
+      label: 'Resolved',
+      icon: CheckCircle,
+      class:
+        'border-transparent bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    },
+    Dismissed: {
+      label: 'Dismissed',
+      icon: XCircle,
+      class:
+        'border-transparent bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+    },
+  };
 
   const statusTabs = [
     { label: 'All', value: null },
@@ -47,7 +95,9 @@
   <div>
     <h1 class="text-3xl font-bold tracking-tight">Flagged Matches</h1>
     <p class="text-muted-foreground">
-      Review and resolve match flags reported by users
+      Review the flagged match, correct it if needed, then resolve or dismiss
+      the flag. Editing a match leaves rating history untouched — recalculate to
+      flow the correction through to the leaderboard.
     </p>
   </div>
 
@@ -96,77 +146,126 @@
       </p>
     </div>
   {:else}
-    <div class="rounded-lg border border-border">
-      <Table.Root>
-        <Table.Header>
-          <Table.Row>
-            <Table.Head>Flagged By</Table.Head>
-            <Table.Head>Reason</Table.Head>
-            <Table.Head>Status</Table.Head>
-            <Table.Head>Date</Table.Head>
-            <Table.Head class="text-right">Actions</Table.Head>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {#each data.flags as flag (flag.id)}
-            <Table.Row>
-              <Table.Cell class="whitespace-nowrap font-medium">
-                {flag.flaggedByDisplayName ?? 'Unknown'}
-              </Table.Cell>
-              <Table.Cell class="max-w-[300px]">
-                <span class="text-sm" title={flag.reason}>
-                  {truncate(flag.reason, 80)}
+    <div class="space-y-4">
+      {#each data.flags as flag (flag.id)}
+        {@const match = data.matchesById[flag.matchId] ?? null}
+        {@const isCurrentSeason =
+          !!match &&
+          data.currentSeasonId != null &&
+          match.seasonId === data.currentSeasonId}
+        {@const statusMeta = STATUS_META[flag.status]}
+        {@const StatusIcon = statusMeta.icon}
+        <Card data-testid="match-flag-card" data-flag-id={flag.id}>
+          <CardHeader
+            class="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0"
+          >
+            <div class="space-y-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" class={statusMeta.class}>
+                  <StatusIcon class="mr-1 h-3 w-3" />
+                  {statusMeta.label}
+                </Badge>
+                <span class="text-sm text-muted-foreground">
+                  Flagged by {flag.flaggedByDisplayName ?? 'Unknown'}
+                  on {formatDate(flag.createdAt, '—', dateOpts)}
                 </span>
-              </Table.Cell>
-              <Table.Cell>
-                {#if flag.status === 'Open'}
-                  <span
-                    class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+              </div>
+            </div>
+
+            {#if flag.status === 'Open'}
+              <div class="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!isCurrentSeason}
+                  onclick={() => match && openEdit(match)}
+                  data-testid="match-flag-edit"
+                >
+                  <Pencil class="mr-1 h-3.5 w-3.5" />
+                  Edit match
+                </Button>
+                <form method="POST" action="?/recalculate" use:enhance>
+                  <input
+                    type="hidden"
+                    name="fromMatchId"
+                    value={flag.matchId}
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="outline"
+                    disabled={!isCurrentSeason}
+                    data-testid="match-flag-recalculate"
+                    onclick={(event) => {
+                      if (
+                        !confirm(
+                          'Replay every match from this one to the end of the season?'
+                        )
+                      ) {
+                        event.preventDefault();
+                      }
+                    }}
                   >
-                    <Flag class="mr-1 h-3 w-3" />
-                    Open
-                  </span>
-                {:else if flag.status === 'Resolved'}
-                  <span
-                    class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200"
-                  >
-                    <CheckCircle class="mr-1 h-3 w-3" />
-                    Resolved
-                  </span>
-                {:else}
-                  <span
-                    class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-800 dark:text-gray-200"
-                  >
-                    <XCircle class="mr-1 h-3 w-3" />
-                    Dismissed
-                  </span>
-                {/if}
-              </Table.Cell>
-              <Table.Cell class="whitespace-nowrap text-sm">
-                {formatDate(flag.createdAt, '—', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
-                })}
-              </Table.Cell>
-              <Table.Cell class="text-right">
-                {#if flag.status === 'Open'}
-                  <Button size="sm" onclick={() => handleResolve(flag.id)}>
-                    <CheckCircle class="mr-1 h-3.5 w-3.5" />
-                    Resolve
+                    <RefreshCw class="mr-1 h-3.5 w-3.5" />
+                    Recalc
                   </Button>
-                {:else}
-                  <span class="text-xs text-muted-foreground">
-                    {flag.resolvedByDisplayName
-                      ? `by ${flag.resolvedByDisplayName}`
-                      : ''}
-                  </span>
+                </form>
+                <Button
+                  size="sm"
+                  onclick={() => handleResolve(flag.id)}
+                  data-testid="match-flag-resolve"
+                >
+                  <CheckCircle class="mr-1 h-3.5 w-3.5" />
+                  Resolve
+                </Button>
+              </div>
+            {/if}
+          </CardHeader>
+
+          <CardContent class="space-y-3">
+            {#if match}
+              <MatchCard {match} showMmr />
+            {:else}
+              <div
+                class="rounded-md border border-dashed border-border p-4 text-center text-sm text-muted-foreground"
+              >
+                This match no longer exists — it may have been deleted.
+              </div>
+            {/if}
+
+            {#if flag.status === 'Open' && match && !isCurrentSeason}
+              <p class="text-xs text-muted-foreground">
+                This match is in a past season, so it can't be edited or
+                recalculated — resolve or dismiss the flag instead.
+              </p>
+            {/if}
+
+            <div class="space-y-1 rounded-md border border-border p-3">
+              <span class="text-sm font-medium text-muted-foreground">
+                Reason
+              </span>
+              <p class="whitespace-pre-wrap text-sm">{flag.reason}</p>
+            </div>
+
+            {#if flag.status !== 'Open'}
+              <div class="text-sm text-muted-foreground">
+                <span>
+                  {flag.status === 'Resolved'
+                    ? 'Resolved'
+                    : 'Dismissed'}{flag.resolvedByDisplayName
+                    ? ` by ${flag.resolvedByDisplayName}`
+                    : ''}{flag.resolvedAt
+                    ? ` on ${formatDate(flag.resolvedAt, '—', dateOpts)}`
+                    : ''}
+                </span>
+                {#if flag.resolutionNote}
+                  <p class="mt-1 italic">“{flag.resolutionNote}”</p>
                 {/if}
-              </Table.Cell>
-            </Table.Row>
-          {/each}
-        </Table.Body>
-      </Table.Root>
+              </div>
+            {/if}
+          </CardContent>
+        </Card>
+      {/each}
     </div>
   {/if}
 </div>
@@ -182,6 +281,10 @@
 
     {#if selectedFlag}
       <div class="space-y-4 py-4">
+        {#if selectedMatch}
+          <MatchCard match={selectedMatch} />
+        {/if}
+
         <div class="space-y-2 rounded-lg border border-border p-3">
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium text-muted-foreground"
@@ -279,3 +382,10 @@
     {/if}
   </Dialog.Content>
 </Dialog.Root>
+
+<EditMatchDialog
+  open={editDialogOpen}
+  onOpenChange={(value) => (editDialogOpen = value)}
+  match={editing}
+  leaguePlayers={data.players}
+/>
