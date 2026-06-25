@@ -6,6 +6,7 @@
   import * as Dialog from '$lib/components/ui/dialog';
   import { Label } from '$lib/components/ui/label';
   import { Card, CardContent, CardHeader } from '$lib/components/ui/card';
+  import { Badge } from '$lib/components/ui/badge';
   import MatchCard from '$lib/components/match-card/match-card.svelte';
   import EditMatchDialog from '$lib/components/admin/edit-match-dialog.svelte';
   import {
@@ -18,7 +19,7 @@
   } from 'lucide-svelte';
   import { page } from '$app/stores';
   import { formatDate } from '$lib/utils';
-  import type { MatchResponse } from '$api3';
+  import type { MatchResponse, MatchFlagStatus } from '$api3';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -54,6 +55,30 @@
     month: 'short',
     day: 'numeric',
   } as const;
+
+  const STATUS_META: Record<
+    MatchFlagStatus,
+    { label: string; icon: typeof Flag; class: string }
+  > = {
+    Open: {
+      label: 'Open',
+      icon: Flag,
+      class:
+        'border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    },
+    Resolved: {
+      label: 'Resolved',
+      icon: CheckCircle,
+      class:
+        'border-transparent bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    },
+    Dismissed: {
+      label: 'Dismissed',
+      icon: XCircle,
+      class:
+        'border-transparent bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+    },
+  };
 
   const statusTabs = [
     { label: 'All', value: null },
@@ -124,34 +149,22 @@
     <div class="space-y-4">
       {#each data.flags as flag (flag.id)}
         {@const match = data.matchesById[flag.matchId] ?? null}
+        {@const isCurrentSeason =
+          !!match &&
+          data.currentSeasonId != null &&
+          match.seasonId === data.currentSeasonId}
+        {@const statusMeta = STATUS_META[flag.status]}
+        {@const StatusIcon = statusMeta.icon}
         <Card data-testid="match-flag-card" data-flag-id={flag.id}>
           <CardHeader
             class="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0"
           >
             <div class="space-y-1">
               <div class="flex flex-wrap items-center gap-2">
-                {#if flag.status === 'Open'}
-                  <span
-                    class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                  >
-                    <Flag class="mr-1 h-3 w-3" />
-                    Open
-                  </span>
-                {:else if flag.status === 'Resolved'}
-                  <span
-                    class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200"
-                  >
-                    <CheckCircle class="mr-1 h-3 w-3" />
-                    Resolved
-                  </span>
-                {:else}
-                  <span
-                    class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-800 dark:text-gray-200"
-                  >
-                    <XCircle class="mr-1 h-3 w-3" />
-                    Dismissed
-                  </span>
-                {/if}
+                <Badge variant="outline" class={statusMeta.class}>
+                  <StatusIcon class="mr-1 h-3 w-3" />
+                  {statusMeta.label}
+                </Badge>
                 <span class="text-sm text-muted-foreground">
                   Flagged by {flag.flaggedByDisplayName ?? 'Unknown'}
                   on {formatDate(flag.createdAt, '—', dateOpts)}
@@ -164,7 +177,7 @@
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={!match}
+                  disabled={!isCurrentSeason}
                   onclick={() => match && openEdit(match)}
                   data-testid="match-flag-edit"
                 >
@@ -181,8 +194,17 @@
                     type="submit"
                     size="sm"
                     variant="outline"
-                    disabled={!match}
+                    disabled={!isCurrentSeason}
                     data-testid="match-flag-recalculate"
+                    onclick={(event) => {
+                      if (
+                        !confirm(
+                          'Replay every match from this one to the end of the season?'
+                        )
+                      ) {
+                        event.preventDefault();
+                      }
+                    }}
                   >
                     <RefreshCw class="mr-1 h-3.5 w-3.5" />
                     Recalc
@@ -209,6 +231,13 @@
               >
                 This match no longer exists — it may have been deleted.
               </div>
+            {/if}
+
+            {#if flag.status === 'Open' && match && !isCurrentSeason}
+              <p class="text-xs text-muted-foreground">
+                This match is in a past season, so it can't be edited or
+                recalculated — resolve or dismiss the flag instead.
+              </p>
             {/if}
 
             <div class="space-y-1 rounded-md border border-border p-3">

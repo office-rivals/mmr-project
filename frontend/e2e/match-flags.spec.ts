@@ -2,12 +2,13 @@ import { test, expect } from '@playwright/test';
 
 const FLAGS_PAGE = '/admin/test-org/leagues/test-league/match-flags';
 
-// The seed (scripts/seed-data.sql) creates two open flags on current-season
-// Test League matches:
-//   A: "Wrong score reported on this match (e2e A)."   flagged by Alice Anderson
-//   B: "Possible duplicate match entry (e2e B)."        flagged by Bob Brown
+// The seed (scripts/seed-data.sql) creates three open flags in Test League:
+//   A: "Wrong score reported on this match (e2e A)."  current season, by Alice
+//   B: "Possible duplicate match entry (e2e B)."      current season, by Bob
+//   C: "Match from a previous season (e2e C)."        past season, by Carol
 const FLAG_A_REASON = 'Wrong score reported on this match (e2e A).';
 const FLAG_B_REASON = 'Possible duplicate match entry (e2e B).';
+const FLAG_C_REASON = 'Match from a previous season (e2e C).';
 
 const cardWithReason = (
   page: import('@playwright/test').Page,
@@ -60,6 +61,24 @@ test.describe('Admin match flags', () => {
     await expect(
       page.getByRole('alert').filter({ hasText: 'Match updated' })
     ).toBeVisible();
+  });
+
+  test('disables edit/recalc for a flag on a past-season match', async ({
+    page,
+  }) => {
+    await page.goto(FLAGS_PAGE);
+
+    const card = cardWithReason(page, FLAG_C_REASON);
+    await expect(card).toBeVisible();
+    // The match still renders for review...
+    await expect(card.getByText('vs.')).toBeVisible();
+    // ...but Edit/Recalc are disabled because the API rejects edits and
+    // recalculation outside the current season, with an explanation shown.
+    await expect(card.getByTestId('match-flag-edit')).toBeDisabled();
+    await expect(card.getByTestId('match-flag-recalculate')).toBeDisabled();
+    await expect(card.getByText(/past season/i)).toBeVisible();
+    // Resolving/dismissing is still available for old flags.
+    await expect(card.getByTestId('match-flag-resolve')).toBeEnabled();
   });
 
   test('resolves a flag after reviewing the match', async ({ page }) => {

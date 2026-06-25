@@ -2,7 +2,7 @@ import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getApiErrorDetails } from '$lib/server/api/apiError';
 import { resolveOrgAndLeagueIds } from '$lib/server/resolveIds';
-import { MatchFlagStatus, type MatchResponse } from '$api3';
+import { MatchFlagStatus, ResponseError, type MatchResponse } from '$api3';
 
 const isMatchFlagStatus = (value: string): value is MatchFlagStatus =>
   (Object.values(MatchFlagStatus) as string[]).includes(value);
@@ -20,19 +20,25 @@ export const load: PageServerLoad = async ({
       : undefined;
 
   try {
-    const [flags, players] = await Promise.all([
+    const [flags, players, currentSeasonId] = await Promise.all([
       apiClientV3.adminMatchFlagsApi.listAllFlags(
         orgId,
         leagueId,
         statusFilter
       ),
       apiClientV3.leaguePlayersApi.listPlayers(orgId, leagueId),
+      // Only current-season matches can be edited or recalculated (the API
+      // rejects the rest), so the page needs the current season to gate those
+      // actions. Tolerate no active season — everything is then read-only.
+      apiClientV3.seasonsApi
+        .getCurrentSeason(orgId, leagueId)
+        .then((season) => season.id)
+        .catch(() => null),
     ]);
 
     // Resolving a flag means inspecting (and often editing) the match it's
     // about, so fetch each referenced match. Multiple flags can point at the
-    // same match, and a match may have been deleted — fetch unique ids and
-    // tolerate misses so a single 404 doesn't break the page.
+    // same match, so fetch unique ids in parallel.
     const uniqueMatchIds = [...new Set(flags.map((flag) => flag.matchId))];
     const matchEntries = await Promise.all(
       uniqueMatchIds.map(async (matchId) => {
@@ -43,8 +49,14 @@ export const load: PageServerLoad = async ({
             matchId
           );
           return [matchId, match] as const;
-        } catch {
-          return [matchId, null] as const;
+        } catch (err) {
+          // A deleted match is an expected per-flag state (null renders as "no
+          // longer exists"). Anything else is a real failure that must not
+          // masquerade as a deletion — let it surface as a page error.
+          if (err instanceof ResponseError && err.response.status === 404) {
+            return [matchId, null] as const;
+          }
+          throw err;
         }
       })
     );
@@ -55,6 +67,7 @@ export const load: PageServerLoad = async ({
       flags,
       players,
       matchesById,
+      currentSeasonId,
       statusFilter: statusFilter ?? null,
     };
   } catch {
