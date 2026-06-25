@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import EditMatchDialog from '$lib/components/admin/edit-match-dialog.svelte';
   import MatchCard from '$lib/components/match-card/match-card.svelte';
+  import MatchDateHeader from '$lib/components/match-card/match-date-header.svelte';
   import { Alert } from '$lib/components/ui/alert';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
@@ -92,12 +93,10 @@
             {@const match = group.match}
             {@const isLatest = match.id === data.latestMatchId}
             {#if group.label}
-              <div
+              <MatchDateHeader
+                label={group.label}
                 data-testid="admin-match-date-header"
-                class="px-1 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >
-                {group.label}
-              </div>
+              />
             {/if}
             <div
               class="flex flex-col gap-3 md:flex-row md:items-center"

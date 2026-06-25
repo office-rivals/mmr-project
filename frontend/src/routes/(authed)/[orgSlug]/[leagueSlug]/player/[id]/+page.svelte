@@ -1,6 +1,7 @@
 <script lang="ts">
   import Kpi from '$lib/components/kpi.svelte';
   import MatchCard from '$lib/components/match-card/match-card.svelte';
+  import MatchDateHeader from '$lib/components/match-card/match-date-header.svelte';
   import PageTitle from '$lib/components/page-title.svelte';
   import SeasonPicker from '$lib/components/season-picker.svelte';
   import { Alert } from '$lib/components/ui/alert';
@@ -326,11 +327,7 @@
         {/if}
         {#each matchGroups as group (group.match.id)}
           {#if group.label}
-            <div
-              class="px-2 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-            >
-              {group.label}
-            </div>
+            <MatchDateHeader label={group.label} />
           {/if}
           {@const existingFlag = myFlagForMatch(group.match.id)}
           <div class="rounded-lg {existingFlag ? 'ring-1 ring-red-400' : ''}">
