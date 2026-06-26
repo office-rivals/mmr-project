@@ -33,6 +33,8 @@ export const load: PageServerLoad = async ({
     offset,
     hasMore,
     latestMatchId: offset === 0 ? (trimmed[0]?.id ?? null) : null,
+    // Pin "now" server-side so date grouping is stable across SSR/hydration.
+    now: Date.now(),
   };
 };
 

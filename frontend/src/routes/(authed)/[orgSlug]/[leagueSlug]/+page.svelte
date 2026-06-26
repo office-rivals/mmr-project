@@ -1,6 +1,7 @@
 <script lang="ts">
   import Leaderboard from '$lib/components/leaderboard/leaderboard.svelte';
   import MatchCard from '$lib/components/match-card/match-card.svelte';
+  import MatchDateHeader from '$lib/components/match-card/match-date-header.svelte';
   import PageTitle from '$lib/components/page-title.svelte';
   import ReportMatchModal from '$lib/components/report-match-modal.svelte';
   import SeasonPicker from '$lib/components/season-picker.svelte';
@@ -119,11 +120,7 @@
   <div class="flex flex-1 flex-col items-stretch gap-2">
     {#each recentMatchGroups as group (group.match.id)}
       {#if group.label}
-        <div
-          class="px-2 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-        >
-          {group.label}
-        </div>
+        <MatchDateHeader label={group.label} />
       {/if}
       <MatchCard match={group.match} showMmr={$showMmr} />
     {/each}

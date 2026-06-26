@@ -84,6 +84,17 @@ test.describe('League admin', () => {
     await expect(page.getByText('Latest', { exact: true })).toBeVisible();
   });
 
+  test('matches page groups matches under date headers', async ({ page }) => {
+    await page.goto(`${LEAGUE_ADMIN}/matches`);
+    // Rows stay individually addressable (headers are separate divs).
+    await expect(page.getByTestId('admin-match-row')).toHaveCount(25);
+    // The seed's matches predate "today", so the first page renders at least
+    // one date header above its match rows.
+    await expect(
+      page.getByTestId('admin-match-date-header').first()
+    ).toBeVisible();
+  });
+
   test('edit dialog pre-fills the chosen match', async ({ page }) => {
     await page.goto(`${LEAGUE_ADMIN}/matches`);
     const firstEditButton = page

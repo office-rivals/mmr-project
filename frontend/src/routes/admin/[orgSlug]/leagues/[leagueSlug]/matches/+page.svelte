@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import EditMatchDialog from '$lib/components/admin/edit-match-dialog.svelte';
   import MatchCard from '$lib/components/match-card/match-card.svelte';
+  import MatchDateHeader from '$lib/components/match-card/match-date-header.svelte';
   import { Alert } from '$lib/components/ui/alert';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
@@ -19,6 +20,7 @@
     RefreshCw,
     Trash2,
   } from 'lucide-svelte';
+  import { groupMatchesByDate } from '$lib/utils';
   import type { MatchResponse } from '$api3';
   import type { ActionData, PageData } from './$types';
 
@@ -26,6 +28,10 @@
 
   const prevOffset = $derived(Math.max(0, data.offset - data.pageSize));
   const nextOffset = $derived(data.offset + data.pageSize);
+
+  // Group the current page's matches by date, mirroring the player-facing
+  // recent-matches and profile views. Grouping is per page (the list paginates).
+  const matchGroups = $derived(groupMatchesByDate(data.matches, data.now));
 
   let editing = $state<MatchResponse | null>(null);
   let editDialogOpen = $state(false);
@@ -83,8 +89,15 @@
         </p>
       {:else}
         <div class="flex flex-col gap-3">
-          {#each data.matches as match (match.id)}
+          {#each matchGroups as group (group.match.id)}
+            {@const match = group.match}
             {@const isLatest = match.id === data.latestMatchId}
+            {#if group.label}
+              <MatchDateHeader
+                label={group.label}
+                data-testid="admin-match-date-header"
+              />
+            {/if}
             <div
               class="flex flex-col gap-3 md:flex-row md:items-center"
               data-testid="admin-match-row"
