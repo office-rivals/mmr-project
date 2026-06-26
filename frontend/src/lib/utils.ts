@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { cubicOut } from 'svelte/easing';
 import type { TransitionConfig } from 'svelte/transition';
+import type { BadgesResponse } from '../api-v3/models';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -137,6 +138,22 @@ export function getRoleBadgeVariant(
 // Accepts the OrganizationRole string enum or a raw role string.
 export function isModeratorOrAbove(role: string): boolean {
   return role === 'Owner' || role === 'Moderator';
+}
+
+// Open match-flag counts from the badges endpoint, keyed by org/league id.
+// Default to 0 so non-admins and ids without flags read cleanly.
+export function openFlagsForOrg(
+  badges: BadgesResponse | null | undefined,
+  orgId: string
+): number {
+  return badges?.openMatchFlags?.byOrganization?.[orgId] ?? 0;
+}
+
+export function openFlagsForLeague(
+  badges: BadgesResponse | null | undefined,
+  leagueId: string
+): number {
+  return badges?.openMatchFlags?.byLeague?.[leagueId] ?? 0;
 }
 
 type FlyAndScaleParams = {

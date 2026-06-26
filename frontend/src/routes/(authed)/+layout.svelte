@@ -39,6 +39,7 @@
   displayName={data.displayName}
   username={data.username}
   defaultOrgSlug={data.defaultOrgSlug}
+  openFlagCount={data.openFlagCount}
 />
 <main
   class="mx-auto max-w-screen-sm overflow-auto p-4 pb-24"

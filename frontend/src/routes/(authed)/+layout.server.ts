@@ -17,14 +17,24 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   let defaultOrgId: string | null = null;
   let defaultLeagueId: string | null = null;
   let defaultLeaguePlayerId: string | null = null;
+  // Total open match flags across every org this user administers; drives the
+  // "needs attention" badge on the account/admin controls. 0 for non-admins.
+  let openFlagCount = 0;
   // True when getMe() itself errored (transient API/auth failure) — distinct
   // from a successful load that returns zero organizations. Routes that need a
   // loaded profile (e.g. the league layout) must check this and fail loudly;
   // profile-independent routes (/settings, /random) can ignore it and degrade.
   let profileLoadFailed = false;
 
-  try {
-    const me = await locals.apiClientV3.meApi.getMe();
+  // Fetch profile and badge counts together; badges are non-fatal so a failure
+  // there never marks the profile as failed.
+  const [meResult, badgesResult] = await Promise.allSettled([
+    locals.apiClientV3.meApi.getMe(),
+    locals.apiClientV3.meApi.getBadges(),
+  ]);
+
+  if (meResult.status === 'fulfilled') {
+    const me = meResult.value;
     organizations = me.organizations ?? [];
     displayName = me.displayName ?? null;
     username = me.username ?? null;
@@ -40,8 +50,12 @@ export const load: LayoutServerLoad = async ({ locals }) => {
       defaultLeagueId = league.id;
       defaultLeaguePlayerId = league.leaguePlayerId ?? null;
     }
-  } catch {
+  } else {
     profileLoadFailed = true;
+  }
+
+  if (badgesResult.status === 'fulfilled') {
+    openFlagCount = badgesResult.value.openMatchFlags?.total ?? 0;
   }
 
   return {
@@ -50,6 +64,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     profileLoadFailed,
     displayName,
     username,
+    openFlagCount,
     defaultOrgSlug,
     defaultLeagueSlug,
     defaultOrgId,

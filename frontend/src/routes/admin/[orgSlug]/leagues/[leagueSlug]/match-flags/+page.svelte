@@ -80,11 +80,12 @@
     },
   };
 
+  // Open first (the actionable default), All last. 'all' is the no-filter view.
   const statusTabs = [
-    { label: 'All', value: null },
     { label: 'Open', value: 'Open' },
     { label: 'Resolved', value: 'Resolved' },
     { label: 'Dismissed', value: 'Dismissed' },
+    { label: 'All', value: 'all' },
   ];
 
   const currentUrl = $derived($page.url);
@@ -119,11 +120,9 @@
 
   <div class="flex gap-2">
     {#each statusTabs as tab}
-      {@const isActive =
-        tab.value === data.statusFilter ||
-        (tab.value === null && !data.statusFilter)}
+      {@const isActive = tab.value === data.statusFilter}
       <a
-        href={tab.value ? `${basePath}?status=${tab.value}` : basePath}
+        href={`${basePath}?status=${tab.value}`}
         class="rounded-md border px-3 py-1.5 text-sm transition-colors {isActive
           ? 'bg-primary text-primary-foreground'
           : 'bg-muted hover:bg-accent'}"
@@ -140,9 +139,9 @@
       <CheckCircle class="mb-4 h-12 w-12 text-muted-foreground" />
       <h3 class="text-lg font-medium">No flags found</h3>
       <p class="text-sm text-muted-foreground">
-        {data.statusFilter
-          ? `No ${data.statusFilter.toLowerCase()} flags`
-          : 'All match flags have been resolved'}
+        {data.statusFilter === 'all'
+          ? 'No match flags yet'
+          : `No ${data.statusFilter.toLowerCase()} flags`}
       </p>
     </div>
   {:else}
