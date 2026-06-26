@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.0
+
+- Group the admin matches list under date headers, matching the player-facing
+  recent-matches and profile views. Grouping is per page (the list paginates).
+
 ## 1.5.0
 
 - Show the flagged match inline on the admin match-flags page and let moderators
