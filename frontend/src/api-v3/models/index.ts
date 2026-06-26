@@ -42,6 +42,17 @@ export interface MeResponse {
   organizations: MeOrganizationResponse[];
 }
 
+// Counts that drive the nav "needs attention" badges (GET /api/v3/me/badges).
+export interface BadgesResponse {
+  openMatchFlags: OpenMatchFlagSummary;
+}
+
+export interface OpenMatchFlagSummary {
+  total: number;
+  byOrganization: Record<string, number>;
+  byLeague: Record<string, number>;
+}
+
 export interface MeOrganizationResponse {
   id: string;
   name: string;

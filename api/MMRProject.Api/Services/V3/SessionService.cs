@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MMRProject.Api.Data;
+using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.Exceptions;
 using MMRProject.Api.UserContext;
@@ -9,6 +10,7 @@ namespace MMRProject.Api.Services.V3;
 public interface ISessionService
 {
     Task<MeResponse> GetMeAsync();
+    Task<BadgesResponse> GetBadgesAsync();
     Task<List<MeOrganizationResponse>> GetMyOrganizationsAsync();
     Task<List<MeLeagueResponse>> GetMyLeaguesAsync(Guid organizationId);
 }
@@ -39,6 +41,63 @@ public class SessionService(
             Organizations = await BuildOrganizationResponsesAsync(user.Id)
         };
     }
+
+    // Open match-flag counts for the orgs this user can administer (Owner or
+    // Moderator), keyed by org/league id so the client can badge the nav.
+    // Served from its own lightweight endpoint rather than bloating /me.
+    public async Task<BadgesResponse> GetBadgesAsync()
+    {
+        var identityUserId = userContextResolver.GetIdentityUserId();
+        var user = await dbContext.V3Users
+            .FirstOrDefaultAsync(u => u.IdentityUserId == identityUserId);
+
+        if (user == null)
+            return EmptyBadges();
+
+        // Filter Role in memory (the Status==Active predicate translates to SQL;
+        // we keep the role comparison off the query to avoid enum-ordering
+        // assumptions about its column mapping).
+        var moderatorOrgIds = (await dbContext.OrganizationMemberships
+                .Where(m => m.UserId == user.Id
+                            && m.Status == MembershipStatus.Active)
+                .Select(m => new { m.OrganizationId, m.Role })
+                .ToListAsync())
+            .Where(m => m.Role is OrganizationRole.Owner or OrganizationRole.Moderator)
+            .Select(m => m.OrganizationId)
+            .ToList();
+
+        if (moderatorOrgIds.Count == 0)
+            return EmptyBadges();
+
+        var counts = await dbContext.Set<V3MatchFlag>()
+            .Where(f => f.Status == MatchFlagStatus.Open
+                        && moderatorOrgIds.Contains(f.OrganizationId))
+            .GroupBy(f => new { f.OrganizationId, f.LeagueId })
+            .Select(g => new { g.Key.OrganizationId, g.Key.LeagueId, Count = g.Count() })
+            .ToListAsync();
+
+        return new BadgesResponse
+        {
+            OpenMatchFlags = new OpenMatchFlagSummary
+            {
+                Total = counts.Sum(c => c.Count),
+                ByOrganization = counts
+                    .GroupBy(c => c.OrganizationId)
+                    .ToDictionary(g => g.Key, g => g.Sum(c => c.Count)),
+                ByLeague = counts.ToDictionary(c => c.LeagueId, c => c.Count)
+            }
+        };
+    }
+
+    private static BadgesResponse EmptyBadges() => new()
+    {
+        OpenMatchFlags = new OpenMatchFlagSummary
+        {
+            Total = 0,
+            ByOrganization = new Dictionary<Guid, int>(),
+            ByLeague = new Dictionary<Guid, int>()
+        }
+    };
 
     public async Task<List<MeOrganizationResponse>> GetMyOrganizationsAsync()
     {
