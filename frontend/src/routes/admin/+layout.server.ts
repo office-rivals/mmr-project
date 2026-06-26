@@ -8,13 +8,20 @@ import type { LayoutServerLoad } from './$types';
 // authorization for everything that actually matters.
 export const load: LayoutServerLoad = async ({ locals: { apiClientV3 } }) => {
   let me;
+  let badges;
   try {
-    me = await apiClientV3.meApi.getMe();
+    // Badges never reject the pair (own .catch); only a getMe() failure 401s,
+    // preserving the prior behavior.
+    [me, badges] = await Promise.all([
+      apiClientV3.meApi.getMe(),
+      apiClientV3.meApi.getBadges().catch(() => null),
+    ]);
   } catch {
     throw error(401, 'Failed to load user profile');
   }
 
   return {
     me,
+    badges,
   };
 };

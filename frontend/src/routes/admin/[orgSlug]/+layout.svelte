@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { cn } from '$lib/utils';
+  import { cn, openFlagsForOrg } from '$lib/utils';
   import { LayoutDashboard, Trophy, Users } from 'lucide-svelte';
   import type { Snippet } from 'svelte';
   import type { LayoutData } from './$types';
@@ -14,10 +14,12 @@
   } = $props();
 
   const base = $derived(`/admin/${data.orgSlug}`);
+  const orgOpenFlags = $derived(openFlagsForOrg(data.badges, data.orgId));
+  const leaguesHref = $derived(`${base}/leagues`);
   const navItems = $derived([
     { href: base, label: 'Overview', icon: LayoutDashboard, exact: true },
     { href: `${base}/members`, label: 'Members', icon: Users },
-    { href: `${base}/leagues`, label: 'Leagues', icon: Trophy },
+    { href: leaguesHref, label: 'Leagues', icon: Trophy },
   ]);
 
   function isActive(href: string, exact: boolean) {
@@ -31,6 +33,7 @@
     <nav class="flex flex-row gap-1 overflow-x-auto lg:flex-col">
       {#each navItems as item}
         {@const active = isActive(item.href, item.exact ?? false)}
+        {@const badge = item.href === leaguesHref ? orgOpenFlags : 0}
         <a
           href={item.href}
           class={cn(
@@ -42,6 +45,14 @@
         >
           <item.icon class="h-4 w-4" />
           <span>{item.label}</span>
+          {#if badge > 0}
+            <span
+              class="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-destructive-foreground"
+              aria-label={`${badge} open flags`}
+            >
+              {badge}
+            </span>
+          {/if}
         </a>
       {/each}
     </nav>

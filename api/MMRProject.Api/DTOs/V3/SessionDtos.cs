@@ -31,3 +31,20 @@ public record MeLeagueResponse
     public int? WinningScore { get; init; }
     [Required] public required Guid LeaguePlayerId { get; init; }
 }
+
+// Counts that drive "needs attention" badges in the nav. Extensible: future
+// badge kinds (pending invites, queue alerts, ...) become sibling properties.
+public record BadgesResponse
+{
+    [Required] public required OpenMatchFlagSummary OpenMatchFlags { get; init; }
+}
+
+public record OpenMatchFlagSummary
+{
+    [Required] public required int Total { get; init; }
+
+    // Keyed by organization id / league id (Guids serialize to their string
+    // form), so the client can look counts up against any nav element.
+    [Required] public required Dictionary<Guid, int> ByOrganization { get; init; }
+    [Required] public required Dictionary<Guid, int> ByLeague { get; init; }
+}
