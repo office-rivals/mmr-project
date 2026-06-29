@@ -12,7 +12,8 @@ public interface IV3PendingMatchCoordinator
 
 public class V3PendingMatchCoordinator(
     ILogger<V3PendingMatchCoordinator> logger,
-    ApiDbContext dbContext) : IV3PendingMatchCoordinator
+    ApiDbContext dbContext,
+    INotificationQueue notificationQueue) : IV3PendingMatchCoordinator
 {
     private const string PendingMatchIndexName = "ix_pending_matches_league_pending";
 
@@ -165,7 +166,6 @@ public class V3PendingMatchCoordinator(
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
-            return true;
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException
                                            {
@@ -176,6 +176,62 @@ public class V3PendingMatchCoordinator(
             dbContext.ChangeTracker.Clear();
             logger.LogDebug("Pending match already exists for league {LeagueId}", leagueId);
             return false;
+        }
+
+        // Fire-and-forget notifications: the dispatch loop will pick them up.
+        // Done after SaveChanges so the pending match has a stable id we can
+        // embed in the deep link.
+        await NotifyParticipantsAsync(pendingMatch, cancellationToken);
+
+        return true;
+    }
+
+    private async Task NotifyParticipantsAsync(V3PendingMatch pendingMatch, CancellationToken cancellationToken)
+    {
+        var league = await dbContext.Leagues
+            .AsNoTracking()
+            .Where(l => l.Id == pendingMatch.LeagueId)
+            .Select(l => new { l.Slug })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var organization = await dbContext.Organizations
+            .AsNoTracking()
+            .Where(o => o.Id == pendingMatch.OrganizationId)
+            .Select(o => new { o.Slug })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var leaguePlayerIds = pendingMatch.Acceptances.Select(a => a.LeaguePlayerId).ToList();
+
+        var userIds = await dbContext.LeaguePlayers
+            .AsNoTracking()
+            .Where(lp => leaguePlayerIds.Contains(lp.Id))
+            .Select(lp => lp.OrganizationMembership!.UserId)
+            .Where(uid => uid != null)
+            .Select(uid => uid!.Value)
+            .ToListAsync(cancellationToken);
+
+        if (userIds.Count == 0)
+        {
+            return;
+        }
+
+        var url = $"/{organization?.Slug ?? ""}/{league?.Slug ?? ""}/matchmaking";
+        var payload = new NotificationPayload(
+            Title: "Match found",
+            Body: "Accept the pending match to lock in your team.",
+            Url: url,
+            Tag: $"pending-match-{pendingMatch.Id}");
+
+        foreach (var userId in userIds)
+        {
+            try
+            {
+                await notificationQueue.EnqueueForUserAsync(userId.ToString(), payload, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to enqueue match-found notification for user {UserId}", userId);
+            }
         }
     }
 

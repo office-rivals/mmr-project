@@ -467,5 +467,51 @@ public partial class ApiDbContext
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_match_flags_resolved_by");
         });
+
+        modelBuilder.Entity<PushSubscription>(entity =>
+        {
+            entity.ToTable("push_subscriptions");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id").HasMaxLength(64);
+            entity.Property(e => e.Endpoint).HasColumnName("endpoint");
+            entity.Property(e => e.P256DH).HasColumnName("p256dh");
+            entity.Property(e => e.Auth).HasColumnName("auth");
+            entity.Property(e => e.UserAgent).HasColumnName("user_agent");
+            entity.Property(e => e.LastSeenAt).HasColumnName("last_seen_at");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+
+            entity.HasQueryFilter(e => e.DeletedAt == null);
+
+            entity.HasIndex(e => new { e.UserId, e.Endpoint }, "ix_push_subscriptions_user_endpoint").IsUnique();
+        });
+
+        modelBuilder.Entity<NotificationDelivery>(entity =>
+        {
+            entity.ToTable("notification_deliveries");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id").HasMaxLength(64);
+            entity.Property(e => e.SubscriptionId).HasColumnName("subscription_id");
+            entity.Property(e => e.Payload).HasColumnName("payload");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.AttemptCount).HasColumnName("attempt_count");
+            entity.Property(e => e.NextAttemptAt).HasColumnName("next_attempt_at");
+            entity.Property(e => e.SentAt).HasColumnName("sent_at");
+            entity.Property(e => e.LastError).HasColumnName("last_error");
+
+            entity.HasIndex(e => new { e.Status, e.NextAttemptAt }, "ix_notification_deliveries_status_next_attempt");
+
+            // Match PushSubscription's soft-delete filter so deliveries to
+            // pruned subscriptions are filtered out of dispatcher queries.
+            entity.HasQueryFilter(e => e.Subscription.DeletedAt == null);
+
+            entity.HasOne(e => e.Subscription).WithMany()
+                .HasForeignKey(e => e.SubscriptionId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_notification_deliveries_subscription");
+        });
     }
 }

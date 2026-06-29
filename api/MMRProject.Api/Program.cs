@@ -11,6 +11,7 @@ using Microsoft.OpenApi;
 using MMRProject.Api.Auth;
 using MMRProject.Api.Authorization.V3;
 using MMRProject.Api.BackgroundServices;
+using MMRProject.Api.Configuration;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.Exceptions;
@@ -114,8 +115,14 @@ builder.Services.AddScoped<IV3PendingMatchCoordinator, V3PendingMatchCoordinator
 builder.Services.AddScoped<IV3PersonalAccessTokenService, V3PersonalAccessTokenService>();
 builder.Services.AddScoped<IV3MatchFlagService, V3MatchFlagService>();
 builder.Services.AddScoped<IInviteLinkService, InviteLinkService>();
+builder.Services.AddScoped<IPushSubscriptionService, PushSubscriptionService>();
+builder.Services.AddScoped<INotificationQueue, NotificationQueueService>();
+
+builder.Services.Configure<PushOptions>(builder.Configuration.GetSection(PushOptions.SectionName));
+builder.Services.AddSingleton<INotificationDispatcher, WebPushNotificationDispatcher>();
 
 builder.Services.AddHostedService<V3MatchMakingBackgroundService>();
+builder.Services.AddHostedService<NotificationDispatchBackgroundService>();
 
 // External APIs
 builder.Services.AddHttpClient<IMMRCalculationApiClient, MMRCalculationApiClient>(client =>

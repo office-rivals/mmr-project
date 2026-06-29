@@ -61,6 +61,9 @@ command. Override any of them with AppHost user-secrets (or
 | `clerk-publishable-key` | `pk_test_…` (valid-format placeholder)   | Clerk frontend key                       |
 | `clerk-secret-key`      | `sk_test_placeholder`                    | Clerk backend key                        |
 | `clerk-issuer`          | `https://example.clerk.accounts.dev`     | Clerk issuer URL (api JWT validation)    |
+| `push-vapid-public-key` | `BAd-placeholder-…`                      | Web Push VAPID public key (api + frontend) |
+| `push-vapid-private-key`| `dev-private-key-placeholder`            | Web Push VAPID private key (api only)    |
+| `push-subject`          | `mailto:dev@example.com`                 | VAPID contact (api)                      |
 
 ### Clerk sign-in
 
@@ -75,6 +78,23 @@ dotnet user-secrets set "Parameters:clerk-issuer" "https://your-app.clerk.accoun
 ```
 
 The issuer URL is in the Clerk Dashboard under **API Keys**.
+
+### Web Push (VAPID)
+
+Push notifications need a VAPID keypair. Generate one locally with
+[`web-push`](https://github.com/web-push-libs/web-push) and stash both halves
+into AppHost user-secrets:
+
+```bash
+npx web-push generate-vapid-keys
+cd local-dev/MMRProject.AppHost
+dotnet user-secrets set "Parameters:push-vapid-public-key" "<publicKey from above>"
+dotnet user-secrets set "Parameters:push-vapid-private-key" "<privateKey from above>"
+dotnet user-secrets set "Parameters:push-subject" "mailto:you@example.com"
+```
+
+The defaults are placeholders — subscriptions created against them will fail
+at delivery time, but the stack boots so the rest of the app stays usable.
 
 ## Resetting the database
 

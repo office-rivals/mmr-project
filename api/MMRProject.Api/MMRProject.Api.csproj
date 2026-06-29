@@ -25,6 +25,7 @@
         <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
         <PackageReference Include="UUIDNext" Version="4.2.4" />
+        <PackageReference Include="WebPush" Version="1.0.13" />
     </ItemGroup>
 
 </Project>

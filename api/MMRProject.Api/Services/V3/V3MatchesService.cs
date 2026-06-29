@@ -26,6 +26,7 @@ public class V3MatchesService(
     IMMRCalculationApiClient mmrCalculationApiClient,
     IOrganizationService organizationService,
     IV3SeasonService seasonService,
+    INotificationQueue notificationQueue,
     ILogger<V3MatchesService> logger) : IV3MatchesService
 {
     private const long DefaultMmr = 1500;
@@ -71,7 +72,88 @@ public class V3MatchesService(
         await CalculateAndApplyMmr(orgId, match, leaguePlayers);
         await transaction.CommitAsync();
 
+        await EnqueueMatchResultNotificationsAsync(orgId, leagueId, match.Id, leaguePlayers, cancellationToken: default);
+
         return await LoadAndMapMatch(orgId, leagueId, match.Id);
+    }
+
+    private async Task EnqueueMatchResultNotificationsAsync(
+        Guid orgId,
+        Guid leagueId,
+        Guid matchId,
+        List<LeaguePlayer> leaguePlayers,
+        CancellationToken cancellationToken)
+    {
+        if (leaguePlayers.Count == 0)
+        {
+            return;
+        }
+
+        // Most recent rating history for each player belonging to this match.
+        var recent = await dbContext.RatingHistories
+            .AsNoTracking()
+            .Where(rh => rh.MatchId == matchId)
+            .ToDictionaryAsync(rh => rh.LeaguePlayerId, rh => rh.Delta, cancellationToken);
+
+        // Resolve Clerk user ids (IdentityUserId) via membership -> user.
+        var playerIds = leaguePlayers.Select(lp => lp.Id).ToList();
+        var userIds = await dbContext.LeaguePlayers
+            .AsNoTracking()
+            .Where(lp => playerIds.Contains(lp.Id))
+            .Join(dbContext.OrganizationMemberships,
+                lp => lp.OrganizationMembershipId,
+                om => om.Id,
+                (lp, om) => new { lp.Id, om.UserId })
+            .Where(x => x.UserId != null)
+            .Join(dbContext.V3Users,
+                x => x.UserId,
+                u => u.Id,
+                (x, u) => new { LeaguePlayerId = x.Id, u.IdentityUserId })
+            .ToListAsync(cancellationToken);
+
+        if (userIds.Count == 0)
+        {
+            return;
+        }
+
+        var league = await dbContext.Leagues
+            .AsNoTracking()
+            .Where(l => l.Id == leagueId)
+            .Select(l => new { l.Slug })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var organization = await dbContext.Organizations
+            .AsNoTracking()
+            .Where(o => o.Id == orgId)
+            .Select(o => new { o.Slug })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var url = $"/{organization?.Slug ?? ""}/{league?.Slug ?? ""}/submit";
+
+        foreach (var entry in userIds)
+        {
+            recent.TryGetValue(entry.LeaguePlayerId, out var delta);
+            var body = delta > 0
+                ? $"MMR +{delta} — nice work."
+                : $"MMR {delta} — better luck next time.";
+
+            var payload = new NotificationPayload(
+                Title: "Match reported",
+                Body: body,
+                Url: url,
+                Tag: $"match-{matchId}");
+
+            try
+            {
+                await notificationQueue.EnqueueForUserAsync(entry.IdentityUserId, payload, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Failed to enqueue match-result notification for user {UserId} (match {MatchId})",
+                    entry.IdentityUserId, matchId);
+            }
+        }
     }
 
     private async Task<List<List<LeaguePlayer>>> ResolveAndValidateTeamsAsync(

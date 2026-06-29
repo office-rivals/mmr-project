@@ -3,8 +3,10 @@
   import '../../app.pcss';
 
   import type { Snippet } from 'svelte';
+  import { onMount } from 'svelte';
   import Header from './components/header.svelte';
   import Navbar from './components/navbar.svelte';
+  import { ensureServiceWorker } from '$lib/push/subscribe';
   import type { LayoutData } from './$types';
 
   interface Props {
@@ -13,6 +15,15 @@
   }
 
   let { data, children }: Props = $props();
+
+  onMount(() => {
+    // Register once on the first authed page load. The SW is small and
+    // serves the cached app shell, so any authed route works. Failures are
+    // non-fatal — push is opt-in via the settings page.
+    ensureServiceWorker().catch((err) => {
+      console.warn('Service worker registration failed:', err);
+    });
+  });
 </script>
 
 <!--

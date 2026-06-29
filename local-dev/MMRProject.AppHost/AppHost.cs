@@ -31,6 +31,14 @@ var clerkPublishableKey = builder.AddParameter("clerk-publishable-key");
 var clerkSecretKey = builder.AddParameter("clerk-secret-key", secret: true);
 var clerkIssuer = builder.AddParameter("clerk-issuer");
 
+// Web Push (VAPID). Public key is the same value shipped in appsettings.json
+// so the dev stack matches production shape; private key + subject are
+// secrets set per-machine. Generate locally with
+// `npx web-push generate-vapid-keys`.
+var pushVapidPublicKey = builder.AddParameter("push-vapid-public-key");
+var pushVapidPrivateKey = builder.AddParameter("push-vapid-private-key", secret: true);
+var pushSubject = builder.AddParameter("push-subject");
+
 // --- Postgres ----------------------------------------------------------------
 
 // Pinned to the standard host port 5432 so the api's appsettings default and the
@@ -67,6 +75,9 @@ var api = builder.AddProject<Projects.MMRProject_Api>("api", launchProfileName: 
     .WithEnvironment("MMRCalculationAPI__ApiKey", adminSecret)
     .WithEnvironment("MMRCalculationAPI__BaseUrl", mmrApi.GetEndpoint("http"))
     .WithEnvironment("Authorization__Issuer", clerkIssuer)
+    .WithEnvironment("Push__Vapid__PublicKey", pushVapidPublicKey)
+    .WithEnvironment("Push__Vapid__PrivateKey", pushVapidPrivateKey)
+    .WithEnvironment("Push__Subject", pushSubject)
     // Gate dependents on readiness (DB reachable), not bare liveness.
     .WithHttpHealthCheck("/ready")
     // Pin OTLP to http/protobuf (same as mmr-api). The api otherwise defaults to
@@ -86,6 +97,7 @@ builder.AddViteApp("frontend", "../../frontend")
     .WithEnvironment("API_BASE_PATH", api.GetEndpoint("http"))
     .WithEnvironment("PUBLIC_CLERK_PUBLISHABLE_KEY", clerkPublishableKey)
     .WithEnvironment("CLERK_SECRET_KEY", clerkSecretKey)
+    .WithEnvironment("PUBLIC_VAPID_PUBLIC_KEY", pushVapidPublicKey)
     .WithExternalHttpEndpoints();
 
 builder.Build().Run();

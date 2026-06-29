@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import PageTitle from '$lib/components/page-title.svelte';
+  import PushSettingsCard from '$lib/components/notifications/push-settings-card.svelte';
   import Button from '$lib/components/ui/button/button.svelte';
   import CardContent from '$lib/components/ui/card/card-content.svelte';
   import CardHeader from '$lib/components/ui/card/card-header.svelte';
@@ -47,6 +48,8 @@
 
 <div class="flex flex-col gap-6">
   <PageTitle>Settings</PageTitle>
+
+  <PushSettingsCard />
 
   <Card>
     <CardHeader>
