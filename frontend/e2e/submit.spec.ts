@@ -65,10 +65,21 @@ test.describe('Submit match', () => {
     // Alice is already a league player, so she matches exactly one option.
     await expect(team1.getByRole('option')).toHaveCount(1);
 
-    // ArrowDown wraps within the single option; Enter picks the highlighted one.
-    await youField.press('ArrowDown');
+    // Enter straight after typing picks the top suggestion.
     await youField.press('Enter');
     await expect(team1.getByText('Alice Anderson')).toBeVisible();
+
+    // Arrow keys highlight, Enter picks the highlighted option.
+    const teammate = team1.locator('input[placeholder="Filter..."]').first();
+    await teammate.fill('Bob');
+    await teammate.press('ArrowDown');
+    // Bob Brown is the only league player matching, so he's the first option.
+    await expect(team1.getByRole('option').first()).toHaveAttribute(
+      'data-highlighted',
+      ''
+    );
+    await teammate.press('Enter');
+    await expect(team1.getByText('Bob Brown')).toBeVisible();
 
     // Enter must not have submitted the form.
     await expect(
@@ -78,12 +89,14 @@ test.describe('Submit match', () => {
       0
     );
 
-    // Nothing matches → Enter is a no-op, still no submit.
-    const teammateField = team1
+    // Nothing matches → Enter is a no-op, still no submit. Team 1 is full by
+    // now, so the next empty slot is the first opponent.
+    const opponent = page
+      .locator('#team2-step')
       .locator('input[placeholder="Filter..."]')
       .first();
-    await teammateField.fill('zzzzznoplayer');
-    await teammateField.press('Enter');
+    await opponent.fill('zzzzznoplayer');
+    await opponent.press('Enter');
     await expect(
       page.getByRole('heading', { name: 'Submit match' })
     ).toBeVisible();
