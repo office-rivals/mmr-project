@@ -9,7 +9,7 @@ async function pickPlayer(page: Page, displayName: string) {
   const input = page.locator('input[placeholder="Filter..."]').first();
   await input.fill(displayName);
   await page
-    .getByRole('button', { name: new RegExp(displayName) })
+    .getByRole('option', { name: new RegExp(displayName) })
     .first()
     .click();
 }
@@ -48,6 +48,48 @@ test.describe('Submit match', () => {
     await expect(dialog.getByLabel('Display name')).toBeVisible();
     await expect(dialog.getByLabel('Username (optional)')).toBeVisible();
     await expect(dialog.getByLabel('Email (optional)')).toBeVisible();
+  });
+
+  test('keyboard: arrow keys highlight a suggestion, Enter picks it without submitting', async ({
+    page,
+  }) => {
+    await page.goto(SUBMIT_URL);
+    // Clear the localStorage-driven auto-fill / "Recent players" list so the You
+    // slot starts empty and the only options come from the typed filter.
+    await page.evaluate(() => window.localStorage.clear());
+    await page.reload();
+
+    const team1 = page.locator('#team1-step');
+    const youField = team1.locator('input[placeholder="Filter..."]').first();
+    await youField.fill('Alice');
+    // Alice is already a league player, so she matches exactly one option.
+    await expect(team1.getByRole('option')).toHaveCount(1);
+
+    // ArrowDown wraps within the single option; Enter picks the highlighted one.
+    await youField.press('ArrowDown');
+    await youField.press('Enter');
+    await expect(team1.getByText('Alice Anderson')).toBeVisible();
+
+    // Enter must not have submitted the form.
+    await expect(
+      page.getByRole('heading', { name: 'Submit match' })
+    ).toBeVisible();
+    await expect(page.getByText(/must have at least one player/)).toHaveCount(
+      0
+    );
+
+    // Nothing matches → Enter is a no-op, still no submit.
+    const teammateField = team1
+      .locator('input[placeholder="Filter..."]')
+      .first();
+    await teammateField.fill('zzzzznoplayer');
+    await teammateField.press('Enter');
+    await expect(
+      page.getByRole('heading', { name: 'Submit match' })
+    ).toBeVisible();
+    await expect(page.getByText(/must have at least one player/)).toHaveCount(
+      0
+    );
   });
 
   test('full happy path: fill 4 players → we won → score → submit', async ({

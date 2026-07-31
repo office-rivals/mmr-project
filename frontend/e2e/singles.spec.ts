@@ -83,9 +83,9 @@ test.describe('1v1 league', () => {
     const team1 = page.locator('#team1-step');
     const team2 = page.locator('#team2-step');
     await team1.locator('input[placeholder="Filter..."]').fill('tuser');
-    await team1.getByRole('button', { name: /Test User/ }).click();
+    await team1.getByRole('option', { name: /Test User/ }).click();
     await team2.locator('input[placeholder="Filter..."]').fill('alia');
-    await team2.getByRole('button', { name: /Alice Anderson/ }).click();
+    await team2.getByRole('option', { name: /Alice Anderson/ }).click();
 
     // Free-form: no "Who won?" prompt and no 0-9 button picker. The score-step
     // panel goes straight to the two numeric inputs.
@@ -118,11 +118,11 @@ test.describe('1v1 league', () => {
 
     // "You" slot — pick the test user.
     await team1.locator('input[placeholder="Filter..."]').fill('tuser');
-    await team1.getByRole('button', { name: /Test User/ }).click();
+    await team1.getByRole('option', { name: /Test User/ }).click();
 
     // "Opponent" slot — pick Alice (seed gives display name "Alice Anderson").
     await team2.locator('input[placeholder="Filter..."]').fill('alia');
-    await team2.getByRole('button', { name: /Alice Anderson/ }).click();
+    await team2.getByRole('option', { name: /Alice Anderson/ }).click();
 
     // Free-form scoring: enter raw scores. 21-19 is a typical table-tennis end.
     await page.locator('#team1-score-input').fill('21');

@@ -36,6 +36,10 @@
   }: Props = $props();
 
   let filter = $state('');
+  let highlighted = $state(0);
+
+  const listId = $props.id();
+  const optionId = (i: number) => `${listId}-${i}`;
 
   const playerName = (p: {
     displayName?: string;
@@ -91,6 +95,35 @@
     onChange(null);
     filter = '';
   }
+
+  // The "recent" list and the filtered list never render at the same time, so a
+  // single index covers whichever list is visible.
+  let options = $derived(
+    filter.length === 0
+      ? latestPlayers.map((p) => () => selectPlayer(p))
+      : filter.length > 1
+        ? [
+            ...matchedPlayers.map((p) => () => selectPlayer(p)),
+            ...matchedMembers.map((m) => () => selectMember(m)),
+          ]
+        : []
+  );
+
+  function onkeydown(e: KeyboardEvent) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (options.length === 0) return;
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      highlighted = (highlighted + step + options.length) % options.length;
+    } else if (e.key === 'Enter') {
+      // Never let Enter submit the match from a filter input.
+      // ponytail: no suggestion highlighted (nothing matched) = no-op.
+      e.preventDefault();
+      options[highlighted]?.();
+    } else if (e.key === 'Escape') {
+      filter = '';
+    }
+  }
 </script>
 
 <div class="flex flex-col gap-2">
@@ -103,40 +136,71 @@
       spellcheck={false}
       autocorrect="off"
       autocapitalize="none"
+      {onkeydown}
+      oninput={() => (highlighted = 0)}
+      role="combobox"
+      aria-controls={listId}
+      aria-expanded={options.length > 0}
+      aria-activedescendant={options.length > 0
+        ? optionId(highlighted)
+        : undefined}
     />
     {#if filter.length === 0 && latestPlayers.length > 0}
       <p class="text-sm">Recent players</p>
-      <ul>
-        {#each latestPlayers as player (player.id)}
-          <li class="mb-1 last:mb-0">
-            <PlayerButton user={player} onclick={() => selectPlayer(player)} />
+      <ul id={listId} role="listbox">
+        {#each latestPlayers as player, i (player.id)}
+          <li class="mb-1 last:mb-0" role="presentation">
+            <PlayerButton
+              user={player}
+              onclick={() => selectPlayer(player)}
+              id={optionId(i)}
+              role="option"
+              aria-selected={highlighted === i}
+              class={highlighted === i ? 'border-primary bg-muted' : undefined}
+            />
           </li>
         {/each}
       </ul>
     {/if}
     {#if filter.length > 1}
       {#if matchedPlayers.length > 0 || matchedMembers.length > 0}
-        <ul>
-          {#each matchedPlayers as player (player.id)}
-            <li class="mb-1">
+        <ul id={listId} role="listbox">
+          {#each matchedPlayers as player, i (player.id)}
+            <li class="mb-1" role="presentation">
               <PlayerButton
                 user={player}
                 onclick={() => selectPlayer(player)}
+                id={optionId(i)}
+                role="option"
+                aria-selected={highlighted === i}
+                class={highlighted === i
+                  ? 'border-primary bg-muted'
+                  : undefined}
               />
             </li>
           {/each}
           {#if matchedMembers.length > 0}
-            <li class="mb-1 mt-2 text-xs text-muted-foreground">
+            <li
+              class="mb-1 mt-2 text-xs text-muted-foreground"
+              role="presentation"
+            >
               Org members not yet in league
             </li>
-            {#each matchedMembers as member (member.id)}
-              <li class="mb-1">
+            {#each matchedMembers as member, i (member.id)}
+              {@const idx = matchedPlayers.length + i}
+              <li class="mb-1" role="presentation">
                 <PlayerButton
                   user={{
                     displayName: member.displayName,
                     username: member.username,
                   }}
                   onclick={() => selectMember(member)}
+                  id={optionId(idx)}
+                  role="option"
+                  aria-selected={highlighted === idx}
+                  class={highlighted === idx
+                    ? 'border-primary bg-muted'
+                    : undefined}
                 />
               </li>
             {/each}
