@@ -1,5 +1,5 @@
 ---
-'frontend': patch
+"frontend": patch
 ---
 
 Player pickers are keyboard-navigable: arrow keys move through the suggestions,
