@@ -8,6 +8,43 @@ const LEAGUE_ADMIN = '/admin/test-org/leagues/test-league';
 // gives Test Org 2 leagues, 65 members and 15 current-season matches in
 // test-league.
 
+async function openEditDialog(page: Page) {
+  await page
+    .getByTestId('admin-match-row')
+    .first()
+    .getByTestId('admin-match-edit')
+    .click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
+
+// Holds the post-submit data reload open so the window between "PATCH
+// succeeded" and "dialog closed" is wide enough to observe. Returns the
+// invocation count so a test can prove the stall actually happened — without
+// it the window never opens and the assertions inside it are vacuous.
+function stallDataReload(page: Page, ms: number) {
+  const hits = { count: 0 };
+  page.route('**/*__data.json*', async (route) => {
+    hits.count += 1;
+    await new Promise((r) => setTimeout(r, ms));
+    await route.continue();
+  });
+  return hits;
+}
+
+function countEditSubmissions(page: Page) {
+  // Counted on request, not response: a second submit still in flight when the
+  // dialog closes is exactly the bug, and invisible to a response listener.
+  const edits = { count: 0 };
+  page.on('request', (req) => {
+    if (req.method() === 'POST' && req.url().includes('?/edit')) {
+      edits.count += 1;
+    }
+  });
+  return edits;
+}
+
 test.describe('Admin landing', () => {
   test('shows organisations the user can administer', async ({ page }) => {
     await page.goto(ADMIN_HOME);
@@ -101,6 +138,118 @@ test.describe('League admin', () => {
     // Cancel without changes — the dialog must close.
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
+  test('double-clicking Save submits the edit only once', async ({ page }) => {
+    // Concurrent PATCHes for one match fail server-side for an edit that landed.
+    const edits = countEditSubmissions(page);
+
+    await page.goto(`${LEAGUE_ADMIN}/matches`);
+    const dialog = await openEditDialog(page);
+
+    const scoreInputs = dialog.locator('input[type="number"]');
+    await scoreInputs.nth(0).fill('10');
+    await scoreInputs.nth(1).fill('7');
+
+    // requestSubmit twice in one tick: a second real click would be swallowed
+    // by the disabled attribute, which would leave enhance's cancel() — the
+    // actual guard — unexercised.
+    await dialog.locator('form').evaluate((form: HTMLFormElement) => {
+      form.requestSubmit();
+      form.requestSubmit();
+    });
+
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Match updated' })
+    ).toBeVisible();
+    await expect.poll(() => edits.count).toBe(1);
+  });
+
+  test('a successful save never flashes a validation error', async ({
+    page,
+  }) => {
+    // Svelte syncs bound state back from a reset form, so resetting on success
+    // collapses every player <select> onto its first option and the dialog
+    // accuses the admin of picking one player four times.
+    await page.goto(`${LEAGUE_ADMIN}/matches`);
+    const dialog = await openEditDialog(page);
+
+    const scoreInputs = dialog.locator('input[type="number"]');
+    await scoreInputs.nth(0).fill('10');
+    await scoreInputs.nth(1).fill('5');
+
+    const stalled = stallDataReload(page, 2000);
+
+    const duplicateError = page.getByText(
+      'Each player can only appear once across both teams.'
+    );
+    await dialog.getByRole('button', { name: /Save match|Saving/ }).click();
+
+    // Sample across the whole reload window; the dialog must go straight from
+    // open to closed without ever rendering the duplicate-player error.
+    const deadline = Date.now() + 4000;
+    while (Date.now() < deadline) {
+      expect(await duplicateError.count()).toBe(0);
+      if ((await page.getByRole('dialog').count()) === 0) break;
+      await page.waitForTimeout(50);
+    }
+
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Match updated' })
+    ).toBeVisible();
+    // Without a stalled reload there is no window to observe, and the loop
+    // above would pass whether or not the bug is present.
+    expect(stalled.count).toBeGreaterThan(0);
+  });
+
+  test('a superseded save leaves a reopened dialog alone', async ({ page }) => {
+    // Cancelling mid-save and reopening the same row gives the admin a second
+    // dialog. The first save's response must not act on it — closing it would
+    // throw away edits they have just re-entered, and a second submit racing
+    // the first lets the abandoned edit commit last and win.
+    const edits = countEditSubmissions(page);
+
+    await page.goto(`${LEAGUE_ADMIN}/matches`);
+    let dialog = await openEditDialog(page);
+    await dialog.locator('input[type="number"]').nth(0).fill('10');
+    await dialog.locator('input[type="number"]').nth(1).fill('6');
+
+    const stalled = stallDataReload(page, 1500);
+
+    // Resolves when the save's response is fully handled, so the assertions
+    // below cannot run before the superseded callback has had its chance.
+    const savePosted = page.waitForResponse(
+      (res) => res.request().method() === 'POST' && res.url().includes('?/edit')
+    );
+    await dialog.getByRole('button', { name: /Save match|Saving/ }).click();
+    await savePosted;
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    dialog = await openEditDialog(page);
+
+    // Save is still disabled: the first request is in flight, and letting a
+    // second one out would race it.
+    await expect(
+      dialog.getByRole('button', { name: /Save match|Saving/ })
+    ).toBeDisabled();
+
+    // Re-enables once the first request settles, so this also waits for the
+    // superseded callback to have run.
+    await expect(
+      dialog.getByRole('button', { name: /Save match|Saving/ })
+    ).toBeEnabled({ timeout: 10_000 });
+    expect(stalled.count).toBeGreaterThan(0);
+
+    // The reopened dialog survived, and no stale error was painted over it.
+    await expect(dialog).toBeVisible();
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Failed to update match' })
+    ).toHaveCount(0);
+    expect(edits.count).toBe(1);
   });
 
   test('edit closes dialog and recalc shows a success alert', async ({

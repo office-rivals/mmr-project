@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { invalidateAll } from '$app/navigation';
   import { Alert } from '$lib/components/ui/alert';
   import { Button } from '$lib/components/ui/button';
   import * as Dialog from '$lib/components/ui/dialog';
@@ -29,6 +30,11 @@
 
   let teams = $state<TeamState[]>([]);
   let formError = $state<string | null>(null);
+  let submitting = $state(false);
+  // Bumped on every (re)open, so a response can tell whether the dialog it was
+  // submitted from is still the one on screen. Not $state — it is only ever
+  // compared, and reactivity would re-trigger the effect that bumps it.
+  let generation = 0;
 
   $effect(() => {
     if (open && match) {
@@ -43,6 +49,11 @@
           score: team.score,
         }));
       formError = null;
+      generation += 1;
+      // `submitting` is deliberately not cleared here: it tracks a request, not
+      // a dialog. Clearing it on reopen would let a cancel-then-reopen fire a
+      // second PATCH alongside the first, and whichever commits last wins —
+      // which can be the edit the admin already abandoned.
     }
   });
 
@@ -94,14 +105,49 @@
       <form
         method="POST"
         action={formAction}
-        use:enhance={() => {
+        use:enhance={({ cancel }) => {
+          // Two responses would race to decide whether the dialog closes or
+          // shows an error.
+          if (submitting) {
+            cancel();
+            return;
+          }
+          submitting = true;
+          const submittedGeneration = generation;
+
+          // reset:false — the visible controls are unnamed, so the payload is
+          // entirely the hidden `teams` field and there is nothing to reset.
+          // Resetting anyway drops every <select> to its first option, and
+          // Svelte syncs that back through bind:value, leaving `teams` holding
+          // one player four times under a duplicate-player error.
           return async ({ update, result }) => {
-            await update();
-            if (result.type === 'failure') {
-              const failData = result.data as { message?: string } | undefined;
-              formError = failData?.message ?? 'Failed to update match';
-            } else if (result.type === 'success') {
-              onOpenChange(false);
+            try {
+              // Superseded: still refresh the list this save changed, but do
+              // not let applyAction paint a dead save's error over the dialog
+              // the admin has since reopened.
+              if (submittedGeneration !== generation) {
+                if (result.type === 'success') await invalidateAll();
+                return;
+              }
+
+              await update({ reset: false });
+
+              // Re-checked: update() awaits a full reload, and the admin can
+              // cancel and reopen during it.
+              if (submittedGeneration !== generation) return;
+
+              if (result.type === 'failure') {
+                const failData = result.data as
+                  | { message?: string }
+                  | undefined;
+                formError = failData?.message ?? 'Failed to update match';
+              } else if (result.type === 'success') {
+                onOpenChange(false);
+              }
+            } finally {
+              // Unconditional: `submitting` tracks this request, so leaving it
+              // set after a superseded response would disable Save for good.
+              submitting = false;
             }
           };
         }}
@@ -174,7 +220,9 @@
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={duplicate}>Save match</Button>
+          <Button type="submit" disabled={duplicate || submitting}>
+            {submitting ? 'Saving…' : 'Save match'}
+          </Button>
         </Dialog.Footer>
       </form>
     {/if}
