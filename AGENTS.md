@@ -184,6 +184,11 @@ release PR. Add a `.changeset/*.md` describing the change and let the release PR
 compute the bump. (Editing `dependencies` / `devDependencies` is unrelated and
 remains manual.)
 
+**Keep changeset descriptions to one or two sentences.** They ship verbatim as
+`CHANGELOG.md` bullets and GitHub Release notes, so say what changed for the
+user and name any new endpoint or flag — don't recount the implementation. See
+[`.changeset/README.md`](.changeset/README.md) for examples.
+
 **Infra/test-only PRs** (seed fixtures, e2e specs, CI, internal scripts, docs
 that don't affect a deployed component) skip the changeset and apply the
 `no-release` label instead — the release PR only fires when a changeset file
