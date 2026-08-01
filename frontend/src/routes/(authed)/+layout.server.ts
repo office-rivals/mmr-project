@@ -1,6 +1,14 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
-import type { MeOrganizationResponse } from '$lib/../api-v3/models';
+import type { MeOrganizationResponse } from '$api3';
+
+// Promise.allSettled semantics for a single awaited call, so the two requests
+// stay independently recoverable while still running in order.
+const settle = <T>(p: Promise<T>) =>
+  p.then(
+    (value) => ({ status: 'fulfilled' as const, value }),
+    () => ({ status: 'rejected' as const, value: undefined })
+  );
 
 export const load: LayoutServerLoad = async ({ locals }) => {
   const { userId } = locals.auth();
@@ -26,12 +34,11 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   // profile-independent routes (/settings, /random) can ignore it and degrade.
   let profileLoadFailed = false;
 
-  // Fetch profile and badge counts together; badges are non-fatal so a failure
-  // there never marks the profile as failed.
-  const [meResult, badgesResult] = await Promise.allSettled([
-    locals.apiClientV3.meApi.getMe(),
-    locals.apiClientV3.meApi.getBadges(),
-  ]);
+  // Deliberately sequential: getMe() provisions the user row and auto-claims
+  // pending invites, and the badge counts are derived from the memberships it
+  // creates. Racing them makes a freshly-invited admin's first load report zero.
+  const meResult = await settle(locals.apiClientV3.meApi.getMe());
+  const badgesResult = await settle(locals.apiClientV3.meApi.getBadges());
 
   if (meResult.status === 'fulfilled') {
     // Reading the payload stays guarded: a malformed profile must degrade the

@@ -14,11 +14,9 @@ export const load: PageServerLoad = async ({
 
   // Open-flag counts come from the badges endpoint (one grouped query
   // server-side) rather than a per-league fan-out.
-  const openFlagsTotal = openFlagsForOrg(badges, orgId);
-  const openFlagsPerLeague = leagues.map((league) => ({
-    leagueId: league.id,
-    count: openFlagsForLeague(badges, league.id),
-  }));
+  const openFlagsPerLeague = Object.fromEntries(
+    leagues.map((league) => [league.id, openFlagsForLeague(badges, league.id)])
+  );
 
   const activeMembers = members.filter((m) => m.status === 'Active');
   const ownerCount = activeMembers.filter((m) => m.role === 'Owner').length;
@@ -34,9 +32,7 @@ export const load: PageServerLoad = async ({
     ownerCount,
     moderatorCount,
     memberCount,
-    openFlagsTotal,
-    openFlagsPerLeague: Object.fromEntries(
-      openFlagsPerLeague.map((x) => [x.leagueId, x.count])
-    ) as Record<string, number>,
+    openFlagsTotal: openFlagsForOrg(badges, orgId),
+    openFlagsPerLeague,
   };
 };

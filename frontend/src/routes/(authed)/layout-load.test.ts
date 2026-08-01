@@ -26,6 +26,29 @@ const run = (locals: Locals) =>
   });
 
 describe('(authed) layout load — badge count wiring', () => {
+  /* getMe() provisions the user row and claims pending invites; the badge
+     counts are derived from the memberships it creates. If the two ever run
+     concurrently again, a freshly-invited admin's first load reports zero. */
+  it('calls getBadges only after getMe has resolved', async () => {
+    const order: string[] = [];
+    await run(
+      makeLocals({
+        me: async () => {
+          order.push('me:start');
+          await new Promise((r) => setTimeout(r, 5));
+          order.push('me:end');
+          return { organizations: [] };
+        },
+        badges: async () => {
+          order.push('badges:start');
+          return { openMatchFlags: { total: 0 } };
+        },
+      })
+    );
+
+    expect(order).toEqual(['me:start', 'me:end', 'badges:start']);
+  });
+
   it('surfaces the badge total from getBadges', async () => {
     const data = await run(
       makeLocals({

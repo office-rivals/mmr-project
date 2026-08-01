@@ -8,6 +8,7 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
+  import OpenFlagBadge from '$lib/components/admin/open-flag-badge.svelte';
   import { Flag, Trophy, UserCircle, Users } from 'lucide-svelte';
   import { formatLeagueFormat, getRoleBadgeVariant } from '$lib/utils';
   import type { PageData } from './$types';
@@ -108,12 +109,7 @@
                 </p>
               </div>
               <div class="flex items-center gap-2">
-                {#if openFlags > 0}
-                  <Badge variant="destructive">
-                    <Flag class="mr-1 h-3 w-3" />
-                    {openFlags} open
-                  </Badge>
-                {/if}
+                <OpenFlagBadge count={openFlags} />
               </div>
             </a>
           {/each}

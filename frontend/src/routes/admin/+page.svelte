@@ -9,7 +9,8 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
-  import { ArrowRight, Building2, Flag, ShieldAlert } from 'lucide-svelte';
+  import OpenFlagBadge from '$lib/components/admin/open-flag-badge.svelte';
+  import { ArrowRight, Building2, ShieldAlert } from 'lucide-svelte';
   import {
     getRoleBadgeVariant,
     isModeratorOrAbove,
@@ -72,12 +73,7 @@
                   {org.role}
                 </Badge>
                 <div class="flex items-center gap-2">
-                  {#if openFlags > 0}
-                    <Badge variant="destructive">
-                      <Flag class="mr-1 h-3 w-3" />
-                      {openFlags} open
-                    </Badge>
-                  {/if}
+                  <OpenFlagBadge count={openFlags} />
                   <ArrowRight class="h-4 w-4 text-muted-foreground" />
                 </div>
               </CardContent>

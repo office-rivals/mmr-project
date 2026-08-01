@@ -2,7 +2,7 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { cubicOut } from 'svelte/easing';
 import type { TransitionConfig } from 'svelte/transition';
-import type { BadgesResponse } from '../api-v3/models';
+import type { BadgesResponse } from '$api3';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

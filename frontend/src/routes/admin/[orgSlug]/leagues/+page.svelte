@@ -12,7 +12,8 @@
   } from '$lib/components/ui/card';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
-  import { Flag, Plus, Trophy } from 'lucide-svelte';
+  import OpenFlagBadge from '$lib/components/admin/open-flag-badge.svelte';
+  import { Plus, Trophy } from 'lucide-svelte';
   import { formatLeagueFormat, openFlagsForLeague } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
 
@@ -121,12 +122,7 @@
           </div>
         </div>
         <div class="flex items-center gap-2">
-          {#if openFlags > 0}
-            <Badge variant="destructive">
-              <Flag class="mr-1 h-3 w-3" />
-              {openFlags} open
-            </Badge>
-          {/if}
+          <OpenFlagBadge count={openFlags} />
           <Badge variant="outline">{formatLeagueFormat(league.teamSize)}</Badge>
         </div>
       </a>

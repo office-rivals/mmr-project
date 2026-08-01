@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import OpenFlagBadge from '$lib/components/admin/open-flag-badge.svelte';
   import { cn, openFlagsForOrg } from '$lib/utils';
   import { LayoutDashboard, Trophy, Users } from 'lucide-svelte';
   import type { Snippet } from 'svelte';
@@ -14,12 +15,21 @@
   } = $props();
 
   const base = $derived(`/admin/${data.orgSlug}`);
-  const orgOpenFlags = $derived(openFlagsForOrg(data.badges, data.orgId));
-  const leaguesHref = $derived(`${base}/leagues`);
   const navItems = $derived([
-    { href: base, label: 'Overview', icon: LayoutDashboard, exact: true },
-    { href: `${base}/members`, label: 'Members', icon: Users },
-    { href: leaguesHref, label: 'Leagues', icon: Trophy },
+    {
+      href: base,
+      label: 'Overview',
+      icon: LayoutDashboard,
+      exact: true,
+      badge: 0,
+    },
+    { href: `${base}/members`, label: 'Members', icon: Users, badge: 0 },
+    {
+      href: `${base}/leagues`,
+      label: 'Leagues',
+      icon: Trophy,
+      badge: openFlagsForOrg(data.badges, data.orgId),
+    },
   ]);
 
   function isActive(href: string, exact: boolean) {
@@ -33,7 +43,6 @@
     <nav class="flex flex-row gap-1 overflow-x-auto lg:flex-col">
       {#each navItems as item}
         {@const active = isActive(item.href, item.exact ?? false)}
-        {@const badge = item.href === leaguesHref ? orgOpenFlags : 0}
         <a
           href={item.href}
           class={cn(
@@ -45,14 +54,7 @@
         >
           <item.icon class="h-4 w-4" />
           <span>{item.label}</span>
-          {#if badge > 0}
-            <span
-              class="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-destructive-foreground"
-              aria-label={`${badge} open flags`}
-            >
-              {badge}
-            </span>
-          {/if}
+          <OpenFlagBadge count={item.badge} variant="count" class="ml-auto" />
         </a>
       {/each}
     </nav>

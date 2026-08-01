@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import OpenFlagBadge from '$lib/components/admin/open-flag-badge.svelte';
   import { cn, openFlagsForLeague } from '$lib/utils';
   import {
     CalendarDays,
@@ -19,15 +20,32 @@
   } = $props();
 
   const base = $derived(data.leagueAdminBase);
-  const flagsHref = $derived(`${base}/match-flags`);
-  const leagueOpenFlags = $derived(
-    openFlagsForLeague(data.badges, data.leagueId)
-  );
   const subnav = $derived([
-    { href: base, label: 'Overview', icon: LayoutDashboard, exact: true },
-    { href: `${base}/matches`, label: 'Matches', icon: ClipboardList },
-    { href: flagsHref, label: 'Flags', icon: Flag },
-    { href: `${base}/seasons`, label: 'Seasons', icon: CalendarDays },
+    {
+      href: base,
+      label: 'Overview',
+      icon: LayoutDashboard,
+      exact: true,
+      badge: 0,
+    },
+    {
+      href: `${base}/matches`,
+      label: 'Matches',
+      icon: ClipboardList,
+      badge: 0,
+    },
+    {
+      href: `${base}/match-flags`,
+      label: 'Flags',
+      icon: Flag,
+      badge: openFlagsForLeague(data.badges, data.leagueId),
+    },
+    {
+      href: `${base}/seasons`,
+      label: 'Seasons',
+      icon: CalendarDays,
+      badge: 0,
+    },
   ]);
 
   function isActive(href: string, exact: boolean) {
@@ -47,7 +65,6 @@
   >
     {#each subnav as item}
       {@const active = isActive(item.href, item.exact ?? false)}
-      {@const badge = item.href === flagsHref ? leagueOpenFlags : 0}
       <a
         href={item.href}
         class={cn(
@@ -59,14 +76,7 @@
       >
         <item.icon class="h-4 w-4" />
         <span>{item.label}</span>
-        {#if badge > 0}
-          <span
-            class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-destructive-foreground"
-            aria-label={`${badge} open flags`}
-          >
-            {badge}
-          </span>
-        {/if}
+        <OpenFlagBadge count={item.badge} variant="count" />
       </a>
     {/each}
   </nav>

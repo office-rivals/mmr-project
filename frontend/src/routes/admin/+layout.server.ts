@@ -8,17 +8,15 @@ import type { LayoutServerLoad } from './$types';
 // authorization for everything that actually matters.
 export const load: LayoutServerLoad = async ({ locals: { apiClientV3 } }) => {
   let me;
-  let badges;
   try {
-    // Badges never reject the pair (own .catch); only a getMe() failure 401s,
-    // preserving the prior behavior.
-    [me, badges] = await Promise.all([
-      apiClientV3.meApi.getMe(),
-      apiClientV3.meApi.getBadges().catch(() => null),
-    ]);
+    me = await apiClientV3.meApi.getMe();
   } catch {
     throw error(401, 'Failed to load user profile');
   }
+
+  // After getMe(), which provisions the user and claims pending invites — the
+  // memberships the counts are derived from. Non-fatal on its own.
+  const badges = await apiClientV3.meApi.getBadges().catch(() => null);
 
   return {
     me,
