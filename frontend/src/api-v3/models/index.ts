@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
-// Placeholder types matching v3 DTOs - will be replaced by generated code
+// Hand-maintained types mirroring the v3 API DTOs. Update by hand when the
+// v3 API changes (this client is not generated). See ../index.ts.
 
 // Enums
 export enum OrganizationRole {
@@ -415,7 +416,7 @@ export interface CreateTokenResponse {
   tokenDetails: TokenResponse;
 }
 
-// JSON conversion helpers (placeholder - will be generated)
+// JSON conversion helpers (hand-maintained pass-throughs)
 export function MeResponseFromJSON(json: any): MeResponse {
   return json;
 }
