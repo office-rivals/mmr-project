@@ -3,6 +3,13 @@ import { load } from './+layout.server';
 
 type Locals = Parameters<typeof load>[0]['locals'];
 
+const adminOrgs = [
+  { id: 'org-1', name: 'Org', slug: 'org', role: 'Owner', leagues: [] },
+];
+const memberOrgs = [
+  { id: 'org-1', name: 'Org', slug: 'org', role: 'Member', leagues: [] },
+];
+
 function makeLocals(opts: {
   me?: () => Promise<unknown>;
   badges?: () => Promise<unknown>;
@@ -11,7 +18,7 @@ function makeLocals(opts: {
     auth: () => ({ userId: 'user-1', getToken: async () => 't' }),
     apiClientV3: {
       meApi: {
-        getMe: opts.me ?? (async () => ({ organizations: [] })),
+        getMe: opts.me ?? (async () => ({ organizations: adminOrgs })),
         getBadges:
           opts.badges ?? (async () => ({ openMatchFlags: { total: 0 } })),
       },
@@ -26,10 +33,38 @@ const run = (locals: Locals) =>
   });
 
 describe('(authed) layout load — badge count wiring', () => {
-  /* getMe() provisions the user row and claims pending invites; the badge
-     counts are derived from the memberships it creates. If the two ever run
-     concurrently again, a freshly-invited admin's first load reports zero. */
-  it('calls getBadges only after getMe has resolved', async () => {
+  it('surfaces the badge total for an admin', async () => {
+    const data = await run(
+      makeLocals({
+        me: async () => ({ organizations: adminOrgs, displayName: 'A' }),
+        badges: async () => ({ openMatchFlags: { total: 7 } }),
+      })
+    );
+    expect(data.openFlagCount).toBe(7);
+  });
+
+  /* Only admins can act on flags, so everyone else should not pay for the
+     request at all — they would just be told zero. */
+  it('does not request badges for a non-admin', async () => {
+    let called = false;
+    const data = await run(
+      makeLocals({
+        me: async () => ({ organizations: memberOrgs }),
+        badges: async () => {
+          called = true;
+          return { openMatchFlags: { total: 9 } };
+        },
+      })
+    );
+
+    expect(called).toBe(false);
+    expect(data.openFlagCount).toBe(0);
+  });
+
+  /* getMe() provisions the user row and claims pending invites, and the counts
+     derive from the memberships it creates — so the badge request must not
+     start until it has resolved, or a freshly-invited admin reports zero. */
+  it('requests badges only after getMe has resolved', async () => {
     const order: string[] = [];
     await run(
       makeLocals({
@@ -37,7 +72,7 @@ describe('(authed) layout load — badge count wiring', () => {
           order.push('me:start');
           await new Promise((r) => setTimeout(r, 5));
           order.push('me:end');
-          return { organizations: [] };
+          return { organizations: adminOrgs };
         },
         badges: async () => {
           order.push('badges:start');
@@ -49,28 +84,10 @@ describe('(authed) layout load — badge count wiring', () => {
     expect(order).toEqual(['me:start', 'me:end', 'badges:start']);
   });
 
-  it('surfaces the badge total from getBadges', async () => {
+  it('degrades to 0 when the badge request fails, without failing the profile', async () => {
     const data = await run(
       makeLocals({
-        me: async () => ({
-          organizations: [],
-          displayName: 'A',
-          username: 'a',
-        }),
-        badges: async () => ({ openMatchFlags: { total: 7 } }),
-      })
-    );
-    expect(data.openFlagCount).toBe(7);
-  });
-
-  it('degrades to 0 when getBadges rejects, without failing the profile', async () => {
-    const data = await run(
-      makeLocals({
-        me: async () => ({
-          organizations: [],
-          displayName: 'A',
-          username: 'a',
-        }),
+        me: async () => ({ organizations: adminOrgs, displayName: 'A' }),
         badges: async () => {
           throw new Error('badges down');
         },
@@ -80,23 +97,27 @@ describe('(authed) layout load — badge count wiring', () => {
     expect(data.profileLoadFailed).toBe(false);
   });
 
-  /* If getMe fails while getBadges succeeds, the load yields a count with no
-     organizations. header.svelte must not paint the alert dot in that state —
-     it gates on `hasAdminAccess && openFlagCount > 0`, and `hasAdminAccess`
-     derives from these (empty) organizations. */
-  it('getMe failing while getBadges succeeds yields count>0 with no orgs', async () => {
+  /* A failed profile leaves no organizations, so there is no one to badge —
+     the count must stay 0 rather than alerting a user who has no Admin entry
+     to reach. */
+  it('reports no count when the profile fails', async () => {
+    let called = false;
     const data = await run(
       makeLocals({
         me: async () => {
           throw new Error('profile down');
         },
-        badges: async () => ({ openMatchFlags: { total: 4 } }),
+        badges: async () => {
+          called = true;
+          return { openMatchFlags: { total: 4 } };
+        },
       })
     );
 
     expect(data.profileLoadFailed).toBe(true);
-    expect(data.organizations).toEqual([]); // => hasAdminAccess === false
-    expect(data.openFlagCount).toBe(4);
+    expect(data.organizations).toEqual([]);
+    expect(called).toBe(false);
+    expect(data.openFlagCount).toBe(0);
   });
 
   /* A malformed profile payload must degrade like a failed request rather than
@@ -106,7 +127,6 @@ describe('(authed) layout load — badge count wiring', () => {
       makeLocals({
         // organizations is not an array => `organizations.find(...)` throws.
         me: async () => ({ organizations: 'not-an-array' }),
-        badges: async () => ({ openMatchFlags: { total: 0 } }),
       })
     );
 

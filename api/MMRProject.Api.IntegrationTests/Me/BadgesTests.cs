@@ -134,13 +134,13 @@ public class BadgesTests(PostgresFixture postgres) : IntegrationTestBase(postgre
         Assert.Equal(0, (await GetBadges()).OpenMatchFlags.Total);
     }
 
-    // ---- Finding #9: does /me/badges provision the user the way /me does? ----
-
+    // Unlike GetMeAsync, this endpoint does not call EnsureUserAsync or
+    // AutoClaimInvitesAsync — it only reads. Callers must therefore fetch the
+    // profile first, or a user whose row and invites have not been created yet
+    // will be told they have nothing to handle.
     [Fact]
-    public async Task Probe_Finding9_BadgesDoesNotProvisionUser()
+    public async Task Badges_DoNotProvisionTheUser()
     {
-        // A brand-new identity that has never called /me. GetMeAsync would call
-        // EnsureUserAsync + AutoClaimInvitesAsync; GetBadgesAsync does a plain lookup.
         AuthenticateAs("never-seen", email: "never-seen@test.com");
 
         var badges = await GetBadges();
@@ -150,15 +150,11 @@ public class BadgesTests(PostgresFixture postgres) : IntegrationTestBase(postgre
         var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
         var exists = await db.V3Users.AnyAsync(u => u.IdentityUserId == "never-seen");
 
-        // If this is false, /me/badges did NOT create the user row => the two
-        // calls racing in the layout can observe different provisioning states.
         Assert.False(exists);
     }
 
-    // ---- Finding #2: can ByLeague ever see one league under two orgs? ----
-
     [Fact]
-    public async Task Probe_Finding2_DuplicateLeagueKeyAcrossOrgs()
+    public async Task Badges_TolerateFlagWithMismatchedOrgAndLeague()
     {
         var (orgA, leagueA, a1, a2, a3, a4) = await SetupOrgWithPlayers("f", "org-f");
         var orgB = await CreateOrganization("Org G", "org-g");

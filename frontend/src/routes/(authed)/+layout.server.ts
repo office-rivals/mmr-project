@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
+import { isModeratorOrAbove } from '$lib/utils';
 import type { MeOrganizationResponse } from '$api3';
 
 // Promise.allSettled semantics for a single awaited call, so the two requests
@@ -34,11 +35,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   // profile-independent routes (/settings, /random) can ignore it and degrade.
   let profileLoadFailed = false;
 
-  // Deliberately sequential: getMe() provisions the user row and auto-claims
-  // pending invites, and the badge counts are derived from the memberships it
-  // creates. Racing them makes a freshly-invited admin's first load report zero.
   const meResult = await settle(locals.apiClientV3.meApi.getMe());
-  const badgesResult = await settle(locals.apiClientV3.meApi.getBadges());
 
   if (meResult.status === 'fulfilled') {
     // Reading the payload stays guarded: a malformed profile must degrade the
@@ -69,8 +66,16 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     profileLoadFailed = true;
   }
 
-  if (badgesResult.status === 'fulfilled') {
-    openFlagCount = badgesResult.value.openMatchFlags?.total ?? 0;
+  // Only admins can act on flags, and only the profile says who is one — so
+  // this runs after getMe() rather than alongside it, and not at all for the
+  // majority of users, who would just be paying a round trip to be told zero.
+  // (getMe() also provisions the user row and claims pending invites, which is
+  // what the counts are derived from, so the ordering is required regardless.)
+  if (organizations.some((o) => isModeratorOrAbove(o.role))) {
+    const badgesResult = await settle(locals.apiClientV3.meApi.getBadges());
+    if (badgesResult.status === 'fulfilled') {
+      openFlagCount = badgesResult.value.openMatchFlags?.total ?? 0;
+    }
   }
 
   return {
