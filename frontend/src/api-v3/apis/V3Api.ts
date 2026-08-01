@@ -7,6 +7,7 @@ import type {
   InviteInfoResponse,
   JoinOrganizationResponse,
   MeResponse,
+  BadgesResponse,
   CreateOrganizationRequest,
   UpdateOrganizationRequest,
   OrganizationResponse,
@@ -46,6 +47,15 @@ export class MeApi extends runtime.BaseAPI {
   async getMe(): Promise<MeResponse> {
     const response = await this.request({
       path: '/api/v3/me',
+      method: 'GET',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async getBadges(): Promise<BadgesResponse> {
+    const response = await this.request({
+      path: '/api/v3/me/badges',
       method: 'GET',
       headers: {},
     });

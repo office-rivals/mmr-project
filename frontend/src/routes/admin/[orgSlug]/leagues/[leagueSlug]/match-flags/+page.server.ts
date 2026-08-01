@@ -13,11 +13,22 @@ export const load: PageServerLoad = async ({
   url,
 }) => {
   const { orgId, leagueId } = await parent();
+
+  // Default to Open (the actionable queue); `?status=all` is the explicit
+  // no-filter view. Anything unrecognized falls back to Open.
   const rawStatusFilter = url.searchParams.get('status');
-  const statusFilter =
-    rawStatusFilter && isMatchFlagStatus(rawStatusFilter)
-      ? rawStatusFilter
-      : undefined;
+  let statusFilter: MatchFlagStatus | undefined;
+  let activeFilter: MatchFlagStatus | 'all';
+  if (rawStatusFilter === 'all') {
+    statusFilter = undefined;
+    activeFilter = 'all';
+  } else if (rawStatusFilter && isMatchFlagStatus(rawStatusFilter)) {
+    statusFilter = rawStatusFilter;
+    activeFilter = rawStatusFilter;
+  } else {
+    statusFilter = MatchFlagStatus.Open;
+    activeFilter = MatchFlagStatus.Open;
+  }
 
   try {
     const [flags, players, currentSeasonId] = await Promise.all([
@@ -68,7 +79,7 @@ export const load: PageServerLoad = async ({
       players,
       matchesById,
       currentSeasonId,
-      statusFilter: statusFilter ?? null,
+      statusFilter: activeFilter,
     };
   } catch {
     throw error(500, 'Failed to load flags');

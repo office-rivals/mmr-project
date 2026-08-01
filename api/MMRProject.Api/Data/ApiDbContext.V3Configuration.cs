@@ -452,6 +452,12 @@ public partial class ApiDbContext
                 .IsUnique()
                 .HasFilter("status = 0");
 
+            // Serves the nav badge counts (open flags grouped by org + league),
+            // which run on every authenticated page load. Without it Postgres
+            // seq-scans match_flags once the table is non-trivial.
+            entity.HasIndex(e => new { e.OrganizationId, e.LeagueId }, "ix_match_flags_org_league_open")
+                .HasFilter("status = 0");
+
             entity.HasOne(e => e.Match).WithMany()
                 .HasForeignKey(e => e.MatchId)
                 .OnDelete(DeleteBehavior.Restrict)
