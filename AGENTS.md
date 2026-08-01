@@ -37,28 +37,16 @@ documented in [`local-dev/README.md`](local-dev/README.md).
 Useful for fast iteration on one service. Outside the AppHost you must supply
 that service's configuration yourself (see [Configuration](#configuration)).
 
-```bash
-# Frontend — cd frontend
-npm install
-npm run dev              # dev server on http://localhost:5173
-npm run build            # production build
-npm run check            # type checking (svelte-check)
-npm run lint             # ESLint + Prettier
-npm run format           # Prettier
-```
+Each service uses its standard toolchain — `npm run <script>` per
+`frontend/package.json`, `dotnet run`, `go run main.go`. Default ports: frontend
+5173, API 8081 (Swagger UI at `/swagger`), MMR API 8080.
+
+EF Core migrations are the one non-obvious invocation — the output directory and
+the context must both be passed explicitly:
 
 ```bash
-# API — cd api/MMRProject.Api
-dotnet restore
-dotnet run               # API on http://localhost:8081 (Swagger UI at /swagger)
-dotnet build
+cd api/MMRProject.Api
 dotnet ef migrations add <MigrationName> -o Data/Migrations -c ApiDbContext
-```
-
-```bash
-# MMR API — cd mmr-api
-go run main.go           # MMR API on http://localhost:8080
-go test ./...            # all tests (single package: go test ./test/mmr)
 ```
 
 The frontend's v3 API client (`frontend/src/api-v3`) is hand-maintained — update
@@ -106,11 +94,10 @@ Postgres resource in the Aspire dashboard.
 
 ### Data Model
 
-Core entities in `api/MMRProject.Api/Data/Entities/`: **Player** (profile + MMR
-mu/sigma/mmr, linked to Clerk via `IdentityUserId`), **Season**, **Match** (two
-teams + season), **Team** (two players, score, winner flag), **PlayerHistory**
-(MMR snapshots per match), **MmrCalculation** (per-player MMR deltas),
-**QueuedPlayer**, **ActiveMatch**, **PendingMatch**, **PersonalAccessToken**.
+Entities live in `api/MMRProject.Api/Data/Entities/`. The non-obvious parts:
+**Player** carries the OpenSkill `mu`/`sigma` pair alongside the derived `mmr`
+and links to Clerk via `IdentityUserId`; **PlayerHistory** and
+**MmrCalculation** are per-match snapshots and deltas, not live state.
 
 ## Configuration
 
@@ -118,13 +105,7 @@ The AppHost injects everything below except Clerk keys (set those via AppHost
 user-secrets — see [`local-dev/README.md`](local-dev/README.md)). These values
 only matter when running a service standalone.
 
-**Frontend (`.env`)**
-
-```
-PUBLIC_CLERK_PUBLISHABLE_KEY=<clerk_publishable_key>
-CLERK_SECRET_KEY=<clerk_secret_key>
-API_BASE_PATH=http://localhost:8081
-```
+**Frontend (`.env`)** — see `frontend/.env.example`.
 
 **API (`appsettings.Development.json`)**
 
@@ -147,11 +128,7 @@ cd api/MMRProject.Api
 dotnet user-secrets set "Authorization:Issuer" "<clerk_issuer_url>"
 ```
 
-**MMR API (`.env`)**
-
-```
-ADMIN_SECRET=<admin_secret>
-```
+**MMR API (`.env`)** — see `mmr-api/.env.example`.
 
 ## Testing
 
