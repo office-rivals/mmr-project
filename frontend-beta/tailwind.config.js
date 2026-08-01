@@ -1,0 +1,94 @@
+import { fontFamily } from 'tailwindcss/defaultTheme';
+// The Svelte app shipped no Tailwind plugins, but the canonical shadcn/ui
+// dialog and dropdown-menu emit `data-[state=open]:animate-in` utilities that
+// only exist with this plugin. Purely additive — no existing utility changes.
+import tailwindcssAnimate from 'tailwindcss-animate';
+
+/** @type {import('tailwindcss').Config} */
+const config = {
+  // iOS Safari applies :hover on the first tap and only fires the click on the
+  // second tap, so any hover-styled control (e.g. the header org/league picker)
+  // needs a double-tap to open. Gating hover utilities behind
+  // @media (hover: hover) means they never apply on touch, restoring first-tap.
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
+  darkMode: ['class'],
+  content: ['./src/**/*.{ts,tsx,html}'],
+  safelist: ['dark'],
+  theme: {
+    container: {
+      center: true,
+      padding: '2rem',
+      screens: {
+        '2xl': '1400px',
+      },
+    },
+    extend: {
+      colors: {
+        border: 'hsl(var(--border) / <alpha-value>)',
+        input: 'hsl(var(--input) / <alpha-value>)',
+        ring: 'hsl(var(--ring) / <alpha-value>)',
+        background: 'hsl(var(--background) / <alpha-value>)',
+        foreground: 'hsl(var(--foreground) / <alpha-value>)',
+        primary: {
+          DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+          foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary) / <alpha-value>)',
+          foreground: 'hsl(var(--secondary-foreground) / <alpha-value>)',
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive) / <alpha-value>)',
+          foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted) / <alpha-value>)',
+          foreground: 'hsl(var(--muted-foreground) / <alpha-value>)',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent) / <alpha-value>)',
+          foreground: 'hsl(var(--accent-foreground) / <alpha-value>)',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover) / <alpha-value>)',
+          foreground: 'hsl(var(--popover-foreground) / <alpha-value>)',
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card) / <alpha-value>)',
+          foreground: 'hsl(var(--card-foreground) / <alpha-value>)',
+        },
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+      },
+      fontFamily: {
+        sans: [...fontFamily.sans],
+      },
+      animation: {
+        border: 'border 4s linear infinite',
+      },
+      keyframes: {
+        border: {
+          to: {
+            '--border-angle': '360deg',
+          },
+        },
+        'min-max-width': {
+          '0%': { width: '0%' },
+          '100%': { width: '100%' },
+        },
+        progress: {
+          '0%': { strokeDasharray: '0 251.3' },
+          '100%': { strokeDasharray: '188.5 251.3' },
+        },
+      },
+    },
+  },
+  plugins: [tailwindcssAnimate],
+};
+
+export default config;
