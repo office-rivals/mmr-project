@@ -6,6 +6,7 @@ using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
 using MMRProject.Api.Services.V3;
+using Npgsql;
 
 namespace MMRProject.Api.IntegrationTests.Matches;
 
@@ -1206,6 +1207,67 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
             Assert.True(delete.Result.StatusCode != HttpStatusCode.InternalServerError,
                 $"attempt {attempt}: concurrent delete returned 500");
         }
+    }
+
+    [Fact]
+    public async Task UpdateMatch_DoesNotQueueBehindAKeyShareLockOnTheMatch()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, player3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, player4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        var submitResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                ]
+            });
+        var match = await ReadJsonAsync<MatchResponse>(submitResponse);
+        Assert.NotNull(match);
+
+        // Inserting anything that references a match — a flag, a rating history
+        // row from a recalc — holds FOR KEY SHARE on the match row for the life
+        // of that transaction. An edit must not wait for it; only other edits
+        // and deletes should. Fails if the lock is widened to FOR UPDATE.
+        await using var connection = new NpgsqlConnection(postgres.GetConnectionString());
+        await connection.OpenAsync();
+        await using var keyShare = await connection.BeginTransactionAsync();
+        await using (var command = new NpgsqlCommand(
+            "SELECT id FROM matches WHERE id = @id FOR KEY SHARE", connection, keyShare))
+        {
+            command.Parameters.AddWithValue("id", match.Id);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var update = Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{match.Id}",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 7 }
+                ]
+            });
+
+        var finished = await Task.WhenAny(update, Task.Delay(TimeSpan.FromSeconds(5)));
+
+        Assert.True(finished == update, "the edit blocked behind a key-share lock on the match row");
+        Assert.Equal(HttpStatusCode.OK, update.Result.StatusCode);
+
+        await keyShare.RollbackAsync();
     }
 
     [Fact]

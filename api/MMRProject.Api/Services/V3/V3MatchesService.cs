@@ -430,10 +430,17 @@ public class V3MatchesService(
     /// take this <em>before</em> the match's child rows; the other order
     /// deadlocks them against each other.
     /// </summary>
+    /// <remarks>
+    /// FOR NO KEY UPDATE rather than the FOR UPDATE used elsewhere in this
+    /// namespace: it excludes other edits and deletes just the same, but not
+    /// the FOR KEY SHARE that inserting a row referencing this match takes, so
+    /// flagging a match or writing its rating history does not queue behind an
+    /// edit.
+    /// </remarks>
     private Task<V3Match?> LockMatchForUpdateAsync(Guid orgId, Guid leagueId, Guid matchId) =>
         dbContext.Set<V3Match>()
             .FromSqlInterpolated(
-                $"SELECT * FROM matches WHERE id = {matchId} AND organization_id = {orgId} AND league_id = {leagueId} FOR UPDATE")
+                $"SELECT * FROM matches WHERE id = {matchId} AND organization_id = {orgId} AND league_id = {leagueId} FOR NO KEY UPDATE")
             .AsTracking()
             .FirstOrDefaultAsync();
 
