@@ -1,5 +1,63 @@
 # Changelog
 
+## 1.5.0
+
+- Show the flagged match inline on the admin match-flags page and let moderators
+  edit (and recalculate) the match before resolving or dismissing the flag.
+- chore(deps-dev): bump prettier from 3.8.3 to 3.8.4 in /frontend
+- Harden the PWA pull-to-refresh gesture:
+  
+  - Ignore pulls that start on surfaces owning their own touch gestures (the
+    `/random` touch randomizer), so its multi-finger flow no longer triggers a
+    spurious refresh.
+  - Only attach the global touch listeners in standalone (installed) mode, and
+    resolve standalone status once instead of on every gesture.
+  - Handle `touchcancel` so an interrupted pull no longer leaves the spinner
+    stuck on screen.
+  - Restrict the gesture to a single finger and only commit once the last finger
+    lifts, fixing multi-touch origin/commit glitches.
+  - Surface a brief error state (instead of silently resetting) when the refresh
+    fails, and expose the refresh state to assistive tech via an `aria-live`
+    status region.
+  - Render the indicator beneath the app-shell header (`z-20`) so it emerges from
+    under the header as intended.
+
+## 1.4.1
+
+- chore(deps-dev): bump @sveltejs/kit from 2.61.1 to 2.65.1 in /frontend
+- chore(deps-dev): bump @sveltejs/vite-plugin-svelte from 7.0.0 to 7.1.2 in /frontend
+- chore(deps): bump dompurify from 3.4.1 to 3.4.10 in /frontend
+- chore(deps-dev): bump form-data from 4.0.5 to 4.0.6 in /frontend
+- chore(deps-dev): bump vite from 8.0.10 to 8.0.16 in /frontend
+- chore(deps): bump dompurify from 3.4.10 to 3.4.11 in /frontend
+- Hide not-yet-started seasons from members. `GET .../seasons` now returns only seasons that have already started, and a new moderator/owner-only `GET .../admin/seasons` returns the full list (including upcoming) for admin management. The frontend selects the current season defensively and the admin seasons page uses the new endpoint so upcoming seasons stay visible to admins.
+- Refactor date helpers in `src/lib/utils.ts` to remove duplication:
+  collapse the repeated null/empty/NaN guards behind a private
+  `parseLocalDate` helper, replace three local `formatDate`
+  redefinitions in `admin/members`, `admin/.../match-flags` and
+  `settings` with the shared one, and simplify the date-bucket boundary
+  check in `groupMatchesByDate`. Behaviour is unchanged except that the
+  admin match-flags page now formats dates in the user's locale instead
+  of forcing `en-US`.
+- Group matches in the recent-matches list on the league page and the match
+  history on the player page by date. A small uppercase header ("Yesterday" or
+  "Wednesday, Mar 5") appears above each new date bucket when the previous match
+  was either from today or from a different day, so users can scan older matches
+  without comparing per-row timestamps.
+- Force a clean Vite dependency pre-bundle (`optimizeDeps.force`) when the dev
+  server runs under the Aspire AppHost, so esbuild doesn't re-optimize dependencies
+  mid-request and crash with `write EPIPE` on the first page load. A standalone
+  `npm run dev` is unaffected and keeps its dependency cache.
+- Restore pull-to-refresh in the installed PWA. The gesture was silently dropped
+  during the v3 multi-tenancy migration, which rewrote the authenticated layout
+  and never re-mounted the `PullToRefresh` component. It is wired back into the
+  `(authed)` shell, and the refresh indicator now slides out from beneath the
+  fixed app-shell header instead of appearing behind it.
+- Hide the "Report match" affordance on a league with no active season (e.g. a
+  league whose only seasons are not yet started), and reuse the shared
+  `selectCurrentSeason` helper in the admin seasons page so current-season
+  selection has a single, order-independent definition.
+
 ## 1.4.0
 
 - chore(deps-dev): bump axios from 1.15.2 to 1.16.1 in /frontend

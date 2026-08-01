@@ -5,6 +5,7 @@
   import type { Snippet } from 'svelte';
   import Header from './components/header.svelte';
   import Navbar from './components/navbar.svelte';
+  import PullToRefresh from '$lib/components/pull-to-refresh.svelte';
   import type { LayoutData } from './$types';
 
   interface Props {
@@ -32,6 +33,7 @@
   </style>
 </svelte:head>
 
+<PullToRefresh />
 <Header
   organizations={data.organizations}
   displayName={data.displayName}

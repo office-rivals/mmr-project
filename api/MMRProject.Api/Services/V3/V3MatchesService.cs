@@ -453,6 +453,13 @@ public class V3MatchesService(
             .ToListAsync();
         dbContext.RatingHistories.RemoveRange(ratingHistories);
 
+        // Flags reference the match with a restricted FK, so they must go before
+        // the match itself or Postgres rejects the delete (fk_match_flags_match).
+        var matchFlags = await dbContext.V3MatchFlags
+            .Where(f => f.MatchId == matchId)
+            .ToListAsync();
+        dbContext.V3MatchFlags.RemoveRange(matchFlags);
+
         foreach (var team in match.Teams)
         {
             dbContext.Set<MatchTeamPlayer>().RemoveRange(team.Players);

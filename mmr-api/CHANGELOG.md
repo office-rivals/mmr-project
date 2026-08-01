@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.3
+
+- Add liveness and readiness endpoints to the API via ASP.NET Core health checks:
+  `GET /health` returns `200` whenever the process is up (no dependency checks) and
+  `GET /ready` returns `200` only when the database is also reachable. Both are
+  anonymous and excluded from request tracing. The MMR API continues to expose
+  `GET /health`, now also excluded from tracing so frequent health polls don't
+  flood the trace backend.
+- Fix the MMR API crashing on startup when OpenTelemetry export is enabled
+  (`OTEL_EXPORTER_OTLP_ENDPOINT` set). Telemetry init failed with a
+  `conflicting Schema URL` error because the service resource pinned a semconv
+  schema version that differs from the one the OpenTelemetry SDK bundles. The
+  resource is now built schemaless, so `resource.Merge` no longer conflicts and
+  telemetry initialises regardless of the SDK's semconv version.
+- Use `crypto/subtle.ConstantTimeCompare` for admin key validation to prevent timing-based key enumeration, and explicitly reject an empty `ADMIN_SECRET` to make the fail-closed property clear.
+
 ## 1.2.2
 
 - Patch version bump for mmr-api.

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Leaderboard from '$lib/components/leaderboard/leaderboard.svelte';
   import MatchCard from '$lib/components/match-card/match-card.svelte';
+  import MatchDateHeader from '$lib/components/match-card/match-date-header.svelte';
   import PageTitle from '$lib/components/page-title.svelte';
   import ReportMatchModal from '$lib/components/report-match-modal.svelte';
   import SeasonPicker from '$lib/components/season-picker.svelte';
@@ -16,6 +17,7 @@
     LeagueRatingHistoryEntry,
     MatchResponse,
   } from '$api3/models';
+  import { groupMatchesByDate } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
 
   interface Props {
@@ -29,6 +31,10 @@
   let selectedEntry = $state<LeaderboardEntryResponse | null>(null);
   let reportModalOpen = $state(false);
   let ratingHistory = $state<LeagueRatingHistoryEntry[] | undefined>(undefined);
+
+  const recentMatchGroups = $derived(
+    groupMatchesByDate(data.recentMatches ?? [], data.now)
+  );
 
   $effect(() => {
     data.ratingHistoryPromise.then((res) => (ratingHistory = res.entries));
@@ -112,8 +118,11 @@
   </div>
 
   <div class="flex flex-1 flex-col items-stretch gap-2">
-    {#each data.recentMatches ?? [] as match (match.id)}
-      <MatchCard {match} showMmr={$showMmr} />
+    {#each recentMatchGroups as group (group.match.id)}
+      {#if group.label}
+        <MatchDateHeader label={group.label} />
+      {/if}
+      <MatchCard match={group.match} showMmr={$showMmr} />
     {/each}
   </div>
 
