@@ -158,6 +158,38 @@ ADMIN_SECRET=<admin_secret>
 - **API**: Bruno collection in `api-collection/`.
 - **MMR API**: Go tests in `mmr-api/test/` (packages: api, custom, mmr, openskill).
 - **Frontend**: Vitest (configured, lightly used).
+- **End-to-end**: Playwright in `frontend/e2e/`, driving Chromium against the full
+  stack. See [`frontend/e2e/README.md`](frontend/e2e/README.md).
+
+### Run e2e before shipping a frontend change
+
+`e2e.yml` is `workflow_dispatch` only — it does **not** run on pull requests.
+`test-ui.yml` covers lint, Vitest, build and `svelte-check`, so an entirely green
+PR still says nothing about whether the app works. Verify any change under
+`frontend/src/` locally:
+
+```bash
+cd frontend && npm run e2e   # boots Postgres, both APIs and Vite on its own ports
+```
+
+- **Compare against the merge base.** Run the suite on `main` too, so a failure
+  you inherited isn't read as one you caused, or the reverse.
+- **Cover the behaviour you changed**, especially interaction state (focus,
+  keyboard, open/closed). Some components have no coverage at all, so "the suite
+  is green" can mean "nothing exercises this".
+- **Confirm a failure before believing it.** One seeded database, serial
+  execution — a flake and a real regression look identical on a single run.
+  Re-run with `--grep`, and check spec ordering before blaming another spec.
+- **`fill()` is not typing.** It sets the value and dispatches `input` — no
+  `keydown`, and no `focus` when the element already has it (the first submit
+  slot is `autofocus`). Use `pressSequentially()` when a component keys off
+  those events.
+
+From a worktree: copy the gitignored `frontend/.env`, `frontend/.env.e2e` and
+`mmr-api/.env` from your main checkout, and use a real `npm ci` — a symlinked
+`node_modules` resolves outside the worktree root, Vite's `server.fs.allow`
+blocks the client entry, and the app never hydrates. To run beside another e2e
+run, override `E2E_DB_NAME`, `E2E_MMR_API_PORT`, `E2E_API_PORT` and `E2E_PORT`.
 
 ## Deployment
 
