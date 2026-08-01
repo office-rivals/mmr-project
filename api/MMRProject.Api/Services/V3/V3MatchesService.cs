@@ -366,7 +366,6 @@ public class V3MatchesService(
 
     public async Task<MatchResponse> UpdateMatchAsync(Guid orgId, Guid leagueId, Guid matchId, SubmitMatchRequest request)
     {
-        // No-tracking validation pass — we re-fetch as tracked once child rows are gone.
         var match = await dbContext.Set<V3Match>()
             .AsNoTracking()
             .FirstOrDefaultAsync(m => m.OrganizationId == orgId && m.LeagueId == leagueId && m.Id == matchId)
@@ -378,45 +377,73 @@ public class V3MatchesService(
         if (match.SeasonId != currentSeason.Id)
             throw new InvalidArgumentException("Only matches in the current season can be edited");
 
+        // Validated before the transaction opens: this resolves one player per
+        // round trip, and a rejected edit should not take the lock at all.
         var resolvedTeams = await ResolveAndValidateTeamsAsync(orgId, leagueId, request);
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync();
 
-        // Raw delete the old child rows so EF's change tracker doesn't fight when
-        // we add the rebuilt teams. Rating history for this match is intentionally
-        // left untouched — the caller invokes recalc afterwards.
-        var teamIds = await dbContext.Set<MatchTeam>()
-            .Where(t => t.MatchId == matchId)
-            .Select(t => t.Id)
-            .ToListAsync();
+        // Overlapping edits of one match must not interleave: each rebuilds the
+        // team rows the other is deleting.
+        var lockedMatch = await LockMatchForUpdateAsync(orgId, leagueId, matchId)
+            ?? throw new NotFoundException("Match not found");
 
+        // Re-checked against the row we actually hold, which the check above
+        // could not — it ran before the lock was granted.
+        if (lockedMatch.SeasonId != currentSeason.Id)
+            throw new InvalidArgumentException("Only matches in the current season can be edited");
+
+        // Both deletes key off the match rather than a list of team ids read
+        // earlier, so they cannot disagree about which teams they are clearing.
+        // Rating history is intentionally left alone — the caller recalcs after.
         await dbContext.Set<MatchTeamPlayer>()
-            .Where(p => teamIds.Contains(p.MatchTeamId))
+            .Where(p => p.MatchTeam.MatchId == matchId)
             .ExecuteDeleteAsync();
         await dbContext.Set<MatchTeam>()
             .Where(t => t.MatchId == matchId)
             .ExecuteDeleteAsync();
 
-        var trackedMatch = await dbContext.Set<V3Match>()
-            .FirstOrDefaultAsync(m => m.Id == matchId)
-            ?? throw new NotFoundException("Match disappeared during update");
-
-        foreach (var team in BuildMatchTeams(orgId, leagueId, request, resolvedTeams, trackedMatch.Id))
+        foreach (var team in BuildMatchTeams(orgId, leagueId, request, resolvedTeams, matchId))
         {
             dbContext.Set<MatchTeam>().Add(team);
         }
 
-        trackedMatch.RecordedAt = DateTimeOffset.UtcNow;
+        // Read after the lock was granted, so the surviving edit cannot end up
+        // with an earlier timestamp than the one it superseded. RecordedAt
+        // orders both the match list and the recalc replay bound.
+        lockedMatch.RecordedAt = DateTimeOffset.UtcNow;
 
         await dbContext.SaveChangesAsync();
+
+        // Mapped under the lock so a PATCH always returns its own write rather
+        // than whatever the next queued edit replaced it with.
+        var response = await LoadAndMapMatch(orgId, leagueId, matchId);
+
         await transaction.CommitAsync();
 
-        return await LoadAndMapMatch(orgId, leagueId, trackedMatch.Id);
+        return response;
     }
+
+    /// <summary>
+    /// Locks and returns the match row, or null when it does not exist.
+    /// <see cref="UpdateMatchAsync"/> and <see cref="DeleteMatchAsync"/> both
+    /// take this <em>before</em> the match's child rows; the other order
+    /// deadlocks them against each other.
+    /// </summary>
+    private Task<V3Match?> LockMatchForUpdateAsync(Guid orgId, Guid leagueId, Guid matchId) =>
+        dbContext.Set<V3Match>()
+            .FromSqlInterpolated(
+                $"SELECT * FROM matches WHERE id = {matchId} AND organization_id = {orgId} AND league_id = {leagueId} FOR UPDATE")
+            .AsTracking()
+            .FirstOrDefaultAsync();
 
     public async Task DeleteMatchAsync(Guid orgId, Guid leagueId, Guid matchId)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+        // Before the child rows, to match the order UpdateMatchAsync locks in.
+        if (await LockMatchForUpdateAsync(orgId, leagueId, matchId) is null)
+            throw new NotFoundException("Match not found");
 
         var match = await dbContext.Set<V3Match>()
             .Include(m => m.Teams)
@@ -835,7 +862,11 @@ public class V3MatchesService(
 
     private async Task<MatchResponse> LoadAndMapMatch(Guid orgId, Guid leagueId, Guid matchId)
     {
+        // AsNoTracking so the graph comes purely from the query: a tracked read
+        // would let EF splice a caller's own just-replaced team entities back
+        // into Teams alongside the rows actually in the table.
         var match = await dbContext.Set<V3Match>()
+            .AsNoTracking()
             .Include(m => m.Teams)
                 .ThenInclude(t => t.Players)
                     .ThenInclude(p => p.LeaguePlayer)
