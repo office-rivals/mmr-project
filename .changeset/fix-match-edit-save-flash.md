@@ -23,3 +23,7 @@ window used to be dropped silently, and a successful one left the previous
 attempt's failure banner standing. An outstanding save also no longer disables
 Save on a different match, and correcting a rejected edit clears the old error
 as soon as the retry starts.
+
+A match that disappears from the list while it is open for editing — deleted by
+someone else, or shifted off the page by a reload — now says so, instead of
+reading "No match selected".

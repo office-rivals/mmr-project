@@ -510,6 +510,43 @@ test.describe('League admin', () => {
       ).toBeVisible({ timeout: 1000 });
     }).toPass({ timeout: 15_000 });
   });
+
+  // Last in this describe: it deletes a match, so it shifts the page slice
+  // every later test would read.
+  test('a match that disappears while being edited says so', async ({
+    page,
+  }) => {
+    // The dialog reads its match out of the current page of results, so another
+    // admin deleting it — or a reload shifting the window at a non-zero offset
+    // — leaves the dialog with nothing to edit. It has to say which.
+    await page.goto(`${LEAGUE_ADMIN}/matches`);
+
+    const rows = page.getByTestId('admin-match-row');
+    const last = (await rows.count()) - 1;
+    const matchId = await rows.nth(last).getAttribute('data-match-id');
+    expect(matchId).toBeTruthy();
+
+    const dialog = await openEditDialogForRow(page, last);
+    await expect(dialog.locator('form')).toHaveCount(1);
+
+    // Scripted because the modal overlay blocks the row's Delete button; this
+    // is the reload a concurrent admin would cause.
+    await page.evaluate((id) => {
+      document
+        .querySelector<HTMLFormElement>(
+          `[data-match-id="${id}"] form[action="?/delete"]`
+        )!
+        .requestSubmit();
+    }, matchId);
+
+    await expect(page.locator(`[data-match-id="${matchId}"]`)).toHaveCount(0);
+
+    // Still open, still dismissable, but no form to submit and an explanation
+    // rather than the generic empty-state copy.
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('form')).toHaveCount(0);
+    await expect(dialog.getByText(/no longer in the list/i)).toBeVisible();
+  });
 });
 
 test.describe('Admin navigation chrome', () => {

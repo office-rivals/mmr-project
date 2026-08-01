@@ -116,8 +116,13 @@
     </Dialog.Header>
 
     {#if !match}
+      <!-- Only reachable once the dialog has been opened on a match that has
+           since left the page of results — deleted, or shifted out of the
+           window by a reload. Saying "no match selected" would describe a
+           state the admin was never in. -->
       <p class="py-4 text-center text-sm text-muted-foreground">
-        No match selected.
+        This match is no longer in the list — it may have been deleted, or moved
+        to another page.
       </p>
     {:else}
       <form
