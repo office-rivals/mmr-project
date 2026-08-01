@@ -64,10 +64,10 @@ async function stallEditPost(page: Page) {
   return { hits, release: () => open() };
 }
 
-// Selected by testid, not accessible name: this button's label swaps to
-// "Saving…" mid-flight, so a name selector has to hardcode both spellings.
+// The form's only submit button. Not selected by accessible name: the label
+// swaps to "Saving…" mid-flight, so a name selector has to hardcode both.
 const saveButton = (scope: Locator | Page) =>
-  scope.getByTestId('admin-match-save');
+  scope.locator('form button[type="submit"]');
 
 function countEditSubmissions(page: Page) {
   // Counted on request, not response: a second submit still in flight when the

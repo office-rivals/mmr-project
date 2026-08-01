@@ -236,11 +236,7 @@
           >
             Cancel
           </Button>
-          <Button
-            type="submit"
-            data-testid="admin-match-save"
-            disabled={duplicate || submitting}
-          >
+          <Button type="submit" disabled={duplicate || submitting}>
             {submitting ? 'Saving…' : 'Save match'}
           </Button>
         </Dialog.Footer>
