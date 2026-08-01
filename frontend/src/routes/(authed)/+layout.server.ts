@@ -34,21 +34,29 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   ]);
 
   if (meResult.status === 'fulfilled') {
-    const me = meResult.value;
-    organizations = me.organizations ?? [];
-    displayName = me.displayName ?? null;
-    username = me.username ?? null;
-    // Default to the first org that actually has a league — organizations[0]
-    // may be a league-less org (e.g. freshly created / invite-only), which
-    // would otherwise leave the defaults null and hide the header switcher.
-    const org = organizations.find((o) => (o.leagues?.length ?? 0) > 0);
-    const league = org?.leagues?.[0];
-    if (org && league) {
-      defaultOrgSlug = org.slug;
-      defaultLeagueSlug = league.slug;
-      defaultOrgId = org.id;
-      defaultLeagueId = league.id;
-      defaultLeaguePlayerId = league.leaguePlayerId ?? null;
+    // Reading the payload stays guarded: a malformed profile must degrade the
+    // same way a failed request does, not throw out of the layout and 500 the
+    // whole authenticated tree.
+    try {
+      const me = meResult.value;
+      organizations = me.organizations ?? [];
+      displayName = me.displayName ?? null;
+      username = me.username ?? null;
+      // Default to the first org that actually has a league — organizations[0]
+      // may be a league-less org (e.g. freshly created / invite-only), which
+      // would otherwise leave the defaults null and hide the header switcher.
+      const org = organizations.find((o) => (o.leagues?.length ?? 0) > 0);
+      const league = org?.leagues?.[0];
+      if (org && league) {
+        defaultOrgSlug = org.slug;
+        defaultLeagueSlug = league.slug;
+        defaultOrgId = org.id;
+        defaultLeagueId = league.id;
+        defaultLeaguePlayerId = league.leaguePlayerId ?? null;
+      }
+    } catch {
+      organizations = [];
+      profileLoadFailed = true;
     }
   } else {
     profileLoadFailed = true;

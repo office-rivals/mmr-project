@@ -54,17 +54,12 @@ public class SessionService(
         if (user == null)
             return EmptyBadges();
 
-        // Filter Role in memory (the Status==Active predicate translates to SQL;
-        // we keep the role comparison off the query to avoid enum-ordering
-        // assumptions about its column mapping).
-        var moderatorOrgIds = (await dbContext.OrganizationMemberships
-                .Where(m => m.UserId == user.Id
-                            && m.Status == MembershipStatus.Active)
-                .Select(m => new { m.OrganizationId, m.Role })
-                .ToListAsync())
-            .Where(m => m.Role is OrganizationRole.Owner or OrganizationRole.Moderator)
+        var moderatorOrgIds = await dbContext.OrganizationMemberships
+            .Where(m => m.UserId == user.Id
+                        && m.Status == MembershipStatus.Active
+                        && (m.Role == OrganizationRole.Owner || m.Role == OrganizationRole.Moderator))
             .Select(m => m.OrganizationId)
-            .ToList();
+            .ToListAsync();
 
         if (moderatorOrgIds.Count == 0)
             return EmptyBadges();
@@ -81,10 +76,15 @@ public class SessionService(
             OpenMatchFlags = new OpenMatchFlagSummary
             {
                 Total = counts.Sum(c => c.Count),
+                // Both group before keying: the rows are keyed by (org, league),
+                // so a league id can appear more than once if a flag's org and
+                // league ever disagree. Summing is cheaper than a 500.
                 ByOrganization = counts
                     .GroupBy(c => c.OrganizationId)
                     .ToDictionary(g => g.Key, g => g.Sum(c => c.Count)),
-                ByLeague = counts.ToDictionary(c => c.LeagueId, c => c.Count)
+                ByLeague = counts
+                    .GroupBy(c => c.LeagueId)
+                    .ToDictionary(g => g.Key, g => g.Sum(c => c.Count))
             }
         };
     }
