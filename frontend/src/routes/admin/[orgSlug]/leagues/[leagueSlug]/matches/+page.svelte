@@ -27,11 +27,19 @@
   const prevOffset = $derived(Math.max(0, data.offset - data.pageSize));
   const nextOffset = $derived(data.offset + data.pageSize);
 
-  let editing = $state<MatchResponse | null>(null);
+  let editingId = $state<string | null>(null);
   let editDialogOpen = $state(false);
 
+  // Resolved from the current data rather than captured at click time: a save
+  // that lands while the dialog is open replaces `data.matches` wholesale, and
+  // a snapshot taken beforehand would leave the dialog showing — and re-saving
+  // — the scores from before that save.
+  const editing = $derived(
+    data.matches.find((match) => match.id === editingId) ?? null
+  );
+
   function openEdit(match: MatchResponse) {
-    editing = match;
+    editingId = match.id;
     editDialogOpen = true;
   }
 </script>

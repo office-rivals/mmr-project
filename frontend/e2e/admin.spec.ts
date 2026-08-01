@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 
 const ADMIN_HOME = '/admin';
 const ORG_ADMIN = '/admin/test-org';
@@ -8,30 +8,66 @@ const LEAGUE_ADMIN = '/admin/test-org/leagues/test-league';
 // gives Test Org 2 leagues, 65 members and 15 current-season matches in
 // test-league.
 
-async function openEditDialog(page: Page) {
-  await page
-    .getByTestId('admin-match-row')
-    .first()
-    .getByTestId('admin-match-edit')
-    .click();
+// Retries the click: Edit is present in the SSR markup before hydration wires
+// its handler up, so a click that lands in that window is silently swallowed
+// and the dialog never opens.
+async function openEditDialogForRow(page: Page, row: number) {
   const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
+  await expect(async () => {
+    await page
+      .getByTestId('admin-match-row')
+      .nth(row)
+      .getByTestId('admin-match-edit')
+      .click();
+    await expect(dialog).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
   return dialog;
 }
 
+async function openEditDialog(page: Page) {
+  return openEditDialogForRow(page, 0);
+}
+
 // Holds the post-submit data reload open so the window between "PATCH
-// succeeded" and "dialog closed" is wide enough to observe. Returns the
-// invocation count so a test can prove the stall actually happened — without
-// it the window never opens and the assertions inside it are vacuous.
-function stallDataReload(page: Page, ms: number) {
+// succeeded" and "dialog closed" is wide enough to observe. The window closes
+// on `release()`, not a timer: the assertions inside it would otherwise be
+// racing a wall-clock budget that a loaded CI box can blow through. `count`
+// proves the stall actually happened — without it the window never opens and
+// everything asserted inside it is vacuous.
+async function stallDataReload(page: Page) {
   const hits = { count: 0 };
-  page.route('**/*__data.json*', async (route) => {
+  let open: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (open = resolve));
+  await page.route('**/*__data.json*', async (route) => {
     hits.count += 1;
-    await new Promise((r) => setTimeout(r, ms));
+    await gate;
     await route.continue();
   });
-  return hits;
+  return { hits, release: () => open() };
 }
+
+// The failure path never reloads data, so stallDataReload opens no window
+// there. Holds the action POST itself instead.
+async function stallEditPost(page: Page) {
+  const hits = { count: 0 };
+  let open: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (open = resolve));
+  await page.route(
+    (url) => url.pathname.endsWith('/matches') && url.search.includes('/edit'),
+    async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      hits.count += 1;
+      await gate;
+      await route.continue();
+    }
+  );
+  return { hits, release: () => open() };
+}
+
+// Selected by testid, not accessible name: this button's label swaps to
+// "Saving…" mid-flight, so a name selector has to hardcode both spellings.
+const saveButton = (scope: Locator | Page) =>
+  scope.getByTestId('admin-match-save');
 
 function countEditSubmissions(page: Page) {
   // Counted on request, not response: a second submit still in flight when the
@@ -123,14 +159,7 @@ test.describe('League admin', () => {
 
   test('edit dialog pre-fills the chosen match', async ({ page }) => {
     await page.goto(`${LEAGUE_ADMIN}/matches`);
-    const firstEditButton = page
-      .getByTestId('admin-match-row')
-      .first()
-      .getByTestId('admin-match-edit');
-    await firstEditButton.click();
-
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    const dialog = await openEditDialog(page);
     await expect(dialog.getByText('Edit match')).toBeVisible();
     // Two team blocks pre-render.
     await expect(dialog.getByText('Team 1', { exact: true })).toBeVisible();
@@ -163,7 +192,10 @@ test.describe('League admin', () => {
     await expect(
       page.getByRole('alert').filter({ hasText: 'Match updated' })
     ).toBeVisible();
-    await expect.poll(() => edits.count).toBe(1);
+    // Plain expect, not expect.poll: both requestSubmit calls happen in one
+    // tick, so the count is long settled by here. Polling would only wait for
+    // the value to *reach* 1 and would never notice it moving past.
+    expect(edits.count).toBe(1);
   });
 
   test('a successful save never flashes a validation error', async ({
@@ -179,21 +211,21 @@ test.describe('League admin', () => {
     await scoreInputs.nth(0).fill('10');
     await scoreInputs.nth(1).fill('5');
 
-    const stalled = stallDataReload(page, 2000);
+    const reload = await stallDataReload(page);
 
     const duplicateError = page.getByText(
       'Each player can only appear once across both teams.'
     );
-    await dialog.getByRole('button', { name: /Save match|Saving/ }).click();
+    await saveButton(dialog).click();
 
     // Sample across the whole reload window; the dialog must go straight from
     // open to closed without ever rendering the duplicate-player error.
-    const deadline = Date.now() + 4000;
+    const deadline = Date.now() + 2000;
     while (Date.now() < deadline) {
       expect(await duplicateError.count()).toBe(0);
-      if ((await page.getByRole('dialog').count()) === 0) break;
       await page.waitForTimeout(50);
     }
+    reload.release();
 
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(
@@ -201,7 +233,7 @@ test.describe('League admin', () => {
     ).toBeVisible();
     // Without a stalled reload there is no window to observe, and the loop
     // above would pass whether or not the bug is present.
-    expect(stalled.count).toBeGreaterThan(0);
+    expect(reload.hits.count).toBeGreaterThan(0);
   });
 
   test('a superseded save leaves a reopened dialog alone', async ({ page }) => {
@@ -216,14 +248,14 @@ test.describe('League admin', () => {
     await dialog.locator('input[type="number"]').nth(0).fill('10');
     await dialog.locator('input[type="number"]').nth(1).fill('6');
 
-    const stalled = stallDataReload(page, 1500);
+    const reload = await stallDataReload(page);
 
-    // Resolves when the save's response is fully handled, so the assertions
-    // below cannot run before the superseded callback has had its chance.
+    // The response event fires before enhance's callback runs; the stalled
+    // reload is what actually holds the window open past this point.
     const savePosted = page.waitForResponse(
       (res) => res.request().method() === 'POST' && res.url().includes('?/edit')
     );
-    await dialog.getByRole('button', { name: /Save match|Saving/ }).click();
+    await saveButton(dialog).click();
     await savePosted;
 
     await dialog.getByRole('button', { name: 'Cancel' }).click();
@@ -233,23 +265,196 @@ test.describe('League admin', () => {
 
     // Save is still disabled: the first request is in flight, and letting a
     // second one out would race it.
-    await expect(
-      dialog.getByRole('button', { name: /Save match|Saving/ })
-    ).toBeDisabled();
+    await expect(saveButton(dialog)).toBeDisabled();
+
+    reload.release();
 
     // Re-enables once the first request settles, so this also waits for the
     // superseded callback to have run.
-    await expect(
-      dialog.getByRole('button', { name: /Save match|Saving/ })
-    ).toBeEnabled({ timeout: 10_000 });
-    expect(stalled.count).toBeGreaterThan(0);
+    await expect(saveButton(dialog)).toBeEnabled({ timeout: 10_000 });
+    expect(reload.hits.count).toBeGreaterThan(0);
 
-    // The reopened dialog survived, and no stale error was painted over it.
+    // The reopened dialog survived rather than being closed out from under
+    // the admin by the abandoned save's response.
     await expect(dialog).toBeVisible();
+    // The save still committed, and the admin is told so — the superseded
+    // branch must not swallow the outcome just because the dialog moved on.
     await expect(
-      page.getByRole('alert').filter({ hasText: 'Failed to update match' })
-    ).toHaveCount(0);
+      page.getByRole('alert').filter({ hasText: 'Match updated' })
+    ).toBeVisible();
     expect(edits.count).toBe(1);
+  });
+
+  test('a superseded save leaves the reopened dialog on the saved scores', async ({
+    page,
+  }) => {
+    // The reopened dialog is re-seeded from the page's copy of the match. If
+    // that copy is a snapshot taken before the save committed, the dialog
+    // renders pre-save scores and saving again reverts the edit that landed.
+    await page.goto(`${LEAGUE_ADMIN}/matches`);
+    let dialog = await openEditDialog(page);
+
+    const scores = () =>
+      page.getByRole('dialog').locator('input[type="number"]');
+    const before = await scores().nth(1).inputValue();
+    const loser = before === '6' ? '7' : '6';
+
+    await scores().nth(0).fill('10');
+    await scores().nth(1).fill(loser);
+
+    const reload = await stallDataReload(page);
+    const savePosted = page.waitForResponse(
+      (res) => res.request().method() === 'POST' && res.url().includes('?/edit')
+    );
+    await saveButton(dialog).click();
+    await savePosted;
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    dialog = await openEditDialog(page);
+
+    reload.release();
+    await expect(saveButton(dialog)).toBeEnabled({ timeout: 10_000 });
+    expect(reload.hits.count).toBeGreaterThan(0);
+
+    await expect(scores().nth(1)).toHaveValue(loser);
+  });
+
+  test('a superseded save the server rejected still tells the admin', async ({
+    page,
+  }) => {
+    // Dropping a failed response because the dialog moved on leaves the admin
+    // believing an edit landed that the server threw out.
+    await page.goto(`${LEAGUE_ADMIN}/matches`);
+    let dialog = await openEditDialog(page);
+
+    // Test League is fixed-target (winning_score = 10), so 4/3 is rejected.
+    await dialog.locator('input[type="number"]').nth(0).fill('4');
+    await dialog.locator('input[type="number"]').nth(1).fill('3');
+
+    const post = await stallEditPost(page);
+    const savePosted = page.waitForResponse(
+      (res) => res.request().method() === 'POST' && res.url().includes('?/edit')
+    );
+    await saveButton(dialog).click();
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    dialog = await openEditDialog(page);
+
+    post.release();
+    await savePosted;
+    await expect(saveButton(dialog)).toBeEnabled({ timeout: 10_000 });
+    expect(post.hits.count).toBe(1);
+
+    // getByText, not getByRole('alert'): the open modal marks the rest of the
+    // page aria-hidden, which hides a page-level alert from a role query.
+    await expect(
+      page.getByText(/exactly 10|Failed to update match/).first()
+    ).toBeVisible();
+  });
+
+  test('a superseded save clears the previous failure banner', async ({
+    page,
+  }) => {
+    // A save that succeeds must not leave the previous attempt's failure
+    // banner standing over rows that now show the new scores.
+    await page.goto(`${LEAGUE_ADMIN}/matches`);
+    let dialog = await openEditDialog(page);
+
+    await dialog.locator('input[type="number"]').nth(0).fill('4');
+    await dialog.locator('input[type="number"]').nth(1).fill('3');
+    await saveButton(dialog).click();
+    const failure = page.getByText(/exactly 10|Failed to update match/);
+    await expect(failure.first()).toBeVisible();
+
+    const post = await stallEditPost(page);
+    await dialog.locator('input[type="number"]').nth(0).fill('10');
+    await dialog.locator('input[type="number"]').nth(1).fill('6');
+    const savePosted = page.waitForResponse(
+      (res) => res.request().method() === 'POST' && res.url().includes('?/edit')
+    );
+    await saveButton(dialog).click();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    dialog = await openEditDialog(page);
+
+    post.release();
+    await savePosted;
+    await expect(saveButton(dialog)).toBeEnabled({ timeout: 10_000 });
+    expect(post.hits.count).toBe(1);
+
+    await expect(failure).toHaveCount(0);
+  });
+
+  test('an in-flight save for one match does not disable Save on another', async ({
+    page,
+  }) => {
+    // The guard exists to stop two writes racing on the SAME match. Holding it
+    // across matches disables a Save that has nothing in flight behind it.
+    const edits = countEditSubmissions(page);
+
+    await page.goto(`${LEAGUE_ADMIN}/matches`);
+    const rows = page.getByTestId('admin-match-row');
+    const idA = await rows.nth(0).getAttribute('data-match-id');
+    const idB = await rows.nth(1).getAttribute('data-match-id');
+    expect(idA).not.toBe(idB);
+
+    let dialog = await openEditDialogForRow(page, 0);
+    await dialog.locator('input[type="number"]').nth(0).fill('10');
+    await dialog.locator('input[type="number"]').nth(1).fill('6');
+
+    const reload = await stallDataReload(page);
+    const savePosted = page.waitForResponse(
+      (res) => res.request().method() === 'POST' && res.url().includes('?/edit')
+    );
+    await saveButton(dialog).click();
+    await savePosted;
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    // A different match: nothing is in flight for it.
+    dialog = await openEditDialogForRow(page, 1);
+
+    // Tight timeouts are load-bearing: once the first save settles the button
+    // re-enables anyway, so a generous retry would pass on the buggy build.
+    await expect(saveButton(dialog)).toHaveText('Save match', {
+      timeout: 1000,
+    });
+    await expect(saveButton(dialog)).toBeEnabled({ timeout: 1000 });
+
+    reload.release();
+    expect(reload.hits.count).toBeGreaterThan(0);
+    expect(edits.count).toBe(1);
+  });
+
+  test('a retry clears the previous save error while it is in flight', async ({
+    page,
+  }) => {
+    // Correcting the input and saving again must not leave the old accusation
+    // on screen for the whole round trip.
+    await page.goto(`${LEAGUE_ADMIN}/matches`);
+    const dialog = await openEditDialog(page);
+    const scoreInputs = dialog.locator('input[type="number"]');
+
+    await scoreInputs.nth(0).fill('8');
+    await scoreInputs.nth(1).fill('5');
+    await saveButton(dialog).click();
+
+    const error = dialog.getByRole('alert').filter({ hasText: /exactly 10/ });
+    await expect(error).toBeVisible();
+
+    const reload = await stallDataReload(page);
+    await scoreInputs.nth(0).fill('10');
+    await saveButton(dialog).click();
+
+    await expect(saveButton(dialog)).toBeDisabled({ timeout: 1000 });
+    await expect(error).toHaveCount(0, { timeout: 1000 });
+
+    reload.release();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(reload.hits.count).toBeGreaterThan(0);
   });
 
   test('edit closes dialog and recalc shows a success alert', async ({
@@ -260,19 +465,13 @@ test.describe('League admin', () => {
     await page.goto(`${LEAGUE_ADMIN}/matches`);
 
     // Open the edit dialog on the latest match (top row) and bump team 1's score.
-    await page
-      .getByTestId('admin-match-row')
-      .first()
-      .getByTestId('admin-match-edit')
-      .click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    const dialog = await openEditDialog(page);
     // Test League is fixed-target (winning_score = 10), so we must submit a
     // valid winner/loser pair regardless of the seed's pre-edit scores.
     const scoreInputs = dialog.locator('input[type="number"]');
     await scoreInputs.nth(0).fill('10');
     await scoreInputs.nth(1).fill('5');
-    await dialog.getByRole('button', { name: 'Save match' }).click();
+    await saveButton(dialog).click();
 
     // On a successful PATCH the dialog closes itself.
     await expect(page.getByRole('dialog')).toHaveCount(0);
