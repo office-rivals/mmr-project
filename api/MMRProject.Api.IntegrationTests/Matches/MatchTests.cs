@@ -5,6 +5,7 @@ using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
+using MMRProject.Api.Services.V3;
 
 namespace MMRProject.Api.IntegrationTests.Matches;
 
@@ -1149,6 +1150,118 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
         Assert.Contains(loser.Score, new[] { 4, 6 });
         Assert.True(winner.IsWinner);
         Assert.False(loser.IsWinner);
+    }
+
+    [Fact]
+    public async Task UpdateAndDeleteSameMatchConcurrently_NeitherFailsWithServerError()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, player3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, player4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        // An edit and a delete of the same match touch the match row and its
+        // child rows in opposite orders unless both take the match row lock
+        // first, which deadlocks one of them into a 500.
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            var submitResponse = await Client.PostAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+                new SubmitMatchRequest
+                {
+                    Teams =
+                    [
+                        new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                    ]
+                });
+            var match = await ReadJsonAsync<MatchResponse>(submitResponse);
+            Assert.NotNull(match);
+
+            var url = $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{match.Id}";
+
+            var update = Client.PatchAsJsonAsync(url, new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 8 }
+                ]
+            });
+            var delete = Client.DeleteAsync(url);
+
+            await Task.WhenAll(update, delete);
+
+            // Whichever loses may 404 — it may not blow up. A PostgreSQL
+            // deadlock (40P01) surfaces here as a 500.
+            Assert.True(update.Result.StatusCode != HttpStatusCode.InternalServerError,
+                $"attempt {attempt}: concurrent update returned 500");
+            Assert.True(delete.Result.StatusCode != HttpStatusCode.InternalServerError,
+                $"attempt {attempt}: concurrent delete returned 500");
+        }
+    }
+
+    [Fact]
+    public async Task GetMatch_WithStaleTrackedTeams_ReturnsOnlyThePersistedRows()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, player3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, player4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        var submitResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                ]
+            });
+        var match = await ReadJsonAsync<MatchResponse>(submitResponse);
+        Assert.NotNull(match);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var matchesService = scope.ServiceProvider.GetRequiredService<IV3MatchesService>();
+
+        // The state UpdateMatchAsync is in after rebuilding a match: team
+        // entities tracked in this DbContext whose rows another transaction has
+        // since replaced. A tracked read splices them into match.Teams next to
+        // the rows actually in the table, and the caller gets four teams.
+        foreach (var index in new[] { 0, 1 })
+        {
+            dbContext.Set<MatchTeam>().Attach(new MatchTeam
+            {
+                Id = Guid.NewGuid(),
+                OrganizationId = org.Id,
+                LeagueId = league.Id,
+                MatchId = match.Id,
+                Index = index,
+                Score = 99,
+            });
+        }
+
+        var response = await matchesService.GetMatchAsync(org.Id, league.Id, match.Id);
+
+        Assert.Equal(2, response.Teams.Count);
+        Assert.DoesNotContain(response.Teams, t => t.Score == 99);
+        Assert.Equal([0, 1], response.Teams.Select(t => t.Index).Order());
     }
 
     [Fact]
