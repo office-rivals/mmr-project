@@ -80,10 +80,7 @@ test.describe('Submit — player slot picker', () => {
     await expect(you).toBeVisible();
   });
 
-  // Keyboard selection isn't implemented yet — today Enter in a filter falls
-  // through to the form. Kept as the executable spec for that behaviour so it
-  // can simply be un-skipped once the pickers support it.
-  test.fixme('typing a filter and pressing Enter picks the top match', async ({
+  test('typing a filter and pressing Enter picks the top match', async ({
     page,
   }) => {
     await gotoHydrated(page, SUBMIT_URL);
@@ -99,6 +96,64 @@ test.describe('Submit — player slot picker', () => {
     // The filled slot renders the chosen player, and the teammate slot appears.
     await expect(team1.getByText('Alice Anderson')).toBeVisible();
     await expect(team1.locator('h4')).toHaveCount(2);
+  });
+
+  test('arrow keys move the highlight and Enter picks the highlighted one', async ({
+    page,
+  }) => {
+    await gotoHydrated(page, SUBMIT_URL);
+
+    const team1 = page.locator('#team1-step');
+    const you = team1.locator('input[placeholder="Filter..."]').first();
+    await you.click();
+    // "ro" matches more than one seeded player (Carol Carter, Bob Brown), which
+    // is what makes moving the highlight observable. Their relative order comes
+    // from the leaderboard, so this reads the highlight rather than assuming it.
+    await you.pressSequentially('ro');
+    // Waiting on the second option is how we know there's more than one.
+    await expect(team1.locator('button[role="option"]').nth(1)).toBeVisible();
+
+    // data-highlighted is bits-ui's marker for the active option — the thing
+    // the arrow keys are meant to move.
+    const highlightedName = async () =>
+      (await team1.locator('[data-highlighted]').innerText()).split('\n')[0];
+
+    await you.press('ArrowDown');
+    const first = await highlightedName();
+    await you.press('ArrowDown');
+    const second = await highlightedName();
+    expect(second).not.toBe(first);
+
+    await you.press('Enter');
+
+    await expect(team1.getByText(second)).toBeVisible();
+    await expect(team1.locator('h4')).toHaveCount(2);
+  });
+
+  test('Enter with a filter that matches nobody does not submit the match', async ({
+    page,
+  }) => {
+    await gotoHydrated(page, SUBMIT_URL);
+
+    const team1 = page.locator('#team1-step');
+    const you = team1.locator('input[placeholder="Filter..."]').first();
+    await you.click();
+    await you.pressSequentially('zzzzznoplayer');
+    await expect(
+      page.getByRole('button', { name: 'Add new player' })
+    ).toBeVisible();
+
+    await you.press('Enter');
+
+    // Still on the submit page, no pick, and no server-side validation error —
+    // implicit form submission would have produced all three.
+    await expect(
+      page.getByRole('heading', { name: 'Submit match' })
+    ).toBeVisible();
+    await expect(team1.locator('h4')).toHaveCount(1);
+    await expect(page.getByText(/must have at least one player/)).toHaveCount(
+      0
+    );
   });
 });
 

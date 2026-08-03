@@ -9,7 +9,7 @@ async function pickPlayer(page: Page, displayName: string) {
   const input = page.locator('input[placeholder="Filter..."]').first();
   await input.fill(displayName);
   await page
-    .getByRole('option', { name: new RegExp(displayName) })
+    .locator('button', { hasText: new RegExp(displayName) })
     .first()
     .click();
 }
@@ -48,61 +48,6 @@ test.describe('Submit match', () => {
     await expect(dialog.getByLabel('Display name')).toBeVisible();
     await expect(dialog.getByLabel('Username (optional)')).toBeVisible();
     await expect(dialog.getByLabel('Email (optional)')).toBeVisible();
-  });
-
-  test('keyboard: arrow keys highlight a suggestion, Enter picks it without submitting', async ({
-    page,
-  }) => {
-    await page.goto(SUBMIT_URL);
-    // Clear the localStorage-driven auto-fill / "Recent players" list so the You
-    // slot starts empty and the only options come from the typed filter.
-    await page.evaluate(() => window.localStorage.clear());
-    await page.reload();
-
-    const team1 = page.locator('#team1-step');
-    const youField = team1.locator('input[placeholder="Filter..."]').first();
-    await youField.fill('Alice');
-    // Alice is already a league player, so she matches exactly one option.
-    await expect(team1.getByRole('option')).toHaveCount(1);
-
-    // Enter straight after typing picks the top suggestion.
-    await youField.press('Enter');
-    await expect(team1.getByText('Alice Anderson')).toBeVisible();
-
-    // Arrow keys highlight, Enter picks the highlighted option.
-    const teammate = team1.locator('input[placeholder="Filter..."]').first();
-    await teammate.fill('Bob');
-    await teammate.press('ArrowDown');
-    // Bob Brown is the only league player matching, so he's the first option.
-    await expect(team1.getByRole('option').first()).toHaveAttribute(
-      'data-highlighted',
-      ''
-    );
-    await teammate.press('Enter');
-    await expect(team1.getByText('Bob Brown')).toBeVisible();
-
-    // Enter must not have submitted the form.
-    await expect(
-      page.getByRole('heading', { name: 'Submit match' })
-    ).toBeVisible();
-    await expect(page.getByText(/must have at least one player/)).toHaveCount(
-      0
-    );
-
-    // Nothing matches → Enter is a no-op, still no submit. Team 1 is full by
-    // now, so the next empty slot is the first opponent.
-    const opponent = page
-      .locator('#team2-step')
-      .locator('input[placeholder="Filter..."]')
-      .first();
-    await opponent.fill('zzzzznoplayer');
-    await opponent.press('Enter');
-    await expect(
-      page.getByRole('heading', { name: 'Submit match' })
-    ).toBeVisible();
-    await expect(page.getByText(/must have at least one player/)).toHaveCount(
-      0
-    );
   });
 
   test('full happy path: fill 4 players → we won → score → submit', async ({
