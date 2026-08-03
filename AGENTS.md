@@ -37,32 +37,20 @@ documented in [`local-dev/README.md`](local-dev/README.md).
 Useful for fast iteration on one service. Outside the AppHost you must supply
 that service's configuration yourself (see [Configuration](#configuration)).
 
-```bash
-# Frontend — cd frontend
-npm install
-npm run dev              # dev server on http://localhost:5173
-npm run build            # production build
-npm run check            # type checking (svelte-check)
-npm run lint             # ESLint + Prettier
-npm run format           # Prettier
-npm run generate-api     # regenerate the TS API client from the API's swagger.json
-```
+Each service uses its standard toolchain — `npm run <script>` per
+`frontend/package.json`, `dotnet run`, `go run main.go`. Default ports: frontend
+5173, API 8081 (Swagger UI at `/swagger`), MMR API 8080.
+
+EF Core migrations are the one non-obvious invocation — the output directory and
+the context must both be passed explicitly:
 
 ```bash
-# API — cd api/MMRProject.Api
-dotnet restore
-dotnet run               # API on http://localhost:8081 (Swagger UI at /swagger)
-dotnet build
+cd api/MMRProject.Api
 dotnet ef migrations add <MigrationName> -o Data/Migrations -c ApiDbContext
 ```
 
-```bash
-# MMR API — cd mmr-api
-go run main.go           # MMR API on http://localhost:8080
-go test ./...            # all tests (single package: go test ./test/mmr)
-```
-
-Regenerate the frontend API client (`npm run generate-api`) after any API change.
+The frontend's v3 API client (`frontend/src/api-v3`) is hand-maintained — update
+it by hand when the v3 API changes (it is not generated).
 
 ### Database
 
@@ -89,7 +77,7 @@ Postgres resource in the Aspire dashboard.
 
 - Svelte 5 runes and snippets; TailwindCSS with HSL color variables; dark mode via a `dark` class on the root element (used by the admin UI).
 - Headless components from `bits-ui` plus custom styled components in `lib/components/ui/`; icons from `lucide-svelte`.
-- Typed API clients generated from the API's OpenAPI spec (`openapi-generator-cli`); created in `lib/server/api/apiClient.ts` with automatic JWT injection.
+- Typed v3 API client lives in `src/api-v3` (hand-maintained — see its header note); the request client is built in `lib/server/api/apiClientV3.ts` with automatic JWT injection.
 - Routes: `(authed)/` (shared layout — navbar, queue indicator), `admin/` (separate group, dark mode), `login/`.
 
 ### API
@@ -106,11 +94,10 @@ Postgres resource in the Aspire dashboard.
 
 ### Data Model
 
-Core entities in `api/MMRProject.Api/Data/Entities/`: **Player** (profile + MMR
-mu/sigma/mmr, linked to Clerk via `IdentityUserId`), **Season**, **Match** (two
-teams + season), **Team** (two players, score, winner flag), **PlayerHistory**
-(MMR snapshots per match), **MmrCalculation** (per-player MMR deltas),
-**QueuedPlayer**, **ActiveMatch**, **PendingMatch**, **PersonalAccessToken**.
+Entities live in `api/MMRProject.Api/Data/Entities/`. The non-obvious parts:
+**Player** carries the OpenSkill `mu`/`sigma` pair alongside the derived `mmr`
+and links to Clerk via `IdentityUserId`; **PlayerHistory** and
+**MmrCalculation** are per-match snapshots and deltas, not live state.
 
 ## Configuration
 
@@ -118,13 +105,7 @@ The AppHost injects everything below except Clerk keys (set those via AppHost
 user-secrets — see [`local-dev/README.md`](local-dev/README.md)). These values
 only matter when running a service standalone.
 
-**Frontend (`.env`)**
-
-```
-PUBLIC_CLERK_PUBLISHABLE_KEY=<clerk_publishable_key>
-CLERK_SECRET_KEY=<clerk_secret_key>
-API_BASE_PATH=http://localhost:8081
-```
+**Frontend (`.env`)** — see `frontend/.env.example`.
 
 **API (`appsettings.Development.json`)**
 
@@ -147,17 +128,45 @@ cd api/MMRProject.Api
 dotnet user-secrets set "Authorization:Issuer" "<clerk_issuer_url>"
 ```
 
-**MMR API (`.env`)**
-
-```
-ADMIN_SECRET=<admin_secret>
-```
+**MMR API (`.env`)** — see `mmr-api/.env.example`.
 
 ## Testing
 
 - **API**: Bruno collection in `api-collection/`.
 - **MMR API**: Go tests in `mmr-api/test/` (packages: api, custom, mmr, openskill).
 - **Frontend**: Vitest (configured, lightly used).
+- **End-to-end**: Playwright in `frontend/e2e/`, driving Chromium against the full
+  stack. See [`frontend/e2e/README.md`](frontend/e2e/README.md).
+
+### Run e2e before shipping a frontend change
+
+`e2e.yml` is `workflow_dispatch` only — it does **not** run on pull requests.
+`test-ui.yml` covers lint, Vitest, build and `svelte-check`, so an entirely green
+PR still says nothing about whether the app works. Verify any change under
+`frontend/src/` locally:
+
+```bash
+cd frontend && npm run e2e   # boots Postgres, both APIs and Vite on its own ports
+```
+
+- **Compare against the merge base.** Run the suite on `main` too, so a failure
+  you inherited isn't read as one you caused, or the reverse.
+- **Cover the behaviour you changed**, especially interaction state (focus,
+  keyboard, open/closed). Some components have no coverage at all, so "the suite
+  is green" can mean "nothing exercises this".
+- **Confirm a failure before believing it.** One seeded database, serial
+  execution — a flake and a real regression look identical on a single run.
+  Re-run with `--grep`, and check spec ordering before blaming another spec.
+- **`fill()` is not typing.** It sets the value and dispatches `input` — no
+  `keydown`, and no `focus` when the element already has it (the first submit
+  slot is `autofocus`). Use `pressSequentially()` when a component keys off
+  those events.
+
+From a worktree: copy the gitignored `frontend/.env`, `frontend/.env.e2e` and
+`mmr-api/.env` from your main checkout, and use a real `npm ci` — a symlinked
+`node_modules` resolves outside the worktree root, Vite's `server.fs.allow`
+blocks the client entry, and the app never hydrates. To run beside another e2e
+run, override `E2E_DB_NAME`, `E2E_MMR_API_PORT`, `E2E_API_PORT` and `E2E_PORT`.
 
 ## Deployment
 
@@ -174,6 +183,11 @@ per-component `CHANGELOG.md` files — manual edits are overwritten on the next
 release PR. Add a `.changeset/*.md` describing the change and let the release PR
 compute the bump. (Editing `dependencies` / `devDependencies` is unrelated and
 remains manual.)
+
+**Keep changeset descriptions to one or two sentences.** They ship verbatim as
+`CHANGELOG.md` bullets and GitHub Release notes, so say what changed for the
+user and name any new endpoint or flag — don't recount the implementation. See
+[`.changeset/README.md`](.changeset/README.md) for examples.
 
 **Infra/test-only PRs** (seed fixtures, e2e specs, CI, internal scripts, docs
 that don't affect a deployed component) skip the changeset and apply the

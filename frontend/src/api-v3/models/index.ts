@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
-// Placeholder types matching v3 DTOs - will be replaced by generated code
+// Hand-maintained types mirroring the v3 API DTOs. Update by hand when the
+// v3 API changes (this client is not generated). See ../index.ts.
 
 // Enums
 export enum OrganizationRole {
@@ -40,6 +41,17 @@ export interface MeResponse {
   username?: string;
   displayName?: string;
   organizations: MeOrganizationResponse[];
+}
+
+// Counts that drive the nav "needs attention" badges (GET /api/v3/me/badges).
+export interface BadgesResponse {
+  openMatchFlags: OpenMatchFlagSummary;
+}
+
+export interface OpenMatchFlagSummary {
+  total: number;
+  byOrganization: Record<string, number>;
+  byLeague: Record<string, number>;
 }
 
 export interface MeOrganizationResponse {
@@ -415,7 +427,7 @@ export interface CreateTokenResponse {
   tokenDetails: TokenResponse;
 }
 
-// JSON conversion helpers (placeholder - will be generated)
+// JSON conversion helpers (hand-maintained pass-throughs)
 export function MeResponseFromJSON(json: any): MeResponse {
   return json;
 }

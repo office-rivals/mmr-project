@@ -14,7 +14,12 @@ export const load: LayoutServerLoad = async ({ locals: { apiClientV3 } }) => {
     throw error(401, 'Failed to load user profile');
   }
 
+  // After getMe(), which provisions the user and claims pending invites — the
+  // memberships the counts are derived from. Non-fatal on its own.
+  const badges = await apiClientV3.meApi.getBadges().catch(() => null);
+
   return {
     me,
+    badges,
   };
 };

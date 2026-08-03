@@ -18,4 +18,12 @@ public class MeController(ISessionService sessionService) : ControllerBase
     {
         return await sessionService.GetMeAsync();
     }
+
+    // Lightweight "needs attention" counts for the current user's nav badges.
+    [HttpGet("badges")]
+    [Authorize(Policy = V3AuthorizationPolicies.DenyPatAuthentication)]
+    public async Task<ActionResult<BadgesResponse>> GetBadges()
+    {
+        return await sessionService.GetBadgesAsync();
+    }
 }
