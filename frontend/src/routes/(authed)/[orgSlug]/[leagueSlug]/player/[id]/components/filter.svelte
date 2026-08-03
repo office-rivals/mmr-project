@@ -2,6 +2,7 @@
   import PlayerButton from '$lib/components/player-button.svelte';
   import { Input } from '$lib/components/ui/input';
   import { Combobox } from 'bits-ui';
+  import { tick, untrack } from 'svelte';
   import type { LeaguePlayerResponse } from '$api3/models';
 
   interface Props {
@@ -13,8 +14,15 @@
   let { players, onSelected, autofocus = false }: Props = $props();
 
   let filter = $state('');
-  let open = $state(false);
+  // An autofocused input is focused by the browser before this component's
+  // focus handler is attached, so the focus event never reaches us.
+  let open = $state(untrack(() => autofocus));
   let highlightedValue = $state<string | null>(null);
+  let inputRef = $state<HTMLInputElement | null>(null);
+  // This picker stays mounted across picks, but bits-ui keeps the selected
+  // value and owns the input's text. Remounting it is what resets both, so the
+  // box clears and the same player can be picked again after their chip goes.
+  let instance = $state(0);
 
   let filtered = $derived(
     players.filter((p) => {
@@ -23,10 +31,15 @@
     })
   );
 
-  const select = (playerId: string) => {
+  async function select(playerId: string) {
     onSelected(playerId);
     filter = '';
-  };
+    open = false;
+    highlightedValue = null;
+    instance += 1;
+    await tick();
+    inputRef?.focus();
+  }
 
   function onkeydown(e: KeyboardEvent) {
     if (e.key !== 'Enter') return;
@@ -44,46 +57,53 @@
 </script>
 
 <div class="relative flex flex-col gap-2">
-  <Combobox.Root type="single" loop bind:open onValueChange={select}>
-    <Combobox.Input
-      placeholder="Filter..."
-      autofocus={autofocus ? autofocus : undefined}
-      oninput={(e) => (filter = e.currentTarget.value)}
-      onfocus={() => (open = true)}
-      onclick={() => (open = true)}
-      {onkeydown}
-    >
-      {#snippet child({ props })}
-        <Input {...props} />
-      {/snippet}
-    </Combobox.Input>
-    {#if filter.length > 1}
-      <Combobox.ContentStatic
-        class="absolute top-[100%] z-10 mt-3 w-full gap-2"
+  {#key instance}
+    <Combobox.Root type="single" loop bind:open onValueChange={select}>
+      <Combobox.Input
+        bind:ref={inputRef}
+        placeholder="Filter..."
+        autofocus={autofocus ? autofocus : undefined}
+        oninput={(e) => {
+          filter = e.currentTarget.value;
+          // Covers input that arrives without a keydown (paste, autofill).
+          open = true;
+        }}
+        onfocus={() => (open = true)}
+        onclick={() => (open = true)}
+        {onkeydown}
       >
-        {#if filtered.length > 0}
-          {#each filtered as player (player.id)}
-            <Combobox.Item
-              value={player.id}
-              label={player.displayName ?? player.username ?? 'Unknown'}
-              onHighlight={() => (highlightedValue = player.id)}
-              onUnhighlight={() => {
-                if (highlightedValue === player.id) highlightedValue = null;
-              }}
-            >
-              {#snippet child({ props })}
-                <PlayerButton
-                  {...props}
-                  user={player}
-                  class="bg-background data-[highlighted]:border-primary data-[highlighted]:bg-muted"
-                />
-              {/snippet}
-            </Combobox.Item>
-          {/each}
-        {:else}
-          <p class="text-sm">No players found</p>
-        {/if}
-      </Combobox.ContentStatic>
-    {/if}
-  </Combobox.Root>
+        {#snippet child({ props })}
+          <Input {...props} />
+        {/snippet}
+      </Combobox.Input>
+      {#if filter.length > 1}
+        <Combobox.ContentStatic
+          class="absolute top-[100%] z-10 mt-3 w-full gap-2"
+        >
+          {#if filtered.length > 0}
+            {#each filtered as player (player.id)}
+              <Combobox.Item
+                value={player.id}
+                label={player.displayName ?? player.username ?? 'Unknown'}
+                onHighlight={() => (highlightedValue = player.id)}
+                onUnhighlight={() => {
+                  if (highlightedValue === player.id) highlightedValue = null;
+                }}
+              >
+                {#snippet child({ props })}
+                  <PlayerButton
+                    {...props}
+                    user={player}
+                    class="bg-background data-[highlighted]:border-primary data-[highlighted]:bg-muted"
+                  />
+                {/snippet}
+              </Combobox.Item>
+            {/each}
+          {:else}
+            <p class="text-sm">No players found</p>
+          {/if}
+        </Combobox.ContentStatic>
+      {/if}
+    </Combobox.Root>
+  {/key}
 </div>

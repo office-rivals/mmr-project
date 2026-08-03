@@ -3,6 +3,7 @@
   import Button from '$lib/components/ui/button/button.svelte';
   import { Input } from '$lib/components/ui/input';
   import { Combobox } from 'bits-ui';
+  import { untrack } from 'svelte';
   import X from 'lucide-svelte/icons/x';
   import type { LeaguePlayerResponse, OrganizationMemberResponse } from '$api3';
 
@@ -37,8 +38,12 @@
   }: Props = $props();
 
   let filter = $state('');
-  let open = $state(false);
+  // An autofocused slot is focused by the browser before this component's focus
+  // handler is attached, so the focus event never reaches us — start open
+  // instead of waiting for one.
+  let open = $state(untrack(() => autofocus));
   let highlightedValue = $state<string | null>(null);
+  let arrowed = $state(false);
 
   const playerName = (p: {
     displayName?: string;
@@ -105,6 +110,12 @@
   }
 
   function onkeydown(e: KeyboardEvent) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      // bits-ui moves the highlight itself; just remember the user picked it,
+      // so Enter never acts on the item bits-ui highlights when the list opens.
+      arrowed = true;
+      return;
+    }
     if (e.key !== 'Enter') return;
     // Enter must never reach the form — implicit submission posts an empty
     // match. Handling it here also replaces bits-ui's own Enter (composed
@@ -112,11 +123,14 @@
     // already-highlighted item and so ignores a freshly typed filter.
     e.preventDefault();
     if (!open) return;
-    // ponytail: nothing to pick = no-op.
+    // ponytail: an untouched list of recents is not a choice — Enter only picks
+    // a typed match or an option the user arrowed to.
     const target =
-      highlightedValue && options.includes(highlightedValue)
+      arrowed && highlightedValue && options.includes(highlightedValue)
         ? highlightedValue
-        : options[0];
+        : filter.length > 1
+          ? options[0]
+          : undefined;
     if (target) select(target);
   }
 
@@ -158,7 +172,12 @@
         spellcheck={false}
         autocorrect="off"
         autocapitalize="none"
-        oninput={(e) => (filter = e.currentTarget.value)}
+        oninput={(e) => {
+          filter = e.currentTarget.value;
+          // Covers input that arrives without a keydown (paste, autofill).
+          open = true;
+          arrowed = false;
+        }}
         onfocus={() => (open = true)}
         onclick={() => (open = true)}
         {onkeydown}
