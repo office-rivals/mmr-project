@@ -44,6 +44,30 @@
   let open = $state(untrack(() => autofocus));
   let highlightedValue = $state<string | null>(null);
   let arrowed = $state(false);
+  let inputRef = $state<HTMLInputElement | null>(null);
+
+  // The input's text has two owners: `filter` here and bits-ui's own input
+  // state. Both listen for `input`, so dispatching one is how they stay in sync
+  // with a value that was put in the DOM directly.
+  const replayInput = (el: HTMLInputElement) =>
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+
+  // A fill or paste can land on the server-rendered input before this component
+  // hydrates, and no input event follows it — Svelte's `bind:value` keeps the
+  // typed text but neither owner hears about it, leaving the picker stranded.
+  $effect(() => {
+    if (inputRef?.value) replayInput(inputRef);
+  });
+
+  function clearFilter() {
+    if (inputRef) {
+      inputRef.value = '';
+      replayInput(inputRef);
+    }
+    filter = '';
+    open = false;
+    arrowed = false;
+  }
 
   const playerName = (p: {
     displayName?: string;
@@ -110,6 +134,12 @@
   }
 
   function onkeydown(e: KeyboardEvent) {
+    // An IME confirms its candidate with Enter; that keypress is not a pick.
+    if (e.isComposing) return;
+    if (e.key === 'Escape') {
+      clearFilter();
+      return;
+    }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       // bits-ui moves the highlight itself; just remember the user picked it,
       // so Enter never acts on the item bits-ui highlights when the list opens.
@@ -167,6 +197,7 @@
   {#if value === null}
     <Combobox.Root type="single" loop bind:open onValueChange={select}>
       <Combobox.Input
+        bind:ref={inputRef}
         placeholder="Filter..."
         autofocus={autofocus ? autofocus : undefined}
         spellcheck={false}

@@ -130,6 +130,23 @@ test.describe('Submit — player slot picker', () => {
     await expect(team1.locator('h4')).toHaveCount(2);
   });
 
+  test('Escape clears the filter and closes the suggestions', async ({
+    page,
+  }) => {
+    await gotoHydrated(page, SUBMIT_URL);
+
+    const team1 = page.locator('#team1-step');
+    const you = team1.locator('input[placeholder="Filter..."]').first();
+    await you.click();
+    await you.pressSequentially('alia');
+    await expect(suggestion(page, 'Alice Anderson')).toBeVisible();
+
+    await you.press('Escape');
+
+    await expect(you).toHaveValue('');
+    await expect(team1.locator('button[role="option"]')).toHaveCount(0);
+  });
+
   test('Enter with a filter that matches nobody does not submit the match', async ({
     page,
   }) => {
@@ -173,6 +190,22 @@ test.describe('Player profile — compare filter', () => {
     ).toBeVisible();
     // The filter is multi-select, so the box has to be ready for the next name.
     await expect(input).toHaveValue('');
+  });
+
+  test('Escape clears the filter and closes the suggestions', async ({
+    page,
+  }) => {
+    await gotoHydrated(page, PROFILE_URL);
+
+    const input = page.locator('input[placeholder="Filter..."]').first();
+    await input.click();
+    await input.pressSequentially('alia');
+    await expect(suggestion(page, 'Alice Anderson')).toBeVisible();
+
+    await input.press('Escape');
+
+    await expect(input).toHaveValue('');
+    await expect(page.locator('button[role="option"]')).toHaveCount(0);
   });
 
   test('a player can be picked again after removing their chip', async ({

@@ -24,6 +24,29 @@
   // box clears and the same player can be picked again after their chip goes.
   let instance = $state(0);
 
+  // The input's text has two owners: `filter` here and bits-ui's own input
+  // state. Both listen for `input`, so dispatching one is how they stay in sync
+  // with a value that was put in the DOM directly.
+  const replayInput = (el: HTMLInputElement) =>
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+
+  // A fill or paste can land on the server-rendered input before this component
+  // hydrates, and no input event follows it — Svelte's `bind:value` keeps the
+  // typed text but neither owner hears about it, leaving the picker stranded.
+  $effect(() => {
+    if (inputRef?.value) replayInput(inputRef);
+  });
+
+  function clearFilter() {
+    if (inputRef) {
+      inputRef.value = '';
+      replayInput(inputRef);
+    }
+    filter = '';
+    open = false;
+    highlightedValue = null;
+  }
+
   let filtered = $derived(
     players.filter((p) => {
       const name = (p.displayName ?? '') + ' ' + (p.username ?? '');
@@ -42,6 +65,12 @@
   }
 
   function onkeydown(e: KeyboardEvent) {
+    // An IME confirms its candidate with Enter; that keypress is not a pick.
+    if (e.isComposing) return;
+    if (e.key === 'Escape') {
+      clearFilter();
+      return;
+    }
     if (e.key !== 'Enter') return;
     // Handled here rather than by bits-ui, which selects only an
     // already-highlighted item and so ignores a freshly typed filter.
