@@ -1,3 +1,8 @@
+---
+title: V3 Migration Guide
+description: Move from the legacy single-tenant model to the V3 organizations and leagues model.
+---
+
 # V3 Migration Guide
 
 This guide covers migrating from the legacy single-tenant data model to the v3 multi-tenant model with organizations and leagues.
