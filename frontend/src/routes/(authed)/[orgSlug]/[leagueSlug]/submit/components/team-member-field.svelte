@@ -2,6 +2,8 @@
   import PlayerButton from '$lib/components/player-button.svelte';
   import Button from '$lib/components/ui/button/button.svelte';
   import { Input } from '$lib/components/ui/input';
+  import { Combobox } from 'bits-ui';
+  import { untrack } from 'svelte';
   import X from 'lucide-svelte/icons/x';
   import type { LeaguePlayerResponse, OrganizationMemberResponse } from '$api3';
 
@@ -36,6 +38,36 @@
   }: Props = $props();
 
   let filter = $state('');
+  // An autofocused slot is focused by the browser before this component's focus
+  // handler is attached, so the focus event never reaches us — start open
+  // instead of waiting for one.
+  let open = $state(untrack(() => autofocus));
+  let highlightedValue = $state<string | null>(null);
+  let arrowed = $state(false);
+  let inputRef = $state<HTMLInputElement | null>(null);
+
+  // The input's text has two owners: `filter` here and bits-ui's own input
+  // state. Both listen for `input`, so dispatching one is how they stay in sync
+  // with a value that was put in the DOM directly.
+  const replayInput = (el: HTMLInputElement) =>
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+
+  // A fill or paste can land on the server-rendered input before this component
+  // hydrates, and no input event follows it — Svelte's `bind:value` keeps the
+  // typed text but neither owner hears about it, leaving the picker stranded.
+  $effect(() => {
+    if (inputRef?.value) replayInput(inputRef);
+  });
+
+  function clearFilter() {
+    if (inputRef) {
+      inputRef.value = '';
+      replayInput(inputRef);
+    }
+    filter = '';
+    open = false;
+    arrowed = false;
+  }
 
   const playerName = (p: {
     displayName?: string;
@@ -77,80 +109,158 @@
       .slice(0, 4)
   );
 
-  function selectPlayer(player: LeaguePlayerResponse) {
-    onChange({ kind: 'league', player });
-    filter = '';
+  // Option values reuse the `league:` / `member:` encoding the parent already
+  // uses for excludeIds and the hidden form fields. In render order, so
+  // options[0] is the top suggestion.
+  let options = $derived(
+    filter.length === 0
+      ? latestPlayers.map((p) => `league:${p.id}`)
+      : filter.length > 1
+        ? [
+            ...matchedPlayers.map((p) => `league:${p.id}`),
+            ...matchedMembers.map((m) => `member:${m.id}`),
+          ]
+        : []
+  );
+
+  function select(optionValue: string) {
+    const player = leaguePlayers.find((p) => `league:${p.id}` === optionValue);
+    if (player) {
+      onChange({ kind: 'league', player });
+      return;
+    }
+    const member = orgMembers.find((m) => `member:${m.id}` === optionValue);
+    if (member) onChange({ kind: 'member', member });
   }
 
-  function selectMember(member: OrganizationMemberResponse) {
-    onChange({ kind: 'member', member });
-    filter = '';
+  function onkeydown(e: KeyboardEvent) {
+    // An IME confirms its candidate with Enter; that keypress is not a pick.
+    if (e.isComposing) return;
+    if (e.key === 'Escape') {
+      clearFilter();
+      return;
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      // bits-ui moves the highlight itself; just remember the user picked it,
+      // so Enter never acts on the item bits-ui highlights when the list opens.
+      arrowed = true;
+      return;
+    }
+    if (e.key !== 'Enter') return;
+    // Enter must never reach the form — implicit submission posts an empty
+    // match. Handling it here also replaces bits-ui's own Enter (composed
+    // handlers stop at the first preventDefault), which selects only an
+    // already-highlighted item and so ignores a freshly typed filter.
+    e.preventDefault();
+    if (!open) return;
+    // An untouched list of recents is not a choice — Enter only picks
+    // a typed match or an option the user arrowed to.
+    const target =
+      arrowed && highlightedValue && options.includes(highlightedValue)
+        ? highlightedValue
+        : filter.length > 1
+          ? options[0]
+          : undefined;
+    if (target) select(target);
   }
 
   function reset() {
     onChange(null);
     filter = '';
+    // The slot goes back to an untouched recents list, so the arrow the user
+    // pressed before the last pick must not still authorise Enter.
+    arrowed = false;
+    highlightedValue = null;
   }
 </script>
+
+{#snippet option(
+  optionValue: string,
+  user: { displayName?: string; username?: string; email?: string }
+)}
+  <Combobox.Item
+    value={optionValue}
+    label={playerName(user)}
+    onHighlight={() => (highlightedValue = optionValue)}
+    onUnhighlight={() => {
+      if (highlightedValue === optionValue) highlightedValue = null;
+    }}
+  >
+    {#snippet child({ props })}
+      <PlayerButton
+        {...props}
+        {user}
+        class="data-[highlighted]:border-primary data-[highlighted]:bg-muted"
+      />
+    {/snippet}
+  </Combobox.Item>
+{/snippet}
 
 <div class="flex flex-col gap-2">
   <h4>{label}</h4>
   {#if value === null}
-    <Input
-      bind:value={filter}
-      placeholder="Filter..."
-      autofocus={autofocus ? autofocus : undefined}
-      spellcheck={false}
-      autocorrect="off"
-      autocapitalize="none"
-    />
-    {#if filter.length === 0 && latestPlayers.length > 0}
-      <p class="text-sm">Recent players</p>
-      <ul>
-        {#each latestPlayers as player (player.id)}
-          <li class="mb-1 last:mb-0">
-            <PlayerButton user={player} onclick={() => selectPlayer(player)} />
-          </li>
-        {/each}
-      </ul>
-    {/if}
-    {#if filter.length > 1}
-      {#if matchedPlayers.length > 0 || matchedMembers.length > 0}
-        <ul>
-          {#each matchedPlayers as player (player.id)}
-            <li class="mb-1">
-              <PlayerButton
-                user={player}
-                onclick={() => selectPlayer(player)}
-              />
-            </li>
-          {/each}
-          {#if matchedMembers.length > 0}
-            <li class="mb-1 mt-2 text-xs text-muted-foreground">
-              Org members not yet in league
-            </li>
-            {#each matchedMembers as member (member.id)}
-              <li class="mb-1">
-                <PlayerButton
-                  user={{
-                    displayName: member.displayName,
-                    username: member.username,
-                  }}
-                  onclick={() => selectMember(member)}
-                />
-              </li>
-            {/each}
+    <Combobox.Root type="single" loop bind:open onValueChange={select}>
+      <Combobox.Input
+        bind:ref={inputRef}
+        placeholder="Filter..."
+        autofocus={autofocus ? autofocus : undefined}
+        spellcheck={false}
+        autocorrect="off"
+        autocapitalize="none"
+        oninput={(e) => {
+          filter = e.currentTarget.value;
+          // Covers input that arrives without a keydown (paste, autofill).
+          open = true;
+          arrowed = false;
+        }}
+        onfocus={() => (open = true)}
+        onclick={() => (open = true)}
+        {onkeydown}
+      >
+        {#snippet child({ props })}
+          <Input {...props} />
+        {/snippet}
+      </Combobox.Input>
+      <Combobox.ContentStatic class="gap-1">
+        {#if filter.length === 0}
+          {#if latestPlayers.length > 0}
+            <Combobox.Group class="flex flex-col gap-1">
+              <Combobox.GroupHeading class="text-sm">
+                Recent players
+              </Combobox.GroupHeading>
+              {#each latestPlayers as player (player.id)}
+                {@render option(`league:${player.id}`, player)}
+              {/each}
+            </Combobox.Group>
           {/if}
-        </ul>
-      {:else}
-        <div class="flex flex-col items-start gap-1">
-          <p class="text-sm">No players found</p>
-          <Button type="button" onclick={() => onCreateUser(filter)}>
-            Add new player
-          </Button>
-        </div>
-      {/if}
-    {/if}
+        {:else if filter.length > 1}
+          {#if options.length > 0}
+            {#each matchedPlayers as player (player.id)}
+              {@render option(`league:${player.id}`, player)}
+            {/each}
+            {#if matchedMembers.length > 0}
+              <Combobox.Group class="flex flex-col gap-1">
+                <Combobox.GroupHeading
+                  class="mt-1 text-xs text-muted-foreground"
+                >
+                  Org members not yet in league
+                </Combobox.GroupHeading>
+                {#each matchedMembers as member (member.id)}
+                  {@render option(`member:${member.id}`, member)}
+                {/each}
+              </Combobox.Group>
+            {/if}
+          {:else}
+            <div class="flex flex-col items-start gap-1">
+              <p class="text-sm">No players found</p>
+              <Button type="button" onclick={() => onCreateUser(filter)}>
+                Add new player
+              </Button>
+            </div>
+          {/if}
+        {/if}
+      </Combobox.ContentStatic>
+    </Combobox.Root>
   {:else}
     <div
       class="flex w-full items-center gap-1 rounded-md border border-input px-3 py-2"

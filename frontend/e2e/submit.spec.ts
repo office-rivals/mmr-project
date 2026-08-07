@@ -9,7 +9,7 @@ async function pickPlayer(page: Page, displayName: string) {
   const input = page.locator('input[placeholder="Filter..."]').first();
   await input.fill(displayName);
   await page
-    .getByRole('button', { name: new RegExp(displayName) })
+    .locator('button', { hasText: new RegExp(displayName) })
     .first()
     .click();
 }
