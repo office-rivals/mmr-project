@@ -1,5 +1,0 @@
----
-"mmr-api": patch
----
-
-chore(deps): bump google.golang.org/grpc from 1.81.1 to 1.82.1 in /mmr-api
