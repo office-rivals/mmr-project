@@ -172,6 +172,51 @@ test.describe('Submit — player slot picker', () => {
       0
     );
   });
+
+  // Removing a chip hands the slot back an untouched list of recents, so Enter
+  // has to be a no-op there again. The two cases below differ only in how the
+  // first pick happened, which is what pins the arrow path specifically: the
+  // picker remembers that the user arrowed, and undoing the pick has to forget
+  // it. Without that, the second Enter picks whichever recent bits-ui
+  // highlights when the list reopens.
+  for (const firstPick of ['arrow key', 'click'] as const) {
+    test(`Enter stays a no-op after a pick by ${firstPick} is undone`, async ({
+      page,
+    }) => {
+      await seedRecentPlayers(page, [
+        ALICE_LEAGUE_PLAYER_ID,
+        BOB_LEAGUE_PLAYER_ID,
+      ]);
+      await gotoHydrated(page, SUBMIT_URL);
+
+      const team1 = page.locator('#team1-step');
+      const you = team1.locator('input[placeholder="Filter..."]').first();
+      await you.click();
+      await expect(suggestion(page, 'Alice Anderson')).toBeVisible();
+
+      if (firstPick === 'arrow key') {
+        await you.press('ArrowDown');
+        await you.press('Enter');
+      } else {
+        await suggestion(page, 'Alice Anderson').click();
+      }
+      await expect(team1.locator('h4')).toHaveCount(2);
+
+      // Undo it. Either recent may be the one that got picked, so this takes
+      // the filled slot rather than a name.
+      await team1.locator('div.border-input').first().locator('button').click();
+      await expect(team1.locator('h4')).toHaveCount(1);
+
+      const backToEmpty = team1
+        .locator('input[placeholder="Filter..."]')
+        .first();
+      await backToEmpty.click();
+      await expect(suggestion(page, 'Alice Anderson')).toBeVisible();
+      await backToEmpty.press('Enter');
+
+      await expect(team1.locator('h4')).toHaveCount(1);
+    });
+  }
 });
 
 test.describe('Player profile — compare filter', () => {

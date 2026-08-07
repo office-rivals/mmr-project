@@ -76,7 +76,7 @@
     // already-highlighted item and so ignores a freshly typed filter.
     e.preventDefault();
     if (!open || filter.length < 2) return;
-    // ponytail: nothing matched = no-op.
+    // Nothing matched = no-op.
     const target =
       highlightedValue && filtered.some((p) => p.id === highlightedValue)
         ? highlightedValue

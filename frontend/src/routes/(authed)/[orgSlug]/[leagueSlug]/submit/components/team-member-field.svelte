@@ -153,7 +153,7 @@
     // already-highlighted item and so ignores a freshly typed filter.
     e.preventDefault();
     if (!open) return;
-    // ponytail: an untouched list of recents is not a choice — Enter only picks
+    // An untouched list of recents is not a choice — Enter only picks
     // a typed match or an option the user arrowed to.
     const target =
       arrowed && highlightedValue && options.includes(highlightedValue)
@@ -167,6 +167,10 @@
   function reset() {
     onChange(null);
     filter = '';
+    // The slot goes back to an untouched recents list, so the arrow the user
+    // pressed before the last pick must not still authorise Enter.
+    arrowed = false;
+    highlightedValue = null;
   }
 </script>
 
