@@ -4,6 +4,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { collectChangedComponents } from "./releases.mjs";
+import { components } from "./components.mjs";
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [baseSha, headSha] = process.argv.slice(2);
@@ -24,6 +25,26 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // whether the GitHub release already exists, so a workflow re-run still reports
   // them to downstream steps (e.g. image builds) after a transient failure.
   const changed = collectChangedComponents(repoRoot, baseSha);
+
+  // The image build takes its whole plan from here, so the version it tags and
+  // the version released below are one value rather than two reads that could
+  // drift. Built before the first release is cut: a component missing its image
+  // metadata then fails while nothing has been published yet.
+  const released = changed.map(({ name, version }) => {
+    const component = components.find((candidate) => candidate.name === name);
+
+    if (!component?.imageContext) {
+      console.error(`Component ${name} is missing imageContext in components.mjs`);
+      process.exit(1);
+    }
+
+    return {
+      name,
+      version,
+      context: component.imageContext,
+      buildArgs: component.versionBuildArg ? `VERSION=${version}` : ""
+    };
+  });
 
   for (const { name, version, notes } of changed) {
     const tag = `${name}@${version}`;
@@ -63,8 +84,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   if (process.env.GITHUB_OUTPUT) {
-    const releasedNames = changed.map(({ name }) => name);
-    fs.appendFileSync(process.env.GITHUB_OUTPUT, `released=${JSON.stringify(releasedNames)}\n`);
+    fs.appendFileSync(process.env.GITHUB_OUTPUT, `released=${JSON.stringify(released)}\n`);
   }
 
   function releaseExists(tag) {

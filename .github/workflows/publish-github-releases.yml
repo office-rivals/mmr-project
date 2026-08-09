@@ -14,8 +14,7 @@ jobs:
     permissions:
       contents: write
     outputs:
-      components: ${{ steps.plan.outputs.components }}
-      repo: ${{ steps.plan.outputs.repo }}
+      released: ${{ steps.releases.outputs.released }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -27,6 +26,8 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # Also emits the build plan for the images job: one entry per component
+      # whose version changed in this release.
       - name: Create GitHub releases
         id: releases
         run: node ./scripts/release/create-releases.mjs "$BASE_SHA" "$HEAD_SHA"
@@ -36,47 +37,12 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           HEAD_SHA: ${{ github.event.pull_request.merge_commit_sha }}
 
-      # Each released component is published as its own image tagged with its own
-      # version, mirroring the per-component GitHub releases created above. Only
-      # components whose version changed in this release are built. Emitting the
-      # build inputs as data keeps the build job itself component-agnostic.
-      - name: Plan the image builds
-        id: plan
-        run: |
-          repo=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
-          components=$(node -e '
-            const dirs = { frontend: "frontend", api: "api", "mmr-api": "mmr-api" };
-            const contexts = {
-              frontend: "./frontend",
-              api: "./api/MMRProject.Api",
-              "mmr-api": "./mmr-api",
-            };
-            const planned = JSON.parse(process.env.RELEASED).map((name) => {
-              const version = require(`./${dirs[name]}/package.json`).version;
-              return {
-                name,
-                version,
-                context: contexts[name],
-                // Only mmr-api stamps its version into the binary at build time.
-                buildArgs: name === "mmr-api" ? `VERSION=${version}` : "",
-              };
-            });
-            console.log(JSON.stringify(planned));
-          ')
-          {
-            echo "components=$components"
-            echo "repo=$repo"
-          } >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          RELEASED: ${{ steps.releases.outputs.released }}
-
-  # One job per released component. A component that fails to build no longer
-  # stops the others from being published, and re-running failed jobs retries
-  # only that component instead of rebuilding everything.
+  # One job per released component, so a build failure no longer stops the other
+  # components from publishing and a re-run retries only the one that broke.
   images:
     needs: release
-    if: needs.release.outputs.components != '[]'
+    if: needs.release.outputs.released != '' && needs.release.outputs.released != '[]'
+    name: ${{ matrix.component.name }} image
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -84,7 +50,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: ${{ fromJson(needs.release.outputs.components) }}
+        component: ${{ fromJson(needs.release.outputs.released) }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -103,11 +69,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # No layer cache: the `type=gha` exporter never once wrote an entry here,
-      # so `cache-from` had nothing to restore while the failed export took the
-      # whole release down with it. This workflow runs every few weeks and cache
-      # entries expire after seven days, so a working cache would be cold anyway.
-      - name: Build and push ${{ matrix.component.name }}
+      - name: Resolve the image repository
+        id: image
+        run: echo "repo=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      # No layer cache: the gha exporter never wrote an entry for this repo, and
+      # its failure killed releases whose image had already pushed.
+      - name: Build and push
         uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.component.context }}
@@ -115,5 +83,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: ${{ matrix.component.buildArgs }}
           tags: |
-            ghcr.io/${{ needs.release.outputs.repo }}/${{ matrix.component.name }}:${{ matrix.component.version }}
-            ghcr.io/${{ needs.release.outputs.repo }}/${{ matrix.component.name }}:latest
+            ghcr.io/${{ steps.image.outputs.repo }}/${{ matrix.component.name }}:${{ matrix.component.version }}
+            ghcr.io/${{ steps.image.outputs.repo }}/${{ matrix.component.name }}:latest
