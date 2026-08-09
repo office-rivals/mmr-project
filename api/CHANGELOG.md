@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0
+
+- Show admins a red badge wherever match flags are waiting to be resolved — the
+  account menu, the admin nav, and each affected organization and league — backed
+  by a new `GET /api/v3/me/badges`. The flagged-matches filter now defaults to
+  Open.
+
 ## 1.4.1
 
 - Fix match deletion failing for any match that has been flagged. `DeleteMatchAsync` now removes the match's `match_flags` rows inside the same transaction before deleting the match, so the restricted `fk_match_flags_match` foreign key no longer blocks the delete.
