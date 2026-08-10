@@ -1,0 +1,146 @@
+name: Rebuild Release Image
+
+# Recovery path for a release whose image build failed. The publish workflow
+# only runs on a release-PR merge, and re-running it replays the workflow file
+# from that older ref, so a fix on main cannot reach it.
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Component to rebuild
+        required: true
+        type: choice
+        options:
+          - frontend
+          - api
+          - mmr-api
+      version:
+        description: Released version to rebuild
+        required: true
+        type: string
+      tag_latest:
+        description: Also move `latest` — only when this is the newest release of the component
+        required: false
+        default: false
+        type: boolean
+      force:
+        description: Overwrite the image tag if it already exists
+        required: false
+        default: false
+        type: boolean
+
+# Two dispatches for one component would otherwise race for the same tag.
+concurrency:
+  group: rebuild-image-${{ inputs.component }}
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      # The version reaches a git ref, a docker tag list and GITHUB_OUTPUT
+      # lines, each of which would treat a comma or newline as a separator.
+      - name: Validate the version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version must be MAJOR.MINOR.PATCH, got: $VERSION" >&2
+            exit 1
+          fi
+
+      - name: Verify release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
+        run: gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+
+      # refs/tags/ explicitly: an unqualified ref lets a branch of the same name
+      # win over the tag, which would publish a branch as a released version.
+      - name: Check out the released source
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ format('{0}@{1}', inputs.component, inputs.version) }}
+
+      # The tag predates this tooling, so the component table has to come from
+      # the default branch — pinned, because a dispatch can name any ref.
+      - name: Check out the release tooling
+        uses: actions/checkout@v7
+        with:
+          path: .release-tooling
+          ref: ${{ github.event.repository.default_branch }}
+
+      # From the tooling checkout: the planner runs on the tooling's Node, not
+      # on whatever the released tag happened to pin.
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .release-tooling/.nvmrc
+
+      - name: Plan the build
+        id: plan
+        run: node ./.release-tooling/scripts/release/print-image-plan.mjs "$COMPONENT" "$VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          COMPONENT: ${{ inputs.component }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # An existing tag is a published, possibly deployed artifact. A rebuild is
+      # not byte-identical — base layers and unpinned dependencies drift — so
+      # replacing one has to be asked for.
+      - name: Refuse to overwrite an existing image
+        if: ${{ !inputs.force }}
+        env:
+          IMAGE: ${{ steps.plan.outputs.image }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if docker manifest inspect "$IMAGE:$VERSION" >/dev/null 2>&1; then
+            echo "$IMAGE:$VERSION already exists. Dispatch with force to replace it." >&2
+            exit 1
+          fi
+
+      # `latest` is opt-in per dispatch. Moving it backwards would downgrade
+      # anyone running the documented compose file, but the case this workflow
+      # exists for is the *newest* release failing — there `latest` is stale
+      # until a rebuild moves it, and nothing else ever will.
+      - name: Resolve the tags
+        id: tags
+        env:
+          IMAGE: ${{ steps.plan.outputs.image }}
+          TAG_LATEST: ${{ inputs.tag_latest }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          {
+            echo "list<<TAGS"
+            echo "$IMAGE:$VERSION"
+            if [ "$TAG_LATEST" = "true" ]; then
+              echo "$IMAGE:latest"
+            fi
+            echo "TAGS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ steps.plan.outputs.context }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: ${{ steps.plan.outputs.buildArgs }}
+          tags: ${{ steps.tags.outputs.list }}

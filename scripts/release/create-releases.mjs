@@ -13,6 +13,12 @@ export function buildImagePlan(changed, repository) {
   const repo = repository.toLowerCase();
 
   return changed.flatMap(({ name, version }) => {
+    // A version reaches a docker tag list and GITHUB_OUTPUT lines, both of
+    // which split on separators. Guarded here so every caller inherits it.
+    if (!/^\d+\.\d+\.\d+$/.test(version)) {
+      throw new Error(`Version must be MAJOR.MINOR.PATCH, got: ${JSON.stringify(version)}`);
+    }
+
     const component = components.find((candidate) => candidate.name === name);
 
     if (!component?.imageContext) {
