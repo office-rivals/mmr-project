@@ -10,19 +10,19 @@ if (!name || !version) {
   process.exit(1);
 }
 
-// These values are printed as `key=value` lines and end up in a docker tag
-// list, so anything with a separator in it must not get that far.
-if (!/^\d+\.\d+\.\d+$/.test(version)) {
-  console.error(`Version must be MAJOR.MINOR.PATCH, got: ${JSON.stringify(version)}`);
-  process.exit(1);
-}
-
 if (!process.env.GITHUB_REPOSITORY) {
   console.error("Error: GITHUB_REPOSITORY environment variable is required");
   process.exit(1);
 }
 
-const [entry] = buildImagePlan([{ name, version }], process.env.GITHUB_REPOSITORY);
+let entry;
+
+try {
+  [entry] = buildImagePlan([{ name, version }], process.env.GITHUB_REPOSITORY);
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
 
 if (!entry) {
   console.error(`Component ${name} publishes no container image`);

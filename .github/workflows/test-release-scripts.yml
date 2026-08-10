@@ -16,6 +16,7 @@ on:
     paths:
       - scripts/release/**
       - .nvmrc
+      - .github/workflows/test-release-scripts.yml
 
 jobs:
   test:

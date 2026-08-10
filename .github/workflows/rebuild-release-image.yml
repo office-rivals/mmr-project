@@ -18,6 +18,21 @@ on:
         description: Released version to rebuild
         required: true
         type: string
+      tag_latest:
+        description: Also move `latest` — only when this is the newest release of the component
+        required: false
+        default: false
+        type: boolean
+      force:
+        description: Overwrite the image tag if it already exists
+        required: false
+        default: false
+        type: boolean
+
+# Two dispatches for one component would otherwise race for the same tag.
+concurrency:
+  group: rebuild-image-${{ inputs.component }}
+  cancel-in-progress: false
 
 jobs:
   rebuild:
@@ -87,9 +102,40 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Deliberately no `latest` tag: this rebuilds an arbitrary past release,
-      # and moving `latest` backwards would downgrade anyone running the
-      # documented compose file.
+      # An existing tag is a published, possibly deployed artifact. A rebuild is
+      # not byte-identical — base layers and unpinned dependencies drift — so
+      # replacing one has to be asked for.
+      - name: Refuse to overwrite an existing image
+        if: ${{ !inputs.force }}
+        env:
+          IMAGE: ${{ steps.plan.outputs.image }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if docker manifest inspect "$IMAGE:$VERSION" >/dev/null 2>&1; then
+            echo "$IMAGE:$VERSION already exists. Dispatch with force to replace it." >&2
+            exit 1
+          fi
+
+      # `latest` is opt-in per dispatch. Moving it backwards would downgrade
+      # anyone running the documented compose file, but the case this workflow
+      # exists for is the *newest* release failing — there `latest` is stale
+      # until a rebuild moves it, and nothing else ever will.
+      - name: Resolve the tags
+        id: tags
+        env:
+          IMAGE: ${{ steps.plan.outputs.image }}
+          TAG_LATEST: ${{ inputs.tag_latest }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          {
+            echo "list<<TAGS"
+            echo "$IMAGE:$VERSION"
+            if [ "$TAG_LATEST" = "true" ]; then
+              echo "$IMAGE:latest"
+            fi
+            echo "TAGS"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
@@ -97,4 +143,4 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           build-args: ${{ steps.plan.outputs.buildArgs }}
-          tags: ${{ steps.plan.outputs.image }}:${{ inputs.version }}
+          tags: ${{ steps.tags.outputs.list }}

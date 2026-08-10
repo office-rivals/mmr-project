@@ -33,9 +33,11 @@ jobs:
           RELEASE_TAG: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
         run: gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
 
+      # refs/tags/ explicitly: an unqualified ref resolves a branch of the same
+      # name ahead of the tag, which would deploy a branch as a released version.
       - uses: actions/checkout@v7
         with:
-          ref: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
+          ref: refs/tags/${{ format('{0}@{1}', inputs.component, inputs.version) }}
 
       - name: Log in to Azure
         uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3
