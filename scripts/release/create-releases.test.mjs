@@ -56,6 +56,16 @@ describe("buildImagePlan", () => {
     assert.deepEqual(plan.map(({ name }) => name), ["api"]);
   });
 
+  it("keeps a separator-bearing version out of the tag it would split", () => {
+    // buildImagePlan itself does not validate — print-image-plan.mjs and the
+    // workflow do — so this pins where such a version would land if it slipped
+    // through, making the guards' necessity visible rather than implied.
+    const [entry] = buildImagePlan([{ name: "api", version: "1.5.0,evil" }], "o/r");
+
+    assert.equal(entry.image, "ghcr.io/o/r/api");
+    assert.equal(entry.version, "1.5.0,evil");
+  });
+
   it("returns nothing when no component changed", () => {
     assert.deepEqual(buildImagePlan([], "office-rivals/mmr-project"), []);
   });

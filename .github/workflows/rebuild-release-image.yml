@@ -27,28 +27,44 @@ jobs:
       contents: read
       packages: write
     steps:
+      # The version reaches a git ref, a docker tag list and GITHUB_OUTPUT
+      # lines, each of which would treat a comma or newline as a separator.
+      - name: Validate the version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version must be MAJOR.MINOR.PATCH, got: $VERSION" >&2
+            exit 1
+          fi
+
       - name: Verify release exists
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
         run: gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
 
+      # refs/tags/ explicitly: an unqualified ref lets a branch of the same name
+      # win over the tag, which would publish a branch as a released version.
       - name: Check out the released source
         uses: actions/checkout@v7
         with:
-          ref: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
+          ref: refs/tags/${{ format('{0}@{1}', inputs.component, inputs.version) }}
 
-      # From the default branch, not the tag: the tag predates this tooling, and
-      # the component table on main is the one that knows where images build from.
+      # The tag predates this tooling, so the component table has to come from
+      # the default branch — pinned, because a dispatch can name any ref.
       - name: Check out the release tooling
         uses: actions/checkout@v7
         with:
           path: .release-tooling
+          ref: ${{ github.event.repository.default_branch }}
 
+      # From the tooling checkout: the planner runs on the tooling's Node, not
+      # on whatever the released tag happened to pin.
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version-file: .nvmrc
+          node-version-file: .release-tooling/.nvmrc
 
       - name: Plan the build
         id: plan
