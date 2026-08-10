@@ -49,7 +49,7 @@
     "d3": "^7.9.0",
     "d3-cloud": "^1.2.9",
     "d3-sankey": "^0.12.3",
-    "dotenv": "^16.6.1",
+    "dotenv": "^17.4.2",
     "formsnap": "^2.0.1",
     "lucide-svelte": "^0.577.0",
     "svelte-clerk": "^1.1.11",
