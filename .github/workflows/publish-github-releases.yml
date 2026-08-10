@@ -26,8 +26,6 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      # Also emits the build plan for the images job: one entry per component
-      # whose version changed in this release.
       - name: Create GitHub releases
         id: releases
         run: node ./scripts/release/create-releases.mjs "$BASE_SHA" "$HEAD_SHA"
@@ -44,6 +42,9 @@ jobs:
     if: needs.release.outputs.released != '' && needs.release.outputs.released != '[]'
     name: ${{ matrix.component.name }} image
     runs-on: ubuntu-latest
+    # Emulated arm64 builds can wedge, and fail-fast: false means a stuck leg
+    # never cancels its siblings — three legs at the 6h default is 18h burnt.
+    timeout-minutes: 60
     permissions:
       contents: read
       packages: write
@@ -69,10 +70,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve the image repository
-        id: image
-        run: echo "repo=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
-
       # No layer cache: the gha exporter never wrote an entry for this repo, and
       # its failure killed releases whose image had already pushed.
       - name: Build and push
@@ -83,5 +80,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: ${{ matrix.component.buildArgs }}
           tags: |
-            ghcr.io/${{ steps.image.outputs.repo }}/${{ matrix.component.name }}:${{ matrix.component.version }}
-            ghcr.io/${{ steps.image.outputs.repo }}/${{ matrix.component.name }}:latest
+            ${{ matrix.component.image }}:${{ matrix.component.version }}
+            ${{ matrix.component.image }}:latest
