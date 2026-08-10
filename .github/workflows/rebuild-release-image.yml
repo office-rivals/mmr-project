@@ -1,0 +1,84 @@
+name: Rebuild Release Image
+
+# Recovery path for a release whose image build failed. The publish workflow
+# only runs on a release-PR merge, and re-running it replays the workflow file
+# from that older ref, so a fix on main cannot reach it.
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Component to rebuild
+        required: true
+        type: choice
+        options:
+          - frontend
+          - api
+          - mmr-api
+      version:
+        description: Released version to rebuild
+        required: true
+        type: string
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Verify release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
+        run: gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+
+      - name: Check out the released source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
+
+      # From the default branch, not the tag: the tag predates this tooling, and
+      # the component table on main is the one that knows where images build from.
+      - name: Check out the release tooling
+        uses: actions/checkout@v7
+        with:
+          path: .release-tooling
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Plan the build
+        id: plan
+        run: node ./.release-tooling/scripts/release/print-image-plan.mjs "$COMPONENT" "$VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          COMPONENT: ${{ inputs.component }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Deliberately no `latest` tag: this rebuilds an arbitrary past release,
+      # and moving `latest` backwards would downgrade anyone running the
+      # documented compose file.
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ steps.plan.outputs.context }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: ${{ steps.plan.outputs.buildArgs }}
+          tags: ${{ steps.plan.outputs.image }}:${{ inputs.version }}
