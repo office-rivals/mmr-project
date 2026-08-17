@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.5
+
+- chore(deps): bump the opentelemetry group in /mmr-api with 10 updates
+- chore(deps): bump github.com/stretchr/testify from 1.11.1 to 1.12.0 in /mmr-api
+
 ## 1.2.4
 
 - chore(deps): bump google.golang.org/grpc from 1.81.1 to 1.82.1 in /mmr-api
