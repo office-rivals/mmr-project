@@ -8,9 +8,10 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
-  import { CalendarDays, Flag, Trophy, Users } from 'lucide-svelte';
+  import { CalendarDays, Cpu, Flag, Trophy, Users } from 'lucide-svelte';
   import {
     formatDate,
+    formatDateTime,
     formatLeagueFormat,
     getPlayerDisplayName,
   } from '$lib/utils';
@@ -119,6 +120,48 @@
                 </span>
               </div>
               <Badge variant="outline">{formatDate(match.playedAt)}</Badge>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader>
+      <CardTitle>Hardware</CardTitle>
+      <CardDescription
+        >Randomizer Boxes checking in for this league.</CardDescription
+      >
+    </CardHeader>
+    <CardContent>
+      {#if data.hardware.length === 0}
+        <p class="py-4 text-center text-sm text-muted-foreground">
+          No Hardware has checked in yet.
+        </p>
+      {:else}
+        <div class="space-y-2">
+          {#each data.hardware as hardware}
+            <div
+              class="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
+            >
+              <div class="flex items-center gap-3">
+                <Cpu class="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <div class="font-mono text-sm">{hardware.hardwareId}</div>
+                  <div class="text-xs text-muted-foreground">
+                    LAN IP: {hardware.localIpAddress}
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <Badge variant={hardware.isOnline ? 'default' : 'outline'}>
+                  {hardware.isOnline ? 'Online' : 'Offline'}
+                </Badge>
+                <span class="text-muted-foreground">
+                  Last seen {formatDateTime(hardware.lastSeenAt)}
+                </span>
+              </div>
             </div>
           {/each}
         </div>

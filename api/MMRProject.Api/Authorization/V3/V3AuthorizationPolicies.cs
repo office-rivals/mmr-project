@@ -7,5 +7,6 @@ public static class V3AuthorizationPolicies
     public const string RequireOrgMember = "RequireOrgMember";
     public const string RequireLeagueAccess = "RequireLeagueAccess";
     public const string RequirePatWrite = "RequirePatWrite";
+    public const string RequirePatAuthentication = "RequirePatAuthentication";
     public const string DenyPatAuthentication = "DenyPatAuthentication";
 }

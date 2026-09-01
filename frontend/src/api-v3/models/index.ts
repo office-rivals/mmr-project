@@ -372,6 +372,17 @@ export interface MatchFlagResponse {
   updatedAt: string;
 }
 
+// Hardware DTOs
+export interface HardwareResponse {
+  id: string;
+  hardwareId: string;
+  organizationId: string;
+  leagueId: string;
+  localIpAddress: string;
+  lastSeenAt: string;
+  isOnline: boolean;
+}
+
 // Invite Link DTOs
 export interface CreateInviteLinkRequest {
   maxUses?: number;
@@ -469,6 +480,9 @@ export function ActiveMatchResponseFromJSON(json: any): ActiveMatchResponse {
   return json;
 }
 export function MatchFlagResponseFromJSON(json: any): MatchFlagResponse {
+  return json;
+}
+export function HardwareResponseFromJSON(json: any): HardwareResponse {
   return json;
 }
 export function TokenResponseFromJSON(json: any): TokenResponse {
