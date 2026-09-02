@@ -473,5 +473,71 @@ public partial class ApiDbContext
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_match_flags_resolved_by");
         });
+
+        modelBuilder.Entity<RfidTag>(entity =>
+        {
+            entity.ToTable("rfid_tags");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.RfidUid).HasColumnName("rfid_uid");
+
+            entity.HasIndex(e => e.RfidUid, "ix_rfid_tags_rfid_uid").IsUnique();
+            entity.HasIndex(e => e.UserId, "ix_rfid_tags_user");
+
+            entity.HasOne(e => e.User).WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_rfid_tags_user");
+        });
+
+        modelBuilder.Entity<PairingCode>(entity =>
+        {
+            entity.ToTable("pairing_codes");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Code).HasColumnName("code");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.UsedAt).HasColumnName("used_at");
+
+            // Submit resolves an active code by value across all users, so it needs
+            // to be searchable directly; UserId lookup serves issuance idempotency.
+            entity.HasIndex(e => e.Code, "ix_pairing_codes_code");
+            entity.HasIndex(e => e.UserId, "ix_pairing_codes_user");
+
+            entity.HasOne(e => e.User).WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_pairing_codes_user");
+        });
+
+        modelBuilder.Entity<Hardware>(entity =>
+        {
+            entity.ToTable("hardware");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.OrganizationId).HasColumnName("organization_id");
+            entity.Property(e => e.LeagueId).HasColumnName("league_id");
+            entity.Property(e => e.HardwareId).HasColumnName("hardware_id").HasMaxLength(64);
+            entity.Property(e => e.LocalIpAddress).HasColumnName("local_ip_address").HasMaxLength(45);
+            entity.Property(e => e.LastSeenAt).HasColumnName("last_seen_at");
+
+            entity.HasIndex(e => e.HardwareId, "ix_hardware_hardware_id").IsUnique();
+            entity.HasIndex(e => new { e.OrganizationId, e.LeagueId }, "ix_hardware_org_league");
+
+            entity.HasOne(e => e.Organization).WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_hardware_organization");
+
+            entity.HasOne(e => e.League).WithMany()
+                .HasForeignKey(e => e.LeagueId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_hardware_league");
+        });
     }
 }

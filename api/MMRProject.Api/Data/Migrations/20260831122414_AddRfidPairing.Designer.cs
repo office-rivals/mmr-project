@@ -3,6 +3,7 @@ using System;
 using MMRProject.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MMRProject.Api.Data.Migrations
 {
     [DbContext(typeof(ApiDbContext))]
-    partial class ApiDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260831122414_AddRfidPairing")]
+    partial class AddRfidPairing
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -520,53 +523,6 @@ namespace MMRProject.Api.Data.Migrations
                     b.HasIndex(new[] { "DeletedAt" }, "idx_teams_deleted_at");
 
                     b.ToTable("legacy_teams", (string)null);
-                });
-
-            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.Hardware", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("HardwareId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("hardware_id");
-
-                    b.Property<DateTimeOffset>("LastSeenAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_seen_at");
-
-                    b.Property<Guid>("LeagueId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("league_id");
-
-                    b.Property<string>("LocalIpAddress")
-                        .IsRequired()
-                        .HasMaxLength(45)
-                        .HasColumnType("character varying(45)")
-                        .HasColumnName("local_ip_address");
-
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("organization_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LeagueId");
-
-                    b.HasIndex(new[] { "HardwareId" }, "ix_hardware_hardware_id")
-                        .IsUnique();
-
-                    b.HasIndex(new[] { "OrganizationId", "LeagueId" }, "ix_hardware_org_league");
-
-                    b.ToTable("hardware", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.League", b =>
@@ -1653,27 +1609,6 @@ namespace MMRProject.Api.Data.Migrations
                     b.Navigation("PlayerOne");
 
                     b.Navigation("PlayerTwo");
-                });
-
-            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.Hardware", b =>
-                {
-                    b.HasOne("MMRProject.Api.Data.Entities.V3.League", "League")
-                        .WithMany()
-                        .HasForeignKey("LeagueId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_hardware_league");
-
-                    b.HasOne("MMRProject.Api.Data.Entities.V3.Organization", "Organization")
-                        .WithMany()
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_hardware_organization");
-
-                    b.Navigation("League");
-
-                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.League", b =>

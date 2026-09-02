@@ -36,6 +36,11 @@ import type {
   UpdateMatchFlagReasonRequest,
   ResolveMatchFlagRequest,
   MatchFlagResponse,
+  HardwareResponse,
+  PairingCodeResponse,
+  RfidTagResponse,
+  PairingSubmitRequest,
+  PairingSubmitResponse,
   CreateTokenRequest,
   TokenResponse,
   CreateTokenResponse,
@@ -202,6 +207,62 @@ export class LeaguesApi extends runtime.BaseAPI {
     const response = await this.request({
       path: `/api/v3/organizations/${orgId}/leagues/${leagueId}`,
       method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: request,
+    });
+    return await response.json();
+  }
+}
+
+// Hardware API
+export class HardwareApi extends runtime.BaseAPI {
+  async listForLeague(
+    orgId: string,
+    leagueId: string
+  ): Promise<HardwareResponse[]> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/hardware`,
+      method: 'GET',
+      headers: {},
+    });
+    return await response.json();
+  }
+}
+
+// Pairing API
+export class PairingApi extends runtime.BaseAPI {
+  async issuePairingCode(): Promise<PairingCodeResponse> {
+    const response = await this.request({
+      path: '/api/v3/pairing/code',
+      method: 'POST',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async listTags(): Promise<RfidTagResponse[]> {
+    const response = await this.request({
+      path: '/api/v3/pairing/tags',
+      method: 'GET',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async unlinkTag(tagId: string): Promise<void> {
+    await this.request({
+      path: `/api/v3/pairing/tags/${tagId}`,
+      method: 'DELETE',
+      headers: {},
+    });
+  }
+
+  async submitPairing(
+    request: PairingSubmitRequest
+  ): Promise<PairingSubmitResponse> {
+    const response = await this.request({
+      path: '/api/v3/pairing/submit',
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: request,
     });

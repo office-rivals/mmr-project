@@ -27,6 +27,9 @@ public class PatAuthorizationHandler(IHttpContextAccessor httpContextAccessor)
         var orgId = httpContext?.Request.RouteValues["orgId"]?.ToString();
         if (orgId == null)
         {
+            // Some PAT-authenticated endpoints are intentionally not tenant
+            // routed. Their services perform any request-specific validation.
+            context.Succeed(requirement);
             return Task.CompletedTask;
         }
 
@@ -48,6 +51,23 @@ public class PatAuthorizationHandler(IHttpContextAccessor httpContextAccessor)
         }
 
         context.Succeed(requirement);
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class PatAuthenticationRequirement : IAuthorizationRequirement;
+
+public class PatAuthenticationHandler : AuthorizationHandler<PatAuthenticationRequirement>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        PatAuthenticationRequirement requirement)
+    {
+        if (context.User.IsPatAuthentication())
+        {
+            context.Succeed(requirement);
+        }
+
         return Task.CompletedTask;
     }
 }
