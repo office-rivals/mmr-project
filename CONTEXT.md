@@ -35,3 +35,22 @@ An authenticated periodic report from Hardware that confirms it can reach the
 backend and supplies its current LAN address. The platform keeps the latest
 heartbeat state so administrators can see whether the Hardware is still online.
 _Avoid_: Hardware ping, health check
+
+**Pending Match**:
+A proposed match whose selected players must respond before it becomes an Active
+Match.
+_Avoid_: Match offer, provisional game
+
+**Active Match**:
+A match with fixed teams that is ready for its result to be recorded.
+_Avoid_: Live match, confirmed game
+
+**RFID Match**:
+An Active Match created from the RFID Tags presented for a league, without a
+separate player-acceptance step.
+_Avoid_: Scan match, tag game
+
+**Match Temperature**:
+A value from 0 to 1 controlling how much team assignment favors randomness over
+MMR balance; 0 is fully MMR-based and 1 is fully random.
+_Avoid_: Randomness, shuffle level

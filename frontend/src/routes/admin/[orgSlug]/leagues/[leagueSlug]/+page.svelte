@@ -98,7 +98,7 @@
         </p>
       {:else}
         <div class="space-y-2">
-          {#each data.recentMatches as match}
+          {#each data.recentMatches as match (match.id)}
             {@const team1 = match.teams[0]}
             {@const team2 = match.teams[1]}
             <div
@@ -130,9 +130,7 @@
   <Card>
     <CardHeader>
       <CardTitle>Hardware</CardTitle>
-      <CardDescription
-        >Randomizer Boxes checking in for this league.</CardDescription
-      >
+      <CardDescription>Hardware checking in for this league.</CardDescription>
     </CardHeader>
     <CardContent>
       {#if data.hardware.length === 0}
@@ -141,7 +139,7 @@
         </p>
       {:else}
         <div class="space-y-2">
-          {#each data.hardware as hardware}
+          {#each data.hardware as hardware (hardware.id)}
             <div
               class="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
             >

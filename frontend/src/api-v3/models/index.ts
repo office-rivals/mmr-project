@@ -33,6 +33,13 @@ export enum MatchFlagStatus {
   Dismissed = 'Dismissed',
 }
 
+export enum PairingColor {
+  Red = 'Red',
+  Green = 'Green',
+  Blue = 'Blue',
+  Yellow = 'Yellow',
+}
+
 // Session DTOs
 export interface MeResponse {
   id: string;
@@ -383,6 +390,27 @@ export interface HardwareResponse {
   isOnline: boolean;
 }
 
+// Pairing DTOs
+export interface PairingCodeResponse {
+  colors: PairingColor[];
+  expiresAt: string;
+}
+
+export interface RfidTagResponse {
+  id: string;
+  rfidUid: string;
+  createdAt: string;
+}
+
+export interface PairingSubmitRequest {
+  rfidUid: string;
+  colors: PairingColor[];
+}
+
+export interface PairingSubmitResponse {
+  success: boolean;
+}
+
 // Invite Link DTOs
 export interface CreateInviteLinkRequest {
   maxUses?: number;
@@ -483,6 +511,17 @@ export function MatchFlagResponseFromJSON(json: any): MatchFlagResponse {
   return json;
 }
 export function HardwareResponseFromJSON(json: any): HardwareResponse {
+  return json;
+}
+export function PairingCodeResponseFromJSON(json: any): PairingCodeResponse {
+  return json;
+}
+export function RfidTagResponseFromJSON(json: any): RfidTagResponse {
+  return json;
+}
+export function PairingSubmitResponseFromJSON(
+  json: any
+): PairingSubmitResponse {
   return json;
 }
 export function TokenResponseFromJSON(json: any): TokenResponse {
