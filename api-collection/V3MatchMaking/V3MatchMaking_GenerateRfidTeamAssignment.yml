@@ -1,0 +1,63 @@
+info:
+  name: V3MatchMaking_GenerateRfidTeamAssignment
+  type: http
+  seq: 1
+  tags:
+    - V3MatchMaking
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/matchmaking/rfid"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "rfidUids": ["", "", "", ""],
+        "temperature": 0
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: Ordered team indexes; 0 is white and 1 is red
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/matchmaking/rfid"
+      method: POST
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "rfidUids": ["", "", "", ""],
+            "temperature": 0
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          [0, 1, 1, 0]
