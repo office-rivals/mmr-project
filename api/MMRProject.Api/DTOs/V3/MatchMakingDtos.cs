@@ -61,6 +61,12 @@ public record SubmitActiveMatchResultRequest
     [Required] public required List<ActiveMatchTeamScoreRequest> Teams { get; init; }
 }
 
+public record RfidTeamAssignmentRequest
+{
+    [Required] public required IReadOnlyList<string> RfidUids { get; init; }
+    public double Temperature { get; init; } = 0;
+}
+
 public record ActiveMatchTeamScoreRequest
 {
     [Required] public required int TeamIndex { get; init; }

@@ -21,6 +21,8 @@ public interface IV3MatchMakingService
     Task CancelActiveMatchAsync(Guid orgId, Guid leagueId, Guid activeMatchId);
     Task<MatchResponse> SubmitActiveMatchResultAsync(Guid orgId, Guid leagueId, Guid activeMatchId,
         SubmitActiveMatchResultRequest request);
+    Task<List<int>> GenerateRfidTeamAssignmentAsync(Guid orgId, Guid leagueId,
+        RfidTeamAssignmentRequest request);
 }
 
 public class V3MatchMakingService(
@@ -32,6 +34,95 @@ public class V3MatchMakingService(
 ) : IV3MatchMakingService
 {
     private const string QueueEntryIndexName = "ix_queue_entries_league_player";
+
+    public async Task<List<int>> GenerateRfidTeamAssignmentAsync(Guid orgId, Guid leagueId,
+        RfidTeamAssignmentRequest request)
+    {
+        if (request.Temperature is < 0 or > 1 || double.IsNaN(request.Temperature)
+            || double.IsInfinity(request.Temperature))
+        {
+            throw new InvalidArgumentException("Temperature must be between 0 and 1");
+        }
+
+        var league = await dbContext.Leagues
+            .AsNoTracking()
+            .Where(l => l.OrganizationId == orgId && l.Id == leagueId)
+            .Select(l => new { l.TeamSize })
+            .FirstOrDefaultAsync()
+            ?? throw new NotFoundException("League not found");
+
+        if (league.TeamSize < 1)
+        {
+            throw new InvalidArgumentException("League team size must be at least 1");
+        }
+
+        var expectedRfidCount = league.TeamSize * 2;
+        if (request.RfidUids is null || request.RfidUids.Count != expectedRfidCount)
+        {
+            throw new InvalidArgumentException($"Exactly {expectedRfidCount} RFID tags are required");
+        }
+
+        var trimmedRfidUids = request.RfidUids.Select(uid => uid?.Trim()).ToList();
+        if (trimmedRfidUids.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new InvalidArgumentException("RFID tags cannot be empty");
+        }
+
+        var rfidUids = trimmedRfidUids.Select(uid => uid!).ToList();
+        if (rfidUids.Count != rfidUids.Distinct(StringComparer.Ordinal).Count())
+        {
+            throw new InvalidArgumentException("RFID tags must be unique");
+        }
+
+        var tags = await dbContext.RfidTags
+            .AsNoTracking()
+            .Where(t => rfidUids.Contains(t.RfidUid))
+            .ToListAsync();
+        var tagsByUid = tags.ToDictionary(t => t.RfidUid, StringComparer.Ordinal);
+        if (tags.Count != rfidUids.Count)
+        {
+            throw new NotFoundException("One or more RFID tags were not found");
+        }
+
+        var userIds = tags.Select(t => t.UserId).ToList();
+        var leaguePlayers = await dbContext.LeaguePlayers
+            .AsNoTracking()
+            .Include(lp => lp.OrganizationMembership)
+            .Where(lp => lp.OrganizationId == orgId
+                         && lp.LeagueId == leagueId
+                         && lp.OrganizationMembership.Status == MembershipStatus.Active
+                         && lp.OrganizationMembership.UserId.HasValue
+                         && userIds.Contains(lp.OrganizationMembership.UserId.Value))
+            .ToListAsync();
+        var playersByUserId = leaguePlayers.ToDictionary(lp => lp.OrganizationMembership.UserId!.Value);
+        var orderedPlayers = rfidUids
+            .Select(uid => playersByUserId.GetValueOrDefault(tagsByUid[uid].UserId))
+            .ToList();
+
+        if (orderedPlayers.Any(player => player is null))
+        {
+            throw new NotFoundException("One or more RFID tags are not paired to players in this league");
+        }
+
+        var players = orderedPlayers.Select(player => player!).ToList();
+
+        if (players.Select(player => player.Id).Distinct().Count() != players.Count)
+        {
+            throw new InvalidArgumentException("RFID tags must belong to different league players");
+        }
+
+        var assignments = BuildTeamAssignments(players, league.TeamSize);
+        var bestDifference = assignments.Min(assignment => CalculateMmrDifference(assignment, players));
+        var bestAssignments = assignments
+            .Where(assignment => CalculateMmrDifference(assignment, players) == bestDifference)
+            .ToList();
+        var selectedAssignments = request.Temperature == 0
+            || Random.Shared.NextDouble() >= request.Temperature
+            ? bestAssignments
+            : assignments;
+
+        return selectedAssignments[Random.Shared.Next(selectedAssignments.Count)];
+    }
 
     public async Task AddPlayerToQueueAsync(Guid orgId, Guid leagueId)
     {
@@ -478,6 +569,44 @@ public class V3MatchMakingService(
 
         if (!isParticipant)
             throw new ForbiddenException("You are not allowed to modify this active match");
+    }
+
+    private static List<List<int>> BuildTeamAssignments(IReadOnlyList<LeaguePlayer> players, int teamSize)
+    {
+        var assignments = new List<List<int>>();
+        var teamZero = new bool[players.Count];
+        teamZero[0] = true;
+        SelectTeamZeroPlayers(1, teamSize - 1, teamZero, assignments);
+        return assignments;
+    }
+
+    private static void SelectTeamZeroPlayers(int start, int remaining, bool[] teamZero,
+        List<List<int>> assignments)
+    {
+        if (remaining == 0)
+        {
+            assignments.Add(teamZero.Select(isTeamZero => isTeamZero ? 0 : 1).ToList());
+            return;
+        }
+
+        for (var index = start; index <= teamZero.Length - remaining; index++)
+        {
+            teamZero[index] = true;
+            SelectTeamZeroPlayers(index + 1, remaining - 1, teamZero, assignments);
+            teamZero[index] = false;
+        }
+    }
+
+    private static decimal CalculateMmrDifference(IReadOnlyList<int> assignment,
+        IReadOnlyList<LeaguePlayer> players)
+    {
+        var teamZeroMmr = assignment
+            .Select((team, index) => team == 0 ? (decimal)players[index].Mmr : 0)
+            .Sum();
+        var teamOneMmr = assignment
+            .Select((team, index) => team == 1 ? (decimal)players[index].Mmr : 0)
+            .Sum();
+        return Math.Abs(teamZeroMmr - teamOneMmr);
     }
 
     private static PendingMatchResponse MapPendingMatch(V3PendingMatch pm) => new()
