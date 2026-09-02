@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.6.1
+
+- chore(deps): bump shell-quote and @openapitools/openapi-generator-cli in /frontend
+- chore(deps-dev): bump ip-address from 10.2.0 to 10.4.0 in /frontend
+- chore(deps-dev): bump @sveltejs/kit from 2.70.1 to 2.70.2 in /frontend
+- chore(deps): bump dompurify from 3.4.12 to 3.4.13 in /frontend
+- chore(deps-dev): bump postcss from 8.5.25 to 8.5.26 in /frontend
+- chore(deps): bump dotenv from 16.6.1 to 17.4.2 in /frontend
+- chore(deps-dev): bump autoprefixer from 10.5.0 to 10.5.4 in /frontend
+- chore(deps): bump tailwind-variants from 0.3.1 to 3.3.1 in /frontend
+- chore(deps-dev): bump eslint from 10.3.0 to 10.8.1 in /frontend
+- chore(deps-dev): bump svelte from 5.55.7 to 5.56.10 in /frontend
+- chore(deps): bump postcss-selector-parser in /frontend
+
 ## 1.6.0
 
 - Group the admin matches list under date headers, matching the player-facing
