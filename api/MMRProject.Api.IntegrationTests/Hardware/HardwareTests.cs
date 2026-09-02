@@ -36,6 +36,7 @@ public class HardwareTests(PostgresFixture postgres) : IntegrationTestBase(postg
     {
         var organization = await CreateOrganization("Hardware Org", "hardware-org");
         var league = await CreateLeague(organization.Id, "Hardware League", "hardware-league");
+        await SeedOrgMember(organization.Id, "hardware-user", "hardware@test.com", OrganizationRole.Owner);
         AuthenticateAsPat("hardware-user", PatScopes.Write);
 
         var response = await Client.PostAsJsonAsync(
@@ -66,6 +67,7 @@ public class HardwareTests(PostgresFixture postgres) : IntegrationTestBase(postg
         var organization = await CreateOrganization("Hardware Org", "hardware-org");
         var firstLeague = await CreateLeague(organization.Id, "First League", "first-league");
         var secondLeague = await CreateLeague(organization.Id, "Second League", "second-league");
+        await SeedOrgMember(organization.Id, "hardware-user", "hardware@test.com", OrganizationRole.Owner);
         AuthenticateAsPat("hardware-user", PatScopes.Write);
 
         await Client.PostAsJsonAsync(
@@ -93,6 +95,113 @@ public class HardwareTests(PostgresFixture postgres) : IntegrationTestBase(postg
 
         Assert.Equal(secondLeague.Id, hardware.LeagueId);
         Assert.Equal("192.168.1.43", hardware.LocalIpAddress);
+    }
+
+    [Fact]
+    public async Task Heartbeat_UnscopedPatCanTargetAccessibleLeagueAsMember()
+    {
+        var organization = await CreateOrganization("Hardware Org", "hardware-member-org");
+        var league = await CreateLeague(organization.Id, "Hardware League", "hardware-member-league");
+        await SeedTestUser(organization.Id, league.Id, "hardware-user", "hardware@test.com");
+        AuthenticateAsPat("hardware-user", PatScopes.Write);
+
+        var response = await Client.PostAsJsonAsync(
+            "api/v3/hardware/heartbeat",
+            new HardwareHeartbeatRequest
+            {
+                HardwareId = "AA:BB:CC:DD:EE:FF",
+                LeagueId = league.Id,
+                LocalIpAddress = "192.168.1.42",
+            });
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Heartbeat_UnscopedPatOrganizationMemberWithoutLeagueAccessIsForbidden()
+    {
+        var organization = await CreateOrganization("Hardware Org", "hardware-non-player-org");
+        var league = await CreateLeague(organization.Id, "Hardware League", "hardware-non-player-league");
+        await SeedOrgMember(organization.Id, "hardware-user", "hardware@test.com");
+        AuthenticateAsPat("hardware-user", PatScopes.Write);
+
+        var response = await Client.PostAsJsonAsync(
+            "api/v3/hardware/heartbeat",
+            new HardwareHeartbeatRequest
+            {
+                HardwareId = "AA:BB:CC:DD:EE:FF",
+                LeagueId = league.Id,
+                LocalIpAddress = "192.168.1.42",
+            });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Heartbeat_UnscopedPatCannotTargetLeagueWithoutUserAccess()
+    {
+        var allowedOrganization = await CreateOrganization("Allowed Hardware Org", "allowed-hardware-org");
+        var forbiddenOrganization = await CreateOrganization("Forbidden Hardware Org", "forbidden-hardware-org");
+        var forbiddenLeague = await CreateLeague(
+            forbiddenOrganization.Id, "Forbidden Hardware League", "forbidden-hardware-league");
+        await SeedOrgMember(
+            allowedOrganization.Id, "hardware-user", "hardware@test.com", OrganizationRole.Owner);
+        AuthenticateAsPat("hardware-user", PatScopes.Write);
+
+        var response = await Client.PostAsJsonAsync(
+            "api/v3/hardware/heartbeat",
+            new HardwareHeartbeatRequest
+            {
+                HardwareId = "AA:BB:CC:DD:EE:FF",
+                LeagueId = forbiddenLeague.Id,
+                LocalIpAddress = "192.168.1.42",
+            });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Heartbeat_OrganizationScopedPatCannotTargetDifferentOrganization()
+    {
+        var allowedOrganization = await CreateOrganization("Allowed Hardware Org", "allowed-hardware-org");
+        var forbiddenOrganization = await CreateOrganization("Forbidden Hardware Org", "forbidden-hardware-org");
+        var forbiddenLeague = await CreateLeague(
+            forbiddenOrganization.Id, "Forbidden Hardware League", "forbidden-hardware-league");
+        await SeedOrgMember(
+            allowedOrganization.Id, "hardware-user", "hardware@test.com", OrganizationRole.Owner);
+        AuthenticateAsPat("hardware-user", PatScopes.Write, allowedOrganization.Id);
+
+        var response = await Client.PostAsJsonAsync(
+            "api/v3/hardware/heartbeat",
+            new HardwareHeartbeatRequest
+            {
+                HardwareId = "AA:BB:CC:DD:EE:FF",
+                LeagueId = forbiddenLeague.Id,
+                LocalIpAddress = "192.168.1.42",
+            });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Heartbeat_LeagueScopedPatCannotTargetSiblingLeague()
+    {
+        var organization = await CreateOrganization("Hardware Org", "hardware-org");
+        var allowedLeague = await CreateLeague(organization.Id, "Allowed League", "allowed-league");
+        var forbiddenLeague = await CreateLeague(organization.Id, "Forbidden League", "forbidden-league");
+        await SeedOrgMember(organization.Id, "hardware-user", "hardware@test.com", OrganizationRole.Owner);
+        AuthenticateAsPat("hardware-user", PatScopes.Write, organization.Id, allowedLeague.Id);
+
+        var response = await Client.PostAsJsonAsync(
+            "api/v3/hardware/heartbeat",
+            new HardwareHeartbeatRequest
+            {
+                HardwareId = "AA:BB:CC:DD:EE:FF",
+                LeagueId = forbiddenLeague.Id,
+                LocalIpAddress = "192.168.1.42",
+            });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
