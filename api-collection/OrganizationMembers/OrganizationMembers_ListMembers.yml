@@ -1,0 +1,117 @@
+info:
+  name: OrganizationMembers_ListMembers
+  type: http
+  seq: 1
+  tags:
+    - OrganizationMembers
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/members"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/members"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          [
+            {
+              "id": "",
+              "userId": "",
+              "email": "",
+              "displayName": "",
+              "username": "",
+              "role": "Owner",
+              "status": "Invited",
+              "claimedAt": "",
+              "createdAt": ""
+            }
+          ]
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/members"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          [
+            {
+              "id": "",
+              "userId": "",
+              "email": "",
+              "displayName": "",
+              "username": "",
+              "role": "Owner",
+              "status": "Invited",
+              "claimedAt": "",
+              "createdAt": ""
+            }
+          ]
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/members"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          [
+            {
+              "id": "",
+              "userId": "",
+              "email": "",
+              "displayName": "",
+              "username": "",
+              "role": "Owner",
+              "status": "Invited",
+              "claimedAt": "",
+              "createdAt": ""
+            }
+          ]

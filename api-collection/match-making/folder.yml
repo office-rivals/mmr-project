@@ -1,0 +1,9 @@
+info:
+  name: match-making
+  type: folder
+  seq: 4
+
+request:
+  headers:
+    - name: Authorization
+      value: Bearer {{access_token_set_by_collection_script}}
