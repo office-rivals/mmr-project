@@ -1,0 +1,33 @@
+opencollection: 1.0.0
+
+info:
+  name: MMR Project
+config:
+  proxy:
+    inherit: true
+    config:
+      protocol: http
+      hostname: ""
+      port: ""
+      auth:
+        username: ""
+        password: ""
+      bypassProxy: ""
+
+request:
+  auth:
+    type: bearer
+    token: "{{pat}}"
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git
+    openapi:
+      - sourceUrl: http://localhost:8081/swagger/v3/swagger.json
+        groupBy: tags
+        lastSyncDate: 2026-09-01T07:58:49.487Z
+        specHash: d0afddc229f2480b5af65d61844882a4
+        autoCheck: true
+        autoCheckInterval: 5

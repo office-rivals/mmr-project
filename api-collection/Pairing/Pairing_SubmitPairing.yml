@@ -1,0 +1,107 @@
+info:
+  name: Pairing_SubmitPairing
+  type: http
+  seq: 4
+  tags:
+    - Pairing
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v3/pairing/submit"
+  body:
+    type: json
+    data: |-
+      {
+        "rfidUid": "",
+        "colors": [
+          "Red"
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/pairing/submit"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "rfidUid": "",
+            "colors": [
+              "Red"
+            ]
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          {
+            "success": false
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/pairing/submit"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "rfidUid": "",
+            "colors": [
+              "Red"
+            ]
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "success": false
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/pairing/submit"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "rfidUid": "",
+            "colors": [
+              "Red"
+            ]
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          {
+            "success": false
+          }

@@ -1,0 +1,133 @@
+info:
+  name: V3Statistics_GetTimeDistribution
+  type: http
+  seq: 1
+  tags:
+    - V3Statistics
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/statistics/time-distribution"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+    - name: seasonId
+      value: ""
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/statistics/time-distribution"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: seasonId
+          value: ""
+          type: query
+          disabled: true
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          {
+            "entries": [
+              {
+                "dayOfWeek": 0,
+                "hourOfDay": 0,
+                "count": 0
+              }
+            ]
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/statistics/time-distribution"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: seasonId
+          value: ""
+          type: query
+          disabled: true
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "entries": [
+              {
+                "dayOfWeek": 0,
+                "hourOfDay": 0,
+                "count": 0
+              }
+            ]
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/statistics/time-distribution"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: seasonId
+          value: ""
+          type: query
+          disabled: true
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          {
+            "entries": [
+              {
+                "dayOfWeek": 0,
+                "hourOfDay": 0,
+                "count": 0
+              }
+            ]
+          }
