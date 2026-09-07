@@ -196,7 +196,7 @@ public class RatingHistoryTests(PostgresFixture postgres) : IntegrationTestBase(
                     Teams =
                     [
                         new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
-                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = i % 9 }
+                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = i }
                     ]
                 });
         }

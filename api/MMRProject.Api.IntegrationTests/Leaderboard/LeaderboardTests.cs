@@ -169,17 +169,20 @@ public class LeaderboardTests(PostgresFixture postgres) : IntegrationTestBase(po
 
         AuthenticateAs("p1");
 
-        // 12 matches in current season — enough for ranked
+        // 12 matches in current season — enough for ranked. p1 wins every one;
+        // teammates and losing scores vary so no two submissions look identical.
         for (var i = 0; i < 12; i++)
         {
+            var teammate = i < 10 ? p2 : p3;
+            var opponent = i < 10 ? p3 : p2;
             await Client.PostAsJsonAsync(
                 $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
                 new SubmitMatchRequest
                 {
                     Teams =
                     [
-                        new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
-                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = i % 9 }
+                        new SubmitMatchTeamRequest { Players = [p1.Id, teammate.Id], Score = 10 },
+                        new SubmitMatchTeamRequest { Players = [opponent.Id, p4.Id], Score = i % 10 }
                     ]
                 });
         }

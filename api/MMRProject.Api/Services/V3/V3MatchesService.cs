@@ -49,6 +49,14 @@ public class V3MatchesService(
             .ToList();
 
         var now = DateTimeOffset.UtcNow;
+
+        // Matchmade results are already tied to a single active match, so only
+        // manual entry can double-submit (e.g. two players both reporting a game).
+        if (source == MatchSource.Manual)
+        {
+            await EnsureNotRecentlySubmittedAsync(leagueId, request, resolvedTeams, now);
+        }
+
         var match = new V3Match
         {
             OrganizationId = orgId,
@@ -73,6 +81,45 @@ public class V3MatchesService(
 
         return await LoadAndMapMatch(orgId, leagueId, match.Id);
     }
+
+    private static readonly TimeSpan DuplicateSubmissionWindow = TimeSpan.FromMinutes(10);
+
+    private async Task EnsureNotRecentlySubmittedAsync(
+        Guid leagueId,
+        SubmitMatchRequest request,
+        List<List<LeaguePlayer>> resolvedTeams,
+        DateTimeOffset now)
+    {
+        var submittedTeams = resolvedTeams
+            .Select((players, i) => TeamKey(players.Select(p => p.Id), request.Teams[i].Score))
+            .ToHashSet();
+
+        var since = now - DuplicateSubmissionWindow;
+        var recentMatches = await dbContext.V3Matches
+            .AsNoTracking()
+            .Where(m => m.LeagueId == leagueId && m.RecordedAt >= since)
+            .Select(m => m.Teams.Select(t => new
+            {
+                t.Score,
+                PlayerIds = t.Players.Select(p => p.LeaguePlayerId).ToList(),
+            }).ToList())
+            .ToListAsync();
+
+        // Team order and player order within a team are both irrelevant, so
+        // compare the two matches as sets of (players, score) tuples.
+        var isDuplicate = recentMatches.Any(teams =>
+            teams.Count == submittedTeams.Count
+            && teams.Select(t => TeamKey(t.PlayerIds, t.Score)).ToHashSet().SetEquals(submittedTeams));
+
+        if (isDuplicate)
+        {
+            throw new ConflictException(
+                "An identical match was submitted less than 10 minutes ago. If this is a genuine rematch, wait before submitting it again.");
+        }
+    }
+
+    private static string TeamKey(IEnumerable<Guid> playerIds, int score) =>
+        $"{score}:{string.Join(",", playerIds.Order())}";
 
     private async Task<List<List<LeaguePlayer>>> ResolveAndValidateTeamsAsync(
         Guid orgId, Guid leagueId, SubmitMatchRequest request)

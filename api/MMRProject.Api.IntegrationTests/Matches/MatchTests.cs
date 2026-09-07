@@ -934,7 +934,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                     Teams =
                     [
                         new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
-                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 + i }
                     ]
                 });
         }
@@ -1078,7 +1078,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                 Teams =
                 [
                     new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
-                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 6 }
                 ]
             });
         secondResponse.EnsureSuccessStatusCode();
@@ -1159,7 +1159,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                     Teams =
                     [
                         new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
-                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 + i }
                     ]
                 });
             response.EnsureSuccessStatusCode();
@@ -1234,7 +1234,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                 Teams =
                 [
                     new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
-                    new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 5 }
+                    new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 6 }
                 ]
             });
         firstResponse.EnsureSuccessStatusCode();
@@ -1280,7 +1280,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                 Teams =
                 [
                     new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
-                    new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 5 }
+                    new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 7 }
                 ]
             });
         secondResponse.EnsureSuccessStatusCode();
@@ -1355,7 +1355,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                     Teams =
                     [
                         new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
-                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 5 }
+                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 6 + i }
                     ]
                 });
             response.EnsureSuccessStatusCode();
@@ -1437,7 +1437,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                     Teams =
                     [
                         new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
-                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 + i }
                     ]
                 });
             response.EnsureSuccessStatusCode();
