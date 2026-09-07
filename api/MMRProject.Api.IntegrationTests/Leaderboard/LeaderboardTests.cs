@@ -169,8 +169,7 @@ public class LeaderboardTests(PostgresFixture postgres) : IntegrationTestBase(po
 
         AuthenticateAs("p1");
 
-        // 12 matches in current season — enough for ranked. p1 wins every one;
-        // teammates and losing scores vary so no two submissions look identical.
+        // Reach the ranked threshold without triggering the duplicate guard.
         for (var i = 0; i < 12; i++)
         {
             var teammate = i < 10 ? p2 : p3;

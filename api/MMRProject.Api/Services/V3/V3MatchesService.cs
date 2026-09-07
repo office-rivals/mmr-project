@@ -42,11 +42,9 @@ public class V3MatchesService(
 
         var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
 
-        // Matchmade results are already tied to a single active match, so only
-        // manual entry can double-submit (e.g. two players both reporting a game).
-        // Serialize manual submissions per league for the rest of the transaction,
-        // before any player resolution: otherwise two overlapping requests could
-        // each enrol their own LeaguePlayer for the same member and never look alike.
+        // Only manual entry can double-submit; matchmade results are tied to one
+        // active match. Lock before player resolution so concurrent enrolments
+        // cannot assign different player IDs to the same member and bypass detection.
         if (source == MatchSource.Manual)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
@@ -114,8 +112,6 @@ public class V3MatchesService(
             }).ToList())
             .ToListAsync();
 
-        // Team order and player order within a team are both irrelevant, so
-        // compare the two matches as sets of (players, score) tuples.
         var isDuplicate = recentMatches.Any(teams =>
             teams.Count == submittedTeams.Count
             && teams.Select(t => TeamKey(t.PlayerIds, t.Score)).ToHashSet().SetEquals(submittedTeams));

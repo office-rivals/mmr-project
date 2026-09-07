@@ -81,8 +81,6 @@ public class DuplicateMatchTests(PostgresFixture postgres) : IntegrationTestBase
         var league = await CreateLeague(org.Id);
         await CreateSeason(org.Id, league.Id);
 
-        // Members of the org but not yet players in the league: each submission
-        // would enrol them, so the guard must lock before resolving players.
         var (_, m1) = await SeedOrgMember(org.Id, "p1", "p1@test.com", OrganizationRole.Owner);
         var (_, m2) = await SeedOrgMember(org.Id, "p2", "p2@test.com");
         var (_, m3) = await SeedOrgMember(org.Id, "p3", "p3@test.com");
@@ -206,7 +204,7 @@ public class DuplicateMatchTests(PostgresFixture postgres) : IntegrationTestBase
         var first = await Submit(s, Request((s.P1, s.P2), 10, (s.P3, s.P4), 5));
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
 
-        // Players are org members, so the other league auto-enrols them via membership ids.
+        // League-player IDs are league-specific; reuse memberships to submit the same people.
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
         var membershipByPlayer = await db.LeaguePlayers
