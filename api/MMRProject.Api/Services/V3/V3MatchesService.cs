@@ -42,6 +42,17 @@ public class V3MatchesService(
 
         var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
 
+        // Matchmade results are already tied to a single active match, so only
+        // manual entry can double-submit (e.g. two players both reporting a game).
+        // Serialize manual submissions per league for the rest of the transaction,
+        // before any player resolution: otherwise two overlapping requests could
+        // each enrol their own LeaguePlayer for the same member and never look alike.
+        if (source == MatchSource.Manual)
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtext({leagueId.ToString()}))");
+        }
+
         var resolvedTeams = await ResolveAndValidateTeamsAsync(orgId, leagueId, request);
         var leaguePlayers = resolvedTeams.SelectMany(t => t)
             .GroupBy(lp => lp.Id)
@@ -50,8 +61,6 @@ public class V3MatchesService(
 
         var now = DateTimeOffset.UtcNow;
 
-        // Matchmade results are already tied to a single active match, so only
-        // manual entry can double-submit (e.g. two players both reporting a game).
         if (source == MatchSource.Manual)
         {
             await EnsureNotRecentlySubmittedAsync(leagueId, request, resolvedTeams, now);
@@ -90,11 +99,6 @@ public class V3MatchesService(
         List<List<LeaguePlayer>> resolvedTeams,
         DateTimeOffset now)
     {
-        // Serialize manual submissions per league for the rest of the transaction
-        // so two overlapping requests cannot both pass the check and then both insert.
-        await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock(hashtext({leagueId.ToString()}))");
-
         var submittedTeams = resolvedTeams
             .Select((players, i) => TeamKey(players.Select(p => p.Id), request.Teams[i].Score))
             .ToHashSet();

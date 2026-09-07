@@ -75,6 +75,54 @@ public class DuplicateMatchTests(PostgresFixture postgres) : IntegrationTestBase
     }
 
     [Fact]
+    public async Task SubmitMatch_ConcurrentIdenticalSubmissions_WithUnenrolledMembers_OnlyOneIsCreated()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        // Members of the org but not yet players in the league: each submission
+        // would enrol them, so the guard must lock before resolving players.
+        var (_, m1) = await SeedOrgMember(org.Id, "p1", "p1@test.com", OrganizationRole.Owner);
+        var (_, m2) = await SeedOrgMember(org.Id, "p2", "p2@test.com");
+        var (_, m3) = await SeedOrgMember(org.Id, "p3", "p3@test.com");
+        var (_, m4) = await SeedOrgMember(org.Id, "p4", "p4@test.com");
+        AuthenticateAs("p1");
+
+        var request = new SubmitMatchRequest
+        {
+            Teams =
+            [
+                new SubmitMatchTeamRequest
+                {
+                    Players =
+                    [
+                        new SubmitMatchPlayerRequest { OrganizationMembershipId = m1.Id },
+                        new SubmitMatchPlayerRequest { OrganizationMembershipId = m2.Id },
+                    ],
+                    Score = 10
+                },
+                new SubmitMatchTeamRequest
+                {
+                    Players =
+                    [
+                        new SubmitMatchPlayerRequest { OrganizationMembershipId = m3.Id },
+                        new SubmitMatchPlayerRequest { OrganizationMembershipId = m4.Id },
+                    ],
+                    Score = 5
+                },
+            ]
+        };
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ =>
+            Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches", request)));
+
+        Assert.Equal(1, responses.Count(r => r.StatusCode == HttpStatusCode.Created));
+        Assert.Equal(4, responses.Count(r => r.StatusCode == HttpStatusCode.Conflict));
+        Assert.Equal(1, await CountMatches(league.Id));
+    }
+
+    [Fact]
     public async Task SubmitMatch_SameMatchWithTeamsSwapped_ReturnsConflict()
     {
         var s = await SeedLeagueWithFourPlayers();
