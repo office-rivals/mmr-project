@@ -90,6 +90,11 @@ public class V3MatchesService(
         List<List<LeaguePlayer>> resolvedTeams,
         DateTimeOffset now)
     {
+        // Serialize manual submissions per league for the rest of the transaction
+        // so two overlapping requests cannot both pass the check and then both insert.
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock(hashtext({leagueId.ToString()}))");
+
         var submittedTeams = resolvedTeams
             .Select((players, i) => TeamKey(players.Select(p => p.Id), request.Teams[i].Score))
             .ToHashSet();

@@ -62,6 +62,19 @@ public class DuplicateMatchTests(PostgresFixture postgres) : IntegrationTestBase
     }
 
     [Fact]
+    public async Task SubmitMatch_ConcurrentIdenticalSubmissions_OnlyOneIsCreated()
+    {
+        var s = await SeedLeagueWithFourPlayers();
+        var request = Request((s.P1, s.P2), 10, (s.P3, s.P4), 5);
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => Submit(s, request)));
+
+        Assert.Equal(1, responses.Count(r => r.StatusCode == HttpStatusCode.Created));
+        Assert.Equal(4, responses.Count(r => r.StatusCode == HttpStatusCode.Conflict));
+        Assert.Equal(1, await CountMatches(s.League.Id));
+    }
+
+    [Fact]
     public async Task SubmitMatch_SameMatchWithTeamsSwapped_ReturnsConflict()
     {
         var s = await SeedLeagueWithFourPlayers();
