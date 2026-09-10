@@ -297,12 +297,16 @@ public class V3MatchesService(
 
         if (normalizedEmail != null)
         {
-            membership = await dbContext.OrganizationMemberships
+            var membershipMatches = await dbContext.OrganizationMemberships
                 .Include(m => m.User)
-                .FirstOrDefaultAsync(m => m.OrganizationId == orgId
-                                          && m.Status != MembershipStatus.Removed
-                                          && (m.InviteEmail == normalizedEmail
-                                              || (m.User != null && m.User.Email == normalizedEmail)));
+                .Where(m => m.OrganizationId == orgId
+                            && m.Status != MembershipStatus.Removed
+                            && ((m.InviteEmail != null
+                                 && m.InviteEmail.ToLower() == normalizedEmail.ToLower())
+                                || (m.User != null
+                                    && m.User.Email.ToLower() == normalizedEmail.ToLower())))
+                .ToListAsync();
+            membership = SelectEmailMembershipMatch(membershipMatches, normalizedEmail);
         }
 
         if (membership == null)
@@ -344,6 +348,26 @@ public class V3MatchesService(
         }
 
         return await GetOrCreateLeaguePlayerAsync(orgId, leagueId, membership);
+    }
+
+    private static OrganizationMembership? SelectEmailMembershipMatch(
+        IReadOnlyCollection<OrganizationMembership> matches,
+        string email)
+    {
+        if (matches.Count == 0)
+            return null;
+
+        var exactMatches = matches
+            .Where(m => string.Equals(m.InviteEmail, email, StringComparison.Ordinal)
+                        || string.Equals(m.User?.Email, email, StringComparison.Ordinal))
+            .ToList();
+        if (exactMatches.Count == 1)
+            return exactMatches[0];
+        if (exactMatches.Count == 0 && matches.Count == 1)
+            return matches.First();
+
+        throw new InvalidArgumentException(
+            "Multiple organization members match this email. Select an existing player instead.");
     }
 
     private async Task<LeaguePlayer> GetOrCreateLeaguePlayerAsync(

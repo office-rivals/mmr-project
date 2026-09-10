@@ -398,6 +398,143 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task EmailInviteClaim_PreservesNameHandlesCaseAndRejectsAmbiguity()
+    {
+        var org = await CreateOrganization("Email Claim", "email-claim");
+        await SeedOrgMember(org.Id, "owner", "owner@test.com", OrganizationRole.Owner);
+        var target = await SeedPlaceholder(
+            org.Id, "Guest Bob", "Guest.Bob@Test.com", MembershipStatus.Invited);
+        var invite = await CreateInviteLinkForAsync(org.Id, "owner");
+
+        AuthenticateAs("guest-bob", email: "guest.bob@test.com");
+        var joinResponse = await Client.PostAsync($"api/v3/invites/{invite.Code}/join", null);
+        Assert.Equal(HttpStatusCode.OK, joinResponse.StatusCode);
+        var joined = await ReadJsonAsync<JoinOrganizationResponse>(joinResponse);
+        Assert.Equal(target.Id, joined!.MembershipId);
+
+        var exactOrg = await CreateOrganization("Exact Claim", "exact-claim");
+        await SeedOrgMember(exactOrg.Id, "exact-owner", "exact-owner@test.com", OrganizationRole.Owner);
+        var exactTarget = await SeedPlaceholder(
+            exactOrg.Id, "Exact", "exact@test.com", MembershipStatus.Invited);
+        var caseVariant = await SeedPlaceholder(
+            exactOrg.Id, "Case Variant", "EXACT@test.com", MembershipStatus.Invited);
+        var exactInvite = await CreateInviteLinkForAsync(exactOrg.Id, "exact-owner");
+
+        AuthenticateAs("exact-user", email: "exact@test.com");
+        var exactResponse = await Client.PostAsync($"api/v3/invites/{exactInvite.Code}/join", null);
+        Assert.Equal(HttpStatusCode.OK, exactResponse.StatusCode);
+        Assert.Equal(exactTarget.Id,
+            (await ReadJsonAsync<JoinOrganizationResponse>(exactResponse))!.MembershipId);
+
+        var ambiguousOrg = await CreateOrganization("Ambiguous Claim", "ambiguous-claim");
+        await SeedOrgMember(
+            ambiguousOrg.Id, "ambiguous-owner", "ambiguous-owner@test.com", OrganizationRole.Owner);
+        var firstAmbiguous = await SeedPlaceholder(
+            ambiguousOrg.Id, "First", "Ambiguous@Test.com", MembershipStatus.Invited);
+        var secondAmbiguous = await SeedPlaceholder(
+            ambiguousOrg.Id, "Second", "AMBIGUOUS@test.com", MembershipStatus.Invited);
+        var ambiguousInvite = await CreateInviteLinkForAsync(ambiguousOrg.Id, "ambiguous-owner");
+
+        AuthenticateAs("ambiguous-user", email: "ambiguous@test.com");
+        var ambiguousResponse = await Client.PostAsync(
+            $"api/v3/invites/{ambiguousInvite.Code}/join", null);
+        Assert.Equal(HttpStatusCode.BadRequest, ambiguousResponse.StatusCode);
+        Assert.Contains("Multiple invitations", await ambiguousResponse.Content.ReadAsStringAsync());
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.Equal("Guest Bob",
+            (await db.OrganizationMemberships.SingleAsync(m => m.Id == target.Id)).DisplayName);
+        Assert.Equal(MembershipStatus.Invited,
+            (await db.OrganizationMemberships.SingleAsync(m => m.Id == caseVariant.Id)).Status);
+        Assert.All(await db.OrganizationMemberships
+                .Where(m => m.Id == firstAmbiguous.Id || m.Id == secondAmbiguous.Id)
+                .ToListAsync(),
+            membership =>
+            {
+                Assert.Null(membership.UserId);
+                Assert.Equal(MembershipStatus.Invited, membership.Status);
+            });
+    }
+
+    [Fact]
+    public async Task AutoClaimInvites_MatchesCaseInsensitivelyAndPreservesNames()
+    {
+        var firstOrg = await CreateOrganization("Auto Claim One", "auto-claim-one");
+        var secondOrg = await CreateOrganization("Auto Claim Two", "auto-claim-two");
+        var first = await SeedPlaceholder(
+            firstOrg.Id, "First Guest", "AUTO@Test.com", MembershipStatus.Invited);
+        var second = await SeedPlaceholder(
+            secondOrg.Id, "Second Guest", "Auto@test.com", MembershipStatus.Invited);
+
+        AuthenticateAs("auto-user", email: "auto@test.com");
+        var response = await Client.GetAsync("api/v3/me");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var memberships = await db.OrganizationMemberships
+            .Where(m => m.Id == first.Id || m.Id == second.Id)
+            .OrderBy(m => m.DisplayName)
+            .ToListAsync();
+        Assert.All(memberships, membership =>
+        {
+            Assert.NotNull(membership.UserId);
+            Assert.Equal(MembershipStatus.Active, membership.Status);
+        });
+        Assert.Equal(new[] { "First Guest", "Second Guest" },
+            memberships.Select(m => m.DisplayName).ToArray());
+    }
+
+    [Fact]
+    public async Task MatchSubmitEmailReuse_PrefersExactCaseAndRejectsAmbiguity()
+    {
+        var org = await CreateOrganization("Submit Email", "submit-email");
+        var league = await CreateLeague(org.Id, "Submit Email League", "submit-email-league", teamSize: 1);
+        await CreateSeason(org.Id, league.Id);
+        var (_, _, ownerPlayer) = await SeedTestUser(
+            org.Id, league.Id, "owner", "owner@test.com", OrganizationRole.Owner);
+        var exactTarget = await SeedPlaceholder(
+            org.Id, "Exact Target", "exact-player@test.com", MembershipStatus.Invited);
+        var exactVariant = await SeedPlaceholder(
+            org.Id, "Exact Variant", "EXACT-PLAYER@test.com", MembershipStatus.Invited);
+
+        AuthenticateAs("owner");
+        var exactResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            OneVsOne(ownerPlayer.Id, new CreateMatchPlayerRequest
+            {
+                DisplayName = "Ignored Name",
+                Email = "exact-player@test.com",
+            }));
+        Assert.Equal(HttpStatusCode.Created, exactResponse.StatusCode);
+
+        var firstAmbiguous = await SeedPlaceholder(
+            org.Id, "First Ambiguous", "Ambiguous-Player@Test.com", MembershipStatus.Invited);
+        var secondAmbiguous = await SeedPlaceholder(
+            org.Id, "Second Ambiguous", "AMBIGUOUS-PLAYER@test.com", MembershipStatus.Invited);
+        var ambiguousResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            OneVsOne(ownerPlayer.Id, new CreateMatchPlayerRequest
+            {
+                DisplayName = "Ambiguous",
+                Email = "ambiguous-player@test.com",
+            }));
+        Assert.Equal(HttpStatusCode.BadRequest, ambiguousResponse.StatusCode);
+        Assert.Contains("Multiple organization members", await ambiguousResponse.Content.ReadAsStringAsync());
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.True(await db.LeaguePlayers.AnyAsync(lp =>
+            lp.LeagueId == league.Id && lp.OrganizationMembershipId == exactTarget.Id));
+        Assert.False(await db.LeaguePlayers.AnyAsync(lp =>
+            lp.LeagueId == league.Id && lp.OrganizationMembershipId == exactVariant.Id));
+        Assert.False(await db.LeaguePlayers.AnyAsync(lp =>
+            lp.OrganizationMembershipId == firstAmbiguous.Id
+            || lp.OrganizationMembershipId == secondAmbiguous.Id));
+    }
+
+    [Fact]
     public async Task Approve_RechecksRemovedTargetWithoutMutatingClaim()
     {
         var org = await CreateOrganization();
@@ -938,6 +1075,18 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
         var claim = await ReadJsonAsync<MembershipClaimRequestResponse>(response);
         Assert.NotNull(claim);
         return claim;
+    }
+
+    private async Task<InviteLinkResponse> CreateInviteLinkForAsync(
+        Guid orgId, string ownerIdentityUserId)
+    {
+        AuthenticateAs(ownerIdentityUserId);
+        var response = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{orgId}/invite-links", new CreateInviteLinkRequest());
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var invite = await ReadJsonAsync<InviteLinkResponse>(response);
+        Assert.NotNull(invite);
+        return invite;
     }
 
     private static SubmitMatchRequest OneVsOne(
