@@ -2,12 +2,12 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { apiClientV3 } }) => {
-  try {
-    const response = await apiClientV3.personalAccessTokensApi.listTokens();
-    return { tokens: response };
-  } catch {
-    return { tokens: [] };
-  }
+  const [tokens, tags] = await Promise.all([
+    apiClientV3.personalAccessTokensApi.listTokens().catch(() => []),
+    apiClientV3.pairingApi.listTags().catch(() => []),
+  ]);
+
+  return { tokens, tags };
 };
 
 export const actions: Actions = {
@@ -23,7 +23,7 @@ export const actions: Actions = {
     try {
       const result = await apiClientV3.personalAccessTokensApi.generateToken({
         name: name.trim(),
-        scope: 'full',
+        scope: 'write',
         expiresAt:
           expiresAt && typeof expiresAt === 'string' && expiresAt !== ''
             ? new Date(expiresAt).toISOString()
@@ -49,6 +49,31 @@ export const actions: Actions = {
       return { success: true, deleted: true };
     } catch {
       return fail(500, { error: 'Failed to revoke token' });
+    }
+  },
+
+  issuePairingCode: async ({ locals: { apiClientV3 } }) => {
+    try {
+      const pairingCode = await apiClientV3.pairingApi.issuePairingCode();
+      return { pairingCode };
+    } catch {
+      return fail(500, { pairingError: 'Failed to generate pairing code' });
+    }
+  },
+
+  unlinkTag: async ({ request, locals: { apiClientV3 } }) => {
+    const formData = await request.formData();
+    const tagId = formData.get('tagId');
+
+    if (!tagId || typeof tagId !== 'string') {
+      return fail(400, { pairingError: 'Tag ID is required' });
+    }
+
+    try {
+      await apiClientV3.pairingApi.unlinkTag(tagId);
+      return { unlinkedTag: true };
+    } catch {
+      return fail(500, { pairingError: 'Failed to unlink RFID tag' });
     }
   },
 };
