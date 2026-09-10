@@ -7,7 +7,7 @@ export function getRouter() {
   // Per-request: a module-level QueryClient would leak one user's data into
   // another user's SSR render.
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { staleTime: 60_000 } },
+    defaultOptions: { queries: { staleTime: 60_000, retry: false } },
   });
 
   const router = createRouter({

@@ -1,5 +1,4 @@
 import { useClerk } from '@clerk/tanstack-react-start';
-import { useQueryClient } from '@tanstack/react-query';
 import { useLocation, useParams, useRouter } from '@tanstack/react-router';
 import {
   Building2,
@@ -27,7 +26,6 @@ import {
   getRoleBadgeVariant,
   isModeratorOrAbove,
 } from '@/lib/utils';
-import { meQueryKey } from '@/lib/shell';
 import type { MeLeagueResponse, MeOrganizationResponse } from '@/api-v3';
 
 interface HeaderProps {
@@ -54,7 +52,6 @@ export function Header({
   const params = useParams({ strict: false });
   const pathname = useLocation({ select: (location) => location.pathname });
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { signOut } = useClerk();
 
   const orgSlug = params.orgSlug ?? defaultOrgSlug;
@@ -122,10 +119,6 @@ export function Header({
       return;
     }
     const rest = leagueRelativePath(targetLeague);
-    // The Svelte call was `goto(url, { invalidateAll: true })`. TanStack Router
-    // re-runs every loader on navigation by default; dropping ['me'] as well
-    // covers the switcher/navbar, which read it through the cache.
-    void queryClient.invalidateQueries({ queryKey: meQueryKey });
     void router.navigate({
       href: `/${targetOrgSlug}/${targetLeague.slug}${rest}`,
     });

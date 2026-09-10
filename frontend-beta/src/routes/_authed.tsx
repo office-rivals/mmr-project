@@ -2,7 +2,7 @@ import { Outlet, createFileRoute } from '@tanstack/react-router';
 import { PullToRefresh } from '@/components/pull-to-refresh';
 import { Header } from '@/components/shell/header';
 import { Navbar } from '@/components/shell/navbar';
-import { authedShellQueryOptions } from '@/lib/shell';
+import { refreshAuthedShellData } from '@/lib/shell';
 
 /**
  * The `(authed)` layout: a pathless route that owns the single `getMe()`
@@ -25,13 +25,14 @@ export const Route = createFileRoute('/_authed')({
       },
     ],
   }),
-  loader: ({ context }) =>
-    context.queryClient.ensureQueryData(authedShellQueryOptions()),
+  beforeLoad: async ({ context }) => ({
+    authedShell: await refreshAuthedShellData(context.queryClient),
+  }),
   component: AuthedLayout,
 });
 
 function AuthedLayout() {
-  const shell = Route.useLoaderData();
+  const { authedShell: shell } = Route.useRouteContext();
 
   return (
     <>

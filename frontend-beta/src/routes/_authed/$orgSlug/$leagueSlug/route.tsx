@@ -3,7 +3,6 @@ import { HttpErrorView } from '@/components/http-error-view';
 import { HttpError } from '@/lib/http-error';
 import { createRouteGuard } from '@/lib/server/http-error';
 import { loadShellDataOnce } from '@/lib/server/shell';
-import { authedShellQueryOptions } from '@/lib/shell';
 import type { OrganizationRole } from '@/api-v3';
 import type { AuthedShellData } from '@/lib/shell';
 
@@ -70,10 +69,7 @@ export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug')({
   // In `beforeLoad`, not `loader`: it runs top-down and short-circuits the
   // whole subtree, so a child loader never runs against an unresolved league.
   beforeLoad: async ({ context, params }) => {
-    const shell = await context.queryClient.ensureQueryData(
-      authedShellQueryOptions()
-    );
-    return { league: resolveLeague(shell, params) };
+    return { league: resolveLeague(context.authedShell, params) };
   },
   // Exposed twice on purpose: `context.league` for child loaders/beforeLoads,
   // loader data for components and for the navbar's `useMatch`.

@@ -3,7 +3,6 @@ import { Building2, Ticket, Trophy } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
 import { PageTitle } from '@/components/page-title';
 import { Button } from '@/components/ui/button';
-import { authedShellQueryOptions } from '@/lib/shell';
 
 /**
  * `/` — org list, or a straight jump into the only league the user plays in.
@@ -13,9 +12,7 @@ import { authedShellQueryOptions } from '@/lib/shell';
  */
 export const Route = createFileRoute('/_authed/')({
   loader: async ({ context }) => {
-    const shell = await context.queryClient.ensureQueryData(
-      authedShellQueryOptions()
-    );
+    const shell = context.authedShell;
 
     const organizations = shell.organizations.map((org) => ({
       name: org.name,

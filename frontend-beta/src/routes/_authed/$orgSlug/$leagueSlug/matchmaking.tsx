@@ -13,6 +13,7 @@ import { useHydrated } from '@/hooks/use-hydrated';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { formatLeagueFormat } from '@/lib/utils';
+import type { LeagueContext } from './route';
 import type { ActiveMatchResponse, QueueStatusResponse } from '@/api-v3';
 
 const leagueRoute = getRouteApi('/_authed/$orgSlug/$leagueSlug');
@@ -25,28 +26,26 @@ interface OrgLeagueInput {
   leagueId: string;
 }
 
+interface MatchmakingPageData {
+  queueStatus: QueueStatusResponse | null;
+  activeMatches: ActiveMatchResponse[];
+}
+
 /** Both calls degrade silently — neither one may ever error the page. */
 const getMatchmakingDataFn = createServerFn({ method: 'GET' })
   .validator((input: OrgLeagueInput) => input)
-  .handler(
-    async ({
-      data,
-    }): Promise<{
-      queueStatus: QueueStatusResponse | null;
-      activeMatches: ActiveMatchResponse[];
-    }> => {
-      const apiClientV3 = await requireApiClientV3();
-      const [queueStatus, activeMatches] = await Promise.all([
-        apiClientV3.queueApi
-          .getQueueStatus(data.orgId, data.leagueId)
-          .catch(() => null),
-        apiClientV3.activeMatchesApi
-          .listActiveMatches(data.orgId, data.leagueId)
-          .catch(() => [] as ActiveMatchResponse[]),
-      ]);
-      return { queueStatus, activeMatches };
-    }
-  );
+  .handler(async ({ data }): Promise<MatchmakingPageData> => {
+    const apiClientV3 = await requireApiClientV3();
+    const [queueStatus, activeMatches] = await Promise.all([
+      apiClientV3.queueApi
+        .getQueueStatus(data.orgId, data.leagueId)
+        .catch(() => null),
+      apiClientV3.activeMatchesApi
+        .listActiveMatches(data.orgId, data.leagueId)
+        .catch(() => [] as ActiveMatchResponse[]),
+    ]);
+    return { queueStatus, activeMatches };
+  });
 
 const listActiveMatchesFn = createServerFn({ method: 'GET' })
   .validator((input: OrgLeagueInput) => input)
@@ -138,8 +137,19 @@ export const Route = createFileRoute(
 
 function MatchmakingRoute() {
   const league = leagueRoute.useLoaderData();
-  const { orgId, leagueId, leaguePlayerId, orgSlug, leagueSlug } = league;
   const seed = Route.useLoaderData();
+
+  return <MatchmakingPage key={league.leagueId} league={league} seed={seed} />;
+}
+
+function MatchmakingPage({
+  league,
+  seed,
+}: {
+  league: LeagueContext;
+  seed: MatchmakingPageData;
+}) {
+  const { orgId, leagueId, leaguePlayerId, orgSlug, leagueSlug } = league;
   const queryClient = useQueryClient();
   const [formMessage, setFormMessage] = useState<string | null>(null);
   // The queue forms are un-enhanced markup until React attaches `onSubmit`:
@@ -172,14 +182,11 @@ function MatchmakingRoute() {
   });
   const queueStatus = queueQuery.data;
 
-  // Deliberate fix, not parity: the Svelte page copied `data.activeMatches`
-  // into `$state` once and never updated it, so the list was frozen at the
-  // first server render even though the poll called `invalidateAll()`. As a
-  // query it live-updates, which is what the original code was reaching for.
   const activeMatchesQuery = useQuery({
     queryKey: activeMatchesQueryKey(orgId, leagueId),
     queryFn: () => listActiveMatchesFn({ data: { orgId, leagueId } }),
     initialData: seed.activeMatches,
+    refetchInterval: 2000,
     staleTime: 0,
     retry: false,
   });
@@ -234,16 +241,6 @@ function MatchmakingRoute() {
     }
     lastPendingMatchId.current = id;
   }, [pendingMatch?.id, pendingForMe]);
-
-  // The Svelte poll called `invalidateAll()` once an active match appeared;
-  // here the equivalent is refreshing the active-match list.
-  const activeMatchId = queueStatus?.activeMatch?.id;
-  useEffect(() => {
-    if (!activeMatchId) return;
-    void queryClient.invalidateQueries({
-      queryKey: activeMatchesQueryKey(orgId, leagueId),
-    });
-  }, [activeMatchId, orgId, leagueId, queryClient]);
 
   const queueAction = useMutation({
     mutationFn: (input: { action: QueueActionName; matchId?: string }) =>

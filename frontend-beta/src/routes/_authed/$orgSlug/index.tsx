@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { Trophy, Users } from 'lucide-react';
@@ -19,7 +19,6 @@ import { HttpError } from '@/lib/http-error';
 import { createRouteGuard } from '@/lib/server/http-error';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { loadShellData, loadShellDataOnce } from '@/lib/server/shell';
-import { authedShellQueryOptions, meQueryKey } from '@/lib/shell';
 import { formatLeagueFormat } from '@/lib/utils';
 import type { AuthedShellData } from '@/lib/shell';
 import type { LeagueResponse } from '@/api-v3';
@@ -86,9 +85,7 @@ const joinLeagueFn = createServerFn({ method: 'POST' })
 export const Route = createFileRoute('/_authed/$orgSlug/')({
   server: { middleware: [orgGuard] },
   loader: async ({ context, params }) => {
-    const shell = await context.queryClient.ensureQueryData(
-      authedShellQueryOptions()
-    );
+    const shell = context.authedShell;
     const org = resolveOrg(shell, params.orgSlug);
 
     const leagues = await context.queryClient.ensureQueryData({
@@ -112,9 +109,14 @@ export const Route = createFileRoute('/_authed/$orgSlug/')({
 });
 
 function OrgHomePage() {
+  const { org } = Route.useLoaderData();
+
+  return <OrgHomePageContent key={org.id} />;
+}
+
+function OrgHomePageContent() {
   const { org, leagues } = Route.useLoaderData();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
 
   const joinLeague = useMutation({
@@ -126,9 +128,6 @@ function OrgHomePage() {
         return;
       }
       setFormError(null);
-      // The new league has to show up in the switcher and navbar, both of
-      // which read ['me'].
-      await queryClient.invalidateQueries({ queryKey: meQueryKey });
       await router.navigate({ href: result.redirectTo });
     },
     onError: () => setFormError('Failed to join league'),

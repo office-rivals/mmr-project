@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { Alert } from '@/components/ui/alert';
@@ -20,7 +20,6 @@ import { createRouteGuard } from '@/lib/server/http-error';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { loadShellData, loadShellDataOnce } from '@/lib/server/shell';
-import { authedShellQueryOptions, meQueryKey } from '@/lib/shell';
 import type { AuthedShellData } from '@/lib/shell';
 
 /**
@@ -90,9 +89,7 @@ const updateOrganizationFn = createServerFn({ method: 'POST' })
 export const Route = createFileRoute('/_authed/$orgSlug/settings')({
   server: { middleware: [ownerGuard] },
   loader: async ({ context, params }) => {
-    const shell = await context.queryClient.ensureQueryData(
-      authedShellQueryOptions()
-    );
+    const shell = context.authedShell;
     return { org: resolveOwnedOrg(shell, params.orgSlug) };
   },
   errorComponent: HttpErrorView,
@@ -101,8 +98,13 @@ export const Route = createFileRoute('/_authed/$orgSlug/settings')({
 
 function OrgSettingsPage() {
   const { org } = Route.useLoaderData();
+
+  return <OrgSettingsForm key={org.id} />;
+}
+
+function OrgSettingsForm() {
+  const { org } = Route.useLoaderData();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -116,8 +118,6 @@ function OrgSettingsPage() {
         return;
       }
       setError(null);
-      await queryClient.invalidateQueries({ queryKey: meQueryKey });
-
       // The URL has to follow the rename, otherwise the loader would 404 on the
       // stale slug the moment anything re-runs.
       if (result.status === 'renamed') {
@@ -127,8 +127,7 @@ function OrgSettingsPage() {
       }
 
       setSuccess(true);
-      // Re-run the loader so the inputs show the saved values.
-      await router.invalidate();
+      await router.invalidate({ sync: true });
     },
     onError: () => {
       setSuccess(false);

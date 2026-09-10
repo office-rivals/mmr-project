@@ -6,14 +6,8 @@ import { AlertCircle, Building2, CheckCircle2 } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
 import { PageTitle } from '@/components/page-title';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
-import { meQueryKey } from '@/lib/shell';
 import type { InviteInfoResponse } from '@/api-v3';
 
 interface InviteLanding {
@@ -87,7 +81,18 @@ export const Route = createFileRoute('/_authed/join/$code')({
 
 function InviteLandingPage() {
   const { invite, alreadyMember } = Route.useLoaderData();
+  const { code } = Route.useParams();
 
+  return (
+    <InviteLandingContent
+      key={code}
+      invite={invite}
+      alreadyMember={alreadyMember}
+    />
+  );
+}
+
+function InviteLandingContent({ invite, alreadyMember }: InviteLanding) {
   return (
     <div className="flex flex-col items-center justify-center gap-8 py-16">
       {!invite.isValid ? (
@@ -178,10 +183,7 @@ function InviteClaimCard({ organizationName }: { organizationName: string }) {
         return;
       }
       setError(null);
-      // Joining changes getMe(): the header switcher, navbar defaults and the
-      // invite's own `alreadyMember` all read stale data otherwise.
-      await queryClient.invalidateQueries({ queryKey: meQueryKey });
-      await queryClient.invalidateQueries({ queryKey: ['invite', code] });
+      queryClient.removeQueries({ queryKey: ['invite', code], exact: true });
       await router.navigate({ href: `/${result.organizationSlug}` });
     },
     onError: () =>

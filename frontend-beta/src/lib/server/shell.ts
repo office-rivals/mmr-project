@@ -5,8 +5,6 @@ import { isModeratorOrAbove } from '@/lib/utils';
 import type { MeOrganizationResponse } from '@/api-v3';
 import type { AuthedShellData } from '@/lib/shell';
 
-// Promise.allSettled semantics for a single awaited call, so the two requests
-// stay independently recoverable while still running in order.
 const settle = <T>(p: Promise<T>) =>
   p.then(
     (value) => ({ status: 'fulfilled' as const, value }),

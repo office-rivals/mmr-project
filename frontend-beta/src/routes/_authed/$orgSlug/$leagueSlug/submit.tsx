@@ -15,6 +15,7 @@ import type {
   SlotName,
   SubmitMatchInput,
 } from '@/components/play/submit-match-page';
+import type { LeagueContext } from './route';
 import type {
   LeaguePlayerResponse,
   OrganizationMemberResponse,
@@ -188,7 +189,20 @@ export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/submit')({
 
 function SubmitRoute() {
   const league = leagueRoute.useLoaderData();
-  const { players, members } = Route.useLoaderData();
+  const data = Route.useLoaderData();
+
+  return (
+    <LeagueSubmitRoute key={league.leagueId} league={league} data={data} />
+  );
+}
+
+function LeagueSubmitRoute({
+  league,
+  data: { players, members },
+}: {
+  league: LeagueContext;
+  data: SubmitPageData;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [formMessage, setFormMessage] = useState<string | null>(null);
@@ -215,11 +229,7 @@ function SubmitRoute() {
   });
 
   return (
-    // Keyed on the league: the Svelte page wiped slots, scores and recents
-    // whenever `data.leagueId` changed, because a LeaguePlayer id from another
-    // league is a hard API error.
     <SubmitMatchPage
-      key={league.leagueId}
       orgId={league.orgId}
       leagueId={league.leagueId}
       leagueTeamSize={league.leagueTeamSize}

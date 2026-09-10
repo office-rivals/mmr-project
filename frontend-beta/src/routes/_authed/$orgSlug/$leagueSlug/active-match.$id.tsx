@@ -10,6 +10,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { ActiveMatchPage } from '@/components/play/active-match-page';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import type { LeagueContext } from './route';
 import type { ActiveMatchResponse } from '@/api-v3';
 
 const leagueRoute = getRouteApi('/_authed/$orgSlug/$leagueSlug');
@@ -111,6 +112,26 @@ function ActiveMatchRoute() {
   const league = leagueRoute.useLoaderData();
   const { activeMatch } = Route.useLoaderData();
   const { id } = Route.useParams();
+
+  return (
+    <LeagueActiveMatchRoute
+      key={`${league.leagueId}:${id}`}
+      league={league}
+      activeMatch={activeMatch}
+      id={id}
+    />
+  );
+}
+
+function LeagueActiveMatchRoute({
+  league,
+  activeMatch,
+  id,
+}: {
+  league: LeagueContext;
+  activeMatch: ActiveMatchResponse;
+  id: string;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [formMessage, setFormMessage] = useState<string | null>(null);
@@ -143,7 +164,6 @@ function ActiveMatchRoute() {
 
   return (
     <ActiveMatchPage
-      key={activeMatch.id}
       activeMatch={activeMatch}
       currentLeaguePlayerId={league.leaguePlayerId}
       leagueWinningScore={league.leagueWinningScore}

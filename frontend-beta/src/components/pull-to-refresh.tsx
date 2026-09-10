@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { RefreshCw } from 'lucide-react';
+import { meQueryKey } from '@/lib/shell';
 import { cn } from '@/lib/utils';
 
 const THRESHOLD = 80; // px of damped pull required to commit a refresh
@@ -16,19 +17,7 @@ function isStandaloneMode(): boolean {
   );
 }
 
-/**
- * PWA-only pull-to-refresh, mounted once by the authed layout.
- *
- * Two React-specific constraints, both load-bearing:
- *  - The listeners are attached to `window` imperatively, not through React's
- *    synthetic event system. Synthetic touch handlers are delegated from the
- *    root and cannot express `{ passive: true }`, and there is no element to
- *    hang them on anyway (the gesture is document-wide).
- *  - Every handler reads mutable refs rather than state, so the single
- *    attach/detach pass in the effect never goes stale, and StrictMode's
- *    double-invoke is a genuine no-op: the cleanup removes exactly the
- *    listeners it added and clears the pending error timer.
- */
+/** PWA-only pull-to-refresh, mounted once by the authed layout. */
 export function PullToRefresh() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -37,8 +26,7 @@ export function PullToRefresh() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshFailed, setRefreshFailed] = useState(false);
 
-  // Gesture-internal state and mirrors of the reactive state, so the handlers
-  // registered once in the effect always see current values.
+  // Window listeners are registered once, so their mutable state lives in refs.
   const startY = useRef(0);
   const isPulling = useRef(false);
   const pullDistanceRef = useRef(0);
@@ -110,19 +98,22 @@ export function PullToRefresh() {
       setRefreshing(true);
       setPull(THRESHOLD);
       try {
-        // TanStack's equivalent of SvelteKit's invalidateAll(): refresh the
-        // data without a hard page reload, so client state survives.
-        //
-        // `router.invalidate()` alone is not that equivalent. Loaders that read
-        // through `ensureQueryData` (the `_authed` shell's `getMe()` fan-out,
-        // for one) are handed the cached entry back even after the router
-        // re-runs them, so the org/league switcher, the display name and the
-        // navbar badge would all keep pre-pull data. The query cache is
-        // therefore refetched first — `refetchType: 'all'`, because the entries
-        // loaders read have no observers and a default invalidation would only
-        // mark them stale — and the loaders re-run afterwards on fresh data.
-        await queryClientRef.current.invalidateQueries({ refetchType: 'all' });
-        await routerRef.current.invalidate();
+        // Inactive loader queries must refetch too, and a failed request must
+        // reject so the gesture can show its failure state.
+        await queryClientRef.current.refetchQueries(
+          {
+            type: 'all',
+            predicate: (query) =>
+              query.queryKey.length !== meQueryKey.length ||
+              query.queryKey[0] !== meQueryKey[0],
+          },
+          { throwOnError: true }
+        );
+        await routerRef.current.invalidate({ sync: true });
+        const failedMatch = routerRef.current.state.matches.find(
+          (match) => match.status === 'error'
+        );
+        if (failedMatch) throw failedMatch.error;
         setRefreshing(false);
         setPull(0);
       } catch (err) {
