@@ -45,10 +45,14 @@ _Avoid_: Match offer, provisional game
 A match with fixed teams that is ready for its result to be recorded.
 _Avoid_: Live match, confirmed game
 
-**RFID Match**:
-An Active Match created from the RFID Tags presented for a league, without a
-separate player-acceptance step.
-_Avoid_: Scan match, tag game
+**RFID Team Assignment**:
+An ordered array assigning each presented RFID Tag to a team side in a league.
+It does not create a match, expose player details, or reserve any player.
+_Avoid_: RFID match, match result, scan match
+
+**Team Side**:
+The physical or display designation assigned to a team in an RFID Team Assignment.
+The Randomizer Box interprets side `0` as white and side `1` as red.
 
 **Match Temperature**:
 A value from 0 to 1 controlling how much team assignment favors randomness over
