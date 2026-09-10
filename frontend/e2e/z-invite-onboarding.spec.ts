@@ -265,7 +265,7 @@ test.describe.serial('Invite onboarding claims a name-only player', () => {
     ).toBe('1');
   });
 
-  test('the real human joins and requests the existing guest player', async ({
+  test('the real human can return, cancel, and re-request the guest player', async ({
     browser,
     baseURL,
   }) => {
@@ -297,7 +297,28 @@ test.describe.serial('Invite onboarding claims a name-only player', () => {
       await expect(page.getByTestId('claim-pending')).toBeVisible();
 
       await page.goto('/test-org');
-      await expect(page.getByText(/claim awaiting approval/i)).toBeVisible();
+      const pendingLink = page.getByRole('link', {
+        name: /claim awaiting approval/i,
+      });
+      await expect(pendingLink).toBeVisible();
+      await expect(joinLeague).toBeHidden();
+      await pendingLink.click();
+      await expect(page).toHaveURL(/\/test-org\/claim$/);
+      await page.getByTestId('claim-cancel').click();
+      await expect(page.getByText('Claim request cancelled')).toBeVisible();
+
+      await page
+        .locator('label')
+        .filter({ hasText: GUEST_NAME })
+        .getByRole('radio')
+        .check();
+      await page.getByTestId('claim-submit').click();
+      await expect(page.getByTestId('claim-pending')).toBeVisible();
+
+      await page.goto('/test-org');
+      await expect(
+        page.getByRole('link', { name: /claim awaiting approval/i })
+      ).toBeVisible();
       await expect(joinLeague).toBeHidden();
     } finally {
       await context.close();

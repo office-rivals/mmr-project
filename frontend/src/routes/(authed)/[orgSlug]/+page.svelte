@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { resolve } from '$app/paths';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { Alert } from '$lib/components/ui/alert';
@@ -32,13 +33,16 @@
   {/if}
 
   {#if claimPending}
-    <div
+    <a
+      href={resolve('/(authed)/[orgSlug]/claim', {
+        orgSlug: data.org.slug,
+      })}
       class="flex items-center gap-2 rounded-lg border bg-muted/40 px-4 py-3 text-sm"
     >
       <Clock3 class="h-4 w-4 text-muted-foreground" />
       <span>Player claim awaiting approval</span>
       <Badge variant="outline" class="ml-auto">Pending</Badge>
-    </div>
+    </a>
   {:else if data.claimable.requesterEligible}
     <Card>
       <CardHeader>
