@@ -20,13 +20,8 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import type { FlagActionResult } from '@/lib/match-flag-actions';
 import type { MatchFlagResponse, MatchResponse } from '@/api-v3';
-
-/** What the three flag server functions resolve to. */
-export interface FlagActionResult {
-  success: boolean;
-  message: string;
-}
 
 export interface ReportMatchModalProps {
   open: boolean;
@@ -80,6 +75,7 @@ export function ReportMatchModal({
   const [errorMessage, setErrorMessage] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [requestedPage, setRequestedPage] = useState(0);
+  const browseContentRef = useRef<HTMLDivElement>(null);
   // Last-write-wins guard: a slow page-1 response must not overwrite page 2.
   const fetchRequestId = useRef(0);
 
@@ -208,7 +204,15 @@ export function ReportMatchModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+        <DialogContent
+          ref={browseContentRef}
+          tabIndex={-1}
+          className="max-h-[85vh] max-w-2xl overflow-y-auto focus:outline-none"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            browseContentRef.current?.focus();
+          }}
+        >
           {step === 'browse' ? (
             <>
               <DialogHeader>
@@ -336,7 +340,7 @@ export function ReportMatchModal({
                       placeholder="Describe why this match should be reviewed..."
                     />
                     <p className="text-xs text-muted-foreground">
-                      {reason.length}/500 characters
+                      {`${reason.length}/500 characters`}
                     </p>
                   </div>
 

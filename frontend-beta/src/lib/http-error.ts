@@ -1,20 +1,4 @@
-/**
- * The React equivalent of SvelteKit's `error(status, message)`.
- *
- * Two halves, because TanStack Router derives the SSR document status from its
- * own `statusCode` store (200 / 404 / 500 / redirect) and offers no hook for an
- * arbitrary code:
- *
- *  - On a **document** request the status comes from a route-level
- *    `server.middleware` guard (`createRouteGuard` in `lib/server/http-error`),
- *    which short-circuits with a real `Response` before the router renders.
- *  - On a **client** navigation there is no document, so the route's
- *    `beforeLoad` throws this error and the route's `errorComponent`
- *    (`HttpErrorView`) renders the same message.
- *
- * Both halves must agree on the status and the message string — the messages
- * are part of the parity contract.
- */
+// Document guards set the HTTP status; client route boundaries render this error.
 export class HttpError extends Error {
   readonly status: number;
 
@@ -25,11 +9,7 @@ export class HttpError extends Error {
   }
 }
 
-/**
- * Reads the status off an error that may have crossed the SSR boundary, where
- * `instanceof` no longer holds because the value was re-created from its
- * serialized form.
- */
+// Serialized errors can cross the SSR boundary without their prototype.
 export function getHttpErrorStatus(error: unknown): number | null {
   if (error instanceof HttpError) return error.status;
   if (

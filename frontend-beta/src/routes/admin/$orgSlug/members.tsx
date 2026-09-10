@@ -41,7 +41,7 @@ import type {
   OrganizationRole,
 } from '@/api-v3';
 
-// The reference UI exposes fixed messages rather than upstream details.
+// Fixed messages keep submitted fields out of native error documents.
 type ActionResult = { error?: string; success?: string };
 
 interface InviteMemberInput {
@@ -95,27 +95,34 @@ const inviteMemberFn = createServerFn({ method: 'POST' })
   .validator((input: InviteMemberInput) => input)
   .handler(({ data }): Promise<ActionResult> => inviteMember(data));
 
-const updateMemberRoleFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: { orgSlug: string; membershipId: string; role: string }) => input
-  )
-  .handler(async ({ data }): Promise<ActionResult> => {
-    const apiClientV3 = await requireApiClientV3();
-    const orgId = await resolveOrgIdBySlug(apiClientV3, data.orgSlug);
-    if (!orgId)
-      return failServerAction(404, { error: 'Organization not found' });
+interface UpdateMemberRoleInput {
+  orgSlug: string;
+  membershipId: string;
+  role: string;
+}
 
-    try {
-      await apiClientV3.organizationMembersApi.updateMemberRole(
-        orgId,
-        data.membershipId,
-        { role: data.role as OrganizationRole }
-      );
-      return { success: 'Role updated successfully' };
-    } catch {
-      return failServerAction(400, { error: 'Failed to update role' });
-    }
-  });
+async function updateMemberRole(
+  data: UpdateMemberRoleInput
+): Promise<ActionResult> {
+  const apiClientV3 = await requireApiClientV3();
+  const orgId = await resolveOrgIdBySlug(apiClientV3, data.orgSlug);
+  if (!orgId) return failServerAction(404, { error: 'Organization not found' });
+
+  try {
+    await apiClientV3.organizationMembersApi.updateMemberRole(
+      orgId,
+      data.membershipId,
+      { role: data.role as OrganizationRole }
+    );
+    return { success: 'Role updated successfully' };
+  } catch {
+    return failServerAction(400, { error: 'Failed to update role' });
+  }
+}
+
+const updateMemberRoleFn = createServerFn({ method: 'POST' })
+  .validator((input: UpdateMemberRoleInput) => input)
+  .handler(({ data }): Promise<ActionResult> => updateMemberRole(data));
 
 const updateMemberProfileFn = createServerFn({ method: 'POST' })
   .validator(
@@ -124,7 +131,6 @@ const updateMemberProfileFn = createServerFn({ method: 'POST' })
       membershipId: string;
       displayName: string;
       username: string;
-      /** `null` when a linked user's disabled email field is absent. */
       email: string | null;
     }) => input
   )
@@ -255,6 +261,13 @@ export const Route = createFileRoute('/admin/$orgSlug/members')({
                 linkId: String(formData.get('linkId') ?? ''),
               });
               break;
+            case 'updateRole':
+              actionResult = await updateMemberRole({
+                orgSlug: params.orgSlug,
+                membershipId: String(formData.get('membershipId') ?? ''),
+                role: String(formData.get('role') ?? ''),
+              });
+              break;
             case 'remove':
               actionResult = await removeMember({
                 orgSlug: params.orgSlug,
@@ -327,7 +340,7 @@ function MembersPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Members</h1>
         <p className="text-sm text-muted-foreground">
-          Manage members of {org.name}
+          {`Manage members of ${org.name}`}
         </p>
       </div>
 
@@ -343,7 +356,7 @@ function MembersPage() {
                 Invite Links
               </CardTitle>
               <CardDescription>
-                Share an invite link to let people join {org.name}
+                {`Share an invite link to let people join ${org.name}`}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -374,11 +387,11 @@ function MembersPage() {
                             </Button>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            {link.useCount}
-                            {link.maxUses ? `/${link.maxUses}` : ''} uses
-                            {link.expiresAt
-                              ? ` · Expires ${formatDate(link.expiresAt, 'Never')}`
-                              : ''}
+                            {`${link.useCount}${link.maxUses ? `/${link.maxUses}` : ''} uses${
+                              link.expiresAt
+                                ? ` · Expires ${formatDate(link.expiresAt, 'Never')}`
+                                : ''
+                            }`}
                           </p>
                         </div>
                         <form
@@ -483,7 +496,7 @@ function MembersPage() {
                 Invite by Email
               </CardTitle>
               <CardDescription>
-                Invite a specific person to {org.name}
+                {`Invite a specific person to ${org.name}`}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -565,7 +578,7 @@ function MembersPage() {
         <CardHeader>
           <CardTitle>Current Members</CardTitle>
           <CardDescription>
-            {members.length} member{members.length !== 1 ? 's' : ''}
+            {`${members.length} member${members.length !== 1 ? 's' : ''}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -675,7 +688,7 @@ function MembersPage() {
                         </span>
                         {member.username && (
                           <span className="text-xs text-muted-foreground">
-                            @{member.username}
+                            {`@${member.username}`}
                           </span>
                         )}
                         <Badge variant={getRoleBadgeVariant(member.role)}>
@@ -704,7 +717,16 @@ function MembersPage() {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <form onSubmit={(event) => event.preventDefault()}>
+                        <form
+                          method="post"
+                          action={`/admin/${org.slug}/members`}
+                          onSubmit={(event) => event.preventDefault()}
+                        >
+                          <input
+                            type="hidden"
+                            name="_action"
+                            value="updateRole"
+                          />
                           <input
                             type="hidden"
                             name="membershipId"

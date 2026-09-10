@@ -7,23 +7,14 @@ import { MmrDelta } from './mmr-delta';
 export interface MatchCardProps {
   match: MatchResponse;
   showMmr?: boolean;
-  /** When supplied, player names become links to this href. */
   playerHref?: (leaguePlayerId: string) => string;
-  /**
-   * Escape hatch for routed pages: render the player name with a typed
-   * TanStack `<Link>` instead of the plain `<a>` this component emits by
-   * default. Wins over `playerHref` when both are given. Not present in the
-   * Svelte original — SvelteKit intercepted plain anchors, TanStack Router
-   * does not.
-   */
   renderPlayerLink?: (
     player: MatchTeamPlayerResponse,
     name: string
   ) => ReactNode;
 }
 
-// ⚠️ Username FIRST here — the opposite of `getPlayerDisplayName` in lib/utils.
-// e2e asserts a match card does not contain display names. Do not unify.
+// Match cards intentionally prefer the shorter username.
 const playerName = (p: { displayName?: string; username?: string }) =>
   p.username ?? p.displayName ?? 'Unknown';
 
@@ -33,7 +24,6 @@ export function MatchCard({
   playerHref,
   renderPlayerLink,
 }: MatchCardProps) {
-  // Index-based with a positional fallback, not array order.
   const team1 = match.teams.find((t) => t.index === 0) ?? match.teams[0];
   const team2 = match.teams.find((t) => t.index === 1) ?? match.teams[1];
 
@@ -90,7 +80,6 @@ export function MatchCard({
             team2?.isWinner && 'text-primary'
           )}
         >
-          {/* Team 2 mirrors team 1: delta first, then the name. */}
           <div className="flex flex-1 flex-col items-end">
             {(team2?.players ?? []).map((player) => (
               <p className="space-x-1" key={player.id}>

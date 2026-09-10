@@ -16,12 +16,7 @@ import type { ActiveMatchResponse } from '@/api-v3';
 
 const leagueRoute = getRouteApi('/_authed/$orgSlug/$leagueSlug');
 
-/**
- * There is no single-active-match GET, so the list is filtered server-side.
- * Deliberately **not** wrapped in try/catch: an API failure must 500, exactly
- * like the Svelte loader. The Svelte page also loaded `listPlayers` and never
- * used it — dropped.
- */
+/** The API only exposes the list, so select the requested match here. */
 const getActiveMatchFn = createServerFn({ method: 'GET' })
   .validator(
     (input: { orgId: string; leagueId: string; activeMatchId: string }) => input
@@ -66,7 +61,6 @@ const submitActiveMatchResultFn = createServerFn({ method: 'POST' })
       });
     }
 
-    // Index-based regardless of how the page ordered the columns.
     const teams = [
       { teamIndex: 0, score: team1Score },
       { teamIndex: 1, score: team2Score },
@@ -99,7 +93,6 @@ export const Route = createFileRoute(
     const activeMatch = await getActiveMatchFn({
       data: { orgId, leagueId, activeMatchId: params.id },
     });
-    // A real 404 document status, matching `error(404, …)`.
     if (!activeMatch) throw notFound();
     return { activeMatch };
   },

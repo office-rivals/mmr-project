@@ -12,34 +12,16 @@ import {
 
 interface FlagDialogsProps {
   open: boolean;
-  /** Non-null when an existing flag of the viewer's is being edited. */
   editingFlagId: string | null;
-  /**
-   * The reason the textarea starts with each time the dialog opens — the
-   * existing flag's text when editing, `''` when creating.
-   */
   initialReason: string;
   onClose: () => void;
-  /** Create (no `editingFlagId`) or update (with one). */
   onSubmit: (reason: string) => void;
   deleteConfirmOpen: boolean;
   onDeleteConfirmChange: (open: boolean) => void;
   onDelete: () => void;
 }
 
-/**
- * The two match-flag dialogs from the profile page.
- *
- * Dialog B (delete confirmation) opens **on top of** dialog A and does not
- * close it — cancelling returns to the edit form with the reason still typed.
- * Both submit handlers are wired so a server-side failure keeps the dialog
- * open with the text intact and surfaces the message in the page-level alert.
- *
- * The textarea value is owned **here**, not by the page. In Svelte the profile's
- * `matches` / `matchGroups` / `chartData` were `$derived` and untouched by
- * `flagReason`; in React a page-level value would re-render the whole profile —
- * up to 1000 match cards and a Carbon chart data-swap — on every keystroke.
- */
+// Local textarea state avoids rebuilding the match list and chart while typing.
 export function FlagDialogs({
   open,
   editingFlagId,
@@ -51,9 +33,7 @@ export function FlagDialogs({
   onDelete,
 }: FlagDialogsProps) {
   const [reason, setReason] = useState(initialReason);
-  // Re-seed on the closed→open transition, which is where Svelte's
-  // `openFlagDialog` assigned `flagReason`. Adjusting state during render (no
-  // effect) so the first painted frame already shows the right text.
+  // Re-seed before the first reopened frame without an effect delay.
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
@@ -102,7 +82,7 @@ export function FlagDialogs({
                   placeholder="Describe the issue..."
                 />
                 <p className="text-xs text-muted-foreground">
-                  {reason.length}/500
+                  {`${reason.length}/500`}
                 </p>
               </div>
               <DialogFooter className="mt-4 gap-2">

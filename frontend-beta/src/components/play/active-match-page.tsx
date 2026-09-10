@@ -26,13 +26,6 @@ interface ActiveMatchPageProps {
   onGoToStep: (hash: string) => void;
 }
 
-/**
- * Result entry for a matchmade game.
- *
- * The **wire format stays index-based** no matter how the UI is ordered:
- * `team1Score → teams[0]`, `team2Score → teams[1]`. Only the visual order and
- * the headings follow the current user's side.
- */
 export function ActiveMatchPage({
   activeMatch,
   currentLeaguePlayerId,
@@ -56,8 +49,7 @@ export function ActiveMatchPage({
         ) ?? false)
       : false;
 
-  // A spectator / non-participant falls back to team1, so they see "Your team"
-  // over the wrong side — kept, because the submitted scores stay index-correct.
+  // Match the reference's team-one fallback for non-participants.
   const currentUserTeam: TeamOption = playerInTeam(0, currentLeaguePlayerId)
     ? 'team1'
     : playerInTeam(1, currentLeaguePlayerId)
@@ -68,7 +60,6 @@ export function ActiveMatchPage({
   const teamPlayers = (which: TeamOption) =>
     which === 'team1' ? (teams[0]?.players ?? []) : (teams[1]?.players ?? []);
 
-  // Reorder so the current player appears first within their team for clarity.
   const orderedPlayers = (which: TeamOption) => {
     const players = teamPlayers(which);
     if (which !== currentUserTeam) return players;
@@ -94,8 +85,6 @@ export function ActiveMatchPage({
     winningScore
   );
 
-  // Only reachable from the fixed-target winner buttons; the null check narrows
-  // the type and fails closed if that ever changes.
   const setWinner = (which: TeamOption) => {
     if (winningScore === null) return;
     if (which === 'team1') {
@@ -119,6 +108,12 @@ export function ActiveMatchPage({
 
   const teamHeading = (which: TeamOption) =>
     which === currentUserTeam ? 'Your team' : 'Opponents';
+
+  const previewText = `${teamHeading(currentUserTeam)}: ${
+    currentUserTeam === 'team1' ? team1Score : team2Score
+  } \u00a0–\u00a0 ${
+    otherTeam === 'team1' ? team1Score : team2Score
+  } : ${teamHeading(otherTeam)}`;
 
   return (
     <>
@@ -159,8 +154,6 @@ export function ActiveMatchPage({
             ))}
           </div>
 
-          {/* Unlike the submit page this is not gated on player selection —
-              the roster is fixed by matchmaking. */}
           {!isFreeForm ? (
             <WinnerStep
               weDisabled={
@@ -190,11 +183,6 @@ export function ActiveMatchPage({
               <h2 className="text-center text-4xl">
                 What was the final score?
               </h2>
-              {/* ⚠️ Labels are computed for the raw team indices while the
-                  player columns above use `orderForUi`, so a user on team 2
-                  sees their column first but the left input labelled
-                  "Opponents". Ported as-is — fixing it means changing both
-                  together. */}
               <FreeFormScoreInputs
                 team1Label={teamHeading('team1')}
                 team2Label={teamHeading('team2')}
@@ -209,12 +197,7 @@ export function ActiveMatchPage({
           {isPreviewVisible ? (
             <div id="submit-step" className="mt-6 flex flex-col gap-4">
               <h2 className="text-center text-4xl">Submit?</h2>
-              <div className="text-center text-2xl">
-                {teamHeading(currentUserTeam)}:{' '}
-                {currentUserTeam === 'team1' ? team1Score : team2Score} {' – '}{' '}
-                {otherTeam === 'team1' ? team1Score : team2Score} :{' '}
-                {teamHeading(otherTeam)}
-              </div>
+              <div className="text-center text-2xl">{previewText}</div>
               <Button type="submit" disabled={submitting}>
                 Submit the match
               </Button>

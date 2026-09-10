@@ -199,7 +199,7 @@ function SeasonsPage() {
         <CardHeader>
           <CardTitle>All seasons</CardTitle>
           <CardDescription>
-            {seasons.length} season{seasons.length === 1 ? '' : 's'} total
+            {`${seasons.length} season${seasons.length === 1 ? '' : 's'} total`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -221,7 +221,7 @@ function SeasonsPage() {
                         {formatDateTime(season.startsAt)}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Created {formatDateTime(season.createdAt)}
+                        {`Created ${formatDateTime(season.createdAt)}`}
                       </p>
                     </div>
                   </div>

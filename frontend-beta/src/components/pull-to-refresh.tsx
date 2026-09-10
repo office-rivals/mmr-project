@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { RefreshCw } from 'lucide-react';
-import { requireSuccessfulShellRefresh } from '@/lib/shell';
+import {
+  meQueryKey,
+  refreshAuthedShellData,
+  requireSuccessfulShellRefresh,
+} from '@/lib/shell';
 import { cn } from '@/lib/utils';
 
 const THRESHOLD = 80; // px of damped pull required to commit a refresh
@@ -91,12 +95,19 @@ export function PullToRefresh() {
       setRefreshing(true);
       setPull(THRESHOLD);
       try {
-        // Preflight failures leave the current route mounted.
+        await refreshAuthedShellData(queryClientRef.current);
+        requireSuccessfulShellRefresh(queryClientRef.current);
+        // SSR-only cache entries have no client function; route loaders refresh them.
         await queryClientRef.current.refetchQueries(
-          { type: 'all' },
+          {
+            type: 'all',
+            predicate: (query) =>
+              (query.queryKey.length !== meQueryKey.length ||
+                query.queryKey[0] !== meQueryKey[0]) &&
+              typeof query.options.queryFn === 'function',
+          },
           { throwOnError: true }
         );
-        requireSuccessfulShellRefresh(queryClientRef.current);
         await routerRef.current.invalidate({ sync: true });
         const failedMatch = routerRef.current.state.matches.find(
           (match) => match.status === 'error'

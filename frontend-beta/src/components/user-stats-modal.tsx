@@ -21,7 +21,6 @@ export interface UserStatsModalProps {
     leaguePlayerId: string,
     seasonId: string | undefined
   ) => Promise<MatchResponse | null>;
-  /** `/{orgSlug}/{leagueSlug}/player` */
   playerHrefBase: string;
   seasonId?: string;
 }
@@ -49,9 +48,6 @@ export function UserStatsModal({
     status: 'idle',
   });
 
-  // Mirrors the Svelte `$derived` promise: a fresh fetch every time `open`
-  // flips to true or the entry/season changes, and nothing rendered at all
-  // while closed.
   useEffect(() => {
     if (!open) {
       setRecentMatch({ status: 'idle' });
@@ -79,15 +75,12 @@ export function UserStatsModal({
   }, [open, entry.leaguePlayerId, seasonId, fetchRecentMatch]);
 
   const totalGames = entry.wins + entry.losses;
-  // ⚠️ Display name FIRST here — the opposite of MatchCard.
   const displayName = entry.displayName ?? entry.username ?? 'Unknown';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-h-screen overflow-y-auto"
-        // No description in the Svelte original either; opting out keeps Radix
-        // from pointing aria-describedby at nothing.
         aria-describedby={undefined}
       >
         <DialogTitle className="flex gap-2">{displayName}</DialogTitle>
@@ -105,7 +98,6 @@ export function UserStatsModal({
             </Kpi>
             <Kpi title="# Losses">{entry.losses}</Kpi>
             <Kpi title="# Matches">{totalGames}</Kpi>
-            {/* No SHOW_STREAK_THRESHOLD here — any non-zero streak shows. */}
             <Kpi title="Streak">
               {entry.winningStreak > 0 ? `🔥 ${entry.winningStreak}` : null}
               {entry.losingStreak > 0
@@ -128,7 +120,6 @@ export function UserStatsModal({
               </Card>
             ) : null}
             {recentMatch.status === 'resolved' && recentMatch.match ? (
-              // Always shows deltas, regardless of the page's MMR toggle.
               <MatchCard match={recentMatch.match} showMmr />
             ) : null}
             {recentMatch.status === 'resolved' && !recentMatch.match ? (
@@ -149,9 +140,6 @@ export function UserStatsModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          {/* `withSeasonParam` built the same href in the Svelte app, but
-              TanStack reads `to` as a pathname, so the season rides in
-              `search` instead. Keep it a single child — `asChild` slots it. */}
           <Button asChild>
             <AppLink
               to={`${playerHrefBase}/${entry.leaguePlayerId}`}

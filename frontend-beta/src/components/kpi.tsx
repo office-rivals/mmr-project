@@ -7,11 +7,6 @@ interface KpiProps {
   children?: ReactNode;
 }
 
-/**
- * Stat tile used by the league landing page and the player profile.
- * Markup is 1:1 with `lib/components/kpi.svelte` — the profile e2e asserts
- * exact-text visibility of the titles (`MMR`, `# Matches`, …).
- */
 export function Kpi({ title, className, children }: KpiProps) {
   return (
     <div

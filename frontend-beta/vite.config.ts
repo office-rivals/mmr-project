@@ -24,11 +24,7 @@ export default defineConfig(({ command, mode }) => {
     // Plugin order matters: tanstackStart() before viteReact().
     plugins: [
       tanstackStart({
-        // Loader/RPC traffic is namespaced under `__data.json` because that is
-        // the path the Playwright suite treats as "the app refetched its data"
-        // (e2e/pull-to-refresh.spec.ts waits for such a request to prove the
-        // pull committed a refresh). The suite is a frozen contract, so the
-        // transport is named to fit it; only the URL prefix changes.
+        // Preserve the shared suite's observable loader-refetch URL marker.
         serverFns: { base: '/_serverFn/__data.json' },
       }),
       viteReact(),

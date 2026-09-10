@@ -30,10 +30,6 @@ interface SubmitPageData {
   members: OrganizationMemberResponse[];
 }
 
-/**
- * Both calls fire in parallel and **any** failure fails the whole page — the
- * Svelte loader wrapped the `Promise.all` in a single try/catch.
- */
 const getSubmitPageDataFn = createServerFn({ method: 'GET' })
   .validator((input: { orgId: string; leagueId: string }) => input)
   .handler(async ({ data }): Promise<SubmitPageData> => {
@@ -50,11 +46,6 @@ type SubmitMatchResult =
 
 type PlayerReference = SubmitMatchPlayerRequest | { error: string } | null;
 
-/**
- * 1:1 with the Svelte action's `resolvePlayerReference`. The slot encodings are
- * still strings because they are what produces `Player selection is invalid`
- * for anything the UI could not have generated.
- */
 function resolvePlayerReference(
   input: SubmitMatchInput,
   fieldName: SlotName
@@ -98,11 +89,6 @@ function isResolvedPlayerReference(
   return player !== null && !('error' in player);
 }
 
-/**
- * The `default` form action, ported to a server function. The checks and their
- * order are unchanged, and so are the message strings — they are the only
- * feedback the page gives (there are no toasts anywhere in this area).
- */
 const submitMatchFn = createServerFn({ method: 'POST' })
   .validator((input: SubmitMatchInput) => input)
   .handler(async ({ data }): Promise<SubmitMatchResult> => {
@@ -132,8 +118,6 @@ const submitMatchFn = createServerFn({ method: 'POST' })
       });
     }
 
-    // Slots left empty (the unused player2 entries of a 1v1 league) are
-    // filtered out before resolution, exactly like the Svelte action.
     const resolveTeam = (names: SlotName[]) =>
       names
         .filter((name) => (data.slots[name] ?? '') !== '')
@@ -155,8 +139,6 @@ const submitMatchFn = createServerFn({ method: 'POST' })
     const teams = [
       {
         players: team1PlayerRefs.filter(isResolvedPlayerReference),
-        // Raw, including -1 if the client somehow submitted early: the API
-        // rejects negatives, and never derives the winner from the client.
         score: team1Score,
       },
       {
@@ -222,12 +204,9 @@ function LeagueSubmitRoute({
         return;
       }
       setFormMessage(null);
-      // A new match moves the leaderboard, the recent-match list and every
-      // rating history in this league.
       await queryClient.invalidateQueries({
         predicate: (query) => query.queryKey.includes(league.leagueId),
       });
-      // The 303 the Svelte action threw, in React terms.
       await router.navigate({
         href: `/${league.orgSlug}/${league.leagueSlug}`,
       });

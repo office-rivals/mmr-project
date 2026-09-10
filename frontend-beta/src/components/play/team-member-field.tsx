@@ -204,9 +204,9 @@ export function TeamMemberField({
             autoCapitalize="none"
             {...inputProps}
           />
-          {open && options.length > 0 ? (
+          {open ? (
             <div {...listboxProps} className="flex flex-col gap-1">
-              {filter.length === 0 ? (
+              {filter.length === 0 && latestPlayers.length > 0 ? (
                 <div
                   role="group"
                   aria-labelledby={headingId}
@@ -219,7 +219,7 @@ export function TeamMemberField({
                     option(`league:${player.id}`, player)
                   )}
                 </div>
-              ) : (
+              ) : filter.length > 1 && options.length > 0 ? (
                 <>
                   {matchedPlayers.map((player) =>
                     option(`league:${player.id}`, player)
@@ -245,15 +245,14 @@ export function TeamMemberField({
                     </div>
                   ) : null}
                 </>
-              )}
-            </div>
-          ) : null}
-          {open && filter.length > 1 && options.length === 0 ? (
-            <div className="flex flex-col items-start gap-1">
-              <p className="text-sm">No players found</p>
-              <Button type="button" onClick={() => onCreateUser(filter)}>
-                Add new player
-              </Button>
+              ) : filter.length > 1 ? (
+                <div className="flex flex-col items-start gap-1">
+                  <p className="text-sm">No players found</p>
+                  <Button type="button" onClick={() => onCreateUser(filter)}>
+                    Add new player
+                  </Button>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </>

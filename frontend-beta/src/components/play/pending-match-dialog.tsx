@@ -13,7 +13,6 @@ import type {
 } from '@/api-v3';
 
 interface PendingMatchDialogProps {
-  /** True only while the polled pending match still includes this user. */
   open: boolean;
   pendingMatch: PendingMatchResponse | undefined;
   myAcceptance: PendingMatchAcceptanceResponse | undefined;
@@ -31,15 +30,6 @@ function acceptanceLabel(
   return '⌛ pending';
 }
 
-/**
- * Non-dismissible "Match found!" modal.
- *
- * `open` is driven purely by the queue poll and `onOpenChange` is a no-op, so
- * nothing the user does closes it: outside clicks and Escape are prevented, and
- * the built-in close `X` still renders but is inert because it can only ask the
- * (ignored) `onOpenChange` to close. It disappears when — and only when — the
- * poll stops reporting this user as part of a pending match.
- */
 export function PendingMatchDialog({
   open,
   pendingMatch,
@@ -49,6 +39,7 @@ export function PendingMatchDialog({
   onAccept,
   onDecline,
 }: PendingMatchDialogProps) {
+  // Queue polling owns this dialog's open state.
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
@@ -60,7 +51,7 @@ export function PendingMatchDialog({
         <DialogHeader>
           <DialogTitle>Match found!</DialogTitle>
           <DialogDescription>
-            Accept within {secondsRemaining}s
+            {`Accept within ${secondsRemaining}s`}
           </DialogDescription>
         </DialogHeader>
 
@@ -69,9 +60,8 @@ export function PendingMatchDialog({
             <div className="space-y-3">
               {pendingMatch.teams.map((team, idx) => (
                 <div className="flex flex-col gap-1" key={team.index}>
-                  {/* Numbered by render order, not by `team.index`. */}
                   <p className="text-sm text-muted-foreground">
-                    Team {idx + 1}
+                    {`Team ${idx + 1}`}
                   </p>
                   {team.players.map((player) => (
                     <div

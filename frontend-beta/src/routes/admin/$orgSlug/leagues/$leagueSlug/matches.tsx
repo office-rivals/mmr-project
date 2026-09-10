@@ -353,7 +353,7 @@ function AdminMatchesPage() {
           <CardHeader>
             <CardTitle>Recent matches</CardTitle>
             <CardDescription>
-              Showing {data.matches.length} from offset {data.offset}
+              {`Showing ${data.matches.length} from offset ${data.offset}`}
             </CardDescription>
           </CardHeader>
           <CardContent>

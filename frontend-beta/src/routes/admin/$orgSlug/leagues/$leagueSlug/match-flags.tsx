@@ -492,8 +492,7 @@ function MatchFlagsPage() {
                           {statusMeta.label}
                         </Badge>
                         <span className="text-sm text-muted-foreground">
-                          Flagged by {flag.flaggedByDisplayName ?? 'Unknown'} on{' '}
-                          {formatDate(flag.createdAt, '—', dateOpts)}
+                          {`Flagged by ${flag.flaggedByDisplayName ?? 'Unknown'} on ${formatDate(flag.createdAt, '—', dateOpts)}`}
                         </span>
                       </div>
                     </div>

@@ -11,26 +11,12 @@ interface FreeFormScoreInputsProps {
   onTeam2ScoreChange: (score: number) => void;
 }
 
-/**
- * Scores are integers in 0..MAX_SCORE (the API's cap); -1 is the pages' "not
- * entered yet" sentinel, so anything unparsable or out of range maps back to
- * it and keeps the submit step hidden.
- */
+// -1 keeps the submit step hidden until both scores are valid.
 function parseScore(target: HTMLInputElement): number {
   const n = target.valueAsNumber;
   return Number.isInteger(n) && n >= 0 && n <= MAX_SCORE ? n : -1;
 }
 
-/**
- * Free-form (winningScore === null) score entry, shared by the submit page and
- * the active-match page. The element ids are an e2e contract.
- *
- * `bind:value` becomes a controlled input whose value is derived from the
- * sentinel, exactly like the Svelte `value={score === -1 ? '' : score}`. The
- * "only assign when it actually changed" guard is kept: without it a keystroke
- * that maps to the same sentinel (typing `-`) would re-render and clobber the
- * raw text in the field.
- */
 export function FreeFormScoreInputs({
   team1Label,
   team2Label,
@@ -39,9 +25,6 @@ export function FreeFormScoreInputs({
   onTeam1ScoreChange,
   onTeam2ScoreChange,
 }: FreeFormScoreInputsProps) {
-  // Both scores entered but equal: the submit step stays hidden (the server
-  // rejects ties) so call out why, instead of leaving the button to silently
-  // vanish.
   const isTie =
     team1Score !== -1 && team2Score !== -1 && team1Score === team2Score;
 
@@ -64,7 +47,6 @@ export function FreeFormScoreInputs({
             }}
           />
         </div>
-        {/* en dash */}
         <div className="pb-2 text-2xl">–</div>
         <div className="flex flex-1 flex-col gap-2">
           <Label htmlFor="team2-score-input">{team2Label}</Label>

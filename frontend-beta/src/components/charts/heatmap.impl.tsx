@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   HeatmapChart,
   ScaleTypes,
@@ -15,6 +15,7 @@ export interface HeatmapProps {
 }
 
 export default function HeatmapImpl({ data }: HeatmapProps) {
+  const chartRef = useRef<InstanceType<typeof HeatmapChart>>(null);
   const { labels, chartOptions } = useMemo(() => {
     const hourOfDayFormatter = new Intl.DateTimeFormat(undefined, {
       hour: 'numeric',
@@ -46,7 +47,6 @@ export default function HeatmapImpl({ data }: HeatmapProps) {
         dayOfWeekLabels,
         hourOfDayUTCToCurrentTimezone,
       },
-      // https://github.com/carbon-design-system/carbon-charts/pull/1846
       chartOptions: {
         theme: 'g100',
         height: '300px',
@@ -93,9 +93,22 @@ export default function HeatmapImpl({ data }: HeatmapProps) {
     [data, labels]
   );
 
+  useEffect(() => {
+    const chart = chartRef.current?.chart;
+    if (!chart) return;
+
+    // The Svelte wrapper reapplies these after the holder reaches its final width.
+    chart.model.setData(mappedChartData);
+    chart.model.setOptions(chartOptions);
+  }, [chartOptions, mappedChartData]);
+
   return (
     <div className="pb-2">
-      <HeatmapChart data={mappedChartData} options={chartOptions} />
+      <HeatmapChart
+        ref={chartRef}
+        data={mappedChartData}
+        options={chartOptions}
+      />
     </div>
   );
 }
