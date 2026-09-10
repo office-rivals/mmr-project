@@ -29,15 +29,7 @@ export interface EditMatchDialogProps {
   onOpenChange: (open: boolean) => void;
   match: MatchResponse | null;
   leaguePlayers: LeaguePlayerResponse[];
-  /**
-   * Replaces the Svelte `formAction` prop. The host must not resolve until the
-   * data reload it triggers has finished — the dialog closes on the resolved
-   * value, and the e2e reads "dialog gone" as "saved and list refreshed".
-   *
-   * The host is also responsible for the page-level outcome (success/error
-   * banner + refetch): this dialog drops a superseded response's effect on
-   * *itself*, never the outcome the admin is owed.
-   */
+  /** Resolves after the host has applied the result and refreshed its data. */
   onSave: (input: {
     matchId: string;
     teams: EditMatchTeamPayload[];
@@ -45,8 +37,6 @@ export interface EditMatchDialogProps {
 }
 
 type SlotState = { leaguePlayerId: string };
-// `score` widens to string because a number input hands back strings; the
-// payload coerces with `Number(...)`, exactly like the Svelte version.
 type TeamState = { players: SlotState[]; score: number | string };
 
 const seedTeams = (match: MatchResponse): TeamState[] =>
@@ -61,9 +51,6 @@ const seedTeams = (match: MatchResponse): TeamState[] =>
       score: team.score,
     }));
 
-/**
- * Shared by the admin matches page and the match-flags page.
- */
 export function EditMatchDialog({
   open,
   onOpenChange,
@@ -74,26 +61,14 @@ export function EditMatchDialog({
   const [teams, setTeams] = useState<TeamState[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Match ids with a save in flight. Keyed by match, because a request
-  // outstanding for one match says nothing about another — and tracked past the
-  // dialog that started it, since clearing on reopen would let a
-  // cancel-then-reopen fire a second PATCH alongside the first, and whichever
-  // commits last wins.
-  //
-  // The ref is the guard (two submits in one tick both read it, which stale
-  // state would not give us); the state exists only so the button re-renders.
+  // Keep the guard across close/reopen so one match cannot get racing saves.
   const inFlightRef = useRef<Set<string>>(new Set());
   const [inFlightIds, setInFlightIds] = useState<string[]>([]);
   const submitting = !!match && inFlightIds.includes(match.id);
 
-  // Bumped on every (re)open, so a response can tell whether the dialog it was
-  // submitted from is still the one on screen. A ref, not state: it is only
-  // ever compared, and re-rendering on it would re-trigger the effect that
-  // bumps it.
+  // Identifies the dialog generation that owns an asynchronous response.
   const generationRef = useRef(0);
   const wasOpenRef = useRef(false);
-  // Whether the admin has touched this dialog since it opened. A ref for the
-  // same reason as `generationRef`.
   const dirtyRef = useRef(false);
 
   useEffect(() => {
@@ -108,15 +83,10 @@ export function EditMatchDialog({
       dirtyRef.current = false;
       setFormError(null);
     }
-    // Seeded on open, and re-seeded when a data reload delivers a fresher copy
-    // of a match the admin has not started editing. Without the latter, a
-    // reopen that races the previous save's reload keeps rendering the scores
-    // from before that save — and writes them back over it on the next Save.
-    // The `dirty` guard is what stops a refetch stomping edits in progress.
+    // Accept refreshed scores until the admin edits this dialog generation.
     if (reopened || !dirtyRef.current) {
       setTeams(seedTeams(match));
     }
-    // No `else`: closing leaves `teams` populated, same as the Svelte $effect.
   }, [open, match]);
 
   const playerName = (id: string) =>
@@ -147,7 +117,9 @@ export function EditMatchDialog({
 
   const setScore = (teamIndex: number, value: string) =>
     setTeams((prev) =>
-      prev.map((team, i) => (i === teamIndex ? { ...team, score: value } : team))
+      prev.map((team, i) =>
+        i === teamIndex ? { ...team, score: value } : team
+      )
     );
 
   const setSlot = (teamIndex: number, playerIndex: number, value: string) =>
@@ -169,22 +141,14 @@ export function EditMatchDialog({
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const matchId = match?.id;
-    // Two responses would race to decide whether the dialog closes or shows an
-    // error.
     if (!matchId || inFlightRef.current.has(matchId)) return;
     inFlightRef.current.add(matchId);
     syncInFlight();
-    // The previous attempt's message is about the payload being replaced right
-    // now; leaving it up outlives what it describes.
     setFormError(null);
     const submittedGeneration = generationRef.current;
     const teamsPayload = payload;
 
     try {
-      // Resolves only once the host has applied the outcome and reloaded, so
-      // the admin can cancel and reopen while this is pending. That outcome is
-      // page-level and still theirs to see; what a dead save must not do is
-      // close the dialog they have since reopened, or paint its error inside it.
       const result = await onSave({ matchId, teams: teamsPayload });
       if (submittedGeneration !== generationRef.current) return;
 
@@ -194,8 +158,6 @@ export function EditMatchDialog({
         onOpenChange(false);
       }
     } finally {
-      // Unconditional: leaving the id in place after a superseded response
-      // would disable Save for that match forever.
       inFlightRef.current.delete(matchId);
       syncInFlight();
     }
@@ -218,10 +180,6 @@ export function EditMatchDialog({
         </DialogHeader>
 
         {!match ? (
-          /* Only reachable once the dialog has been opened on a match that has
-             since left the page of results — deleted, or shifted out of the
-             window by a reload. Saying "no match selected" would describe a
-             state the admin was never in. */
           <p className="py-4 text-center text-sm text-muted-foreground">
             This match is no longer in the list — it may have been deleted, or
             moved to another page.
@@ -234,11 +192,7 @@ export function EditMatchDialog({
             onChange={markDirty}
           >
             <input type="hidden" name="matchId" value={match.id} />
-            <input
-              type="hidden"
-              name="teams"
-              value={JSON.stringify(payload)}
-            />
+            <input type="hidden" name="teams" value={JSON.stringify(payload)} />
 
             {formError && <Alert variant="destructive">{formError}</Alert>}
 

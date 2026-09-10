@@ -22,10 +22,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HttpErrorView } from '@/components/http-error-view';
 import { OpenFlagBadge } from '@/components/admin/open-flag-badge';
+import { failServerAction } from '@/lib/server/action-result';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireAdminOrg, resolveOrgIdBySlug } from '@/lib/server/admin';
-import { meQueryKey } from '@/lib/shell';
+import { refreshAuthedShellData } from '@/lib/shell';
 import { formatLeagueFormat, openFlagsForLeague } from '@/lib/utils';
 import type { LeagueResponse } from '@/api-v3';
 
@@ -55,8 +56,8 @@ const createLeagueFn = createServerFn({ method: 'POST' })
     const teamSize = Number(data.teamSize);
     const winningScoreRaw = data.winningScore.trim();
 
-    if (!name) return { error: 'Name is required' };
-    if (!slug) return { error: 'Slug is required' };
+    if (!name) return failServerAction(400, { error: 'Name is required' });
+    if (!slug) return failServerAction(400, { error: 'Slug is required' });
 
     // Blank input = free-form scoring, i.e. an explicit `null` on the wire
     // (`undefined` would mean "server default of 10"). There is deliberately no
@@ -66,17 +67,18 @@ const createLeagueFn = createServerFn({ method: 'POST' })
     if (winningScoreRaw) {
       const parsed = Number(winningScoreRaw);
       if (!Number.isInteger(parsed) || parsed < 1) {
-        return {
+        return failServerAction(400, {
           error:
             'Winning score must be a positive integer, or blank for free-form',
-        };
+        });
       }
       winningScore = parsed;
     }
 
     const apiClientV3 = await requireApiClientV3();
     const orgId = await resolveOrgIdBySlug(apiClientV3, data.orgSlug);
-    if (!orgId) return { error: 'Organization not found' };
+    if (!orgId)
+      return failServerAction(404, { error: 'Organization not found' });
 
     try {
       await apiClientV3.leaguesApi.createLeague(orgId, {
@@ -87,11 +89,11 @@ const createLeagueFn = createServerFn({ method: 'POST' })
       });
       return { success: 'League created' };
     } catch (err) {
-      const { message } = await getApiErrorDetails(
+      const { status, message } = await getApiErrorDetails(
         err,
         'Failed to create league'
       );
-      return { error: message };
+      return failServerAction(status, { error: message });
     }
   });
 
@@ -130,7 +132,7 @@ function AdminLeaguesPage() {
             variant={showCreate ? 'ghost' : 'default'}
             onClick={() => setShowCreate((open) => !open)}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" />
             {showCreate ? 'Cancel' : 'New league'}
           </Button>
         )}
@@ -153,20 +155,27 @@ function AdminLeaguesPage() {
               onSubmit={async (event) => {
                 event.preventDefault();
                 const formData = new FormData(event.currentTarget);
-                const actionResult = await createLeagueFn({
-                  data: {
-                    orgSlug: org.slug,
-                    name: String(formData.get('name') ?? ''),
-                    slug: String(formData.get('slug') ?? ''),
-                    teamSize: String(formData.get('teamSize') ?? ''),
-                    winningScore: String(formData.get('winningScore') ?? ''),
-                  },
-                });
+                let actionResult: ActionResult;
+                try {
+                  actionResult = await createLeagueFn({
+                    data: {
+                      orgSlug: org.slug,
+                      name: String(formData.get('name') ?? ''),
+                      slug: String(formData.get('slug') ?? ''),
+                      teamSize: String(formData.get('teamSize') ?? ''),
+                      winningScore: String(formData.get('winningScore') ?? ''),
+                    },
+                  });
+                } catch {
+                  actionResult = {
+                    error: 'Request failed. Please try again.',
+                  };
+                }
                 setResult(actionResult);
-                // A new league shows up in `me`, which the header switcher and
-                // the navbar read.
-                await queryClient.invalidateQueries({ queryKey: meQueryKey });
-                await router.invalidate();
+                if (actionResult.success) {
+                  await refreshAuthedShellData(queryClient);
+                  await router.invalidate({ sync: true });
+                }
                 if (actionResult.success) setShowCreate(false);
               }}
             >

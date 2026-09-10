@@ -23,21 +23,34 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HttpErrorView } from '@/components/http-error-view';
+import {
+  failServerAction,
+  nativeFormResponse,
+  parseNativeFormData,
+} from '@/lib/server/action-result';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { requireAdminOrg, resolveOrgIdBySlug } from '@/lib/server/admin';
-import { formatDate, getRoleBadgeVariant, isModeratorOrAbove } from '@/lib/utils';
+import {
+  formatDate,
+  getRoleBadgeVariant,
+  isModeratorOrAbove,
+} from '@/lib/utils';
 import type {
   InviteLinkResponse,
   OrganizationMemberResponse,
   OrganizationRole,
 } from '@/api-v3';
 
-/**
- * Every mutation on this page swallows the real API error and reports the
- * generic string below — that is the Svelte behaviour and it is what the UI
- * copy is written against. Do not route these through `getApiErrorDetails`.
- */
+// The reference UI exposes fixed messages rather than upstream details.
 type ActionResult = { error?: string; success?: string };
+
+interface InviteMemberInput {
+  orgSlug: string;
+  email: string;
+  role: string;
+  displayName: string;
+  username: string;
+}
 
 const loadMembersFn = createServerFn({ method: 'GET' })
   .validator((orgSlug: string) => orgSlug)
@@ -51,7 +64,6 @@ const loadMembersFn = createServerFn({ method: 'GET' })
       const org = await requireAdminOrg(orgSlug);
       const apiClientV3 = await requireApiClientV3();
 
-      // No try/catch: a failure here is a page error, same as the Svelte load.
       const [members, inviteLinks] = await Promise.all([
         apiClientV3.organizationMembersApi.listMembers(org.id),
         apiClientV3.organizationInviteLinksApi.listInviteLinks(org.id),
@@ -61,33 +73,27 @@ const loadMembersFn = createServerFn({ method: 'GET' })
     }
   );
 
-const inviteMemberFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: {
-      orgSlug: string;
-      email: string;
-      role: string;
-      displayName: string;
-      username: string;
-    }) => input
-  )
-  .handler(async ({ data }): Promise<ActionResult> => {
-    const apiClientV3 = await requireApiClientV3();
-    const orgId = await resolveOrgIdBySlug(apiClientV3, data.orgSlug);
-    if (!orgId) return { error: 'Organization not found' };
+async function inviteMember(data: InviteMemberInput): Promise<ActionResult> {
+  const apiClientV3 = await requireApiClientV3();
+  const orgId = await resolveOrgIdBySlug(apiClientV3, data.orgSlug);
+  if (!orgId) return failServerAction(404, { error: 'Organization not found' });
 
-    try {
-      await apiClientV3.organizationMembersApi.inviteMember(orgId, {
-        email: data.email,
-        role: data.role as OrganizationRole,
-        displayName: data.displayName.trim() || undefined,
-        username: data.username.trim() || undefined,
-      });
-      return { success: 'Member invited successfully' };
-    } catch {
-      return { error: 'Failed to invite member' };
-    }
-  });
+  try {
+    await apiClientV3.organizationMembersApi.inviteMember(orgId, {
+      email: data.email,
+      role: data.role as OrganizationRole,
+      displayName: data.displayName.trim() || undefined,
+      username: data.username.trim() || undefined,
+    });
+    return { success: 'Member invited successfully' };
+  } catch {
+    return failServerAction(400, { error: 'Failed to invite member' });
+  }
+}
+
+const inviteMemberFn = createServerFn({ method: 'POST' })
+  .validator((input: InviteMemberInput) => input)
+  .handler(({ data }): Promise<ActionResult> => inviteMember(data));
 
 const updateMemberRoleFn = createServerFn({ method: 'POST' })
   .validator(
@@ -96,7 +102,8 @@ const updateMemberRoleFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<ActionResult> => {
     const apiClientV3 = await requireApiClientV3();
     const orgId = await resolveOrgIdBySlug(apiClientV3, data.orgSlug);
-    if (!orgId) return { error: 'Organization not found' };
+    if (!orgId)
+      return failServerAction(404, { error: 'Organization not found' });
 
     try {
       await apiClientV3.organizationMembersApi.updateMemberRole(
@@ -106,7 +113,7 @@ const updateMemberRoleFn = createServerFn({ method: 'POST' })
       );
       return { success: 'Role updated successfully' };
     } catch {
-      return { error: 'Failed to update role' };
+      return failServerAction(400, { error: 'Failed to update role' });
     }
   });
 
@@ -117,15 +124,15 @@ const updateMemberProfileFn = createServerFn({ method: 'POST' })
       membershipId: string;
       displayName: string;
       username: string;
-      /** `null` when the member is linked to a user account — the disabled
-       *  email input carries no `name`, so the field is simply absent. */
+      /** `null` when a linked user's disabled email field is absent. */
       email: string | null;
     }) => input
   )
   .handler(async ({ data }): Promise<ActionResult> => {
     const apiClientV3 = await requireApiClientV3();
     const orgId = await resolveOrgIdBySlug(apiClientV3, data.orgSlug);
-    if (!orgId) return { error: 'Organization not found' };
+    if (!orgId)
+      return failServerAction(404, { error: 'Organization not found' });
 
     try {
       await apiClientV3.organizationMembersApi.updateMemberProfile(
@@ -139,27 +146,34 @@ const updateMemberProfileFn = createServerFn({ method: 'POST' })
       );
       return { success: 'Profile updated successfully' };
     } catch {
-      return { error: 'Failed to update profile' };
+      return failServerAction(400, { error: 'Failed to update profile' });
     }
   });
+
+interface RemoveMemberInput {
+  orgSlug: string;
+  membershipId: string;
+}
+
+async function removeMember(data: RemoveMemberInput): Promise<ActionResult> {
+  const apiClientV3 = await requireApiClientV3();
+  const orgId = await resolveOrgIdBySlug(apiClientV3, data.orgSlug);
+  if (!orgId) return failServerAction(404, { error: 'Organization not found' });
+
+  try {
+    await apiClientV3.organizationMembersApi.removeMember(
+      orgId,
+      data.membershipId
+    );
+    return { success: 'Member removed successfully' };
+  } catch {
+    return failServerAction(400, { error: 'Failed to remove member' });
+  }
+}
 
 const removeMemberFn = createServerFn({ method: 'POST' })
-  .validator((input: { orgSlug: string; membershipId: string }) => input)
-  .handler(async ({ data }): Promise<ActionResult> => {
-    const apiClientV3 = await requireApiClientV3();
-    const orgId = await resolveOrgIdBySlug(apiClientV3, data.orgSlug);
-    if (!orgId) return { error: 'Organization not found' };
-
-    try {
-      await apiClientV3.organizationMembersApi.removeMember(
-        orgId,
-        data.membershipId
-      );
-      return { success: 'Member removed successfully' };
-    } catch {
-      return { error: 'Failed to remove member' };
-    }
-  });
+  .validator((input: RemoveMemberInput) => input)
+  .handler(({ data }): Promise<ActionResult> => removeMember(data));
 
 const createInviteLinkFn = createServerFn({ method: 'POST' })
   .validator(
@@ -168,7 +182,8 @@ const createInviteLinkFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<ActionResult> => {
     const apiClientV3 = await requireApiClientV3();
     const orgId = await resolveOrgIdBySlug(apiClientV3, data.orgSlug);
-    if (!orgId) return { error: 'Organization not found' };
+    if (!orgId)
+      return failServerAction(404, { error: 'Organization not found' });
 
     try {
       await apiClientV3.organizationInviteLinksApi.createInviteLink(orgId, {
@@ -179,29 +194,85 @@ const createInviteLinkFn = createServerFn({ method: 'POST' })
       });
       return { success: 'Invite link created' };
     } catch {
-      return { error: 'Failed to create invite link' };
+      return failServerAction(400, { error: 'Failed to create invite link' });
     }
   });
+
+interface DeleteInviteLinkInput {
+  orgSlug: string;
+  linkId: string;
+}
+
+async function deleteInviteLink(
+  data: DeleteInviteLinkInput
+): Promise<ActionResult> {
+  const apiClientV3 = await requireApiClientV3();
+  const orgId = await resolveOrgIdBySlug(apiClientV3, data.orgSlug);
+  if (!orgId) return failServerAction(404, { error: 'Organization not found' });
+
+  try {
+    await apiClientV3.organizationInviteLinksApi.deleteInviteLink(
+      orgId,
+      data.linkId
+    );
+    return { success: 'Invite link deleted' };
+  } catch {
+    return failServerAction(400, { error: 'Failed to delete invite link' });
+  }
+}
 
 const deleteInviteLinkFn = createServerFn({ method: 'POST' })
-  .validator((input: { orgSlug: string; linkId: string }) => input)
-  .handler(async ({ data }): Promise<ActionResult> => {
-    const apiClientV3 = await requireApiClientV3();
-    const orgId = await resolveOrgIdBySlug(apiClientV3, data.orgSlug);
-    if (!orgId) return { error: 'Organization not found' };
-
-    try {
-      await apiClientV3.organizationInviteLinksApi.deleteInviteLink(
-        orgId,
-        data.linkId
-      );
-      return { success: 'Invite link deleted' };
-    } catch {
-      return { error: 'Failed to delete invite link' };
-    }
-  });
+  .validator((input: DeleteInviteLinkInput) => input)
+  .handler(({ data }): Promise<ActionResult> => deleteInviteLink(data));
 
 export const Route = createFileRoute('/admin/$orgSlug/members')({
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { actionSuccess?: string } => ({
+    ...(typeof search.actionSuccess === 'string'
+      ? { actionSuccess: search.actionSuccess }
+      : {}),
+  }),
+  server: {
+    handlers: {
+      POST: async ({ request, params }) => {
+        const formData = await parseNativeFormData(request);
+        let actionResult: ActionResult;
+        try {
+          switch (formData.get('_action')) {
+            case 'invite':
+              actionResult = await inviteMember({
+                orgSlug: params.orgSlug,
+                email: String(formData.get('email') ?? ''),
+                role: String(formData.get('role') ?? ''),
+                displayName: String(formData.get('displayName') ?? ''),
+                username: String(formData.get('username') ?? ''),
+              });
+              break;
+            case 'deleteInviteLink':
+              actionResult = await deleteInviteLink({
+                orgSlug: params.orgSlug,
+                linkId: String(formData.get('linkId') ?? ''),
+              });
+              break;
+            case 'remove':
+              actionResult = await removeMember({
+                orgSlug: params.orgSlug,
+                membershipId: String(formData.get('membershipId') ?? ''),
+              });
+              break;
+            default:
+              return new Response('Unsupported form action', { status: 400 });
+          }
+        } catch {
+          actionResult = failServerAction(500, {
+            error: 'Request failed. Please try again.',
+          });
+        }
+        return nativeFormResponse(request, actionResult);
+      },
+    },
+  },
   loader: ({ params }) => loadMembersFn({ data: params.orgSlug }),
   errorComponent: HttpErrorView,
   component: MembersPage,
@@ -213,9 +284,12 @@ const getStatusBadgeVariant = (status: string) =>
 function MembersPage() {
   const { org } = Route.useRouteContext();
   const { members, inviteLinks } = Route.useLoaderData();
+  const search = Route.useSearch();
   const router = useRouter();
 
-  const [result, setResult] = useState<ActionResult | null>(null);
+  const [result, setResult] = useState<ActionResult | null>(() =>
+    search.actionSuccess ? { success: search.actionSuccess } : null
+  );
   const [showCreateLink, setShowCreateLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [editingMembershipId, setEditingMembershipId] = useState<string | null>(
@@ -225,12 +299,15 @@ function MembersPage() {
   const isOwner = org.role === 'Owner';
   const canModerate = isModeratorOrAbove(org.role);
 
-  // Every action runs the full data reload before the UI settles, exactly like
-  // SvelteKit's `await update()`.
   const run = async (action: Promise<ActionResult>) => {
-    const actionResult = await action;
+    let actionResult: ActionResult;
+    try {
+      actionResult = await action;
+    } catch {
+      actionResult = { error: 'Request failed. Please try again.' };
+    }
     setResult(actionResult);
-    await router.invalidate();
+    if (actionResult.success) await router.invalidate({ sync: true });
     return actionResult;
   };
 
@@ -248,14 +325,12 @@ function MembersPage() {
   return (
     <div className="space-y-6">
       <div>
-        {/* level 1 — the sidebar link shares this accessible name. */}
         <h1 className="text-2xl font-bold tracking-tight">Members</h1>
         <p className="text-sm text-muted-foreground">
           Manage members of {org.name}
         </p>
       </div>
 
-      {/* Two independent conditions, not if/else — same as the Svelte page. */}
       {result?.error && <Alert variant="destructive">{result.error}</Alert>}
       {result?.success && <Alert variant="success">{result.success}</Alert>}
 
@@ -306,8 +381,9 @@ function MembersPage() {
                               : ''}
                           </p>
                         </div>
-                        {/* No confirm dialog — deliberate parity. */}
                         <form
+                          method="post"
+                          action={`/admin/${org.slug}/members`}
                           onSubmit={(event) => {
                             event.preventDefault();
                             void run(
@@ -319,9 +395,10 @@ function MembersPage() {
                         >
                           <input
                             type="hidden"
-                            name="linkId"
-                            value={link.id}
+                            name="_action"
+                            value="deleteInviteLink"
                           />
+                          <input type="hidden" name="linkId" value={link.id} />
                           <Button
                             type="submit"
                             variant="ghost"
@@ -360,7 +437,6 @@ function MembersPage() {
                           },
                         })
                       );
-                      // Unconditional, even on failure — parity.
                       setShowCreateLink(false);
                     }}
                   >
@@ -412,6 +488,8 @@ function MembersPage() {
             </CardHeader>
             <CardContent>
               <form
+                method="post"
+                action={`/admin/${org.slug}/members`}
                 className="flex flex-col gap-4"
                 onSubmit={(event) => {
                   event.preventDefault();
@@ -429,6 +507,7 @@ function MembersPage() {
                   );
                 }}
               >
+                <input type="hidden" name="_action" value="invite" />
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                   <div className="flex-1 space-y-2">
                     <Label htmlFor="email">Email</Label>
@@ -513,8 +592,6 @@ function MembersPage() {
                           },
                         })
                       );
-                      // Closes even on failure; the error alert then shows at
-                      // the top of the page.
                       setEditingMembershipId(null);
                     }}
                   >
@@ -550,8 +627,7 @@ function MembersPage() {
                         <Label htmlFor={`email-${member.id}`}>Email</Label>
                         {member.userId ? (
                           <>
-                            {/* No `name`, so it is never submitted and the
-                                server leaves the email alone. */}
+                            {/* Omit `name` so the server leaves the email alone. */}
                             <Input
                               id={`email-${member.id}`}
                               defaultValue={member.email ?? ''}
@@ -591,7 +667,6 @@ function MembersPage() {
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        {/* `||`, not `??` — an empty string falls through. */}
                         <span className="truncate font-medium">
                           {member.displayName ||
                             member.username ||
@@ -629,8 +704,6 @@ function MembersPage() {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        {/* Changing the select submits immediately — there is
-                            no save button. */}
                         <form onSubmit={(event) => event.preventDefault()}>
                           <input
                             type="hidden"
@@ -660,6 +733,8 @@ function MembersPage() {
                           </select>
                         </form>
                         <form
+                          method="post"
+                          action={`/admin/${org.slug}/members`}
                           onSubmit={(event) => {
                             event.preventDefault();
                             void run(
@@ -672,6 +747,7 @@ function MembersPage() {
                             );
                           }}
                         >
+                          <input type="hidden" name="_action" value="remove" />
                           <input
                             type="hidden"
                             name="membershipId"

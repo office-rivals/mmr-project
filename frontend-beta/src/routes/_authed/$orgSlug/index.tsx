@@ -16,6 +16,11 @@ import {
 } from '@/components/ui/card';
 import { HttpErrorView } from '@/components/http-error-view';
 import { HttpError } from '@/lib/http-error';
+import {
+  failServerAction,
+  nativeFormResponse,
+  parseNativeFormData,
+} from '@/lib/server/action-result';
 import { createRouteGuard } from '@/lib/server/http-error';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { loadShellData, loadShellDataOnce } from '@/lib/server/shell';
@@ -51,39 +56,85 @@ const listLeaguesFn = createServerFn({ method: 'GET' })
 type JoinLeagueResult =
   { status: 'error'; error: string } | { status: 'ok'; redirectTo: string };
 
+interface JoinLeagueInput {
+  orgSlug: string;
+  leagueId: string;
+  leagueSlug: string;
+}
+
 /**
  * Server-authoritative join: the client posts only the league id and slug, and
  * the org id is re-resolved from `getMe()` here — never trusted from the
  * browser. Mirrors the `?/joinLeague` action, error strings included.
  */
+async function joinLeague(data: JoinLeagueInput): Promise<JoinLeagueResult> {
+  if (!data.leagueId || !data.leagueSlug) {
+    return failServerAction(400, {
+      status: 'error',
+      error: 'League selection is invalid',
+    });
+  }
+
+  const shell = await loadShellData();
+  if (shell.profileLoadFailed) {
+    return failServerAction(500, {
+      status: 'error',
+      error: 'Failed to load user profile',
+    });
+  }
+  const org = shell.organizations.find((o) => o.slug === data.orgSlug);
+  if (!org) {
+    return failServerAction(404, {
+      status: 'error',
+      error: 'Organization not found',
+    });
+  }
+
+  const apiClientV3 = await requireApiClientV3();
+  try {
+    await apiClientV3.leaguePlayersApi.joinLeague(org.id, data.leagueId);
+  } catch {
+    return failServerAction(400, {
+      status: 'error',
+      error: 'Failed to join league',
+    });
+  }
+
+  return {
+    status: 'ok',
+    redirectTo: `/${data.orgSlug}/${data.leagueSlug}`,
+  };
+}
+
 const joinLeagueFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: { orgSlug: string; leagueId: string; leagueSlug: string }) => input
-  )
-  .handler(async ({ data }): Promise<JoinLeagueResult> => {
-    if (!data.leagueId || !data.leagueSlug) {
-      return { status: 'error', error: 'League selection is invalid' };
-    }
-
-    const shell = await loadShellData();
-    const org = shell.organizations.find((o) => o.slug === data.orgSlug);
-    if (!org) return { status: 'error', error: 'Organization not found' };
-
-    const apiClientV3 = await requireApiClientV3();
-    try {
-      await apiClientV3.leaguePlayersApi.joinLeague(org.id, data.leagueId);
-    } catch {
-      return { status: 'error', error: 'Failed to join league' };
-    }
-
-    return {
-      status: 'ok',
-      redirectTo: `/${data.orgSlug}/${data.leagueSlug}`,
-    };
-  });
+  .validator((input: JoinLeagueInput) => input)
+  .handler(({ data }): Promise<JoinLeagueResult> => joinLeague(data));
 
 export const Route = createFileRoute('/_authed/$orgSlug/')({
-  server: { middleware: [orgGuard] },
+  server: {
+    middleware: [orgGuard],
+    handlers: {
+      POST: async ({ request, params }) => {
+        const formData = await parseNativeFormData(request);
+        if (formData.get('_action') !== 'joinLeague') {
+          return new Response('Unsupported form action', { status: 400 });
+        }
+
+        const result = await joinLeague({
+          orgSlug: params.orgSlug,
+          leagueId: String(formData.get('leagueId') ?? ''),
+          leagueSlug: String(formData.get('leagueSlug') ?? ''),
+        });
+        if (result.status === 'error') {
+          return nativeFormResponse(request, result);
+        }
+        return new Response(null, {
+          status: 303,
+          headers: { location: result.redirectTo },
+        });
+      },
+    },
+  },
   loader: async ({ context, params }) => {
     const shell = context.authedShell;
     const org = resolveOrg(shell, params.orgSlug);
@@ -178,6 +229,8 @@ function OrgHomePageContent() {
                 </Button>
               ) : (
                 <form
+                  method="post"
+                  action={`/${org.slug}`}
                   onSubmit={(event) => {
                     event.preventDefault();
                     joinLeague.mutate({
@@ -186,6 +239,7 @@ function OrgHomePageContent() {
                     });
                   }}
                 >
+                  <input type="hidden" name="_action" value="joinLeague" />
                   <input type="hidden" name="leagueId" value={league.id} />
                   <input type="hidden" name="leagueSlug" value={league.slug} />
                   {/* Not disabled while in flight — the Svelte form is a stock

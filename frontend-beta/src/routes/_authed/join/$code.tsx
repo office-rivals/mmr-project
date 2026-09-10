@@ -7,6 +7,11 @@ import { AppLink } from '@/components/app-link';
 import { PageTitle } from '@/components/page-title';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  failServerAction,
+  nativeFormResponse,
+  parseNativeFormData,
+} from '@/lib/server/action-result';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import type { InviteInfoResponse } from '@/api-v3';
 
@@ -53,23 +58,43 @@ type JoinResult =
  * so there is no thrown-redirect for the catch-all to swallow — the Svelte
  * action needed an explicit `status === 303` re-throw for exactly that reason.
  */
+async function joinOrganization(code: string): Promise<JoinResult> {
+  const apiClientV3 = await requireApiClientV3();
+  try {
+    const result = await apiClientV3.invitesApi.joinOrganization(code);
+    return { status: 'ok', organizationSlug: result.organizationSlug };
+  } catch {
+    return failServerAction(400, {
+      status: 'error',
+      error:
+        'Failed to join organization. The invite may be invalid or expired.',
+    });
+  }
+}
+
 const joinOrganizationFn = createServerFn({ method: 'POST' })
   .validator((code: string) => code)
-  .handler(async ({ data: code }): Promise<JoinResult> => {
-    const apiClientV3 = await requireApiClientV3();
-    try {
-      const result = await apiClientV3.invitesApi.joinOrganization(code);
-      return { status: 'ok', organizationSlug: result.organizationSlug };
-    } catch {
-      return {
-        status: 'error',
-        error:
-          'Failed to join organization. The invite may be invalid or expired.',
-      };
-    }
-  });
+  .handler(({ data: code }): Promise<JoinResult> => joinOrganization(code));
 
 export const Route = createFileRoute('/_authed/join/$code')({
+  server: {
+    handlers: {
+      POST: async ({ request, params }) => {
+        const formData = await parseNativeFormData(request);
+        if (formData.get('_action') !== 'join') {
+          return new Response('Unsupported form action', { status: 400 });
+        }
+        const result = await joinOrganization(params.code);
+        if (result.status === 'error') {
+          return nativeFormResponse(request, result);
+        }
+        return new Response(null, {
+          status: 303,
+          headers: { location: `/${result.organizationSlug}` },
+        });
+      },
+    },
+  },
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData({
       queryKey: ['invite', params.code],
@@ -215,11 +240,14 @@ function InviteClaimCard({ organizationName }: { organizationName: string }) {
           ) : null}
 
           <form
+            method="post"
+            action={`/join/${code}`}
             onSubmit={(event) => {
               event.preventDefault();
               join.mutate();
             }}
           >
+            <input type="hidden" name="_action" value="join" />
             <Button type="submit" className="w-full" disabled={join.isPending}>
               {join.isPending ? 'Joining...' : 'Join Organization'}
             </Button>

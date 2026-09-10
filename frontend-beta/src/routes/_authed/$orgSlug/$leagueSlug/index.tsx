@@ -15,11 +15,15 @@ import { Label } from '@/components/ui/label';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { useShowMmr } from '@/hooks/use-show-mmr';
 import { HttpError } from '@/lib/http-error';
+import {
+  createMatchFlagFn,
+  deleteMatchFlagFn,
+  updateMatchFlagFn,
+} from '@/lib/match-flag-actions';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
-import { getApiErrorDetails } from '@/lib/server/apiError';
 import { selectCurrentSeason } from '@/lib/util/season';
 import { groupMatchesByDate } from '@/lib/utils';
-import type { FlagActionResult } from '@/components/report-match-modal';
+import type { FlagActionResult } from '@/lib/match-flag-actions';
 import type {
   LeaderboardEntryResponse,
   LeaderboardResponse,
@@ -127,99 +131,6 @@ const getLeagueRatingHistoryFn = createServerFn({ method: 'GET' })
     }
   );
 
-const flagMatchFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: {
-      orgId: string;
-      leagueId: string;
-      matchId: string;
-      reason: string;
-    }) => input
-  )
-  .handler(async ({ data }): Promise<FlagActionResult> => {
-    const reason = data.reason?.trim();
-    if (!data.matchId || !reason || !data.orgId || !data.leagueId) {
-      return { success: false, message: 'Match ID and reason are required' };
-    }
-
-    const apiClientV3 = await requireApiClientV3();
-    try {
-      await apiClientV3.matchFlagsApi.createFlag(data.orgId, data.leagueId, {
-        matchId: data.matchId,
-        reason,
-      });
-    } catch (error) {
-      const { message } = await getApiErrorDetails(
-        error,
-        'Failed to create flag'
-      );
-      return { success: false, message };
-    }
-
-    return { success: true, message: 'Match flagged successfully' };
-  });
-
-const updateFlagFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: {
-      orgId: string;
-      leagueId: string;
-      flagId: string;
-      reason: string;
-    }) => input
-  )
-  .handler(async ({ data }): Promise<FlagActionResult> => {
-    const reason = data.reason?.trim();
-    if (!data.flagId || !reason || !data.orgId || !data.leagueId) {
-      return { success: false, message: 'Flag ID and reason are required' };
-    }
-
-    const apiClientV3 = await requireApiClientV3();
-    try {
-      await apiClientV3.matchFlagsApi.updateFlagReason(
-        data.orgId,
-        data.leagueId,
-        data.flagId,
-        { reason }
-      );
-    } catch (error) {
-      const { message } = await getApiErrorDetails(
-        error,
-        'Failed to update flag'
-      );
-      return { success: false, message };
-    }
-
-    return { success: true, message: 'Flag updated successfully' };
-  });
-
-const deleteFlagFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: { orgId: string; leagueId: string; flagId: string }) => input
-  )
-  .handler(async ({ data }): Promise<FlagActionResult> => {
-    if (!data.flagId || !data.orgId || !data.leagueId) {
-      return { success: false, message: 'Flag ID is required' };
-    }
-
-    const apiClientV3 = await requireApiClientV3();
-    try {
-      await apiClientV3.matchFlagsApi.deleteFlag(
-        data.orgId,
-        data.leagueId,
-        data.flagId
-      );
-    } catch (error) {
-      const { message } = await getApiErrorDetails(
-        error,
-        'Failed to delete flag'
-      );
-      return { success: false, message };
-    }
-
-    return { success: true, message: 'Flag deleted successfully' };
-  });
-
 export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/')({
   // Permissive on purpose: the Svelte page forwarded whatever `?season=` held
   // straight to the API. A stricter uuid check would turn a bad link into a
@@ -258,8 +169,13 @@ export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/')({
     };
   },
   errorComponent: HttpErrorView,
-  component: LeagueHomePage,
+  component: LeagueHomeRoute,
 });
+
+function LeagueHomeRoute() {
+  const { leagueId } = Route.useLoaderData();
+  return <LeagueHomePage key={leagueId} />;
+}
 
 function LeagueHomePage() {
   const data = Route.useLoaderData();
@@ -329,7 +245,7 @@ function LeagueHomePage() {
     async (result: FlagActionResult): Promise<FlagActionResult> => {
       if (result.success) {
         setFormResult(result);
-        await router.invalidate();
+        await router.invalidate({ sync: true });
       }
       return result;
     },
@@ -338,7 +254,7 @@ function LeagueHomePage() {
 
   const handleCreateFlag = useCallback(
     (input: { matchId: string; reason: string }) =>
-      flagMatchFn({
+      createMatchFlagFn({
         data: { orgId: data.orgId, leagueId: data.leagueId, ...input },
       }).then(afterFlagAction),
     [data.orgId, data.leagueId, afterFlagAction]
@@ -346,7 +262,7 @@ function LeagueHomePage() {
 
   const handleUpdateFlag = useCallback(
     (input: { flagId: string; reason: string }) =>
-      updateFlagFn({
+      updateMatchFlagFn({
         data: { orgId: data.orgId, leagueId: data.leagueId, ...input },
       }).then(afterFlagAction),
     [data.orgId, data.leagueId, afterFlagAction]
@@ -354,7 +270,7 @@ function LeagueHomePage() {
 
   const handleDeleteFlag = useCallback(
     (input: { flagId: string }) =>
-      deleteFlagFn({
+      deleteMatchFlagFn({
         data: { orgId: data.orgId, leagueId: data.leagueId, ...input },
       }).then(afterFlagAction),
     [data.orgId, data.leagueId, afterFlagAction]

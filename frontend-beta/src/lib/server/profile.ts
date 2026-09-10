@@ -35,6 +35,8 @@ export interface PlayerProfileStats {
 }
 
 export interface PlayerProfileData {
+  orgId: string;
+  leagueId: string;
   player: LeaguePlayerResponse;
   /** Newest first, each rotated by `movePlayerToTopLeft`. */
   matches: MatchResponse[];
@@ -201,6 +203,8 @@ export async function loadPlayerProfile(
     );
 
     return {
+      orgId,
+      leagueId,
       player,
       matches: reorderedMatches,
       ratingHistory,

@@ -17,6 +17,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import {
+  failServerAction,
+  nativeFormResponse,
+  parseNativeFormData,
+} from '@/lib/server/action-result';
 import { formatDate } from '@/lib/utils';
 import type { CreateTokenResponse, TokenResponse } from '@/api-v3';
 
@@ -38,47 +43,66 @@ type CreateTokenResult =
   | { status: 'ok'; createdToken: CreateTokenResponse }
   | { status: 'error'; error: string };
 
+async function createToken(data: {
+  name: string;
+  expiresAt: string;
+}): Promise<CreateTokenResult> {
+  if (data.name.trim() === '') {
+    return failServerAction(400, {
+      status: 'error',
+      error: 'Token name is required',
+    });
+  }
+
+  try {
+    const apiClientV3 = await requireApiClientV3();
+    const result = await apiClientV3.personalAccessTokensApi.generateToken({
+      name: data.name.trim(),
+      scope: 'write',
+      expiresAt:
+        data.expiresAt !== ''
+          ? new Date(data.expiresAt).toISOString()
+          : undefined,
+    });
+    return { status: 'ok', createdToken: result };
+  } catch {
+    return failServerAction(500, {
+      status: 'error',
+      error: 'Failed to create token',
+    });
+  }
+}
+
 const createTokenFn = createServerFn({ method: 'POST' })
   .validator((input: { name: string; expiresAt: string }) => input)
-  .handler(async ({ data }): Promise<CreateTokenResult> => {
-    if (data.name.trim() === '') {
-      return { status: 'error', error: 'Token name is required' };
-    }
-
-    try {
-      const apiClientV3 = await requireApiClientV3();
-      const result = await apiClientV3.personalAccessTokensApi.generateToken({
-        name: data.name.trim(),
-        scope: 'write',
-        // `datetime-local` yields a local wall-clock string; it is parsed here,
-        // so the offset applied is the server's, not the browser's.
-        expiresAt:
-          data.expiresAt !== ''
-            ? new Date(data.expiresAt).toISOString()
-            : undefined,
-      });
-      return { status: 'ok', createdToken: result };
-    } catch {
-      return { status: 'error', error: 'Failed to create token' };
-    }
-  });
+  .handler(({ data }): Promise<CreateTokenResult> => createToken(data));
 
 type RevokeTokenResult = { status: 'ok' } | { status: 'error'; error: string };
 
+async function revokeToken(tokenId: string): Promise<RevokeTokenResult> {
+  if (tokenId === '') {
+    return failServerAction(400, {
+      status: 'error',
+      error: 'Token ID is required',
+    });
+  }
+  try {
+    const apiClientV3 = await requireApiClientV3();
+    await apiClientV3.personalAccessTokensApi.revokeToken(tokenId);
+    return { status: 'ok' };
+  } catch {
+    return failServerAction(500, {
+      status: 'error',
+      error: 'Failed to revoke token',
+    });
+  }
+}
+
 const revokeTokenFn = createServerFn({ method: 'POST' })
   .validator((tokenId: string) => tokenId)
-  .handler(async ({ data: tokenId }): Promise<RevokeTokenResult> => {
-    if (tokenId === '') {
-      return { status: 'error', error: 'Token ID is required' };
-    }
-    try {
-      const apiClientV3 = await requireApiClientV3();
-      await apiClientV3.personalAccessTokensApi.revokeToken(tokenId);
-      return { status: 'ok' };
-    } catch {
-      return { status: 'error', error: 'Failed to revoke token' };
-    }
-  });
+  .handler(({ data: tokenId }): Promise<RevokeTokenResult> =>
+    revokeToken(tokenId)
+  );
 
 const tokensQueryOptions = () =>
   queryOptions({
@@ -93,6 +117,23 @@ const tokensQueryOptions = () =>
  * shell must not stop it rendering.
  */
 export const Route = createFileRoute('/_authed/settings')({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const formData = await parseNativeFormData(request);
+        if (formData.get('_action') !== 'revokeToken') {
+          return new Response('Unsupported form action', { status: 400 });
+        }
+        const result = await revokeToken(
+          String(formData.get('tokenId') ?? '')
+        );
+        return nativeFormResponse(request, {
+          ...result,
+          success: result.status === 'ok',
+        });
+      },
+    },
+  },
   loader: ({ context }) =>
     context.queryClient.ensureQueryData(tokensQueryOptions()),
   component: SettingsPage,
@@ -364,12 +405,15 @@ function TokenTable({
               </td>
               <td className="px-4 py-3 text-right">
                 <form
+                  method="post"
+                  action="/settings"
                   className="inline"
                   onSubmit={(event) => {
                     event.preventDefault();
                     onRevoke(token.id);
                   }}
                 >
+                  <input type="hidden" name="_action" value="revokeToken" />
                   <input type="hidden" name="tokenId" value={token.id} />
                   <Button
                     type="submit"

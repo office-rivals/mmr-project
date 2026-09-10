@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HttpErrorView } from '@/components/http-error-view';
+import { failServerAction } from '@/lib/server/action-result';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireAdminOrg, resolveOrgAndLeagueIds } from '@/lib/server/admin';
@@ -27,9 +28,7 @@ type ActionResult = { success: boolean; message: string };
 const loadSeasonsFn = createServerFn({ method: 'GET' })
   .validator((input: { orgSlug: string; leagueId: string }) => input)
   .handler(
-    async ({
-      data,
-    }): Promise<{ seasons: SeasonResponse[]; now: number }> => {
+    async ({ data }): Promise<{ seasons: SeasonResponse[]; now: number }> => {
       const org = await requireAdminOrg(data.orgSlug);
       const apiClientV3 = await requireApiClientV3();
       // Admins manage upcoming seasons, so this is the UNFILTERED admin
@@ -51,19 +50,29 @@ const createSeasonFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<ActionResult> => {
     const startsAtRaw = data.startsAt.trim();
     if (!startsAtRaw) {
-      return { success: false, message: 'Start date is required' };
+      return failServerAction(400, {
+        success: false,
+        message: 'Start date is required',
+      });
     }
 
     // The `datetime-local` value is a naive local string parsed in the
     // *server's* timezone. Latent quirk, preserved deliberately.
     const startsAt = new Date(startsAtRaw);
     if (Number.isNaN(startsAt.getTime())) {
-      return { success: false, message: 'Invalid start date' };
+      return failServerAction(400, {
+        success: false,
+        message: 'Invalid start date',
+      });
     }
 
     const apiClientV3 = await requireApiClientV3();
     const ctx = await resolveOrgAndLeagueIds(apiClientV3, data);
-    if (!ctx) return { success: false, message: 'Org or league not found' };
+    if (!ctx)
+      return failServerAction(404, {
+        success: false,
+        message: 'Org or league not found',
+      });
 
     try {
       // The non-admin seasons client is what creates a season.
@@ -72,11 +81,11 @@ const createSeasonFn = createServerFn({ method: 'POST' })
       });
       return { success: true, message: 'Season created' };
     } catch (err) {
-      const { message } = await getApiErrorDetails(
+      const { status, message } = await getApiErrorDetails(
         err,
         'Failed to create season'
       );
-      return { success: false, message };
+      return failServerAction(status, { success: false, message });
     }
   });
 
@@ -119,7 +128,7 @@ function SeasonsPage() {
           variant={showCreate ? 'ghost' : 'default'}
           onClick={() => setShowCreate((open) => !open)}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="mr-2 h-4 w-4" />
           {showCreate ? 'Cancel' : 'New season'}
         </Button>
       </div>
@@ -150,15 +159,24 @@ function SeasonsPage() {
               onSubmit={async (event) => {
                 event.preventDefault();
                 const formData = new FormData(event.currentTarget);
-                const actionResult = await createSeasonFn({
-                  data: {
-                    orgSlug,
-                    leagueSlug,
-                    startsAt: String(formData.get('startsAt') ?? ''),
-                  },
-                });
+                let actionResult: ActionResult;
+                try {
+                  actionResult = await createSeasonFn({
+                    data: {
+                      orgSlug,
+                      leagueSlug,
+                      startsAt: String(formData.get('startsAt') ?? ''),
+                    },
+                  });
+                } catch {
+                  actionResult = {
+                    success: false,
+                    message: 'Request failed. Please try again.',
+                  };
+                }
                 setResult(actionResult);
-                await router.invalidate();
+                if (actionResult.success)
+                  await router.invalidate({ sync: true });
                 if (actionResult.success) setShowCreate(false);
               }}
             >

@@ -9,6 +9,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { HttpErrorView } from '@/components/http-error-view';
 import { SubmitMatchPage } from '@/components/play/submit-match-page';
 import { HttpError } from '@/lib/http-error';
+import { failServerAction } from '@/lib/server/action-result';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import type {
@@ -111,21 +112,24 @@ const submitMatchFn = createServerFn({ method: 'POST' })
     const team2Score = Number(data.team2Score);
 
     if (!team1Player1 || !team2Player1) {
-      return {
+      return failServerAction(400, {
         status: 'error',
         message: 'Each team must have at least one player',
-      };
+      });
     }
 
     if (isNaN(team1Score) || isNaN(team2Score)) {
-      return { status: 'error', message: 'Scores are required' };
+      return failServerAction(400, {
+        status: 'error',
+        message: 'Scores are required',
+      });
     }
 
     if (!data.orgId || !data.leagueId) {
-      return {
+      return failServerAction(400, {
         status: 'error',
         message: 'Organization and league are required',
-      };
+      });
     }
 
     // Slots left empty (the unused player2 entries of a 1v1 league) are
@@ -142,7 +146,10 @@ const submitMatchFn = createServerFn({ method: 'POST' })
       (player) => player && 'error' in player
     );
     if (playerError && 'error' in playerError) {
-      return { status: 'error', message: playerError.error };
+      return failServerAction(400, {
+        status: 'error',
+        message: playerError.error,
+      });
     }
 
     const teams = [
@@ -164,11 +171,11 @@ const submitMatchFn = createServerFn({ method: 'POST' })
         teams,
       });
     } catch (error) {
-      const { message } = await getApiErrorDetails(
+      const { status, message } = await getApiErrorDetails(
         error,
         'Failed to submit match'
       );
-      return { status: 'error', message };
+      return failServerAction(status, { status: 'error', message });
     }
 
     return { status: 'ok' };

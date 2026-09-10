@@ -9,7 +9,11 @@ import { PendingMatchDialog } from '@/components/play/pending-match-dialog';
 import { queueQueryKey } from '@/components/shell/matchmaking-button';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { useHydrated } from '@/hooks/use-hydrated';
+import {
+  failServerAction,
+  nativeFormResponse,
+  parseNativeFormData,
+} from '@/lib/server/action-result';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { formatLeagueFormat } from '@/lib/utils';
@@ -62,6 +66,11 @@ type QueueActionResult =
 
 type QueueActionName = 'join' | 'leave' | 'accept' | 'decline';
 
+interface QueueActionInput extends OrgLeagueInput {
+  action: QueueActionName;
+  matchId?: string;
+}
+
 const TRANSPORT_FALLBACKS: Record<QueueActionName, string> = {
   join: 'Failed to join queue',
   leave: 'Failed to leave queue',
@@ -70,64 +79,82 @@ const TRANSPORT_FALLBACKS: Record<QueueActionName, string> = {
 };
 
 const queueActionFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: {
-      action: QueueActionName;
-      orgId: string;
-      leagueId: string;
-      matchId?: string;
-    }) => input
-  )
-  .handler(async ({ data }): Promise<QueueActionResult> => {
-    const needsMatchId = data.action === 'accept' || data.action === 'decline';
-    if (needsMatchId && !data.matchId) {
-      return { status: 'error', message: 'Match ID is required' };
-    }
-    if (!data.orgId || !data.leagueId) {
-      return {
-        status: 'error',
-        message: 'Organization and league are required',
-      };
-    }
+  .validator((input: QueueActionInput) => input)
+  .handler(({ data }): Promise<QueueActionResult> => queueAction(data));
 
-    const apiClientV3 = await requireApiClientV3();
-    try {
-      switch (data.action) {
-        case 'join':
-          await apiClientV3.queueApi.joinQueue(data.orgId, data.leagueId);
-          break;
-        case 'leave':
-          await apiClientV3.queueApi.leaveQueue(data.orgId, data.leagueId);
-          break;
-        case 'accept':
-          await apiClientV3.pendingMatchesApi.acceptPendingMatch(
-            data.orgId,
-            data.leagueId,
-            data.matchId!
-          );
-          break;
-        case 'decline':
-          await apiClientV3.pendingMatchesApi.declinePendingMatch(
-            data.orgId,
-            data.leagueId,
-            data.matchId!
-          );
-          break;
-      }
-    } catch (error) {
-      const { message } = await getApiErrorDetails(
-        error,
-        TRANSPORT_FALLBACKS[data.action]
-      );
-      return { status: 'error', message };
-    }
+async function queueAction(data: QueueActionInput): Promise<QueueActionResult> {
+  const needsMatchId = data.action === 'accept' || data.action === 'decline';
+  if (needsMatchId && !data.matchId) {
+    return failServerAction(400, {
+      status: 'error',
+      message: 'Match ID is required',
+    });
+  }
+  if (!data.orgId || !data.leagueId) {
+    return failServerAction(400, {
+      status: 'error',
+      message: 'Organization and league are required',
+    });
+  }
 
-    return { status: 'ok' };
-  });
+  const apiClientV3 = await requireApiClientV3();
+  try {
+    switch (data.action) {
+      case 'join':
+        await apiClientV3.queueApi.joinQueue(data.orgId, data.leagueId);
+        break;
+      case 'leave':
+        await apiClientV3.queueApi.leaveQueue(data.orgId, data.leagueId);
+        break;
+      case 'accept':
+        await apiClientV3.pendingMatchesApi.acceptPendingMatch(
+          data.orgId,
+          data.leagueId,
+          data.matchId!
+        );
+        break;
+      case 'decline':
+        await apiClientV3.pendingMatchesApi.declinePendingMatch(
+          data.orgId,
+          data.leagueId,
+          data.matchId!
+        );
+        break;
+    }
+  } catch (error) {
+    const { status, message } = await getApiErrorDetails(
+      error,
+      TRANSPORT_FALLBACKS[data.action]
+    );
+    return failServerAction(status, { status: 'error', message });
+  }
+
+  return { status: 'ok' };
+}
 
 export const Route = createFileRoute(
   '/_authed/$orgSlug/$leagueSlug/matchmaking'
 )({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const formData = await parseNativeFormData(request);
+        const action = formData.get('_action');
+        if (action !== 'join' && action !== 'leave') {
+          return new Response('Unsupported form action', { status: 400 });
+        }
+        const result = await queueAction({
+          action,
+          orgId: String(formData.get('orgId') ?? ''),
+          leagueId: String(formData.get('leagueId') ?? ''),
+        });
+        return nativeFormResponse(request, {
+          ...result,
+          success: result.status === 'ok',
+        });
+      },
+    },
+  },
   loader: ({ context }) => {
     const { orgId, leagueId } = context.league;
     return getMatchmakingDataFn({ data: { orgId, leagueId } });
@@ -152,11 +179,6 @@ function MatchmakingPage({
   const { orgId, leagueId, leaguePlayerId, orgSlug, leagueSlug } = league;
   const queryClient = useQueryClient();
   const [formMessage, setFormMessage] = useState<string | null>(null);
-  // The queue forms are un-enhanced markup until React attaches `onSubmit`:
-  // the SSR'd button paints and is clickable well before hydration finishes,
-  // and a click landing in that window submits nothing and is never replayed.
-  // Keep both queue buttons disabled until the page is actually interactive.
-  const hydrated = useHydrated();
 
   const playersRequiredForMatch = league.leagueTeamSize * 2;
   const formatLabel = formatLeagueFormat(league.leagueTeamSize);
@@ -303,12 +325,19 @@ function MatchmakingPage({
               <p>Waiting for a match...</p>
             </div>
             <p>Missing {remainingPlayers} more players</p>
-            <form onSubmit={submitAction('leave')}>
+            <form
+              method="post"
+              action={`/${orgSlug}/${leagueSlug}/matchmaking`}
+              onSubmit={submitAction('leave')}
+            >
+              <input type="hidden" name="_action" value="leave" />
+              <input type="hidden" name="orgId" value={orgId} />
+              <input type="hidden" name="leagueId" value={leagueId} />
               <Button
                 variant="destructive"
                 type="submit"
                 className="w-full"
-                disabled={!hydrated || queueAction.isPending}
+                disabled={queueAction.isPending}
               >
                 <Pause />
                 <span className="ml-2">Leave queue</span>
@@ -316,12 +345,19 @@ function MatchmakingPage({
             </form>
           </>
         ) : (
-          <form onSubmit={submitAction('join')}>
+          <form
+            method="post"
+            action={`/${orgSlug}/${leagueSlug}/matchmaking`}
+            onSubmit={submitAction('join')}
+          >
+            <input type="hidden" name="_action" value="join" />
+            <input type="hidden" name="orgId" value={orgId} />
+            <input type="hidden" name="leagueId" value={leagueId} />
             <Button
               size="lg"
               className="w-full py-6"
               type="submit"
-              disabled={!hydrated || queueAction.isPending}
+              disabled={queueAction.isPending}
             >
               <Play />
               <span className="ml-2 text-xl">Queue up</span>

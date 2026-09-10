@@ -27,6 +27,11 @@ import { Label } from '@/components/ui/label';
 import { HttpErrorView } from '@/components/http-error-view';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { HttpError } from '@/lib/http-error';
+import {
+  failServerAction,
+  nativeFormResponse,
+  parseNativeFormData,
+} from '@/lib/server/action-result';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireAdminOrg, resolveOrgAndLeagueIds } from '@/lib/server/admin';
@@ -45,7 +50,6 @@ type ActionResult = { success: boolean; message: string };
 const isMatchFlagStatus = (value: string): value is MatchFlagStatus =>
   (Object.values(MatchFlagStatus) as string[]).includes(value);
 
-/** `'all'` is the explicit no-filter view; everything else is a real status. */
 type FlagStatusFilter = MatchFlagStatus | 'all';
 
 interface FlagsPageData {
@@ -66,7 +70,6 @@ const loadFlagsFn = createServerFn({ method: 'GET' })
     async ({ data }): Promise<{ error: string } | { data: FlagsPageData }> => {
       const org = await requireAdminOrg(data.orgSlug);
       const apiClientV3 = await requireApiClientV3();
-      // `all` is the only way to ask the API for an unfiltered list.
       const statusFilter = data.status === 'all' ? undefined : data.status;
 
       try {
@@ -77,17 +80,13 @@ const loadFlagsFn = createServerFn({ method: 'GET' })
             statusFilter
           ),
           apiClientV3.leaguePlayersApi.listPlayers(org.id, data.leagueId),
-          // Edits and recalculation are rejected outside the current season, so
-          // the page needs it up front. No active season ⇒ everything is
-          // read-only.
+          // No active season makes every match read-only.
           apiClientV3.seasonsApi
             .getCurrentSeason(org.id, data.leagueId)
             .then((season) => season.id as string | null)
             .catch(() => null),
         ]);
 
-        // One GET per DISTINCT referenced match — several flags can point at
-        // the same one.
         const uniqueMatchIds = [...new Set(flags.map((flag) => flag.matchId))];
         const matchEntries = await Promise.all(
           uniqueMatchIds.map(async (matchId) => {
@@ -99,8 +98,7 @@ const loadFlagsFn = createServerFn({ method: 'GET' })
               );
               return [matchId, match] as const;
             } catch (err) {
-              // Only a 404 may degrade to null ("the match was deleted").
-              // Anything else must not masquerade as a deletion.
+              // Only a 404 means the referenced match was deleted.
               if (err instanceof ResponseError && err.response.status === 404) {
                 return [matchId, null] as const;
               }
@@ -125,7 +123,6 @@ const loadFlagsFn = createServerFn({ method: 'GET' })
     }
   );
 
-/** Trusts the hidden `orgId`/`leagueId` fields, exactly like `?/resolve`. */
 const resolveFlagFn = createServerFn({ method: 'POST' })
   .validator(
     (input: {
@@ -141,10 +138,16 @@ const resolveFlagFn = createServerFn({ method: 'POST' })
     const note = data.note.trim() || undefined;
 
     if (!data.flagId || !data.orgId || !data.leagueId) {
-      return { success: false, message: 'Flag ID is required' };
+      return failServerAction(400, {
+        success: false,
+        message: 'Flag ID is required',
+      });
     }
     if (!isMatchFlagStatus(rawStatus)) {
-      return { success: false, message: 'Invalid status' };
+      return failServerAction(400, {
+        success: false,
+        message: 'Invalid status',
+      });
     }
 
     const apiClientV3 = await requireApiClientV3();
@@ -156,17 +159,16 @@ const resolveFlagFn = createServerFn({ method: 'POST' })
         { status: rawStatus, resolutionNote: note }
       );
     } catch (err) {
-      const { message } = await getApiErrorDetails(
+      const { status, message } = await getApiErrorDetails(
         err,
         'Failed to resolve flag'
       );
-      return { success: false, message };
+      return failServerAction(status, { success: false, message });
     }
 
     return { success: true, message: 'Flag resolved successfully' };
   });
 
-/** Re-resolves the ids from the slugs — the other convention, on the same page. */
 const editMatchFn = createServerFn({ method: 'POST' })
   .validator(
     (input: {
@@ -178,11 +180,18 @@ const editMatchFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }): Promise<ActionResult> => {
     if (!data.matchId || !data.teams)
-      return { success: false, message: 'matchId and teams are required' };
+      return failServerAction(400, {
+        success: false,
+        message: 'matchId and teams are required',
+      });
 
     const apiClientV3 = await requireApiClientV3();
     const ctx = await resolveOrgAndLeagueIds(apiClientV3, data);
-    if (!ctx) return { success: false, message: 'Org or league not found' };
+    if (!ctx)
+      return failServerAction(404, {
+        success: false,
+        message: 'Org or league not found',
+      });
 
     try {
       await apiClientV3.matchesApi.updateMatch(
@@ -193,61 +202,78 @@ const editMatchFn = createServerFn({ method: 'POST' })
       );
       return { success: true, message: 'Match updated' };
     } catch (err) {
-      const { message } = await getApiErrorDetails(
+      const { status, message } = await getApiErrorDetails(
         err,
         'Failed to update match'
       );
-      return { success: false, message };
+      return failServerAction(status, { success: false, message });
     }
   });
+
+interface RecalculateMatchesInput {
+  orgSlug: string;
+  leagueSlug: string;
+  fromMatchId?: string;
+}
+
+async function recalculateMatches(
+  data: RecalculateMatchesInput
+): Promise<ActionResult> {
+  const fromMatchId = data.fromMatchId?.trim()
+    ? data.fromMatchId.trim()
+    : undefined;
+
+  const apiClientV3 = await requireApiClientV3();
+  const ctx = await resolveOrgAndLeagueIds(apiClientV3, data);
+  if (!ctx)
+    return failServerAction(404, {
+      success: false,
+      message: 'Org or league not found',
+    });
+
+  try {
+    const result = await apiClientV3.matchesApi.recalculateMatches(
+      ctx.orgId,
+      ctx.leagueId,
+      fromMatchId
+    );
+    return {
+      success: true,
+      message: `Recalculated ${result.matchCount} match${result.matchCount === 1 ? '' : 'es'}`,
+    };
+  } catch (err) {
+    const { status, message } = await getApiErrorDetails(
+      err,
+      'Failed to recalculate MMR'
+    );
+    return failServerAction(status, { success: false, message });
+  }
+}
 
 const recalculateMatchesFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: { orgSlug: string; leagueSlug: string; fromMatchId?: string }) =>
-      input
-  )
-  .handler(async ({ data }): Promise<ActionResult> => {
-    const fromMatchId = data.fromMatchId?.trim()
-      ? data.fromMatchId.trim()
-      : undefined;
-
-    const apiClientV3 = await requireApiClientV3();
-    const ctx = await resolveOrgAndLeagueIds(apiClientV3, data);
-    if (!ctx) return { success: false, message: 'Org or league not found' };
-
-    try {
-      const result = await apiClientV3.matchesApi.recalculateMatches(
-        ctx.orgId,
-        ctx.leagueId,
-        fromMatchId
-      );
-      return {
-        success: true,
-        message: `Recalculated ${result.matchCount} match${result.matchCount === 1 ? '' : 'es'}`,
-      };
-    } catch (err) {
-      const { message } = await getApiErrorDetails(
-        err,
-        'Failed to recalculate MMR'
-      );
-      return { success: false, message };
-    }
-  });
+  .validator((input: RecalculateMatchesInput) => input)
+  .handler(({ data }): Promise<ActionResult> => recalculateMatches(data));
 
 export const Route = createFileRoute(
   '/admin/$orgSlug/leagues/$leagueSlug/match-flags'
 )({
-  // Open (the actionable queue) is the default, so a bare URL stays bare and
-  // still means Open. `?status=all` is the explicit no-filter view; anything
-  // unrecognized falls back to Open.
+  // Open is the default, so the common view keeps a bare URL.
   validateSearch: (
     search: Record<string, unknown>
-  ): { status?: FlagStatusFilter } => {
+  ): { status?: FlagStatusFilter; actionSuccess?: string } => {
     const raw = search.status;
-    if (raw === 'all') return { status: 'all' };
-    return typeof raw === 'string' && isMatchFlagStatus(raw)
-      ? { status: raw }
-      : {};
+    const status =
+      raw === 'all' || (typeof raw === 'string' && isMatchFlagStatus(raw))
+        ? (raw as FlagStatusFilter)
+        : undefined;
+    const actionSuccess =
+      typeof search.actionSuccess === 'string'
+        ? search.actionSuccess
+        : undefined;
+    return {
+      ...(status ? { status } : {}),
+      ...(actionSuccess ? { actionSuccess } : {}),
+    };
   },
   loaderDeps: ({ search }) => ({
     status: search.status ?? MatchFlagStatus.Open,
@@ -262,6 +288,32 @@ export const Route = createFileRoute(
     });
     if ('error' in result) throw new HttpError(500, result.error);
     return { ...result.data, leagueId: context.leagueId };
+  },
+  server: {
+    handlers: {
+      POST: async ({ request, params }) => {
+        const formData = await parseNativeFormData(request);
+        if (formData.get('_action') !== 'recalculate') {
+          return new Response('Unsupported form action', { status: 400 });
+        }
+
+        let actionResult: ActionResult;
+        try {
+          actionResult = await recalculateMatches({
+            orgSlug: params.orgSlug,
+            leagueSlug: params.leagueSlug,
+            fromMatchId:
+              String(formData.get('fromMatchId') ?? '').trim() || undefined,
+          });
+        } catch {
+          actionResult = failServerAction(500, {
+            success: false,
+            message: 'Request failed. Please try again.',
+          });
+        }
+        return nativeFormResponse(request, actionResult);
+      },
+    },
   },
   errorComponent: HttpErrorView,
   component: MatchFlagsPage,
@@ -297,7 +349,6 @@ const STATUS_META: Record<
   },
 };
 
-// Open first (the actionable default), All last. 'all' is the no-filter view.
 const statusTabs: { label: string; value: FlagStatusFilter }[] = [
   { label: 'Open', value: MatchFlagStatus.Open },
   { label: 'Resolved', value: MatchFlagStatus.Resolved },
@@ -307,14 +358,16 @@ const statusTabs: { label: string; value: FlagStatusFilter }[] = [
 
 function MatchFlagsPage() {
   const { orgSlug, leagueSlug } = Route.useParams();
+  const search = Route.useSearch();
   const data = Route.useLoaderData();
   const router = useRouter();
-  // Every action on a card is client-only, so the whole cluster stays disabled
-  // until hydration attaches the handlers — otherwise a click on the SSR'd
-  // markup is dropped without feedback.
   const hydrated = useHydrated();
 
-  const [result, setResult] = useState<ActionResult | null>(null);
+  const [result, setResult] = useState<ActionResult | null>(() =>
+    search.actionSuccess
+      ? { success: true, message: search.actionSuccess }
+      : null
+  );
   const [selectedFlagId, setSelectedFlagId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [resolutionNote, setResolutionNote] = useState('');
@@ -328,11 +381,17 @@ function MatchFlagsPage() {
     : null;
 
   const run = async (action: Promise<ActionResult>) => {
-    const actionResult = await action;
+    let actionResult: ActionResult;
+    try {
+      actionResult = await action;
+    } catch {
+      actionResult = {
+        success: false,
+        message: 'Request failed. Please try again.',
+      };
+    }
     setResult(actionResult);
-    // The cards render the matches themselves, so an edit or a recalc has to
-    // reload both the flags and the match data behind them.
-    await router.invalidate();
+    if (actionResult.success) await router.invalidate({ sync: true });
     return actionResult;
   };
 
@@ -457,10 +516,10 @@ function MatchFlagsPage() {
                           Edit match
                         </Button>
                         <form
+                          method="post"
+                          action={`/admin/${orgSlug}/leagues/${leagueSlug}/match-flags`}
                           onSubmit={(event) => {
                             event.preventDefault();
-                            // A partial replay — note the different wording to
-                            // the matches page's season-wide confirm.
                             if (
                               !window.confirm(
                                 'Replay every match from this one to the end of the season?'
@@ -480,6 +539,11 @@ function MatchFlagsPage() {
                         >
                           <input
                             type="hidden"
+                            name="_action"
+                            value="recalculate"
+                          />
+                          <input
+                            type="hidden"
                             name="fromMatchId"
                             value={flag.matchId}
                           />
@@ -487,7 +551,7 @@ function MatchFlagsPage() {
                             type="submit"
                             size="sm"
                             variant="outline"
-                            disabled={!hydrated || !isCurrentSeason}
+                            disabled={!isCurrentSeason}
                             data-testid="match-flag-recalculate"
                           >
                             <RefreshCw className="mr-1 h-3.5 w-3.5" />
@@ -547,9 +611,7 @@ function MatchFlagsPage() {
                           }`}
                         </span>
                         {flag.resolutionNote && (
-                          <p className="mt-1 italic">
-                            “{flag.resolutionNote}”
-                          </p>
+                          <p className="mt-1 italic">“{flag.resolutionNote}”</p>
                         )}
                       </div>
                     )}
@@ -572,7 +634,6 @@ function MatchFlagsPage() {
 
           {selectedFlag && (
             <div className="space-y-4 py-4">
-              {/* No showMmr here — the moderator just needs to see the match. */}
               {selectedMatch && <MatchCard match={selectedMatch} />}
 
               <div className="space-y-2 rounded-lg border border-border p-3">

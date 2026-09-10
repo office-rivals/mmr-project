@@ -22,13 +22,17 @@ import { PlayerFilter } from '@/components/profile/player-filter';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { HttpError } from '@/lib/http-error';
-import { getApiErrorDetails } from '@/lib/server/apiError';
-import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import {
+  createMatchFlagFn,
+  deleteMatchFlagFn,
+  updateMatchFlagFn,
+} from '@/lib/match-flag-actions';
 import { createRouteGuard } from '@/lib/server/http-error';
 import { loadPlayerProfileOnce } from '@/lib/server/profile';
 import { loadShellDataOnce } from '@/lib/server/shell';
 import { getPlayerDisplayName, groupMatchesByDate } from '@/lib/utils';
 import { resolveLeague } from '../route';
+import type { FlagActionResult } from '@/lib/match-flag-actions';
 import type { PlayerProfileData } from '@/lib/server/profile';
 
 interface ProfileInput {
@@ -36,12 +40,6 @@ interface ProfileInput {
   leagueSlug: string;
   playerId: string;
   season?: string;
-}
-
-/** Mirrors the Svelte action payloads: `{ success, message }`, rendered in the page alert. */
-interface FlagActionResult {
-  success: boolean;
-  message: string;
 }
 
 type ProfileResult =
@@ -82,108 +80,6 @@ const getPlayerProfileFn = createServerFn({ method: 'GET' })
         return { ok: false, status: error.status, message: error.message };
       }
       throw error;
-    }
-  });
-
-const flagMatchFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: {
-      orgSlug: string;
-      leagueSlug: string;
-      matchId: string;
-      reason: string;
-    }) => input
-  )
-  .handler(async ({ data }): Promise<FlagActionResult> => {
-    const matchId = data.matchId;
-    const reason = data.reason.trim();
-    if (!matchId || !reason) {
-      return { success: false, message: 'Match ID and reason are required' };
-    }
-
-    const { orgId, leagueId } = await resolveLeagueFromSlugs(
-      data.orgSlug,
-      data.leagueSlug
-    );
-    const apiClientV3 = await requireApiClientV3();
-    try {
-      await apiClientV3.matchFlagsApi.createFlag(orgId, leagueId, {
-        matchId,
-        reason,
-      });
-      return { success: true, message: 'Match flagged successfully' };
-    } catch (error) {
-      const { message } = await getApiErrorDetails(
-        error,
-        'Failed to create flag'
-      );
-      return { success: false, message };
-    }
-  });
-
-const updateFlagFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: {
-      orgSlug: string;
-      leagueSlug: string;
-      flagId: string;
-      reason: string;
-    }) => input
-  )
-  .handler(async ({ data }): Promise<FlagActionResult> => {
-    const flagId = data.flagId;
-    const reason = data.reason.trim();
-    if (!flagId || !reason) {
-      return { success: false, message: 'Flag ID and reason are required' };
-    }
-
-    const { orgId, leagueId } = await resolveLeagueFromSlugs(
-      data.orgSlug,
-      data.leagueSlug
-    );
-    const apiClientV3 = await requireApiClientV3();
-    try {
-      await apiClientV3.matchFlagsApi.updateFlagReason(
-        orgId,
-        leagueId,
-        flagId,
-        {
-          reason,
-        }
-      );
-      return { success: true, message: 'Flag updated successfully' };
-    } catch (error) {
-      const { message } = await getApiErrorDetails(
-        error,
-        'Failed to update flag'
-      );
-      return { success: false, message };
-    }
-  });
-
-const deleteFlagFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: { orgSlug: string; leagueSlug: string; flagId: string }) => input
-  )
-  .handler(async ({ data }): Promise<FlagActionResult> => {
-    if (!data.flagId) {
-      return { success: false, message: 'Flag ID is required' };
-    }
-
-    const { orgId, leagueId } = await resolveLeagueFromSlugs(
-      data.orgSlug,
-      data.leagueSlug
-    );
-    const apiClientV3 = await requireApiClientV3();
-    try {
-      await apiClientV3.matchFlagsApi.deleteFlag(orgId, leagueId, data.flagId);
-      return { success: true, message: 'Flag deleted successfully' };
-    } catch (error) {
-      const { message } = await getApiErrorDetails(
-        error,
-        'Failed to delete flag'
-      );
-      return { success: false, message };
     }
   });
 
@@ -243,13 +139,21 @@ export const Route = createFileRoute(
     return result.data;
   },
   errorComponent: HttpErrorView,
-  component: PlayerProfilePage,
+  component: PlayerProfileRoute,
 });
+
+function PlayerProfileRoute() {
+  const data = Route.useLoaderData();
+  return (
+    <PlayerProfilePage
+      key={`${data.orgId}:${data.leagueId}:${data.player.id}`}
+    />
+  );
+}
 
 function PlayerProfilePage() {
   const data = Route.useLoaderData();
   const { season } = Route.useSearch();
-  const params = Route.useParams();
   const navigate = Route.useNavigate();
   const router = useRouter();
 
@@ -278,7 +182,9 @@ function PlayerProfilePage() {
       (data.matches ?? []).filter((match) => {
         if (filteredPlayers.length === 0) return true;
         return filteredPlayers.every((id) =>
-          match.teams.some((t) => t.players.some((p) => p.leaguePlayerId === id))
+          match.teams.some((t) =>
+            t.players.some((p) => p.leaguePlayerId === id)
+          )
         );
       }),
     [data.matches, filteredPlayers]
@@ -336,16 +242,16 @@ function PlayerProfilePage() {
   // Svelte `use:enhance`) and only then closes the dialog, and only on success.
   const settle = async (result: FlagActionResult) => {
     setFlagResult(result);
-    await router.invalidate();
+    await router.invalidate({ sync: true });
     return result;
   };
 
   const flagMatch = useMutation({
     mutationFn: (input: { matchId: string; reason: string }) =>
-      flagMatchFn({
+      createMatchFlagFn({
         data: {
-          orgSlug: params.orgSlug,
-          leagueSlug: params.leagueSlug,
+          orgId: data.orgId,
+          leagueId: data.leagueId,
           ...input,
         },
       }),
@@ -359,10 +265,10 @@ function PlayerProfilePage() {
 
   const updateFlag = useMutation({
     mutationFn: (input: { flagId: string; reason: string }) =>
-      updateFlagFn({
+      updateMatchFlagFn({
         data: {
-          orgSlug: params.orgSlug,
-          leagueSlug: params.leagueSlug,
+          orgId: data.orgId,
+          leagueId: data.leagueId,
           ...input,
         },
       }),
@@ -376,10 +282,10 @@ function PlayerProfilePage() {
 
   const deleteFlag = useMutation({
     mutationFn: (input: { flagId: string }) =>
-      deleteFlagFn({
+      deleteMatchFlagFn({
         data: {
-          orgSlug: params.orgSlug,
-          leagueSlug: params.leagueSlug,
+          orgId: data.orgId,
+          leagueId: data.leagueId,
           ...input,
         },
       }),
@@ -406,7 +312,7 @@ function PlayerProfilePage() {
         <div className="flex items-center justify-center gap-2">
           {data.player?.username && data.player?.displayName ? (
             <p className="text-base text-muted-foreground">
-              @{data.player.username}
+              {`@${data.player.username}`}
             </p>
           ) : null}
           {data.isCurrentUser ? (

@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { ActiveMatchPage } from '@/components/play/active-match-page';
+import { failServerAction } from '@/lib/server/action-result';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import type { LeagueContext } from './route';
@@ -52,14 +53,17 @@ const submitActiveMatchResultFn = createServerFn({ method: 'POST' })
     const team2Score = Number(data.team2Score);
 
     if (isNaN(team1Score) || isNaN(team2Score)) {
-      return { status: 'error', message: 'Scores are required' };
+      return failServerAction(400, {
+        status: 'error',
+        message: 'Scores are required',
+      });
     }
 
     if (!data.orgId || !data.leagueId) {
-      return {
+      return failServerAction(400, {
         status: 'error',
         message: 'Organization and league are required',
-      };
+      });
     }
 
     // Index-based regardless of how the page ordered the columns.
@@ -77,11 +81,11 @@ const submitActiveMatchResultFn = createServerFn({ method: 'POST' })
         { teams }
       );
     } catch (error) {
-      const { message } = await getApiErrorDetails(
+      const { status, message } = await getApiErrorDetails(
         error,
         'Failed to submit match result'
       );
-      return { status: 'error', message };
+      return failServerAction(status, { status: 'error', message });
     }
 
     return { status: 'ok' };

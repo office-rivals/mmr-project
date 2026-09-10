@@ -23,6 +23,11 @@ import {
 } from '@/components/ui/card';
 import { HttpErrorView } from '@/components/http-error-view';
 import { useHydrated } from '@/hooks/use-hydrated';
+import {
+  failServerAction,
+  nativeFormResponse,
+  parseNativeFormData,
+} from '@/lib/server/action-result';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireAdminOrg, resolveOrgAndLeagueIds } from '@/lib/server/admin';
@@ -52,8 +57,7 @@ const loadMatchesFn = createServerFn({ method: 'GET' })
     const org = await requireAdminOrg(data.orgSlug);
     const apiClientV3 = await requireApiClientV3();
 
-    // Fetch one extra: "did we get 26 back" is the only has-more signal, there
-    // is no total count.
+    // The API has no total count, so one extra row is the has-more signal.
     const [matches, leaguePlayers] = await Promise.all([
       apiClientV3.matchesApi.getMatches(org.id, data.leagueId, {
         limit: PAGE_SIZE + 1,
@@ -72,38 +76,51 @@ const loadMatchesFn = createServerFn({ method: 'GET' })
       offset: data.offset,
       hasMore,
       latestMatchId: data.offset === 0 ? (trimmed[0]?.id ?? null) : null,
-      // Pinned server-side so `groupMatchesByDate` buckets identically on the
-      // server and after hydration. Never replace with a client `Date.now()`.
+      // Pin the clock so server and hydrated date buckets agree.
       now: Date.now(),
     };
   });
 
+interface DeleteMatchInput {
+  orgSlug: string;
+  leagueSlug: string;
+  matchId: string;
+}
+
+async function deleteMatch(data: DeleteMatchInput): Promise<ActionResult> {
+  if (!data.matchId)
+    return failServerAction(400, {
+      success: false,
+      message: 'matchId required',
+    });
+
+  const apiClientV3 = await requireApiClientV3();
+  const ctx = await resolveOrgAndLeagueIds(apiClientV3, data);
+  if (!ctx)
+    return failServerAction(404, {
+      success: false,
+      message: 'Org or league not found',
+    });
+
+  try {
+    await apiClientV3.matchesApi.deleteMatch(
+      ctx.orgId,
+      ctx.leagueId,
+      data.matchId
+    );
+    return { success: true, message: 'Match deleted' };
+  } catch (err) {
+    const { status, message } = await getApiErrorDetails(
+      err,
+      'Failed to delete match'
+    );
+    return failServerAction(status, { success: false, message });
+  }
+}
+
 const deleteMatchFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: { orgSlug: string; leagueSlug: string; matchId: string }) => input
-  )
-  .handler(async ({ data }): Promise<ActionResult> => {
-    if (!data.matchId) return { success: false, message: 'matchId required' };
-
-    const apiClientV3 = await requireApiClientV3();
-    const ctx = await resolveOrgAndLeagueIds(apiClientV3, data);
-    if (!ctx) return { success: false, message: 'Org or league not found' };
-
-    try {
-      await apiClientV3.matchesApi.deleteMatch(
-        ctx.orgId,
-        ctx.leagueId,
-        data.matchId
-      );
-      return { success: true, message: 'Match deleted' };
-    } catch (err) {
-      const { message } = await getApiErrorDetails(
-        err,
-        'Failed to delete match'
-      );
-      return { success: false, message };
-    }
-  });
+  .validator((input: DeleteMatchInput) => input)
+  .handler(({ data }): Promise<ActionResult> => deleteMatch(data));
 
 const editMatchFn = createServerFn({ method: 'POST' })
   .validator(
@@ -116,11 +133,18 @@ const editMatchFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }): Promise<ActionResult> => {
     if (!data.matchId || !data.teams)
-      return { success: false, message: 'matchId and teams are required' };
+      return failServerAction(400, {
+        success: false,
+        message: 'matchId and teams are required',
+      });
 
     const apiClientV3 = await requireApiClientV3();
     const ctx = await resolveOrgAndLeagueIds(apiClientV3, data);
-    if (!ctx) return { success: false, message: 'Org or league not found' };
+    if (!ctx)
+      return failServerAction(404, {
+        success: false,
+        message: 'Org or league not found',
+      });
 
     try {
       await apiClientV3.matchesApi.updateMatch(
@@ -131,57 +155,78 @@ const editMatchFn = createServerFn({ method: 'POST' })
       );
       return { success: true, message: 'Match updated' };
     } catch (err) {
-      const { message } = await getApiErrorDetails(
+      const { status, message } = await getApiErrorDetails(
         err,
         'Failed to update match'
       );
-      return { success: false, message };
+      return failServerAction(status, { success: false, message });
     }
   });
+
+interface RecalculateMatchesInput {
+  orgSlug: string;
+  leagueSlug: string;
+  fromMatchId?: string;
+}
+
+async function recalculateMatches(
+  data: RecalculateMatchesInput
+): Promise<ActionResult> {
+  const fromMatchId = data.fromMatchId?.trim()
+    ? data.fromMatchId.trim()
+    : undefined;
+
+  const apiClientV3 = await requireApiClientV3();
+  const ctx = await resolveOrgAndLeagueIds(apiClientV3, data);
+  if (!ctx)
+    return failServerAction(404, {
+      success: false,
+      message: 'Org or league not found',
+    });
+
+  try {
+    const result = await apiClientV3.matchesApi.recalculateMatches(
+      ctx.orgId,
+      ctx.leagueId,
+      fromMatchId
+    );
+    return {
+      success: true,
+      message: `Recalculated ${result.matchCount} match${result.matchCount === 1 ? '' : 'es'}`,
+    };
+  } catch (err) {
+    const { status, message } = await getApiErrorDetails(
+      err,
+      'Failed to recalculate MMR'
+    );
+    return failServerAction(status, { success: false, message });
+  }
+}
 
 const recalculateMatchesFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: { orgSlug: string; leagueSlug: string; fromMatchId?: string }) =>
-      input
-  )
-  .handler(async ({ data }): Promise<ActionResult> => {
-    const fromMatchId = data.fromMatchId?.trim()
-      ? data.fromMatchId.trim()
-      : undefined;
-
-    const apiClientV3 = await requireApiClientV3();
-    const ctx = await resolveOrgAndLeagueIds(apiClientV3, data);
-    if (!ctx) return { success: false, message: 'Org or league not found' };
-
-    try {
-      const result = await apiClientV3.matchesApi.recalculateMatches(
-        ctx.orgId,
-        ctx.leagueId,
-        fromMatchId
-      );
-      return {
-        success: true,
-        message: `Recalculated ${result.matchCount} match${result.matchCount === 1 ? '' : 'es'}`,
-      };
-    } catch (err) {
-      const { message } = await getApiErrorDetails(
-        err,
-        'Failed to recalculate MMR'
-      );
-      return { success: false, message };
-    }
-  });
+  .validator((input: RecalculateMatchesInput) => input)
+  .handler(({ data }): Promise<ActionResult> => recalculateMatches(data));
 
 export const Route = createFileRoute(
   '/admin/$orgSlug/leagues/$leagueSlug/matches'
 )({
-  // `offset` stays optional so page 1 keeps the bare `/matches` URL; the
-  // parsing rule (`Math.max(0, parseInt(...) || 0)`) is the Svelte load's.
-  validateSearch: (search: Record<string, unknown>): { offset?: number } => {
+  // Keep page 1 at the bare `/matches` URL.
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { offset?: number; actionSuccess?: string } => {
     const raw = search.offset;
-    if (raw === undefined || raw === null || raw === '') return {};
+    const actionSuccess =
+      typeof search.actionSuccess === 'string'
+        ? search.actionSuccess
+        : undefined;
+    if (raw === undefined || raw === null || raw === '') {
+      return actionSuccess ? { actionSuccess } : {};
+    }
     const offset = Math.max(0, parseInt(String(raw), 10) || 0);
-    return offset === 0 ? {} : { offset };
+    return {
+      ...(offset === 0 ? {} : { offset }),
+      ...(actionSuccess ? { actionSuccess } : {}),
+    };
   },
   loaderDeps: ({ search }) => ({ offset: search.offset ?? 0 }),
   loader: ({ context, deps, params }) =>
@@ -192,27 +237,61 @@ export const Route = createFileRoute(
         offset: deps.offset,
       },
     }),
+  server: {
+    handlers: {
+      POST: async ({ request, params }) => {
+        const formData = await parseNativeFormData(request);
+        let actionResult: ActionResult;
+        try {
+          switch (formData.get('_action')) {
+            case 'recalculate':
+              actionResult = await recalculateMatches({
+                orgSlug: params.orgSlug,
+                leagueSlug: params.leagueSlug,
+                fromMatchId:
+                  String(formData.get('fromMatchId') ?? '').trim() || undefined,
+              });
+              break;
+            case 'delete':
+              actionResult = await deleteMatch({
+                orgSlug: params.orgSlug,
+                leagueSlug: params.leagueSlug,
+                matchId: String(formData.get('matchId') ?? ''),
+              });
+              break;
+            default:
+              return new Response('Unsupported form action', { status: 400 });
+          }
+        } catch {
+          actionResult = failServerAction(500, {
+            success: false,
+            message: 'Request failed. Please try again.',
+          });
+        }
+        return nativeFormResponse(request, actionResult);
+      },
+    },
+  },
   errorComponent: HttpErrorView,
   component: AdminMatchesPage,
 });
 
 function AdminMatchesPage() {
   const { orgSlug, leagueSlug } = Route.useParams();
+  const search = Route.useSearch();
   const data = Route.useLoaderData();
   const router = useRouter();
-  // The row actions and the season recalc are client-only, so they stay
-  // disabled until hydration attaches their handlers — a click on the SSR'd
-  // markup would otherwise be dropped without feedback.
   const hydrated = useHydrated();
 
-  const [result, setResult] = useState<ActionResult | null>(null);
+  const [result, setResult] = useState<ActionResult | null>(() =>
+    search.actionSuccess
+      ? { success: true, message: search.actionSuccess }
+      : null
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  // Resolved from the current loader data rather than captured at click time: a
-  // save that lands while the dialog is open replaces `data.matches` wholesale,
-  // and a snapshot taken beforehand would leave the dialog showing — and
-  // re-saving — the scores from before that save.
+  // Use refreshed scores when an older save finishes after the dialog reopens.
   const editing = data.matches.find((match) => match.id === editingId) ?? null;
 
   const prevOffset = Math.max(0, data.offset - data.pageSize);
@@ -220,9 +299,17 @@ function AdminMatchesPage() {
   const matchGroups = groupMatchesByDate(data.matches, data.now);
 
   const run = async (action: Promise<ActionResult>) => {
-    const actionResult = await action;
+    let actionResult: ActionResult;
+    try {
+      actionResult = await action;
+    } catch {
+      actionResult = {
+        success: false,
+        message: 'Request failed. Please try again.',
+      };
+    }
     setResult(actionResult);
-    await router.invalidate();
+    if (actionResult.success) await router.invalidate({ sync: true });
     return actionResult;
   };
 
@@ -231,7 +318,6 @@ function AdminMatchesPage() {
       <div className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            {/* level 2 — the sub-nav tab shares this accessible name. */}
             <h2 className="text-xl font-semibold">Matches</h2>
             <p className="text-sm text-muted-foreground">
               Edit, delete, and recalculate MMR for matches in the current
@@ -240,6 +326,8 @@ function AdminMatchesPage() {
             </p>
           </div>
           <form
+            method="post"
+            action={`/admin/${orgSlug}/leagues/${leagueSlug}/matches`}
             onSubmit={(event) => {
               event.preventDefault();
               if (!window.confirm('Replay every match in the current season?'))
@@ -247,13 +335,9 @@ function AdminMatchesPage() {
               void run(recalculateMatchesFn({ data: { orgSlug, leagueSlug } }));
             }}
           >
-            <Button
-              type="submit"
-              variant="outline"
-              size="sm"
-              disabled={!hydrated}
-            >
-              <RefreshCw className="h-4 w-4" />
+            <input type="hidden" name="_action" value="recalculate" />
+            <Button type="submit" variant="outline" size="sm">
+              <RefreshCw className="mr-2 h-4 w-4" />
               Recalculate season
             </Button>
           </form>
@@ -284,8 +368,6 @@ function AdminMatchesPage() {
                   const isLatest = match.id === data.latestMatchId;
                   return (
                     <Fragment key={match.id}>
-                      {/* Sibling of the row, never a wrapper: `admin-match-row`
-                          must still count 25 on a full page. */}
                       {group.label && (
                         <MatchDateHeader
                           label={group.label}
@@ -316,12 +398,12 @@ function AdminMatchesPage() {
                               setEditDialogOpen(true);
                             }}
                           >
-                            <Pencil className="h-3.5 w-3.5" />
+                            <Pencil className="mr-1 h-3.5 w-3.5" />
                             Edit
                           </Button>
-                          {/* No confirm here — unlike the identical-looking
-                              Recalc on a flag card. */}
                           <form
+                            method="post"
+                            action={`/admin/${orgSlug}/leagues/${leagueSlug}/matches`}
                             onSubmit={(event) => {
                               event.preventDefault();
                               void run(
@@ -337,6 +419,11 @@ function AdminMatchesPage() {
                           >
                             <input
                               type="hidden"
+                              name="_action"
+                              value="recalculate"
+                            />
+                            <input
+                              type="hidden"
                               name="fromMatchId"
                               value={match.id}
                             />
@@ -344,17 +431,16 @@ function AdminMatchesPage() {
                               type="submit"
                               size="sm"
                               variant="ghost"
-                              disabled={!hydrated}
                               data-testid="admin-match-recalculate"
                             >
-                              <RefreshCw className="h-3.5 w-3.5" />
+                              <RefreshCw className="mr-1 h-3.5 w-3.5" />
                               Recalc
                             </Button>
                           </form>
                           <form
-                            // Marks the row's delete form so an e2e test can
-                            // submit it directly while a modal covers the row.
                             data-delete-match=""
+                            method="post"
+                            action={`/admin/${orgSlug}/leagues/${leagueSlug}/matches`}
                             onSubmit={(event) => {
                               event.preventDefault();
                               const msg = isLatest
@@ -374,6 +460,11 @@ function AdminMatchesPage() {
                           >
                             <input
                               type="hidden"
+                              name="_action"
+                              value="delete"
+                            />
+                            <input
+                              type="hidden"
                               name="matchId"
                               value={match.id}
                             />
@@ -381,11 +472,10 @@ function AdminMatchesPage() {
                               type="submit"
                               size="sm"
                               variant="ghost"
-                              disabled={!hydrated}
                               className="text-destructive hover:text-destructive"
                               data-testid="admin-match-delete"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="mr-1 h-3.5 w-3.5" />
                               Delete
                             </Button>
                           </form>
@@ -403,7 +493,7 @@ function AdminMatchesPage() {
           {data.offset === 0 ? (
             <Button asChild variant="outline" size="sm" disabled>
               <a href="#">
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="mr-1 h-4 w-4" />
                 Newer
               </a>
             </Button>
@@ -414,7 +504,7 @@ function AdminMatchesPage() {
                 params={{ orgSlug, leagueSlug }}
                 search={{ offset: prevOffset }}
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="mr-1 h-4 w-4" />
                 Newer
               </Link>
             </Button>
@@ -427,21 +517,20 @@ function AdminMatchesPage() {
                 search={{ offset: nextOffset }}
               >
                 Older
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
           ) : (
             <Button asChild variant="outline" size="sm" disabled>
               <a href="#">
                 Older
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="ml-1 h-4 w-4" />
               </a>
             </Button>
           )}
         </div>
       </div>
 
-      {/* Always mounted, outside the main div. */}
       <EditMatchDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}

@@ -16,6 +16,11 @@ import { Label } from '@/components/ui/label';
 import { HttpErrorView } from '@/components/http-error-view';
 import { OrganizationRole } from '@/api-v3';
 import { HttpError } from '@/lib/http-error';
+import {
+  failServerAction,
+  nativeFormResponse,
+  parseNativeFormData,
+} from '@/lib/server/action-result';
 import { createRouteGuard } from '@/lib/server/http-error';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { getApiErrorDetails } from '@/lib/server/apiError';
@@ -47,47 +52,99 @@ type UpdateResult =
   | { status: 'success' }
   | { status: 'renamed'; slug: string };
 
+interface UpdateOrganizationInput {
+  orgSlug: string;
+  name: string;
+  slug: string;
+}
+
 /**
  * Closes the hole the Svelte action left open: its `update` action never
  * re-checked the Owner role, so a non-Owner's direct POST reached the API. The
  * gate is repeated here, server-side, on every call.
  */
-const updateOrganizationFn = createServerFn({ method: 'POST' })
-  .validator((input: { orgSlug: string; name: string; slug: string }) => input)
-  .handler(async ({ data }): Promise<UpdateResult> => {
-    const shell = await loadShellData();
-    if (shell.profileLoadFailed) {
-      return { status: 'error', error: 'Failed to load user profile' };
-    }
-    const org = shell.organizations.find((o) => o.slug === data.orgSlug);
-    if (!org) return { status: 'error', error: 'Organization not found' };
-    if (org.role !== OrganizationRole.Owner) {
-      return {
-        status: 'error',
-        error: 'Only organization owners can access settings',
-      };
-    }
+async function updateOrganization(
+  data: UpdateOrganizationInput
+): Promise<UpdateResult> {
+  const shell = await loadShellData();
+  if (shell.profileLoadFailed) {
+    return failServerAction(500, {
+      status: 'error',
+      error: 'Failed to load user profile',
+    });
+  }
+  const org = shell.organizations.find((o) => o.slug === data.orgSlug);
+  if (!org) {
+    return failServerAction(404, {
+      status: 'error',
+      error: 'Organization not found',
+    });
+  }
+  if (org.role !== OrganizationRole.Owner) {
+    return failServerAction(403, {
+      status: 'error',
+      error: 'Only organization owners can access settings',
+    });
+  }
 
-    const apiClientV3 = await requireApiClientV3();
-    try {
-      const updated = await apiClientV3.organizationsApi.updateOrganization(
-        org.id,
-        { name: data.name, slug: data.slug }
-      );
-      return updated.slug !== data.orgSlug
-        ? { status: 'renamed', slug: updated.slug }
-        : { status: 'success' };
-    } catch (error) {
-      const { message } = await getApiErrorDetails(
-        error,
-        'Failed to update organization'
-      );
-      return { status: 'error', error: message };
-    }
-  });
+  const apiClientV3 = await requireApiClientV3();
+  try {
+    const updated = await apiClientV3.organizationsApi.updateOrganization(
+      org.id,
+      { name: data.name, slug: data.slug }
+    );
+    return updated.slug !== data.orgSlug
+      ? { status: 'renamed', slug: updated.slug }
+      : { status: 'success' };
+  } catch (error) {
+    const { status, message } = await getApiErrorDetails(
+      error,
+      'Failed to update organization'
+    );
+    return failServerAction(status, { status: 'error', error: message });
+  }
+}
+
+const updateOrganizationFn = createServerFn({ method: 'POST' })
+  .validator((input: UpdateOrganizationInput) => input)
+  .handler(({ data }): Promise<UpdateResult> => updateOrganization(data));
 
 export const Route = createFileRoute('/_authed/$orgSlug/settings')({
-  server: { middleware: [ownerGuard] },
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { actionSuccess?: string } => ({
+    ...(typeof search.actionSuccess === 'string'
+      ? { actionSuccess: search.actionSuccess }
+      : {}),
+  }),
+  server: {
+    middleware: [ownerGuard],
+    handlers: {
+      POST: async ({ request, params }) => {
+        const formData = await parseNativeFormData(request);
+        if (formData.get('_action') !== 'update') {
+          return new Response('Unsupported form action', { status: 400 });
+        }
+        const result = await updateOrganization({
+          orgSlug: params.orgSlug,
+          name: String(formData.get('name') ?? ''),
+          slug: String(formData.get('slug') ?? ''),
+        });
+        if (result.status === 'renamed') {
+          return new Response(null, {
+            status: 303,
+            headers: { location: `/${result.slug}/settings` },
+          });
+        }
+        return nativeFormResponse(
+          request,
+          result.status === 'error'
+            ? result
+            : { success: 'Organization updated successfully' }
+        );
+      },
+    },
+  },
   loader: async ({ context, params }) => {
     const shell = context.authedShell;
     return { org: resolveOwnedOrg(shell, params.orgSlug) };
@@ -104,9 +161,10 @@ function OrgSettingsPage() {
 
 function OrgSettingsForm() {
   const { org } = Route.useLoaderData();
+  const search = Route.useSearch();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState(() => !!search.actionSuccess);
 
   const updateOrganization = useMutation({
     mutationFn: (input: { name: string; slug: string }) =>
@@ -160,6 +218,8 @@ function OrgSettingsForm() {
         </CardHeader>
         <CardContent>
           <form
+            method="post"
+            action={`/${org.slug}/settings`}
             className="space-y-4"
             onSubmit={(event) => {
               event.preventDefault();
@@ -170,6 +230,7 @@ function OrgSettingsForm() {
               });
             }}
           >
+            <input type="hidden" name="_action" value="update" />
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               {/* `key` forces a remount after a rename/refresh so the
