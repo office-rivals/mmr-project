@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
+import {
+  Link,
+  createFileRoute,
+  getRouteApi,
+  useRouter,
+} from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { Plus, Trophy } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
@@ -16,11 +21,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HttpErrorView } from '@/components/http-error-view';
+import { OpenFlagBadge } from '@/components/admin/open-flag-badge';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireAdminOrg, resolveOrgIdBySlug } from '@/lib/server/admin';
 import { meQueryKey } from '@/lib/shell';
-import { formatLeagueFormat } from '@/lib/utils';
+import { formatLeagueFormat, openFlagsForLeague } from '@/lib/utils';
 import type { LeagueResponse } from '@/api-v3';
 
 type ActionResult = { error?: string; success?: string };
@@ -95,9 +101,12 @@ export const Route = createFileRoute('/admin/$orgSlug/leagues/')({
   component: AdminLeaguesPage,
 });
 
+const adminRoute = getRouteApi('/admin');
+
 function AdminLeaguesPage() {
   const { org } = Route.useRouteContext();
   const leagues = Route.useLoaderData();
+  const { badges } = adminRoute.useLoaderData();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -215,9 +224,12 @@ function AdminLeaguesPage() {
                 <p className="text-xs text-muted-foreground">{league.slug}</p>
               </div>
             </div>
-            <Badge variant="outline">
-              {formatLeagueFormat(league.teamSize)}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <OpenFlagBadge count={openFlagsForLeague(badges, league.id)} />
+              <Badge variant="outline">
+                {formatLeagueFormat(league.teamSize)}
+              </Badge>
+            </div>
           </Link>
         ))}
         {leagues.length === 0 && (

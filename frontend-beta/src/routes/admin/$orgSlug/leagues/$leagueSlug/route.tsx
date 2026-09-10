@@ -2,6 +2,7 @@ import {
   Link,
   Outlet,
   createFileRoute,
+  getRouteApi,
   useLocation,
 } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
@@ -12,6 +13,7 @@ import {
   LayoutDashboard,
 } from 'lucide-react';
 import { HttpErrorView } from '@/components/http-error-view';
+import { OpenFlagBadge } from '@/components/admin/open-flag-badge';
 import { resolveAdminOrg } from '@/lib/admin';
 import { HttpError } from '@/lib/http-error';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
@@ -19,7 +21,7 @@ import { requireAdminOrg } from '@/lib/server/admin';
 import { createRouteGuard } from '@/lib/server/http-error';
 import { loadShellDataOnce } from '@/lib/server/shell';
 import { authedShellQueryOptions } from '@/lib/shell';
-import { cn } from '@/lib/utils';
+import { cn, openFlagsForLeague } from '@/lib/utils';
 import type { LeagueResponse } from '@/api-v3';
 
 const listLeaguesFn = createServerFn({ method: 'GET' })
@@ -70,9 +72,12 @@ export const Route = createFileRoute('/admin/$orgSlug/leagues/$leagueSlug')({
   component: LeagueAdminLayout,
 });
 
+const adminRoute = getRouteApi('/admin');
+
 function LeagueAdminLayout() {
   const { orgSlug, leagueSlug } = Route.useParams();
   const { league, leagueAdminBase } = Route.useLoaderData();
+  const { badges } = adminRoute.useLoaderData();
   const { pathname } = useLocation();
 
   const subnav = [
@@ -82,6 +87,7 @@ function LeagueAdminLayout() {
       label: 'Overview',
       icon: LayoutDashboard,
       exact: true,
+      badge: 0,
     },
     {
       to: '/admin/$orgSlug/leagues/$leagueSlug/matches' as const,
@@ -89,6 +95,7 @@ function LeagueAdminLayout() {
       label: 'Matches',
       icon: ClipboardList,
       exact: false,
+      badge: 0,
     },
     {
       to: '/admin/$orgSlug/leagues/$leagueSlug/match-flags' as const,
@@ -96,6 +103,7 @@ function LeagueAdminLayout() {
       label: 'Flags',
       icon: Flag,
       exact: false,
+      badge: openFlagsForLeague(badges, league.id),
     },
     {
       to: '/admin/$orgSlug/leagues/$leagueSlug/seasons' as const,
@@ -103,6 +111,7 @@ function LeagueAdminLayout() {
       label: 'Seasons',
       icon: CalendarDays,
       exact: false,
+      badge: 0,
     },
   ];
 
@@ -137,6 +146,7 @@ function LeagueAdminLayout() {
             >
               <item.icon className="h-4 w-4" />
               <span>{item.label}</span>
+              <OpenFlagBadge count={item.badge} variant="count" />
             </Link>
           );
         })}

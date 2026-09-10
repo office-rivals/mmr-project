@@ -83,8 +83,7 @@ const deleteMatchFn = createServerFn({ method: 'POST' })
     (input: { orgSlug: string; leagueSlug: string; matchId: string }) => input
   )
   .handler(async ({ data }): Promise<ActionResult> => {
-    if (!data.matchId)
-      return { success: false, message: 'matchId required' };
+    if (!data.matchId) return { success: false, message: 'matchId required' };
 
     const apiClientV3 = await requireApiClientV3();
     const ctx = await resolveOrgAndLeagueIds(apiClientV3, data);
@@ -142,11 +141,8 @@ const editMatchFn = createServerFn({ method: 'POST' })
 
 const recalculateMatchesFn = createServerFn({ method: 'POST' })
   .validator(
-    (input: {
-      orgSlug: string;
-      leagueSlug: string;
-      fromMatchId?: string;
-    }) => input
+    (input: { orgSlug: string; leagueSlug: string; fromMatchId?: string }) =>
+      input
   )
   .handler(async ({ data }): Promise<ActionResult> => {
     const fromMatchId = data.fromMatchId?.trim()
@@ -210,8 +206,14 @@ function AdminMatchesPage() {
   const hydrated = useHydrated();
 
   const [result, setResult] = useState<ActionResult | null>(null);
-  const [editing, setEditing] = useState<MatchResponse | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  // Resolved from the current loader data rather than captured at click time: a
+  // save that lands while the dialog is open replaces `data.matches` wholesale,
+  // and a snapshot taken beforehand would leave the dialog showing — and
+  // re-saving — the scores from before that save.
+  const editing = data.matches.find((match) => match.id === editingId) ?? null;
 
   const prevOffset = Math.max(0, data.offset - data.pageSize);
   const nextOffset = data.offset + data.pageSize;
@@ -242,9 +244,7 @@ function AdminMatchesPage() {
               event.preventDefault();
               if (!window.confirm('Replay every match in the current season?'))
                 return;
-              void run(
-                recalculateMatchesFn({ data: { orgSlug, leagueSlug } })
-              );
+              void run(recalculateMatchesFn({ data: { orgSlug, leagueSlug } }));
             }}
           >
             <Button
@@ -312,9 +312,7 @@ function AdminMatchesPage() {
                             disabled={!hydrated}
                             data-testid="admin-match-edit"
                             onClick={() => {
-                              // A snapshot captured at click time — the dialog
-                              // must never re-seed from refetched list data.
-                              setEditing(match);
+                              setEditingId(match.id);
                               setEditDialogOpen(true);
                             }}
                           >
@@ -354,6 +352,9 @@ function AdminMatchesPage() {
                             </Button>
                           </form>
                           <form
+                            // Marks the row's delete form so an e2e test can
+                            // submit it directly while a modal covers the row.
+                            data-delete-match=""
                             onSubmit={(event) => {
                               event.preventDefault();
                               const msg = isLatest
@@ -447,9 +448,7 @@ function AdminMatchesPage() {
         match={editing}
         leaguePlayers={data.leaguePlayers}
         onSave={({ matchId, teams }) =>
-          run(
-            editMatchFn({ data: { orgSlug, leagueSlug, matchId, teams } })
-          )
+          run(editMatchFn({ data: { orgSlug, leagueSlug, matchId, teams } }))
         }
       />
     </>

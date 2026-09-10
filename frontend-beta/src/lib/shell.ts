@@ -15,6 +15,11 @@ export interface AuthedShellData {
   profileLoadFailed: boolean;
   displayName: string | null;
   username: string | null;
+  /**
+   * Total open match flags across every org this user administers; drives the
+   * "needs attention" badge on the account/admin controls. 0 for non-admins.
+   */
+  openFlagCount: number;
   defaultOrgSlug: string | null;
   defaultLeagueSlug: string | null;
   defaultOrgId: string | null;

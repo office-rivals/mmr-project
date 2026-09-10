@@ -43,6 +43,7 @@ function AuthedLayout() {
         displayName={shell.displayName}
         username={shell.username}
         defaultOrgSlug={shell.defaultOrgSlug}
+        openFlagCount={shell.openFlagCount}
       />
       <main
         className="mx-auto max-w-screen-sm overflow-auto p-4 pb-24"

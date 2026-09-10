@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,6 +33,10 @@ export interface EditMatchDialogProps {
    * Replaces the Svelte `formAction` prop. The host must not resolve until the
    * data reload it triggers has finished — the dialog closes on the resolved
    * value, and the e2e reads "dialog gone" as "saved and list refreshed".
+   *
+   * The host is also responsible for the page-level outcome (success/error
+   * banner + refetch): this dialog drops a superseded response's effect on
+   * *itself*, never the outcome the admin is owed.
    */
   onSave: (input: {
     matchId: string;
@@ -45,13 +49,20 @@ type SlotState = { leaguePlayerId: string };
 // payload coerces with `Number(...)`, exactly like the Svelte version.
 type TeamState = { players: SlotState[]; score: number | string };
 
+const seedTeams = (match: MatchResponse): TeamState[] =>
+  match.teams
+    .slice()
+    .sort((a, b) => a.index - b.index)
+    .map((team) => ({
+      players: team.players
+        .slice()
+        .sort((a, b) => a.index - b.index)
+        .map((p) => ({ leaguePlayerId: p.leaguePlayerId })),
+      score: team.score,
+    }));
+
 /**
  * Shared by the admin matches page and the match-flags page.
- *
- * This is the parity-target version: `teams` + `formError` and nothing else —
- * no submit guard, no generation counter, no `Saving…` label. The concurrency
- * hardening on `fix/concurrent-match-edit` (spec 06 §8.5) is deliberately NOT
- * implemented here.
  */
 export function EditMatchDialog({
   open,
@@ -63,24 +74,47 @@ export function EditMatchDialog({
   const [teams, setTeams] = useState<TeamState[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Seeds from the `match` prop, which the hosts capture as a snapshot at click
-  // time. Never re-seed from live list data: a refetch during an open dialog
-  // would stomp the admin's edits.
+  // Match ids with a save in flight. Keyed by match, because a request
+  // outstanding for one match says nothing about another — and tracked past the
+  // dialog that started it, since clearing on reopen would let a
+  // cancel-then-reopen fire a second PATCH alongside the first, and whichever
+  // commits last wins.
+  //
+  // The ref is the guard (two submits in one tick both read it, which stale
+  // state would not give us); the state exists only so the button re-renders.
+  const inFlightRef = useRef<Set<string>>(new Set());
+  const [inFlightIds, setInFlightIds] = useState<string[]>([]);
+  const submitting = !!match && inFlightIds.includes(match.id);
+
+  // Bumped on every (re)open, so a response can tell whether the dialog it was
+  // submitted from is still the one on screen. A ref, not state: it is only
+  // ever compared, and re-rendering on it would re-trigger the effect that
+  // bumps it.
+  const generationRef = useRef(0);
+  const wasOpenRef = useRef(false);
+  // Whether the admin has touched this dialog since it opened. A ref for the
+  // same reason as `generationRef`.
+  const dirtyRef = useRef(false);
+
   useEffect(() => {
-    if (open && match) {
-      setTeams(
-        match.teams
-          .slice()
-          .sort((a, b) => a.index - b.index)
-          .map((team) => ({
-            players: team.players
-              .slice()
-              .sort((a, b) => a.index - b.index)
-              .map((p) => ({ leaguePlayerId: p.leaguePlayerId })),
-            score: team.score,
-          }))
-      );
+    if (!open || !match) {
+      wasOpenRef.current = open;
+      return;
+    }
+    const reopened = !wasOpenRef.current;
+    wasOpenRef.current = true;
+    if (reopened) {
+      generationRef.current += 1;
+      dirtyRef.current = false;
       setFormError(null);
+    }
+    // Seeded on open, and re-seeded when a data reload delivers a fresher copy
+    // of a match the admin has not started editing. Without the latter, a
+    // reopen that races the previous save's reload keeps rendering the scores
+    // from before that save — and writes them back over it on the next Save.
+    // The `dirty` guard is what stops a refetch stomping edits in progress.
+    if (reopened || !dirtyRef.current) {
+      setTeams(seedTeams(match));
     }
     // No `else`: closing leaves `teams` populated, same as the Svelte $effect.
   }, [open, match]);
@@ -130,6 +164,47 @@ export function EditMatchDialog({
       )
     );
 
+  const syncInFlight = () => setInFlightIds([...inFlightRef.current]);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const matchId = match?.id;
+    // Two responses would race to decide whether the dialog closes or shows an
+    // error.
+    if (!matchId || inFlightRef.current.has(matchId)) return;
+    inFlightRef.current.add(matchId);
+    syncInFlight();
+    // The previous attempt's message is about the payload being replaced right
+    // now; leaving it up outlives what it describes.
+    setFormError(null);
+    const submittedGeneration = generationRef.current;
+    const teamsPayload = payload;
+
+    try {
+      // Resolves only once the host has applied the outcome and reloaded, so
+      // the admin can cancel and reopen while this is pending. That outcome is
+      // page-level and still theirs to see; what a dead save must not do is
+      // close the dialog they have since reopened, or paint its error inside it.
+      const result = await onSave({ matchId, teams: teamsPayload });
+      if (submittedGeneration !== generationRef.current) return;
+
+      if (!result.success) {
+        setFormError(result.message || 'Failed to update match');
+      } else {
+        onOpenChange(false);
+      }
+    } finally {
+      // Unconditional: leaving the id in place after a superseded response
+      // would disable Save for that match forever.
+      inFlightRef.current.delete(matchId);
+      syncInFlight();
+    }
+  };
+
+  const markDirty = () => {
+    dirtyRef.current = true;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
@@ -143,24 +218,20 @@ export function EditMatchDialog({
         </DialogHeader>
 
         {!match ? (
+          /* Only reachable once the dialog has been opened on a match that has
+             since left the page of results — deleted, or shifted out of the
+             window by a reload. Saying "no match selected" would describe a
+             state the admin was never in. */
           <p className="py-4 text-center text-sm text-muted-foreground">
-            No match selected.
+            This match is no longer in the list — it may have been deleted, or
+            moved to another page.
           </p>
         ) : (
           <form
             className="space-y-5"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              const result = await onSave({
-                matchId: match.id,
-                teams: payload,
-              });
-              if (!result.success) {
-                setFormError(result.message || 'Failed to update match');
-              } else {
-                onOpenChange(false);
-              }
-            }}
+            onSubmit={handleSubmit}
+            onInput={markDirty}
+            onChange={markDirty}
           >
             <input type="hidden" name="matchId" value={match.id} />
             <input
@@ -241,10 +312,8 @@ export function EditMatchDialog({
               >
                 Cancel
               </Button>
-              {/* Disabled only by `duplicate`: nothing guards double submission
-                  on the parity target. */}
-              <Button type="submit" disabled={duplicate}>
-                Save match
+              <Button type="submit" disabled={duplicate || submitting}>
+                {submitting ? 'Saving…' : 'Save match'}
               </Button>
             </DialogFooter>
           </form>

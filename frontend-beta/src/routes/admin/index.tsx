@@ -10,7 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { getRoleBadgeVariant, isModeratorOrAbove } from '@/lib/utils';
+import { OpenFlagBadge } from '@/components/admin/open-flag-badge';
+import {
+  getRoleBadgeVariant,
+  isModeratorOrAbove,
+  openFlagsForOrg,
+} from '@/lib/utils';
 
 const adminRoute = getRouteApi('/admin');
 
@@ -79,11 +84,16 @@ function AdminLandingPage() {
                     </CardTitle>
                     <CardDescription>{org.slug}</CardDescription>
                   </CardHeader>
-                  <CardContent className="flex items-center justify-between">
+                  <CardContent className="flex items-center justify-between gap-2">
                     <Badge variant={getRoleBadgeVariant(org.role)}>
                       {org.role}
                     </Badge>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex items-center gap-2">
+                      <OpenFlagBadge
+                        count={openFlagsForOrg(shell.badges, org.id)}
+                      />
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
                   </CardContent>
                 </Card>
               </Link>

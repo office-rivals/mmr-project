@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from '@tanstack/react-router';
+import { Link, createFileRoute, getRouteApi } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { Flag, Trophy, UserCircle, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -11,10 +11,15 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { HttpErrorView } from '@/components/http-error-view';
+import { OpenFlagBadge } from '@/components/admin/open-flag-badge';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { requireAdminOrg } from '@/lib/server/admin';
-import { formatLeagueFormat, getRoleBadgeVariant } from '@/lib/utils';
-import { MatchFlagStatus } from '@/api-v3/models';
+import {
+  formatLeagueFormat,
+  getRoleBadgeVariant,
+  openFlagsForLeague,
+  openFlagsForOrg,
+} from '@/lib/utils';
 import type { LeagueResponse } from '@/api-v3';
 
 interface OrgOverview {
@@ -24,8 +29,6 @@ interface OrgOverview {
   ownerCount: number;
   moderatorCount: number;
   memberCount: number;
-  openFlagsTotal: number;
-  openFlagsPerLeague: Record<string, number>;
 }
 
 const loadOrgOverviewFn = createServerFn({ method: 'GET' })
@@ -39,24 +42,8 @@ const loadOrgOverviewFn = createServerFn({ method: 'GET' })
       apiClientV3.leaguesApi.listLeagues(org.id),
     ]);
 
-    // The flags endpoint is league-scoped, so this fans out one request per
-    // league. Each is individually caught: one failing league must not blank
-    // the whole overview.
-    const openFlagsPerLeague = await Promise.all(
-      leagues.map(async (league) => {
-        try {
-          const flags = await apiClientV3.adminMatchFlagsApi.listAllFlags(
-            org.id,
-            league.id,
-            MatchFlagStatus.Open
-          );
-          return { leagueId: league.id, count: flags.length };
-        } catch {
-          return { leagueId: league.id, count: 0 };
-        }
-      })
-    );
-
+    // Open-flag counts come from the badges endpoint (one grouped query
+    // server-side) rather than a per-league fan-out.
     const activeMembers = members.filter((m) => m.status === 'Active');
 
     return {
@@ -67,10 +54,6 @@ const loadOrgOverviewFn = createServerFn({ method: 'GET' })
       moderatorCount: activeMembers.filter((m) => m.role === 'Moderator')
         .length,
       memberCount: activeMembers.filter((m) => m.role === 'Member').length,
-      openFlagsTotal: openFlagsPerLeague.reduce((sum, x) => sum + x.count, 0),
-      openFlagsPerLeague: Object.fromEntries(
-        openFlagsPerLeague.map((x) => [x.leagueId, x.count])
-      ),
     };
   });
 
@@ -82,9 +65,12 @@ export const Route = createFileRoute('/admin/$orgSlug/')({
 
 const plural = (n: number) => (n === 1 ? '' : 's');
 
+const adminRoute = getRouteApi('/admin');
+
 function OrgAdminOverviewPage() {
   const { org } = Route.useRouteContext();
   const data = Route.useLoaderData();
+  const { badges } = adminRoute.useLoaderData();
 
   return (
     <div className="space-y-6">
@@ -131,7 +117,9 @@ function OrgAdminOverviewPage() {
             <Flag className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.openFlagsTotal}</div>
+            <div className="text-2xl font-bold">
+              {openFlagsForOrg(badges, org.id)}
+            </div>
             <p className="text-xs text-muted-foreground">across all leagues</p>
           </CardContent>
         </Card>
@@ -162,7 +150,7 @@ function OrgAdminOverviewPage() {
           ) : (
             <div className="space-y-2">
               {data.leagues.map((league) => {
-                const openFlags = data.openFlagsPerLeague[league.id] ?? 0;
+                const openFlags = openFlagsForLeague(badges, league.id);
                 return (
                   <Link
                     key={league.id}
@@ -177,12 +165,7 @@ function OrgAdminOverviewPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {openFlags > 0 && (
-                        <Badge variant="destructive">
-                          <Flag className="mr-1 h-3 w-3" />
-                          {openFlags} open
-                        </Badge>
-                      )}
+                      <OpenFlagBadge count={openFlags} />
                     </div>
                   </Link>
                 );

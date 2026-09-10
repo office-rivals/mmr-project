@@ -14,9 +14,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HttpErrorView } from '@/components/http-error-view';
+import { OrganizationRole } from '@/api-v3';
 import { HttpError } from '@/lib/http-error';
 import { createRouteGuard } from '@/lib/server/http-error';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import { getApiErrorDetails } from '@/lib/server/apiError';
 import { loadShellData, loadShellDataOnce } from '@/lib/server/shell';
 import { authedShellQueryOptions, meQueryKey } from '@/lib/shell';
 import type { AuthedShellData } from '@/lib/shell';
@@ -31,7 +33,7 @@ function resolveOwnedOrg(shell: AuthedShellData, orgSlug: string) {
   }
   const org = shell.organizations.find((o) => o.slug === orgSlug);
   if (!org) throw new HttpError(404, `Organization '${orgSlug}' not found`);
-  if (org.role !== 'Owner') {
+  if (org.role !== OrganizationRole.Owner) {
     throw new HttpError(403, 'Only organization owners can access settings');
   }
   return org;
@@ -40,15 +42,6 @@ function resolveOwnedOrg(shell: AuthedShellData, orgSlug: string) {
 const ownerGuard = createRouteGuard(async ({ params }) => {
   resolveOwnedOrg(await loadShellDataOnce(), params.orgSlug ?? '');
 });
-
-async function readProblemDetail(error: unknown): Promise<string | null> {
-  const response = (error as { response?: Response } | null)?.response;
-  if (!response || typeof response.json !== 'function') return null;
-  const body = (await response.json().catch(() => ({}))) as {
-    detail?: unknown;
-  };
-  return typeof body.detail === 'string' ? body.detail : null;
-}
 
 type UpdateResult =
   | { status: 'error'; error: string }
@@ -69,7 +62,7 @@ const updateOrganizationFn = createServerFn({ method: 'POST' })
     }
     const org = shell.organizations.find((o) => o.slug === data.orgSlug);
     if (!org) return { status: 'error', error: 'Organization not found' };
-    if (org.role !== 'Owner') {
+    if (org.role !== OrganizationRole.Owner) {
       return {
         status: 'error',
         error: 'Only organization owners can access settings',
@@ -86,11 +79,11 @@ const updateOrganizationFn = createServerFn({ method: 'POST' })
         ? { status: 'renamed', slug: updated.slug }
         : { status: 'success' };
     } catch (error) {
-      const detail = await readProblemDetail(error);
-      return {
-        status: 'error',
-        error: detail ?? 'Failed to update organization',
-      };
+      const { message } = await getApiErrorDetails(
+        error,
+        'Failed to update organization'
+      );
+      return { status: 'error', error: message };
     }
   });
 

@@ -1,8 +1,17 @@
 import { auth } from '@clerk/tanstack-react-start/server';
 import { getRequest } from '@tanstack/react-start/server';
 import { requireApiClientV3 } from './apiClientV3';
+import { isModeratorOrAbove } from '@/lib/utils';
 import type { MeOrganizationResponse } from '@/api-v3';
 import type { AuthedShellData } from '@/lib/shell';
+
+// Promise.allSettled semantics for a single awaited call, so the two requests
+// stay independently recoverable while still running in order.
+const settle = <T>(p: Promise<T>) =>
+  p.then(
+    (value) => ({ status: 'fulfilled' as const, value }),
+    () => ({ status: 'rejected' as const, value: undefined })
+  );
 
 /**
  * Server-side port of `(authed)/+layout.server.ts`.
@@ -26,26 +35,48 @@ export async function loadShellData(): Promise<AuthedShellData> {
   let defaultLeagueId: string | null = null;
   let defaultLeaguePlayerId: string | null = null;
   let profileLoadFailed = false;
+  let openFlagCount = 0;
 
-  try {
-    const me = await apiClientV3.meApi.getMe();
-    organizations = me.organizations ?? [];
-    displayName = me.displayName ?? null;
-    username = me.username ?? null;
-    // First org that actually HAS a league, not organizations[0] — a
-    // league-less org would otherwise null out every default and hide the
-    // header switcher.
-    const org = organizations.find((o) => (o.leagues?.length ?? 0) > 0);
-    const league = org?.leagues?.[0];
-    if (org && league) {
-      defaultOrgSlug = org.slug;
-      defaultLeagueSlug = league.slug;
-      defaultOrgId = org.id;
-      defaultLeagueId = league.id;
-      defaultLeaguePlayerId = league.leaguePlayerId ?? null;
+  const meResult = await settle(apiClientV3.meApi.getMe());
+
+  if (meResult.status === 'fulfilled') {
+    // Reading the payload stays guarded: a malformed profile must degrade the
+    // same way a failed request does, not throw out of the shell loader.
+    try {
+      const me = meResult.value;
+      organizations = me.organizations ?? [];
+      displayName = me.displayName ?? null;
+      username = me.username ?? null;
+      // First org that actually HAS a league, not organizations[0] — a
+      // league-less org would otherwise null out every default and hide the
+      // header switcher.
+      const org = organizations.find((o) => (o.leagues?.length ?? 0) > 0);
+      const league = org?.leagues?.[0];
+      if (org && league) {
+        defaultOrgSlug = org.slug;
+        defaultLeagueSlug = league.slug;
+        defaultOrgId = org.id;
+        defaultLeagueId = league.id;
+        defaultLeaguePlayerId = league.leaguePlayerId ?? null;
+      }
+    } catch {
+      organizations = [];
+      profileLoadFailed = true;
     }
-  } catch {
+  } else {
     profileLoadFailed = true;
+  }
+
+  // Only admins can act on flags, and only the profile says who is one — so
+  // this runs after getMe() rather than alongside it, and not at all for the
+  // majority of users, who would just be paying a round trip to be told zero.
+  // (getMe() also provisions the user row and claims pending invites, which is
+  // what the counts are derived from, so the ordering is required regardless.)
+  if (organizations.some((o) => isModeratorOrAbove(o.role))) {
+    const badgesResult = await settle(apiClientV3.meApi.getBadges());
+    if (badgesResult.status === 'fulfilled') {
+      openFlagCount = badgesResult.value.openMatchFlags?.total ?? 0;
+    }
   }
 
   return {
@@ -54,6 +85,7 @@ export async function loadShellData(): Promise<AuthedShellData> {
     profileLoadFailed,
     displayName,
     username,
+    openFlagCount,
     defaultOrgSlug,
     defaultLeagueSlug,
     defaultOrgId,

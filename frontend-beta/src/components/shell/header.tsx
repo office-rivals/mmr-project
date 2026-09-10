@@ -35,6 +35,7 @@ interface HeaderProps {
   displayName: string | null;
   username: string | null;
   defaultOrgSlug: string | null;
+  openFlagCount: number;
 }
 
 // Sub-routes whose path is identical across leagues (no league-scoped ids), so
@@ -48,6 +49,7 @@ export function Header({
   displayName,
   username,
   defaultOrgSlug,
+  openFlagCount,
 }: HeaderProps) {
   const params = useParams({ strict: false });
   const pathname = useLocation({ select: (location) => location.pathname });
@@ -76,6 +78,12 @@ export function Header({
     menuOrg && isModeratorOrAbove(menuOrg.role)
       ? `/admin/${menuOrg.slug}`
       : '/admin';
+
+  // Only alert when the user can actually act on it. The count and the
+  // organizations list come from separate requests, so a profile failure can
+  // leave a non-zero count with no Admin entry to reach — don't paint a red
+  // dot the user has no way to resolve.
+  const showFlagDot = hasAdminAccess && openFlagCount > 0;
 
   function leagueRelativePath(targetLeague: MeLeagueResponse): string {
     if (!params.orgSlug || !params.leagueSlug) return '';
@@ -196,10 +204,20 @@ export function Header({
 
         <DropdownMenu>
           <DropdownMenuTrigger
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Settings menu"
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={
+              showFlagDot
+                ? 'Settings menu — unresolved match flags need attention'
+                : 'Settings menu'
+            }
           >
             <Settings className="h-5 w-5" />
+            {showFlagDot && (
+              <span
+                className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card"
+                aria-hidden="true"
+              />
+            )}
           </DropdownMenuTrigger>
 
           <DropdownMenuContent
@@ -241,6 +259,15 @@ export function Header({
                 >
                   <Shield className="h-4 w-4 text-muted-foreground" />
                   Admin
+                  {openFlagCount > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="ml-auto"
+                      aria-label={`${openFlagCount} unresolved match flags`}
+                    >
+                      {openFlagCount}
+                    </Badge>
+                  )}
                 </DropdownMenuItem>
               )}
             </div>

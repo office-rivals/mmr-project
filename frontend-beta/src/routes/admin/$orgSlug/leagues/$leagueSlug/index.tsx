@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from '@tanstack/react-router';
+import { Link, createFileRoute, getRouteApi } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { CalendarDays, Flag, Trophy, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -17,13 +17,12 @@ import {
   formatDate,
   formatLeagueFormat,
   getPlayerDisplayName,
+  openFlagsForLeague,
 } from '@/lib/utils';
-import { MatchFlagStatus } from '@/api-v3/models';
 import type { MatchResponse, SeasonResponse } from '@/api-v3';
 
 interface LeagueOverview {
   recentMatches: MatchResponse[];
-  openFlagsCount: number;
   currentSeason: SeasonResponse | null;
   playerCount: number;
 }
@@ -34,23 +33,18 @@ const loadLeagueOverviewFn = createServerFn({ method: 'GET' })
     const org = await requireAdminOrg(data.orgSlug);
     const apiClientV3 = await requireApiClientV3();
 
-    // Flags and the current season degrade silently; matches and players do
-    // not — a failure there is a page error.
-    const [recentMatches, openFlags, currentSeason, players] =
-      await Promise.all([
-        apiClientV3.matchesApi.getMatches(org.id, data.leagueId, { limit: 5 }),
-        apiClientV3.adminMatchFlagsApi
-          .listAllFlags(org.id, data.leagueId, MatchFlagStatus.Open)
-          .catch(() => []),
-        apiClientV3.seasonsApi
-          .getCurrentSeason(org.id, data.leagueId)
-          .catch(() => null),
-        apiClientV3.leaguePlayersApi.listPlayers(org.id, data.leagueId),
-      ]);
+    // The current season degrades silently; matches and players do not — a
+    // failure there is a page error. Open flags come from the badges endpoint.
+    const [recentMatches, currentSeason, players] = await Promise.all([
+      apiClientV3.matchesApi.getMatches(org.id, data.leagueId, { limit: 5 }),
+      apiClientV3.seasonsApi
+        .getCurrentSeason(org.id, data.leagueId)
+        .catch(() => null),
+      apiClientV3.leaguePlayersApi.listPlayers(org.id, data.leagueId),
+    ]);
 
     return {
       recentMatches,
-      openFlagsCount: openFlags.length,
       currentSeason,
       playerCount: players.length,
     };
@@ -65,10 +59,13 @@ export const Route = createFileRoute('/admin/$orgSlug/leagues/$leagueSlug/')({
   component: LeagueAdminOverviewPage,
 });
 
+const adminRoute = getRouteApi('/admin');
+
 function LeagueAdminOverviewPage() {
   const { orgSlug, leagueSlug } = Route.useParams();
   const { league } = Route.useRouteContext();
   const data = Route.useLoaderData();
+  const { badges } = adminRoute.useLoaderData();
 
   return (
     <div className="space-y-5">
@@ -129,7 +126,9 @@ function LeagueAdminOverviewPage() {
             <Flag className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.openFlagsCount}</div>
+            <div className="text-2xl font-bold">
+              {openFlagsForLeague(badges, league.id)}
+            </div>
           </CardContent>
         </Card>
       </div>

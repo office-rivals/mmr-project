@@ -1,4 +1,9 @@
-import { Link, Outlet, createFileRoute, useMatch } from '@tanstack/react-router';
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  useMatch,
+} from '@tanstack/react-router';
 import { Building2, Home, Shield } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
 import { Button } from '@/components/ui/button';
@@ -6,7 +11,9 @@ import { HttpErrorView } from '@/components/http-error-view';
 import { HttpError } from '@/lib/http-error';
 import { createRouteGuard } from '@/lib/server/http-error';
 import { loadShellDataOnce } from '@/lib/server/shell';
+import { badgesQueryOptions } from '@/lib/badges';
 import { authedShellQueryOptions } from '@/lib/shell';
+import type { BadgesResponse } from '@/api-v3';
 import type { AuthedShellData } from '@/lib/shell';
 
 /**
@@ -25,12 +32,24 @@ const adminGuard = createRouteGuard(async () => {
   requireProfile(await loadShellDataOnce());
 });
 
+/** The `/admin` layout data every descendant reads for its flag badges. */
+export interface AdminLayoutData extends AuthedShellData {
+  badges: BadgesResponse | null;
+}
+
 export const Route = createFileRoute('/admin')({
   server: { middleware: [adminGuard] },
-  loader: async ({ context }) =>
-    requireProfile(
+  loader: async ({ context }): Promise<AdminLayoutData> => {
+    const shell = requireProfile(
       await context.queryClient.ensureQueryData(authedShellQueryOptions())
-    ),
+    );
+    // After getMe(), which provisions the user and claims pending invites —
+    // the memberships the counts are derived from. Non-fatal on its own.
+    const badges = await context.queryClient
+      .ensureQueryData(badgesQueryOptions())
+      .catch(() => null);
+    return { ...shell, badges };
+  },
   errorComponent: HttpErrorView,
   component: AdminLayout,
 });

@@ -2,15 +2,17 @@ import {
   Link,
   Outlet,
   createFileRoute,
+  getRouteApi,
   useLocation,
 } from '@tanstack/react-router';
 import { LayoutDashboard, Trophy, Users } from 'lucide-react';
+import { OpenFlagBadge } from '@/components/admin/open-flag-badge';
 import { HttpErrorView } from '@/components/http-error-view';
 import { resolveAdminOrg } from '@/lib/admin';
 import { createRouteGuard } from '@/lib/server/http-error';
 import { loadShellDataOnce } from '@/lib/server/shell';
 import { authedShellQueryOptions } from '@/lib/shell';
-import { cn } from '@/lib/utils';
+import { cn, openFlagsForOrg } from '@/lib/utils';
 
 /**
  * The org gate. Attached to the layout route, so it covers every descendant
@@ -38,8 +40,11 @@ export const Route = createFileRoute('/admin/$orgSlug')({
   component: OrgAdminLayout,
 });
 
+const adminRoute = getRouteApi('/admin');
+
 function OrgAdminLayout() {
   const org = Route.useLoaderData();
+  const { badges } = adminRoute.useLoaderData();
   const { pathname } = useLocation();
   const base = `/admin/${org.slug}`;
 
@@ -50,6 +55,7 @@ function OrgAdminLayout() {
       label: 'Overview',
       icon: LayoutDashboard,
       exact: true,
+      badge: 0,
     },
     {
       to: '/admin/$orgSlug/members' as const,
@@ -57,6 +63,7 @@ function OrgAdminLayout() {
       label: 'Members',
       icon: Users,
       exact: false,
+      badge: 0,
     },
     {
       to: '/admin/$orgSlug/leagues' as const,
@@ -64,11 +71,14 @@ function OrgAdminLayout() {
       label: 'Leagues',
       icon: Trophy,
       exact: false,
+      badge: openFlagsForOrg(badges, org.id),
     },
   ];
 
   const isActive = (href: string, exact: boolean) =>
-    exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+    exact
+      ? pathname === href
+      : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
@@ -93,6 +103,11 @@ function OrgAdminLayout() {
               >
                 <item.icon className="h-4 w-4" />
                 <span>{item.label}</span>
+                <OpenFlagBadge
+                  count={item.badge}
+                  variant="count"
+                  className="ml-auto"
+                />
               </Link>
             );
           })}

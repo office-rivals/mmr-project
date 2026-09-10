@@ -45,25 +45,29 @@ type ActionResult = { success: boolean; message: string };
 const isMatchFlagStatus = (value: string): value is MatchFlagStatus =>
   (Object.values(MatchFlagStatus) as string[]).includes(value);
 
+/** `'all'` is the explicit no-filter view; everything else is a real status. */
+type FlagStatusFilter = MatchFlagStatus | 'all';
+
 interface FlagsPageData {
   flags: MatchFlagResponse[];
   players: LeaguePlayerResponse[];
   matchesById: Record<string, MatchResponse | null>;
   currentSeasonId: string | null;
-  statusFilter: MatchFlagStatus | null;
+  statusFilter: FlagStatusFilter;
   orgId: string;
 }
 
 const loadFlagsFn = createServerFn({ method: 'GET' })
   .validator(
-    (input: { orgSlug: string; leagueId: string; status?: MatchFlagStatus }) =>
+    (input: { orgSlug: string; leagueId: string; status: FlagStatusFilter }) =>
       input
   )
   .handler(
     async ({ data }): Promise<{ error: string } | { data: FlagsPageData }> => {
       const org = await requireAdminOrg(data.orgSlug);
       const apiClientV3 = await requireApiClientV3();
-      const statusFilter = data.status;
+      // `all` is the only way to ask the API for an unfiltered list.
+      const statusFilter = data.status === 'all' ? undefined : data.status;
 
       try {
         const [flags, players, currentSeasonId] = await Promise.all([
@@ -111,7 +115,7 @@ const loadFlagsFn = createServerFn({ method: 'GET' })
             players,
             matchesById: Object.fromEntries(matchEntries),
             currentSeasonId,
-            statusFilter: statusFilter ?? null,
+            statusFilter: data.status,
             orgId: org.id,
           },
         };
@@ -233,16 +237,21 @@ const recalculateMatchesFn = createServerFn({ method: 'POST' })
 export const Route = createFileRoute(
   '/admin/$orgSlug/leagues/$leagueSlug/match-flags'
 )({
-  // An unknown `?status=` value is ignored, i.e. no filter at all.
+  // Open (the actionable queue) is the default, so a bare URL stays bare and
+  // still means Open. `?status=all` is the explicit no-filter view; anything
+  // unrecognized falls back to Open.
   validateSearch: (
     search: Record<string, unknown>
-  ): { status?: MatchFlagStatus } => {
+  ): { status?: FlagStatusFilter } => {
     const raw = search.status;
+    if (raw === 'all') return { status: 'all' };
     return typeof raw === 'string' && isMatchFlagStatus(raw)
       ? { status: raw }
       : {};
   },
-  loaderDeps: ({ search }) => ({ status: search.status }),
+  loaderDeps: ({ search }) => ({
+    status: search.status ?? MatchFlagStatus.Open,
+  }),
   loader: async ({ context, deps, params }) => {
     const result = await loadFlagsFn({
       data: {
@@ -288,11 +297,12 @@ const STATUS_META: Record<
   },
 };
 
-const statusTabs: { label: string; value: MatchFlagStatus | null }[] = [
-  { label: 'All', value: null },
+// Open first (the actionable default), All last. 'all' is the no-filter view.
+const statusTabs: { label: string; value: FlagStatusFilter }[] = [
   { label: 'Open', value: MatchFlagStatus.Open },
   { label: 'Resolved', value: MatchFlagStatus.Resolved },
   { label: 'Dismissed', value: MatchFlagStatus.Dismissed },
+  { label: 'All', value: 'all' },
 ];
 
 function MatchFlagsPage() {
@@ -369,15 +379,13 @@ function MatchFlagsPage() {
 
         <div className="flex gap-2">
           {statusTabs.map((tab) => {
-            const isActive =
-              tab.value === data.statusFilter ||
-              (tab.value === null && !data.statusFilter);
+            const isActive = tab.value === data.statusFilter;
             return (
               <Link
                 key={tab.label}
                 to="/admin/$orgSlug/leagues/$leagueSlug/match-flags"
                 params={{ orgSlug, leagueSlug }}
-                search={tab.value ? { status: tab.value } : {}}
+                search={{ status: tab.value }}
                 className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
                   isActive
                     ? 'bg-primary text-primary-foreground'
@@ -395,9 +403,9 @@ function MatchFlagsPage() {
             <CheckCircle className="mb-4 h-12 w-12 text-muted-foreground" />
             <h3 className="text-lg font-medium">No flags found</h3>
             <p className="text-sm text-muted-foreground">
-              {data.statusFilter
-                ? `No ${data.statusFilter.toLowerCase()} flags`
-                : 'All match flags have been resolved'}
+              {data.statusFilter === 'all'
+                ? 'No match flags yet'
+                : `No ${data.statusFilter.toLowerCase()} flags`}
             </p>
           </div>
         ) : (
