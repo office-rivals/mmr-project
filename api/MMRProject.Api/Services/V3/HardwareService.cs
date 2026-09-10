@@ -4,6 +4,8 @@ using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.Exceptions;
+using MMRProject.Api.Extensions;
+using MMRProject.Api.UserContext;
 
 namespace MMRProject.Api.Services.V3;
 
@@ -13,7 +15,7 @@ public interface IHardwareService
     Task<List<HardwareResponse>> ListAsync(Guid orgId, Guid leagueId);
 }
 
-public class HardwareService(ApiDbContext dbContext) : IHardwareService
+public class HardwareService(ApiDbContext dbContext, IUserContextResolver userContextResolver) : IHardwareService
 {
     private static readonly TimeSpan OnlineWindow = TimeSpan.FromMinutes(15);
 
@@ -31,6 +33,8 @@ public class HardwareService(ApiDbContext dbContext) : IHardwareService
 
         if (league == null)
             throw new NotFoundException("League not found");
+
+        await EnsureCallerCanAccessLeagueAsync(league);
 
         var hardware = await dbContext.Hardware
             .FirstOrDefaultAsync(h => h.HardwareId == hardwareId);
@@ -57,6 +61,44 @@ public class HardwareService(ApiDbContext dbContext) : IHardwareService
         }
 
         await dbContext.SaveChangesAsync();
+    }
+
+    private async Task EnsureCallerCanAccessLeagueAsync(League league)
+    {
+        var user = userContextResolver.GetUserIdentity();
+        var patOrganizationId = user.GetPatOrganizationId();
+        var patLeagueId = user.GetPatLeagueId();
+
+        if ((patOrganizationId.HasValue && patOrganizationId.Value != league.OrganizationId)
+            || (patLeagueId.HasValue && patLeagueId.Value != league.Id))
+        {
+            throw new ForbiddenException("The PAT does not have access to the requested league");
+        }
+
+        var identityUserId = user.GetUserId();
+        if (identityUserId == null)
+            throw new ForbiddenException("The PAT owner does not have access to the requested league");
+
+        var membership = await dbContext.OrganizationMemberships
+            .Where(m => m.OrganizationId == league.OrganizationId
+                        && m.User!.IdentityUserId == identityUserId
+                        && m.Status == MembershipStatus.Active)
+            .Select(m => new { m.Id, m.Role })
+            .FirstOrDefaultAsync();
+
+        if (membership == null)
+            throw new ForbiddenException("The PAT owner does not have access to the requested league");
+
+        if (membership.Role <= OrganizationRole.Moderator)
+            return;
+
+        var hasLeagueAccess = await dbContext.LeaguePlayers
+            .AnyAsync(lp => lp.OrganizationId == league.OrganizationId
+                            && lp.LeagueId == league.Id
+                            && lp.OrganizationMembershipId == membership.Id);
+
+        if (!hasLeagueAccess)
+            throw new ForbiddenException("The PAT owner does not have access to the requested league");
     }
 
     public async Task<List<HardwareResponse>> ListAsync(Guid orgId, Guid leagueId)

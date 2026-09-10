@@ -41,17 +41,17 @@ public class LeagueAccessAuthorizationHandler(
         if (membership == null)
             return;
 
-        if (membership.Role <= OrganizationRole.Moderator)
-        {
-            context.Succeed(requirement);
-            return;
-        }
-
         var leagueExists = await dbContext.Leagues
             .AnyAsync(l => l.OrganizationId == orgId && l.Id == leagueId);
 
         if (!leagueExists)
         {
+            return;
+        }
+
+        if (membership.Role <= OrganizationRole.Moderator)
+        {
+            context.Succeed(requirement);
             return;
         }
 

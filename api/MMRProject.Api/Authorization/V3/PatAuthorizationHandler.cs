@@ -34,7 +34,7 @@ public class PatAuthorizationHandler(IHttpContextAccessor httpContextAccessor)
         }
 
         var patOrgId = context.User.GetPatOrganizationId();
-        if (!patOrgId.HasValue || patOrgId.Value.ToString() != orgId)
+        if (patOrgId.HasValue && patOrgId.Value.ToString() != orgId)
         {
             return Task.CompletedTask;
         }

@@ -37,9 +37,22 @@ public class OrganizationRoleAuthorizationHandler(
             .Select(m => new { m.Role })
             .FirstOrDefaultAsync();
 
-        if (membership != null && membership.Role <= requirement.MinimumRole)
+        if (membership == null || membership.Role > requirement.MinimumRole)
+            return;
+
+        var leagueIdValue = httpContext.Request.RouteValues["leagueId"]?.ToString();
+        if (leagueIdValue != null)
         {
-            context.Succeed(requirement);
+            if (!Guid.TryParse(leagueIdValue, out var leagueId))
+                return;
+
+            var leagueExists = await dbContext.Leagues
+                .AnyAsync(l => l.OrganizationId == orgId && l.Id == leagueId);
+
+            if (!leagueExists)
+                return;
         }
+
+        context.Succeed(requirement);
     }
 }
