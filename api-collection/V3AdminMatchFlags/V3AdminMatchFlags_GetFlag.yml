@@ -1,0 +1,144 @@
+info:
+  name: V3AdminMatchFlags_GetFlag
+  type: http
+  seq: 2
+  tags:
+    - V3AdminMatchFlags
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/admin/match-flags/:flagId"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+    - name: flagId
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/admin/match-flags/:flagId"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: flagId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          {
+            "id": "",
+            "matchId": "",
+            "flaggedByMembershipId": "",
+            "flaggedByDisplayName": "",
+            "reason": "",
+            "status": "Open",
+            "resolutionNote": "",
+            "resolvedByMembershipId": "",
+            "resolvedByDisplayName": "",
+            "resolvedAt": "",
+            "createdAt": "",
+            "updatedAt": ""
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/admin/match-flags/:flagId"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: flagId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "matchId": "",
+            "flaggedByMembershipId": "",
+            "flaggedByDisplayName": "",
+            "reason": "",
+            "status": "Open",
+            "resolutionNote": "",
+            "resolvedByMembershipId": "",
+            "resolvedByDisplayName": "",
+            "resolvedAt": "",
+            "createdAt": "",
+            "updatedAt": ""
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/admin/match-flags/:flagId"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: flagId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "matchId": "",
+            "flaggedByMembershipId": "",
+            "flaggedByDisplayName": "",
+            "reason": "",
+            "status": "Open",
+            "resolutionNote": "",
+            "resolvedByMembershipId": "",
+            "resolvedByDisplayName": "",
+            "resolvedAt": "",
+            "createdAt": "",
+            "updatedAt": ""
+          }

@@ -1,0 +1,137 @@
+info:
+  name: Me_GetMe
+  type: http
+  seq: 1
+  tags:
+    - Me
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v3/me"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/me"
+      method: GET
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          {
+            "id": "",
+            "identityUserId": "",
+            "email": "",
+            "username": "",
+            "displayName": "",
+            "organizations": [
+              {
+                "id": "",
+                "name": "",
+                "slug": "",
+                "role": "Owner",
+                "leagues": [
+                  {
+                    "id": "",
+                    "name": "",
+                    "slug": "",
+                    "teamSize": 0,
+                    "winningScore": 0,
+                    "leaguePlayerId": ""
+                  }
+                ]
+              }
+            ]
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/me"
+      method: GET
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "identityUserId": "",
+            "email": "",
+            "username": "",
+            "displayName": "",
+            "organizations": [
+              {
+                "id": "",
+                "name": "",
+                "slug": "",
+                "role": "Owner",
+                "leagues": [
+                  {
+                    "id": "",
+                    "name": "",
+                    "slug": "",
+                    "teamSize": 0,
+                    "winningScore": 0,
+                    "leaguePlayerId": ""
+                  }
+                ]
+              }
+            ]
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/me"
+      method: GET
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "identityUserId": "",
+            "email": "",
+            "username": "",
+            "displayName": "",
+            "organizations": [
+              {
+                "id": "",
+                "name": "",
+                "slug": "",
+                "role": "Owner",
+                "leagues": [
+                  {
+                    "id": "",
+                    "name": "",
+                    "slug": "",
+                    "teamSize": 0,
+                    "winningScore": 0,
+                    "leaguePlayerId": ""
+                  }
+                ]
+              }
+            ]
+          }

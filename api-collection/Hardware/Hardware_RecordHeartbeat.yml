@@ -1,0 +1,47 @@
+info:
+  name: Hardware_RecordHeartbeat
+  type: http
+  seq: 1
+  tags:
+    - Hardware
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v3/hardware/heartbeat"
+  body:
+    type: json
+    data: |-
+      {
+        "hardwareId": "asdf",
+        "leagueId": "22222222-2222-2222-2222-222222222222",
+        "localIpAddress": "192.168.4.1"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/hardware/heartbeat"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "hardwareId": "",
+            "leagueId": "",
+            "localIpAddress": ""
+          }
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: ""

@@ -1,0 +1,39 @@
+info:
+  name: DeprecatedApi_Gone (POST)
+  type: http
+  seq: 2
+  tags:
+    - DeprecatedApi
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/:path"
+  params:
+    - name: path
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v1/:path"
+      method: POST
+      params:
+        - name: path
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: ""
