@@ -701,13 +701,13 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
 
         var editTask = editClient.PatchAsJsonAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{original.Id}",
-            OneVsOneMembership(requesterMembership.Id, opponent.Id));
+            OneVsOneMemberships(requesterMembership.Id, target.Id));
         try
         {
             await editGate.WaitUntilReachedAsync();
             var approveTask = reviewClient.PostAsync(
                 $"api/v3/organizations/{org.Id}/claim-requests/{claim.Id}/approve", null);
-            await Task.Delay(250);
+            await WaitForBlockedMembershipLockAsync();
             Assert.False(approveTask.IsCompleted);
 
             editGate.Release();
@@ -725,6 +725,69 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
             (await db.OrganizationMemberships.SingleAsync(m => m.Id == requesterMembership.Id)).Status);
         Assert.True(await db.MatchTeamPlayers.AnyAsync(p =>
             p.LeaguePlayer.OrganizationMembershipId == requesterMembership.Id));
+        Assert.True(await db.MatchTeamPlayers.AnyAsync(p =>
+            p.LeaguePlayer.OrganizationMembershipId == target.Id));
+    }
+
+    [Fact]
+    public async Task MatchEdits_WithReversedMembershipOrder_DoNotDeadlock()
+    {
+        var org = await CreateOrganization("Edit Order", "edit-order");
+        var league = await CreateLeague(org.Id, "Edit Order League", "edit-order-league", teamSize: 1);
+        await CreateSeason(org.Id, league.Id);
+        var (_, _, firstOriginalPlayer) = await SeedTestUser(
+            org.Id, league.Id, "order-owner", "order-owner@test.com", OrganizationRole.Owner);
+        var (_, _, secondOriginalPlayer) = await SeedTestUser(
+            org.Id, league.Id, "order-second", "order-second@test.com");
+        var (_, _, thirdOriginalPlayer) = await SeedTestUser(
+            org.Id, league.Id, "order-third", "order-third@test.com");
+        var (_, _, fourthOriginalPlayer) = await SeedTestUser(
+            org.Id, league.Id, "order-fourth", "order-fourth@test.com");
+
+        AuthenticateAs("order-owner");
+        var firstOriginalResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            OneVsOne(firstOriginalPlayer.Id, secondOriginalPlayer.Id));
+        var secondOriginalResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            OneVsOne(thirdOriginalPlayer.Id, fourthOriginalPlayer.Id));
+        var firstOriginal = await ReadJsonAsync<MatchResponse>(firstOriginalResponse);
+        var secondOriginal = await ReadJsonAsync<MatchResponse>(secondOriginalResponse);
+        Assert.NotNull(firstOriginal);
+        Assert.NotNull(secondOriginal);
+
+        var firstMembership = await SeedPlaceholder(org.Id, "Order First");
+        var secondMembership = await SeedPlaceholder(org.Id, "Order Second");
+        var firstGate = new DbCommandGate("FOR UPDATE", CommandGateTiming.After);
+
+        await using var firstFactory = new IntegrationTestFactory(PostgresFixture, firstGate);
+        await using var secondFactory = new IntegrationTestFactory(PostgresFixture);
+        using var firstClient = firstFactory.CreateClient();
+        using var secondClient = secondFactory.CreateClient();
+        firstFactory.ClaimsProvider.SetUser("order-owner", "order-owner@test.com");
+        secondFactory.ClaimsProvider.SetUser("order-owner", "order-owner@test.com");
+
+        var firstEditTask = firstClient.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{firstOriginal.Id}",
+            OneVsOneMemberships(firstMembership.Id, secondMembership.Id));
+        Task<HttpResponseMessage>? secondEditTask = null;
+        try
+        {
+            await firstGate.WaitUntilReachedAsync();
+            secondEditTask = secondClient.PatchAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{secondOriginal.Id}",
+                OneVsOneMemberships(secondMembership.Id, firstMembership.Id));
+            await WaitForBlockedMembershipLockAsync();
+
+            firstGate.Release();
+            Assert.Equal(HttpStatusCode.OK, (await firstEditTask).StatusCode);
+            Assert.NotNull(secondEditTask);
+            Assert.Equal(HttpStatusCode.OK, (await secondEditTask).StatusCode);
+        }
+        finally
+        {
+            firstGate.Release();
+        }
     }
 
     [Fact]
@@ -1258,6 +1321,24 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
         ],
     };
 
+    private static SubmitMatchRequest OneVsOneMemberships(
+        Guid firstMembershipId, Guid secondMembershipId) => new()
+    {
+        Teams =
+        [
+            new SubmitMatchTeamRequest
+            {
+                Players = [new SubmitMatchPlayerRequest { OrganizationMembershipId = firstMembershipId }],
+                Score = 10,
+            },
+            new SubmitMatchTeamRequest
+            {
+                Players = [new SubmitMatchPlayerRequest { OrganizationMembershipId = secondMembershipId }],
+                Score = 5,
+            },
+        ],
+    };
+
     private async Task SeedPendingMatchAsync(
         Guid orgId, Guid leagueId, Guid leaguePlayerId, AcceptanceStatus status)
     {
@@ -1347,6 +1428,34 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
         command.Parameters.AddWithValue("id", id);
         Assert.NotNull(await command.ExecuteScalarAsync());
         return new DatabaseRowLock(connection, transaction);
+    }
+
+    private async Task WaitForBlockedMembershipLockAsync()
+    {
+        await using var connection = new NpgsqlConnection(PostgresFixture.GetConnectionString());
+        await connection.OpenAsync();
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            await using var command = new NpgsqlCommand("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM pg_stat_activity AS activity
+                    WHERE activity.datname = current_database()
+                      AND activity.wait_event_type = 'Lock'
+                      AND cardinality(pg_blocking_pids(activity.pid)) > 0
+                      AND activity.query ILIKE '%organization_memberships%'
+                      AND activity.query ILIKE '%FOR UPDATE%'
+                )
+                """, connection);
+            if (await command.ExecuteScalarAsync() is true)
+                return;
+
+            await Task.Delay(25);
+        }
+
+        throw new TimeoutException("No request was observed waiting on an organization membership lock.");
     }
 
     private sealed class DatabaseRowLock(

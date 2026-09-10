@@ -150,13 +150,25 @@ public class V3MatchesService(
                     $"Each team must have exactly {leagueConfig.TeamSize} {(leagueConfig.TeamSize == 1 ? "player" : "players")} for this league");
         }
 
+        var playerRequests = request.Teams.SelectMany(team => team.Players).ToList();
+        var referencedMembershipIds = await FindReferencedMembershipIdsAsync(
+            orgId, playerRequests);
+        var lockedMemberships = await dbContext.LockMembershipsInOrderAsync(
+            orgId, referencedMembershipIds.OfType<Guid>());
+
         var resolvedTeams = new List<List<LeaguePlayer>>();
+        var playerIndex = 0;
         foreach (var team in request.Teams)
         {
             var resolvedPlayers = new List<LeaguePlayer>();
             foreach (var player in team.Players)
             {
-                resolvedPlayers.Add(await ResolveLeaguePlayerAsync(orgId, leagueId, player));
+                var membershipId = referencedMembershipIds[playerIndex++];
+                OrganizationMembership? membership = null;
+                if (membershipId.HasValue)
+                    lockedMemberships.TryGetValue(membershipId.Value, out membership);
+                resolvedPlayers.Add(await ResolveLeaguePlayerAsync(
+                    orgId, leagueId, player, membership));
             }
 
             resolvedTeams.Add(resolvedPlayers);
@@ -167,6 +179,53 @@ public class V3MatchesService(
             throw new InvalidArgumentException("Players must be unique across all teams");
 
         return resolvedTeams;
+    }
+
+    private async Task<List<Guid?>> FindReferencedMembershipIdsAsync(
+        Guid orgId,
+        IReadOnlyCollection<SubmitMatchPlayerRequest> playerRequests)
+    {
+        var requestedEmails = playerRequests
+            .Where(player => player.NewPlayer is not null
+                             && !string.IsNullOrWhiteSpace(player.NewPlayer.Email))
+            .Select(player => player.NewPlayer!.Email!.Trim())
+            .ToList();
+        var comparisonEmails = requestedEmails
+            .Select(email => email.ToLowerInvariant())
+            .Distinct()
+            .ToList();
+        List<OrganizationMembership> emailMatches = comparisonEmails.Count == 0
+            ? []
+            : await dbContext.OrganizationMemberships
+                .AsNoTracking()
+                .Include(membership => membership.User)
+                .Where(membership => membership.OrganizationId == orgId
+                                     && membership.Status != MembershipStatus.Removed
+                                     && ((membership.InviteEmail != null
+                                          && comparisonEmails.Contains(membership.InviteEmail.ToLower()))
+                                         || (membership.User != null
+                                             && comparisonEmails.Contains(membership.User.Email.ToLower()))))
+                .ToListAsync();
+
+        return playerRequests.Select(player =>
+        {
+            if (player.LeaguePlayerId.HasValue)
+                return null;
+            if (player.OrganizationMembershipId.HasValue)
+                return player.OrganizationMembershipId;
+
+            var email = string.IsNullOrWhiteSpace(player.NewPlayer?.Email)
+                ? null
+                : player.NewPlayer.Email.Trim();
+            return email == null
+                ? null
+                : SelectEmailMembershipMatch(
+                    emailMatches.Where(membership =>
+                            string.Equals(membership.InviteEmail, email, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(membership.User?.Email, email, StringComparison.OrdinalIgnoreCase))
+                        .ToList(),
+                    email)?.Id;
+        }).ToList();
     }
 
     private static void ValidateScores(int team1Score, int team2Score, int? winningScore)
@@ -239,7 +298,8 @@ public class V3MatchesService(
     private async Task<LeaguePlayer> ResolveLeaguePlayerAsync(
         Guid orgId,
         Guid leagueId,
-        SubmitMatchPlayerRequest playerRequest)
+        SubmitMatchPlayerRequest playerRequest,
+        OrganizationMembership? referencedMembership)
     {
         var populatedReferenceCount =
             (playerRequest.LeaguePlayerId.HasValue ? 1 : 0)
@@ -263,23 +323,27 @@ public class V3MatchesService(
 
         if (playerRequest.OrganizationMembershipId.HasValue)
         {
-            var membership = await dbContext.OrganizationMemberships
-                .Include(m => m.User)
-                .FirstOrDefaultAsync(m => m.Id == playerRequest.OrganizationMembershipId.Value
-                                          && m.OrganizationId == orgId
-                                          && m.Status != MembershipStatus.Removed)
-                ?? throw new InvalidArgumentException("Organization member was not found");
+            var membership = referencedMembership;
+            if (membership == null
+                || membership.Id != playerRequest.OrganizationMembershipId.Value
+                || membership.OrganizationId != orgId
+                || membership.Status == MembershipStatus.Removed)
+            {
+                throw new InvalidArgumentException("Organization member was not found");
+            }
 
             return await GetOrCreateLeaguePlayerAsync(orgId, leagueId, membership);
         }
 
-        return await ResolveNewPlayerAsync(orgId, leagueId, playerRequest.NewPlayer!);
+        return await ResolveNewPlayerAsync(
+            orgId, leagueId, playerRequest.NewPlayer!, referencedMembership);
     }
 
     private async Task<LeaguePlayer> ResolveNewPlayerAsync(
         Guid orgId,
         Guid leagueId,
-        CreateMatchPlayerRequest newPlayer)
+        CreateMatchPlayerRequest newPlayer,
+        OrganizationMembership? membership)
     {
         if (string.IsNullOrWhiteSpace(newPlayer.DisplayName))
         {
@@ -293,22 +357,6 @@ public class V3MatchesService(
         var normalizedUsername = string.IsNullOrWhiteSpace(newPlayer.Username)
             ? null
             : newPlayer.Username.Trim();
-
-        OrganizationMembership? membership = null;
-
-        if (normalizedEmail != null)
-        {
-            var membershipMatches = await dbContext.OrganizationMemberships
-                .Include(m => m.User)
-                .Where(m => m.OrganizationId == orgId
-                            && m.Status != MembershipStatus.Removed
-                            && ((m.InviteEmail != null
-                                 && m.InviteEmail.ToLower() == normalizedEmail.ToLower())
-                                || (m.User != null
-                                    && m.User.Email.ToLower() == normalizedEmail.ToLower())))
-                .ToListAsync();
-            membership = SelectEmailMembershipMatch(membershipMatches, normalizedEmail);
-        }
 
         if (membership == null)
         {
@@ -376,19 +424,6 @@ public class V3MatchesService(
         Guid leagueId,
         OrganizationMembership membership)
     {
-        if (dbContext.Entry(membership).State != EntityState.Added)
-        {
-            var locked = await dbContext.OrganizationMemberships
-                .FromSqlInterpolated(
-                    $"SELECT *, xmin FROM organization_memberships WHERE id = {membership.Id} AND organization_id = {orgId} FOR UPDATE")
-                .AsTracking()
-                .FirstOrDefaultAsync();
-            if (locked == null)
-                throw new InvalidArgumentException("Organization member is no longer available");
-
-            await dbContext.Entry(membership).ReloadAsync();
-        }
-
         if (membership.OrganizationId != orgId || membership.Status == MembershipStatus.Removed)
             throw new InvalidArgumentException("Organization member is no longer available");
 

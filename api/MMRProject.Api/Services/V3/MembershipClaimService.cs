@@ -230,11 +230,6 @@ public class MembershipClaimService(
         if (claim.UserId == actorUser.Id && actorMembership.Role != OrganizationRole.Owner)
             throw new ForbiddenException("Moderators cannot approve their own claim requests");
 
-        var target = await LockMembershipAsync(orgId, claim.OrganizationMembershipId)
-            ?? throw new InvalidArgumentException("This player is no longer claimable.");
-        if (!BuildClaimablePredicate(claim.RequesterVerifiedEmail).Compile()(target))
-            throw new InvalidArgumentException("This player is no longer claimable.");
-
         var claimantMembershipId = await dbContext.OrganizationMemberships
             .AsNoTracking()
             .Where(m => m.OrganizationId == orgId
@@ -243,8 +238,15 @@ public class MembershipClaimService(
             .Select(m => (Guid?)m.Id)
             .FirstOrDefaultAsync()
             ?? throw new InvalidArgumentException("The requester is no longer an active member.");
-        var claimantMembership = await LockMembershipAsync(orgId, claimantMembershipId)
-            ?? throw new InvalidArgumentException("The requester is no longer an active member.");
+        var lockedMemberships = await dbContext.LockMembershipsInOrderAsync(
+            orgId, [claim.OrganizationMembershipId, claimantMembershipId]);
+        if (!lockedMemberships.TryGetValue(claim.OrganizationMembershipId, out var target)
+            || !BuildClaimablePredicate(claim.RequesterVerifiedEmail).Compile()(target))
+        {
+            throw new InvalidArgumentException("This player is no longer claimable.");
+        }
+        if (!lockedMemberships.TryGetValue(claimantMembershipId, out var claimantMembership))
+            throw new InvalidArgumentException("The requester is no longer an active member.");
         if (claimantMembership.UserId != claim.UserId
             || claimantMembership.Status != MembershipStatus.Active)
         {
@@ -429,25 +431,6 @@ public class MembershipClaimService(
                 $"SELECT * FROM membership_claim_requests WHERE id = {claimId} AND organization_id = {orgId} FOR UPDATE")
             .AsTracking()
             .FirstOrDefaultAsync();
-    }
-
-    private async Task<OrganizationMembership?> LockMembershipAsync(Guid orgId, Guid membershipId)
-    {
-        var tracked = dbContext.ChangeTracker.Entries<OrganizationMembership>()
-            .FirstOrDefault(e => e.Entity.Id == membershipId);
-        var membership = await dbContext.OrganizationMemberships
-            .FromSqlInterpolated(
-                $"SELECT *, xmin FROM organization_memberships WHERE id = {membershipId} AND organization_id = {orgId} FOR UPDATE")
-            .AsTracking()
-            .FirstOrDefaultAsync();
-
-        if (membership != null && tracked != null)
-        {
-            await tracked.ReloadAsync();
-            membership = tracked.Entity;
-        }
-
-        return membership;
     }
 
     private async Task<MembershipClaimRequestResponse> LoadAndMapAsync(Guid orgId, Guid claimId)
