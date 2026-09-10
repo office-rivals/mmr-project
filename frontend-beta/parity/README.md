@@ -1,5 +1,7 @@
 # Visual parity harness
 
+See [the recorded verification](VERIFICATION.md) for the completed parity gates.
+
 `npm run parity:visual` from `frontend-beta/` runs the reference and beta against
 one freshly seeded e2e stack. Run it alone: the shared functional suite uses the
 same database and ports and also reseeds destructively.

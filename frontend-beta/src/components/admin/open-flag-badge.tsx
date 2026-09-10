@@ -30,7 +30,7 @@ export function OpenFlagBadge({
         'inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-destructive-foreground',
         className
       )}
-      aria-label={`${`${count} open`} flags`}
+      aria-label={`${count} open flags`}
     >
       {count}
     </span>
