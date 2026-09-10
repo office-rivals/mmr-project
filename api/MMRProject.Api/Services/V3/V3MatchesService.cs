@@ -351,6 +351,22 @@ public class V3MatchesService(
         Guid leagueId,
         OrganizationMembership membership)
     {
+        if (dbContext.Entry(membership).State != EntityState.Added)
+        {
+            var locked = await dbContext.OrganizationMemberships
+                .FromSqlInterpolated(
+                    $"SELECT *, xmin FROM organization_memberships WHERE id = {membership.Id} AND organization_id = {orgId} FOR UPDATE")
+                .AsTracking()
+                .FirstOrDefaultAsync();
+            if (locked == null)
+                throw new InvalidArgumentException("Organization member is no longer available");
+
+            await dbContext.Entry(membership).ReloadAsync();
+        }
+
+        if (membership.OrganizationId != orgId || membership.Status == MembershipStatus.Removed)
+            throw new InvalidArgumentException("Organization member is no longer available");
+
         var existingPlayer = await dbContext.LeaguePlayers
             .FirstOrDefaultAsync(lp => lp.OrganizationId == orgId
                                        && lp.LeagueId == leagueId

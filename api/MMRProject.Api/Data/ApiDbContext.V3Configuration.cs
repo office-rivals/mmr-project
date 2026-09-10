@@ -430,6 +430,57 @@ public partial class ApiDbContext
                 .HasConstraintName("fk_organization_invite_links_created_by");
         });
 
+        modelBuilder.Entity<MembershipClaimRequest>(entity =>
+        {
+            entity.ToTable("membership_claim_requests");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.OrganizationId).HasColumnName("organization_id");
+            entity.Property(e => e.OrganizationMembershipId).HasColumnName("organization_membership_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.Note).HasColumnName("note");
+            entity.Property(e => e.ReviewNote).HasColumnName("review_note");
+            entity.Property(e => e.ReviewedByMembershipId).HasColumnName("reviewed_by_membership_id");
+            entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(e => e.RetiredMembershipId).HasColumnName("retired_membership_id");
+            entity.Property(e => e.RequesterVerifiedEmail).HasColumnName("requester_verified_email");
+
+            entity.HasIndex(e => e.OrganizationMembershipId, "ix_membership_claim_requests_pending_target")
+                .IsUnique()
+                .HasFilter("status = 0");
+            entity.HasIndex(e => new { e.OrganizationId, e.UserId }, "ix_membership_claim_requests_pending_user")
+                .IsUnique()
+                .HasFilter("status = 0");
+            entity.HasIndex(e => new { e.OrganizationId, e.Status }, "ix_membership_claim_requests_org_status");
+
+            entity.HasOne(e => e.Organization).WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_membership_claim_requests_organization");
+
+            entity.HasOne(e => e.OrganizationMembership).WithMany()
+                .HasForeignKey(e => e.OrganizationMembershipId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_membership_claim_requests_target_membership");
+
+            entity.HasOne(e => e.User).WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_membership_claim_requests_user");
+
+            entity.HasOne(e => e.ReviewedByMembership).WithMany()
+                .HasForeignKey(e => e.ReviewedByMembershipId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_membership_claim_requests_reviewed_by");
+
+            entity.HasOne(e => e.RetiredMembership).WithMany()
+                .HasForeignKey(e => e.RetiredMembershipId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_membership_claim_requests_retired_membership");
+        });
+
         modelBuilder.Entity<V3MatchFlag>(entity =>
         {
             entity.ToTable("match_flags");

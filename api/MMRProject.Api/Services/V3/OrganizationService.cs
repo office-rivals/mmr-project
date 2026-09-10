@@ -32,7 +32,7 @@ public class OrganizationService(
     {
         "submit", "player", "admin", "statistics", "matchmaking",
         "random", "profile", "login", "api", "new-player", "active-match",
-        "join", "settings"
+        "join", "settings", "claim"
     };
 
     public async Task<OrganizationResponse> CreateOrganizationAsync(CreateOrganizationRequest request)
@@ -271,6 +271,9 @@ public class OrganizationService(
 
             var trimmed = request.Email.Trim();
             membership.InviteEmail = trimmed.Length == 0 ? null : trimmed;
+            membership.Status = membership.InviteEmail == null
+                ? MembershipStatus.Active
+                : MembershipStatus.Invited;
         }
 
         await dbContext.SaveChangesAsync();
@@ -280,6 +283,7 @@ public class OrganizationService(
 
     public async Task RemoveMemberAsync(Guid orgId, Guid membershipId)
     {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
         var membership = await dbContext.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.Id == membershipId
                                       && m.OrganizationId == orgId
@@ -299,7 +303,16 @@ public class OrganizationService(
 
         membership.Status = MembershipStatus.Removed;
 
+        await dbContext.MembershipClaimRequests
+            .Where(c => c.OrganizationId == orgId
+                        && c.Status == MembershipClaimStatus.Pending
+                        && (c.OrganizationMembershipId == membership.Id
+                            || (membership.UserId != null && c.UserId == membership.UserId)))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(c => c.Status, MembershipClaimStatus.Cancelled));
+
         await dbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     public async Task<OrganizationMembership?> GetMembershipForCurrentUserAsync(Guid orgId)
@@ -326,6 +339,8 @@ public class OrganizationService(
         if (ReservedSlugs.Contains(slug))
             throw new InvalidArgumentException($"The slug '{slug}' is reserved and cannot be used");
     }
+
+    internal static bool IsReservedSlug(string slug) => ReservedSlugs.Contains(slug);
 
     private static OrganizationResponse MapToResponse(Organization org)
     {
