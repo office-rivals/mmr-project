@@ -825,6 +825,12 @@ namespace MMRProject.Api.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("username");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("RoleAssignedByMembershipId");

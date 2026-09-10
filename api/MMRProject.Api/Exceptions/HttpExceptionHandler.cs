@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace MMRProject.Api.Exceptions;
 
@@ -10,7 +11,15 @@ internal sealed class HttpExceptionHandler(ILogger<HttpExceptionHandler> logger)
         Exception exception,
         CancellationToken cancellationToken)
     {
-        if (exception is not IHttpException httpException)
+        var httpException = exception switch
+        {
+            IHttpException knownException => knownException,
+            DbUpdateConcurrencyException => new ConflictException(
+                "The resource changed during this request. Reload it and retry."),
+            _ => null,
+        };
+
+        if (httpException == null)
         {
             return false;
         }

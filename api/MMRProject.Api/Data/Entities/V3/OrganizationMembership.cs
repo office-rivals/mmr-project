@@ -20,6 +20,8 @@ public class OrganizationMembership : TenantEntity
 
     public DateTimeOffset? ClaimedAt { get; set; }
 
+    public uint Version { get; set; }
+
     public virtual Organization Organization { get; set; } = null!;
 
     public virtual User? User { get; set; }

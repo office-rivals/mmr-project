@@ -51,6 +51,7 @@ public partial class ApiDbContext
             entity.Property(e => e.RoleAssignedByMembershipId).HasColumnName("role_assigned_by_membership_id");
             entity.Property(e => e.RoleAssignedAt).HasColumnName("role_assigned_at");
             entity.Property(e => e.ClaimedAt).HasColumnName("claimed_at");
+            entity.Property(e => e.Version).HasColumnName("xmin").IsRowVersion();
 
             entity.HasIndex(e => new { e.OrganizationId, e.UserId }, "ix_organization_memberships_org_user")
                 .IsUnique()

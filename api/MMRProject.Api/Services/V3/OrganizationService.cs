@@ -243,6 +243,12 @@ public class OrganizationService(
                                       && m.Status != MembershipStatus.Removed)
             ?? throw new NotFoundException($"Membership with ID '{membershipId}' not found");
 
+        var currentUserMembership = await GetMembershipForCurrentUserAsync(orgId)
+            ?? throw new ForbiddenException("You are not a member of this organization");
+
+        if (membership.Role < currentUserMembership.Role)
+            throw new ForbiddenException("You cannot update a member who outranks you");
+
         if (request.DisplayName != null)
         {
             var trimmed = request.DisplayName.Trim();
