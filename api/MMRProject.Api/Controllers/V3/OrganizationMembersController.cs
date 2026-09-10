@@ -11,13 +11,23 @@ namespace MMRProject.Api.Controllers.V3;
 [Route("api/v3/organizations/{orgId:guid}/members")]
 [Authorize]
 [Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
-public class OrganizationMembersController(IOrganizationService organizationService) : ControllerBase
+public class OrganizationMembersController(
+    IOrganizationService organizationService,
+    IMembershipClaimService claimService) : ControllerBase
 {
     [HttpGet]
     [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
     public async Task<ActionResult<List<OrganizationMemberResponse>>> ListMembers([FromRoute] Guid orgId)
     {
         return await organizationService.ListMembersAsync(orgId);
+    }
+
+    [HttpGet("claimable")]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireOrgMember)]
+    [Authorize(Policy = V3AuthorizationPolicies.DenyPatAuthentication)]
+    public async Task<ActionResult<ClaimableMembershipsResponse>> ListClaimable([FromRoute] Guid orgId)
+    {
+        return await claimService.GetClaimableMembershipsAsync(orgId);
     }
 
     [HttpPost]

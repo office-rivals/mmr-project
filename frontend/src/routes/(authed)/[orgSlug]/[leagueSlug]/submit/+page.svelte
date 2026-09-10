@@ -437,8 +437,9 @@
     <Dialog.Header>
       <Dialog.Title>Add new player</Dialog.Title>
       <Dialog.Description>
-        Create a player for this match. If you add an email, the address can be
-        claimed later.
+        Create a player for this match. An email links this player to that
+        person's account later. Without one, they can claim the player after
+        joining the organization.
       </Dialog.Description>
     </Dialog.Header>
 

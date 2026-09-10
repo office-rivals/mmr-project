@@ -109,6 +109,7 @@ public class InviteLinkService(
         var email = userContextResolver.GetEmail()
                     ?? throw new InvalidArgumentException("Email claim is required");
         var user = await userService.EnsureUserAsync(identityUserId, email, null, null);
+        var comparisonEmail = email.Trim();
 
         var existingMembership = await dbContext.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.OrganizationId == link.OrganizationId
@@ -118,11 +119,15 @@ public class InviteLinkService(
         if (existingMembership != null)
             throw new InvalidArgumentException("You are already a member of this organization");
 
-        // Check for pending email invite and claim it
-        var pendingInvite = await dbContext.OrganizationMemberships
-            .FirstOrDefaultAsync(m => m.OrganizationId == link.OrganizationId
-                                      && m.InviteEmail == email
-                                      && m.Status == MembershipStatus.Invited);
+        var pendingInviteMatches = await dbContext.OrganizationMemberships
+            .Where(m => m.OrganizationId == link.OrganizationId
+                        && m.InviteEmail != null
+                        && m.InviteEmail.ToLower() == comparisonEmail.ToLower()
+                        && m.Status == MembershipStatus.Invited)
+            .ToListAsync();
+        var pendingInvite = pendingInviteMatches.Count == 0
+            ? null
+            : SelectInviteEmailMatch(pendingInviteMatches, comparisonEmail);
 
         var removedMembership = await dbContext.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.OrganizationId == link.OrganizationId
@@ -133,8 +138,8 @@ public class InviteLinkService(
         if (pendingInvite != null)
         {
             pendingInvite.UserId = user.Id;
-            pendingInvite.DisplayName = user.DisplayName;
-            pendingInvite.Username = user.Username;
+            pendingInvite.DisplayName ??= user.DisplayName;
+            pendingInvite.Username ??= user.Username;
             pendingInvite.InviteEmail = null;
             pendingInvite.Status = MembershipStatus.Active;
             pendingInvite.ClaimedAt = DateTimeOffset.UtcNow;
@@ -143,8 +148,8 @@ public class InviteLinkService(
         else if (removedMembership != null)
         {
             removedMembership.UserId = user.Id;
-            removedMembership.DisplayName = user.DisplayName;
-            removedMembership.Username = user.Username;
+            removedMembership.DisplayName ??= user.DisplayName;
+            removedMembership.Username ??= user.Username;
             removedMembership.InviteEmail = null;
             removedMembership.Role = OrganizationRole.Member;
             removedMembership.Status = MembershipStatus.Active;
@@ -180,38 +185,60 @@ public class InviteLinkService(
 
     public async Task AutoClaimInvitesAsync(string email, Guid userId)
     {
-        var pendingInvites = await dbContext.OrganizationMemberships
-            .Where(m => m.InviteEmail == email && m.Status == MembershipStatus.Invited)
+        var comparisonEmail = email.Trim();
+        var pendingInviteMatches = await dbContext.OrganizationMemberships
+            .Where(m => m.InviteEmail != null
+                        && m.InviteEmail.ToLower() == comparisonEmail.ToLower()
+                        && m.Status == MembershipStatus.Invited)
             .ToListAsync();
 
-        if (pendingInvites.Count == 0)
+        if (pendingInviteMatches.Count == 0)
             return;
 
         var user = await dbContext.V3Users.FindAsync(userId);
         if (user == null)
             return;
 
-        var orgIds = pendingInvites.Select(i => i.OrganizationId).Distinct().ToList();
+        var orgIds = pendingInviteMatches.Select(i => i.OrganizationId).Distinct().ToList();
         var existingOrgIds = (await dbContext.OrganizationMemberships
             .Where(m => m.UserId == userId && orgIds.Contains(m.OrganizationId) && m.Status == MembershipStatus.Active)
             .Select(m => m.OrganizationId)
             .ToListAsync())
             .ToHashSet();
 
+        var pendingInvites = pendingInviteMatches
+            .Where(invite => !existingOrgIds.Contains(invite.OrganizationId))
+            .GroupBy(invite => invite.OrganizationId)
+            .Select(group => SelectInviteEmailMatch(group.ToList(), comparisonEmail))
+            .ToList();
+
         foreach (var invite in pendingInvites)
         {
-            if (existingOrgIds.Contains(invite.OrganizationId))
-                continue;
-
             invite.UserId = userId;
-            invite.DisplayName = user.DisplayName;
-            invite.Username = user.Username;
+            invite.DisplayName ??= user.DisplayName;
+            invite.Username ??= user.Username;
             invite.InviteEmail = null;
             invite.Status = MembershipStatus.Active;
             invite.ClaimedAt = DateTimeOffset.UtcNow;
         }
 
         await dbContext.SaveChangesAsync();
+    }
+
+    private static OrganizationMembership SelectInviteEmailMatch(
+        IReadOnlyCollection<OrganizationMembership> matches,
+        string email)
+    {
+        var exactMatches = matches
+            .Where(m => string.Equals(m.InviteEmail, email, StringComparison.Ordinal))
+            .ToList();
+        if (exactMatches.Count == 1)
+            return exactMatches[0];
+        if (exactMatches.Count == 0 && matches.Count == 1)
+            return matches.First();
+
+        throw new InvalidArgumentException(
+            "Multiple invitations match this email. Ask a moderator to resolve the duplicate invitations.");
     }
 
     private async Task<string> GenerateUniqueCodeAsync()
