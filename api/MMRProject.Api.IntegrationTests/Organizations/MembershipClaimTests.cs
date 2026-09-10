@@ -1,5 +1,7 @@
+using System.Data.Common;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using MMRProject.Api.Auth;
 using MMRProject.Api.Data;
@@ -462,10 +464,16 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
     {
         var firstOrg = await CreateOrganization("Auto Claim One", "auto-claim-one");
         var secondOrg = await CreateOrganization("Auto Claim Two", "auto-claim-two");
+        var joinedOrg = await CreateOrganization("Auto Claim Joined", "auto-claim-joined");
         var first = await SeedPlaceholder(
             firstOrg.Id, "First Guest", "AUTO@Test.com", MembershipStatus.Invited);
         var second = await SeedPlaceholder(
             secondOrg.Id, "Second Guest", "Auto@test.com", MembershipStatus.Invited);
+        await SeedOrgMember(joinedOrg.Id, "auto-user", "auto@test.com");
+        var joinedVariantOne = await SeedPlaceholder(
+            joinedOrg.Id, "Joined Variant One", "AUTO@Test.com", MembershipStatus.Invited);
+        var joinedVariantTwo = await SeedPlaceholder(
+            joinedOrg.Id, "Joined Variant Two", "Auto@Test.com", MembershipStatus.Invited);
 
         AuthenticateAs("auto-user", email: "auto@test.com");
         var response = await Client.GetAsync("api/v3/me");
@@ -484,6 +492,14 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
         });
         Assert.Equal(new[] { "First Guest", "Second Guest" },
             memberships.Select(m => m.DisplayName).ToArray());
+        Assert.All(await db.OrganizationMemberships
+                .Where(m => m.Id == joinedVariantOne.Id || m.Id == joinedVariantTwo.Id)
+                .ToListAsync(),
+            membership =>
+            {
+                Assert.Null(membership.UserId);
+                Assert.Equal(MembershipStatus.Invited, membership.Status);
+            });
     }
 
     [Fact]
@@ -509,6 +525,18 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
             }));
         Assert.Equal(HttpStatusCode.Created, exactResponse.StatusCode);
 
+        var unnamedTarget = await SeedPlaceholder(
+            org.Id, null, "Unnamed@Test.com", MembershipStatus.Invited);
+        var populatedResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            OneVsOne(ownerPlayer.Id, new CreateMatchPlayerRequest
+            {
+                DisplayName = "Named After Lock",
+                Username = "named-after-lock",
+                Email = "unnamed@test.com",
+            }));
+        Assert.Equal(HttpStatusCode.Created, populatedResponse.StatusCode);
+
         var firstAmbiguous = await SeedPlaceholder(
             org.Id, "First Ambiguous", "Ambiguous-Player@Test.com", MembershipStatus.Invited);
         var secondAmbiguous = await SeedPlaceholder(
@@ -529,6 +557,9 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
             lp.LeagueId == league.Id && lp.OrganizationMembershipId == exactTarget.Id));
         Assert.False(await db.LeaguePlayers.AnyAsync(lp =>
             lp.LeagueId == league.Id && lp.OrganizationMembershipId == exactVariant.Id));
+        var populated = await db.OrganizationMemberships.SingleAsync(m => m.Id == unnamedTarget.Id);
+        Assert.Equal("Named After Lock", populated.DisplayName);
+        Assert.Equal("named-after-lock", populated.Username);
         Assert.False(await db.LeaguePlayers.AnyAsync(lp =>
             lp.OrganizationMembershipId == firstAmbiguous.Id
             || lp.OrganizationMembershipId == secondAmbiguous.Id));
@@ -635,6 +666,65 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
             lp.OrganizationMembershipId == joinMembership.Id
             || lp.OrganizationMembershipId == submitMembership.Id));
         Assert.True(await db.LeaguePlayers.AnyAsync(lp => lp.OrganizationMembershipId == invited.Id));
+    }
+
+    [Fact]
+    public async Task MatchEdit_HoldsMembershipLockUntilParticipationIsSaved()
+    {
+        var org = await CreateOrganization("Edit Race", "edit-race");
+        var league = await CreateLeague(org.Id, "Edit League", "edit-league", teamSize: 1);
+        await CreateSeason(org.Id, league.Id);
+        var (_, _, ownerPlayer) = await SeedTestUser(
+            org.Id, league.Id, "edit-owner", "edit-owner@test.com", OrganizationRole.Owner);
+        var (_, _, opponent) = await SeedTestUser(
+            org.Id, league.Id, "edit-opponent", "edit-opponent@test.com");
+        var (_, requesterMembership) = await SeedOrgMember(
+            org.Id, "edit-requester", "edit-requester@test.com");
+
+        AuthenticateAs("edit-owner");
+        var originalResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            OneVsOne(ownerPlayer.Id, opponent.Id));
+        var original = await ReadJsonAsync<MatchResponse>(originalResponse);
+        Assert.NotNull(original);
+
+        var target = await SeedPlaceholder(org.Id, "Edit Target");
+        var claim = await CreateClaimAsync(org.Id, target.Id, "edit-requester");
+        var editGate = new DbCommandGate("DELETE FROM match_team_players", CommandGateTiming.Before);
+
+        await using var editFactory = new IntegrationTestFactory(PostgresFixture, editGate);
+        await using var reviewFactory = new IntegrationTestFactory(PostgresFixture);
+        using var editClient = editFactory.CreateClient();
+        using var reviewClient = reviewFactory.CreateClient();
+        editFactory.ClaimsProvider.SetUser("edit-owner", "edit-owner@test.com");
+        reviewFactory.ClaimsProvider.SetUser("edit-owner", "edit-owner@test.com");
+
+        var editTask = editClient.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{original.Id}",
+            OneVsOneMembership(requesterMembership.Id, opponent.Id));
+        try
+        {
+            await editGate.WaitUntilReachedAsync();
+            var approveTask = reviewClient.PostAsync(
+                $"api/v3/organizations/{org.Id}/claim-requests/{claim.Id}/approve", null);
+            await Task.Delay(250);
+            Assert.False(approveTask.IsCompleted);
+
+            editGate.Release();
+            Assert.Equal(HttpStatusCode.OK, (await editTask).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await approveTask).StatusCode);
+        }
+        finally
+        {
+            editGate.Release();
+        }
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.Equal(MembershipStatus.Active,
+            (await db.OrganizationMemberships.SingleAsync(m => m.Id == requesterMembership.Id)).Status);
+        Assert.True(await db.MatchTeamPlayers.AnyAsync(p =>
+            p.LeaguePlayer.OrganizationMembershipId == requesterMembership.Id));
     }
 
     [Fact]
@@ -763,37 +853,78 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
     }
 
     [Fact]
-    public async Task MatchActivity_RacingApprovalCannotSurviveOnRetiredIdentity()
+    public async Task MatchActivity_RacingApprovalSerializesAtTheLeaguePlayerDelete()
     {
-        var org = await CreateOrganization();
-        var league = await CreateLeague(org.Id, teamSize: 1);
-        await CreateSeason(org.Id, league.Id);
-        var (_, requesterMembership, requesterPlayer) = await SeedTestUser(
-            org.Id, league.Id, "requester", "requester@test.com");
-        var (_, _, opponent) = await SeedTestUser(
-            org.Id, league.Id, "owner", "owner@test.com", OrganizationRole.Owner);
-        var target = await SeedPlaceholder(org.Id, "Target");
-        var claim = await CreateClaimAsync(org.Id, target.Id, "requester");
+        var insertFirst = await SeedMatchClaimRaceAsync("insert-first");
+        var beforeDelete = new DbCommandGate("DELETE FROM league_players", CommandGateTiming.Before);
+        await using (var reviewFactory = new IntegrationTestFactory(PostgresFixture, beforeDelete))
+        await using (var matchFactory = new IntegrationTestFactory(PostgresFixture))
+        using (var reviewClient = reviewFactory.CreateClient())
+        using (var matchClient = matchFactory.CreateClient())
+        {
+            reviewFactory.ClaimsProvider.SetUser("insert-first-owner", "insert-first-owner@test.com");
+            matchFactory.ClaimsProvider.SetUser("insert-first-owner", "insert-first-owner@test.com");
+            var approveTask = reviewClient.PostAsync(
+                $"api/v3/organizations/{insertFirst.OrgId}/claim-requests/{insertFirst.ClaimId}/approve", null);
+            try
+            {
+                await beforeDelete.WaitUntilReachedAsync();
+                var matchResponse = await matchClient.PostAsJsonAsync(
+                    $"api/v3/organizations/{insertFirst.OrgId}/leagues/{insertFirst.LeagueId}/matches",
+                    OneVsOne(insertFirst.OwnerPlayerId, insertFirst.RequesterPlayerId));
+                Assert.Equal(HttpStatusCode.Created, matchResponse.StatusCode);
+            }
+            finally
+            {
+                beforeDelete.Release();
+            }
 
-        await using var blocker = await LockRowAsync("organization_memberships", requesterMembership.Id);
-        AuthenticateAs("owner");
-        var approveTask = Client.PostAsync(
-            $"api/v3/organizations/{org.Id}/claim-requests/{claim.Id}/approve", null);
-        await Task.Delay(250);
-        var matchTask = Client.PostAsJsonAsync(
-            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
-            OneVsOne(opponent.Id, requesterPlayer.Id));
-        var matchResponse = await matchTask;
-        Assert.Equal(HttpStatusCode.Created, matchResponse.StatusCode);
-        await blocker.ReleaseAsync();
+            Assert.Equal(HttpStatusCode.Conflict, (await approveTask).StatusCode);
+        }
 
-        var approveResponse = await approveTask;
-        Assert.Equal(HttpStatusCode.BadRequest, approveResponse.StatusCode);
+        var deleteFirst = await SeedMatchClaimRaceAsync("delete-first");
+        var afterDelete = new DbCommandGate("DELETE FROM league_players", CommandGateTiming.After);
+        await using (var reviewFactory = new IntegrationTestFactory(PostgresFixture, afterDelete))
+        await using (var matchFactory = new IntegrationTestFactory(PostgresFixture))
+        using (var reviewClient = reviewFactory.CreateClient())
+        using (var matchClient = matchFactory.CreateClient())
+        {
+            reviewFactory.ClaimsProvider.SetUser("delete-first-owner", "delete-first-owner@test.com");
+            matchFactory.ClaimsProvider.SetUser("delete-first-owner", "delete-first-owner@test.com");
+            var approveTask = reviewClient.PostAsync(
+                $"api/v3/organizations/{deleteFirst.OrgId}/claim-requests/{deleteFirst.ClaimId}/approve", null);
+            Task<HttpResponseMessage>? matchTask = null;
+            try
+            {
+                await afterDelete.WaitUntilReachedAsync();
+                matchTask = matchClient.PostAsJsonAsync(
+                    $"api/v3/organizations/{deleteFirst.OrgId}/leagues/{deleteFirst.LeagueId}/matches",
+                    OneVsOne(deleteFirst.OwnerPlayerId, deleteFirst.RequesterPlayerId));
+                await Task.Delay(250);
+                Assert.False(matchTask.IsCompleted);
+            }
+            finally
+            {
+                afterDelete.Release();
+            }
+
+            Assert.Equal(HttpStatusCode.OK, (await approveTask).StatusCode);
+            Assert.NotNull(matchTask);
+            Assert.Equal(HttpStatusCode.Conflict, (await matchTask).StatusCode);
+        }
+
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
         Assert.Equal(MembershipStatus.Active,
-            (await db.OrganizationMemberships.SingleAsync(m => m.Id == requesterMembership.Id)).Status);
-        Assert.True(await db.MatchTeamPlayers.AnyAsync(p => p.LeaguePlayerId == requesterPlayer.Id));
+            (await db.OrganizationMemberships.SingleAsync(m => m.Id == insertFirst.RequesterMembershipId)).Status);
+        Assert.True(await db.MatchTeamPlayers.AnyAsync(p =>
+            p.LeaguePlayerId == insertFirst.RequesterPlayerId));
+        Assert.Equal(MembershipStatus.Removed,
+            (await db.OrganizationMemberships.SingleAsync(m => m.Id == deleteFirst.RequesterMembershipId)).Status);
+        Assert.False(await db.LeaguePlayers.AnyAsync(lp =>
+            lp.OrganizationMembershipId == deleteFirst.RequesterMembershipId));
+        Assert.False(await db.MatchTeamPlayers.AnyAsync(p =>
+            p.LeaguePlayerId == deleteFirst.RequesterPlayerId));
     }
 
     [Fact]
@@ -1028,7 +1159,7 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
 
     private async Task<OrganizationMembership> SeedPlaceholder(
         Guid orgId,
-        string displayName,
+        string? displayName,
         string? inviteEmail = null,
         MembershipStatus status = MembershipStatus.Active,
         OrganizationRole role = OrganizationRole.Member)
@@ -1182,6 +1313,29 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
         return player;
     }
 
+    private async Task<MatchClaimRace> SeedMatchClaimRaceAsync(string prefix)
+    {
+        var org = await CreateOrganization($"Match Race {prefix}", $"match-race-{prefix}");
+        var league = await CreateLeague(
+            org.Id, $"Match Race League {prefix}", $"match-race-league-{prefix}", teamSize: 1);
+        await CreateSeason(org.Id, league.Id);
+        var (_, requesterMembership, requesterPlayer) = await SeedTestUser(
+            org.Id, league.Id, $"{prefix}-requester", $"{prefix}-requester@test.com");
+        var (_, _, ownerPlayer) = await SeedTestUser(
+            org.Id, league.Id, $"{prefix}-owner", $"{prefix}-owner@test.com", OrganizationRole.Owner);
+        var target = await SeedPlaceholder(org.Id, $"Target {prefix}");
+        var claim = await CreateClaimAsync(
+            org.Id, target.Id, $"{prefix}-requester");
+
+        return new MatchClaimRace(
+            org.Id,
+            league.Id,
+            requesterMembership.Id,
+            requesterPlayer.Id,
+            ownerPlayer.Id,
+            claim.Id);
+    }
+
     private async Task<DatabaseRowLock> LockRowAsync(string table, Guid id)
     {
         Assert.Contains(table, new[] { "organization_memberships", "membership_claim_requests" });
@@ -1217,6 +1371,92 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
             await connection.DisposeAsync();
         }
     }
+
+    private enum CommandGateTiming
+    {
+        Before,
+        After,
+    }
+
+    private sealed class DbCommandGate(
+        string commandFragment,
+        CommandGateTiming timing) : DbCommandInterceptor
+    {
+        private readonly TaskCompletionSource _reached =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _release =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _entered;
+
+        public Task WaitUntilReachedAsync() =>
+            _reached.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        public void Release() => _release.TrySetResult();
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            await PauseAsync(command, CommandGateTiming.Before, cancellationToken);
+            return result;
+        }
+
+        public override async ValueTask<int> NonQueryExecutedAsync(
+            DbCommand command,
+            CommandExecutedEventData eventData,
+            int result,
+            CancellationToken cancellationToken = default)
+        {
+            await PauseAsync(command, CommandGateTiming.After, cancellationToken);
+            return result;
+        }
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            await PauseAsync(command, CommandGateTiming.Before, cancellationToken);
+            return result;
+        }
+
+        public override async ValueTask<DbDataReader> ReaderExecutedAsync(
+            DbCommand command,
+            CommandExecutedEventData eventData,
+            DbDataReader result,
+            CancellationToken cancellationToken = default)
+        {
+            await PauseAsync(command, CommandGateTiming.After, cancellationToken);
+            return result;
+        }
+
+        private async Task PauseAsync(
+            DbCommand command,
+            CommandGateTiming currentTiming,
+            CancellationToken cancellationToken)
+        {
+            if (timing != currentTiming
+                || !command.CommandText.Contains(commandFragment, StringComparison.OrdinalIgnoreCase)
+                || Interlocked.Exchange(ref _entered, 1) != 0)
+            {
+                return;
+            }
+
+            _reached.TrySetResult();
+            await _release.Task.WaitAsync(cancellationToken);
+        }
+    }
+
+    private sealed record MatchClaimRace(
+        Guid OrgId,
+        Guid LeagueId,
+        Guid RequesterMembershipId,
+        Guid RequesterPlayerId,
+        Guid OwnerPlayerId,
+        Guid ClaimId);
 
     private static HttpRequestMessage JsonRequest<T>(HttpMethod method, string uri, T body)
     {

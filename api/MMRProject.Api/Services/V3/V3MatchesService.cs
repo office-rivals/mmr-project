@@ -6,6 +6,7 @@ using MMRProject.Api.Exceptions;
 using MMRProject.Api.Extensions;
 using MMRProject.Api.MMRCalculationApi;
 using MMRProject.Api.MMRCalculationApi.Models;
+using Npgsql;
 
 
 namespace MMRProject.Api.Services.V3;
@@ -81,7 +82,7 @@ public class V3MatchesService(
         }
 
         dbContext.Set<V3Match>().Add(match);
-        await dbContext.SaveChangesAsync();
+        await SaveMatchChangesAsync();
 
         await CalculateAndApplyMmr(orgId, match, leaguePlayers);
         await transaction.CommitAsync();
@@ -335,19 +336,19 @@ public class V3MatchesService(
             };
             dbContext.OrganizationMemberships.Add(membership);
         }
-        else
+
+        var leaguePlayer = await GetOrCreateLeaguePlayerAsync(orgId, leagueId, membership);
+
+        if (string.IsNullOrWhiteSpace(membership.DisplayName))
         {
-            if (string.IsNullOrWhiteSpace(membership.DisplayName))
-            {
-                membership.DisplayName = newPlayer.DisplayName.Trim();
-            }
-            if (string.IsNullOrWhiteSpace(membership.Username) && normalizedUsername != null)
-            {
-                membership.Username = normalizedUsername;
-            }
+            membership.DisplayName = newPlayer.DisplayName.Trim();
+        }
+        if (string.IsNullOrWhiteSpace(membership.Username) && normalizedUsername != null)
+        {
+            membership.Username = normalizedUsername;
         }
 
-        return await GetOrCreateLeaguePlayerAsync(orgId, leagueId, membership);
+        return leaguePlayer;
     }
 
     private static OrganizationMembership? SelectEmailMembershipMatch(
@@ -470,9 +471,8 @@ public class V3MatchesService(
         if (match.SeasonId != currentSeason.Id)
             throw new InvalidArgumentException("Only matches in the current season can be edited");
 
-        var resolvedTeams = await ResolveAndValidateTeamsAsync(orgId, leagueId, request);
-
         await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        var resolvedTeams = await ResolveAndValidateTeamsAsync(orgId, leagueId, request);
 
         // Raw delete the old child rows so EF's change tracker doesn't fight when
         // we add the rebuilt teams. Rating history for this match is intentionally
@@ -500,10 +500,23 @@ public class V3MatchesService(
 
         trackedMatch.RecordedAt = DateTimeOffset.UtcNow;
 
-        await dbContext.SaveChangesAsync();
+        await SaveMatchChangesAsync();
         await transaction.CommitAsync();
 
         return await LoadAndMapMatch(orgId, leagueId, trackedMatch.Id);
+    }
+
+    private async Task SaveMatchChangesAsync()
+    {
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+                                           { SqlState: PostgresErrorCodes.ForeignKeyViolation })
+        {
+            throw new ConflictException("A player changed while the match was being saved. Reload and retry.");
+        }
     }
 
     public async Task DeleteMatchAsync(Guid orgId, Guid leagueId, Guid matchId)

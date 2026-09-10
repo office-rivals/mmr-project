@@ -195,27 +195,25 @@ public class InviteLinkService(
         if (pendingInviteMatches.Count == 0)
             return;
 
-        var pendingInvites = pendingInviteMatches
-            .GroupBy(invite => invite.OrganizationId)
-            .Select(group => SelectInviteEmailMatch(group.ToList(), comparisonEmail))
-            .ToList();
-
         var user = await dbContext.V3Users.FindAsync(userId);
         if (user == null)
             return;
 
-        var orgIds = pendingInvites.Select(i => i.OrganizationId).Distinct().ToList();
+        var orgIds = pendingInviteMatches.Select(i => i.OrganizationId).Distinct().ToList();
         var existingOrgIds = (await dbContext.OrganizationMemberships
             .Where(m => m.UserId == userId && orgIds.Contains(m.OrganizationId) && m.Status == MembershipStatus.Active)
             .Select(m => m.OrganizationId)
             .ToListAsync())
             .ToHashSet();
 
+        var pendingInvites = pendingInviteMatches
+            .Where(invite => !existingOrgIds.Contains(invite.OrganizationId))
+            .GroupBy(invite => invite.OrganizationId)
+            .Select(group => SelectInviteEmailMatch(group.ToList(), comparisonEmail))
+            .ToList();
+
         foreach (var invite in pendingInvites)
         {
-            if (existingOrgIds.Contains(invite.OrganizationId))
-                continue;
-
             invite.UserId = userId;
             invite.DisplayName ??= user.DisplayName;
             invite.Username ??= user.Username;
