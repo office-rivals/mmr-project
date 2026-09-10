@@ -10,12 +10,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { AlertCircle, Check, Copy, Plus, Trash2 } from 'lucide-react';
 import { PageTitle } from '@/components/page-title';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import {
   failServerAction,
@@ -27,7 +22,6 @@ import type { CreateTokenResponse, TokenResponse } from '@/api-v3';
 
 const tokensQueryKey = ['me', 'tokens'] as const;
 
-/** Every failure degrades to the empty state — there is no error UI for the list. */
 const listMyTokensFn = createServerFn({ method: 'GET' }).handler(
   async (): Promise<TokenResponse[]> => {
     try {
@@ -111,11 +105,6 @@ const tokensQueryOptions = () =>
     staleTime: 0,
   });
 
-/**
- * `/settings` — personal access tokens only. No profile fields, no RBAC gate:
- * every authenticated user gets the same page, and a failed `getMe()` in the
- * shell must not stop it rendering.
- */
 export const Route = createFileRoute('/_authed/settings')({
   server: {
     handlers: {
@@ -124,9 +113,7 @@ export const Route = createFileRoute('/_authed/settings')({
         if (formData.get('_action') !== 'revokeToken') {
           return new Response('Unsupported form action', { status: 400 });
         }
-        const result = await revokeToken(
-          String(formData.get('tokenId') ?? '')
-        );
+        const result = await revokeToken(String(formData.get('tokenId') ?? ''));
         return nativeFormResponse(request, {
           ...result,
           success: result.status === 'ok',
@@ -145,9 +132,7 @@ function SettingsPage() {
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Kept in component state rather than read back from the list: the plaintext
-  // token exists only in this one response and must survive the refetch that
-  // follows a successful create.
+  // Plaintext is returned once and must survive the list refetch.
   const [createdToken, setCreatedToken] = useState<CreateTokenResponse | null>(
     null
   );
@@ -164,7 +149,6 @@ function SettingsPage() {
         setCreatedToken(result.createdToken);
         await queryClient.invalidateQueries({ queryKey: tokensQueryKey });
       }
-      // The form closes on failure too — the error callout is what remains.
       setShowCreateDialog(false);
     },
     onError: () => {
@@ -235,8 +219,8 @@ function SettingsPage() {
               />
             ) : !showCreateDialog && createdToken == null ? (
               <p className="text-sm text-muted-foreground">
-                You don&apos;t have any personal access tokens yet. Create one to
-                get started.
+                You don&apos;t have any personal access tokens yet. Create one
+                to get started.
               </p>
             ) : null}
           </div>
@@ -382,9 +366,6 @@ function TokenTable({
           {tokens.map((token) => (
             <tr key={token.id} className="border-b border-muted last:border-0">
               <td className="px-4 py-3 font-medium">{token.name}</td>
-              {/* `toLocaleDateString()` with no options follows the runtime's
-                  default locale, which the Node server and the browser can
-                  disagree on. */}
               <td
                 className="px-4 py-3 text-sm text-muted-foreground"
                 suppressHydrationWarning
@@ -413,15 +394,18 @@ function TokenTable({
                     onRevoke(token.id);
                   }}
                 >
-                  <input type="hidden" name="_action" value="revokeToken" />
-                  <input type="hidden" name="tokenId" value={token.id} />
+                  <input
+                    hidden
+                    type="hidden"
+                    name="_action"
+                    value="revokeToken"
+                  />
+                  <input hidden type="hidden" name="tokenId" value={token.id} />
                   <Button
                     type="submit"
                     variant="ghost"
                     size="sm"
                     className="gap-2"
-                    // preventDefault on the click cancels the submit it would
-                    // otherwise trigger, exactly like the Svelte handler.
                     onClick={(event) => {
                       if (
                         !confirm(

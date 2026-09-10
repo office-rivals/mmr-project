@@ -27,10 +27,6 @@ import { getApiErrorDetails } from '@/lib/server/apiError';
 import { loadShellData, loadShellDataOnce } from '@/lib/server/shell';
 import type { AuthedShellData } from '@/lib/shell';
 
-/**
- * Strictly `role === 'Owner'`: a Moderator gets 403, a non-member 404, a
- * profile-load failure 500.
- */
 function resolveOwnedOrg(shell: AuthedShellData, orgSlug: string) {
   if (shell.profileLoadFailed) {
     throw new HttpError(500, 'Failed to load user profile');
@@ -58,11 +54,6 @@ interface UpdateOrganizationInput {
   slug: string;
 }
 
-/**
- * Closes the hole the Svelte action left open: its `update` action never
- * re-checked the Owner role, so a non-Owner's direct POST reached the API. The
- * gate is repeated here, server-side, on every call.
- */
 async function updateOrganization(
   data: UpdateOrganizationInput
 ): Promise<UpdateResult> {
@@ -176,8 +167,6 @@ function OrgSettingsForm() {
         return;
       }
       setError(null);
-      // The URL has to follow the rename, otherwise the loader would 404 on the
-      // stale slug the moment anything re-runs.
       if (result.status === 'renamed') {
         setSuccess(false);
         await router.navigate({ href: `/${result.slug}/settings` });
@@ -230,11 +219,10 @@ function OrgSettingsForm() {
               });
             }}
           >
-            <input type="hidden" name="_action" value="update" />
+            <input hidden type="hidden" name="_action" value="update" />
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
-              {/* `key` forces a remount after a rename/refresh so the
-                  uncontrolled input picks up the new server value. */}
+              {/* Remount so refreshed values reach this uncontrolled input. */}
               <Input
                 key={`name-${org.name}`}
                 id="name"

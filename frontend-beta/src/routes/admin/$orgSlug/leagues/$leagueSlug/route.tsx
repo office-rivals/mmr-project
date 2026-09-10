@@ -20,7 +20,6 @@ import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { requireAdminOrg } from '@/lib/server/admin';
 import { createRouteGuard } from '@/lib/server/http-error';
 import { loadShellDataOnce } from '@/lib/server/shell';
-import { authedShellQueryOptions } from '@/lib/shell';
 import { cn, openFlagsForLeague } from '@/lib/utils';
 import type { LeagueResponse } from '@/api-v3';
 
@@ -38,11 +37,6 @@ function findLeague(leagues: LeagueResponse[], leagueSlug: string) {
   return league;
 }
 
-/**
- * The league 404. It runs *after* the org guard on the parent layout, so a
- * Member-only org still 403s on `/admin/other-org/leagues/other-league` rather
- * than leaking a 404 (spec 06 §11.6/10).
- */
 const leagueGuard = createRouteGuard(async ({ params }) => {
   const org = resolveAdminOrg(await loadShellDataOnce(), params.orgSlug ?? '');
   const apiClientV3 = await requireApiClientV3();

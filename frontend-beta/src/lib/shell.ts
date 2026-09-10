@@ -40,3 +40,11 @@ export function refreshAuthedShellData(
 ) {
   return queryClient.fetchQuery({ ...authedShellQueryOptions(), queryFn });
 }
+
+export function requireSuccessfulShellRefresh(queryClient: QueryClient) {
+  const shell = queryClient.getQueryData<AuthedShellData>(meQueryKey);
+  if (!shell || shell.profileLoadFailed) {
+    throw new Error('Failed to refresh user profile');
+  }
+  return shell;
+}

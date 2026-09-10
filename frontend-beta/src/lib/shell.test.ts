@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { OrganizationRole } from '@/api-v3';
-import { refreshAuthedShellData } from './shell';
+import { refreshAuthedShellData, requireSuccessfulShellRefresh } from './shell';
 import type { AuthedShellData } from './shell';
 
 const shell = (leagueSlugs: string[]): AuthedShellData => {
@@ -58,5 +58,17 @@ describe('shell cache refresh', () => {
         .leagues[0]?.slug
     ).toBe('new-league');
     expect(queryFn).toHaveBeenCalledOnce();
+  });
+
+  it('rejects the degraded profile snapshot used by profile-independent routes', () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['me'], {
+      ...shell([]),
+      profileLoadFailed: true,
+    });
+
+    expect(() => requireSuccessfulShellRefresh(queryClient)).toThrow(
+      'Failed to refresh user profile'
+    );
   });
 });

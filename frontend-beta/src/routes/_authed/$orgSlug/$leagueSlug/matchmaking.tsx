@@ -35,7 +35,7 @@ interface MatchmakingPageData {
   activeMatches: ActiveMatchResponse[];
 }
 
-/** Both calls degrade silently — neither one may ever error the page. */
+// Keep the page available when either optional status call fails.
 const getMatchmakingDataFn = createServerFn({ method: 'GET' })
   .validator((input: OrgLeagueInput) => input)
   .handler(async ({ data }): Promise<MatchmakingPageData> => {
@@ -184,10 +184,7 @@ function MatchmakingPage({
   const formatLabel = formatLeagueFormat(league.leagueTeamSize);
   const hasLeaguePlayer = !!leaguePlayerId;
 
-  // Same cache entry as the navbar badge (`queueQueryKey`), only polled faster.
-  // In the Svelte app this poll was dead code — no proxy route existed for the
-  // URL it fetched — so the queue never live-updated and the "match found"
-  // sound never played. The route exists here, so it now works.
+  // Share the navbar cache entry, with faster polling for match discovery.
   const queueQuery = useQuery({
     queryKey: queueQueryKey(orgId, leagueId),
     queryFn: async (): Promise<QueueStatusResponse> => {
@@ -246,9 +243,7 @@ function MatchmakingPage({
       )
     : 0;
 
-  // Ding once per *new* pending match this user is part of. Seeded from the
-  // loader so an already-open pending match doesn't play on mount, and always
-  // inside try/catch because autoplay is blocked before any user gesture.
+  // Seed from loader data so an existing pending match stays silent on mount.
   const lastPendingMatchId = useRef<string | null>(
     seed.queueStatus?.pendingMatch?.id ?? null
   );
@@ -258,7 +253,7 @@ function MatchmakingPage({
       try {
         void new Audio('/sounds/match-found.mp3').play().catch(() => {});
       } catch {
-        // Autoplay may be blocked; ignore.
+        // Audio playback is optional.
       }
     }
     lastPendingMatchId.current = id;
@@ -270,8 +265,7 @@ function MatchmakingPage({
     onSuccess: (result) => {
       setFormMessage(result.status === 'error' ? result.message : null);
     },
-    // Only reachable when the RPC itself fails; API errors come back as
-    // `{ status: 'error' }` with the message the server resolved.
+    // API failures resolve as action data; this handles RPC transport failures.
     onError: (_error, variables) =>
       setFormMessage(TRANSPORT_FALLBACKS[variables.action]),
     onSettled: async () => {
@@ -310,7 +304,6 @@ function MatchmakingPage({
           queue, a match will be created and you will be notified.
         </p>
         <p>
-          {/* The server window is actually 31 s; the copy has always said 30. */}
           If you do not accept the match within <strong>30 seconds</strong>, you
           will be removed from the queue.
         </p>
@@ -330,9 +323,9 @@ function MatchmakingPage({
               action={`/${orgSlug}/${leagueSlug}/matchmaking`}
               onSubmit={submitAction('leave')}
             >
-              <input type="hidden" name="_action" value="leave" />
-              <input type="hidden" name="orgId" value={orgId} />
-              <input type="hidden" name="leagueId" value={leagueId} />
+              <input hidden type="hidden" name="_action" value="leave" />
+              <input hidden type="hidden" name="orgId" value={orgId} />
+              <input hidden type="hidden" name="leagueId" value={leagueId} />
               <Button
                 variant="destructive"
                 type="submit"
@@ -350,9 +343,9 @@ function MatchmakingPage({
             action={`/${orgSlug}/${leagueSlug}/matchmaking`}
             onSubmit={submitAction('join')}
           >
-            <input type="hidden" name="_action" value="join" />
-            <input type="hidden" name="orgId" value={orgId} />
-            <input type="hidden" name="leagueId" value={leagueId} />
+            <input hidden type="hidden" name="_action" value="join" />
+            <input hidden type="hidden" name="orgId" value={orgId} />
+            <input hidden type="hidden" name="leagueId" value={leagueId} />
             <Button
               size="lg"
               className="w-full py-6"
@@ -365,7 +358,6 @@ function MatchmakingPage({
           </form>
         )}
 
-        {/* No empty state: the whole block is omitted when there are none. */}
         {activeMatches.length > 0 ? (
           <>
             <h2 className="mt-4 text-2xl">Active matches</h2>

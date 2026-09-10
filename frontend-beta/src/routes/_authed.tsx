@@ -4,22 +4,12 @@ import { Header } from '@/components/shell/header';
 import { Navbar } from '@/components/shell/navbar';
 import { refreshAuthedShellData } from '@/lib/shell';
 
-/**
- * The `(authed)` layout: a pathless route that owns the single `getMe()`
- * fan-out plus the app chrome. Every authed page lives under it.
- *
- * The loader must **not** throw when `getMe()` fails — `profileLoadFailed`
- * flows through to children so `/settings` and `/random` degrade while the
- * league layout 401s.
- */
+// Profile failures remain data so profile-independent pages can still render.
 export const Route = createFileRoute('/_authed')({
   head: () => ({
     styles: [
       {
-        // Offsets native anchor scrolling (hash landings, `#step` jumps) so the
-        // target isn't hidden behind the fixed header, and restores the Svelte
-        // layout's `:global(body) { min-height: 100vh }`. Scoped to this
-        // route's lifetime on purpose: /login and /admin have no fixed header.
+        // Keep anchor targets below the fixed header on authenticated pages.
         children:
           'html{scroll-padding-top:calc(env(safe-area-inset-top) + var(--header-height) + 1rem)}body{min-height:100vh}',
       },
@@ -36,8 +26,6 @@ function AuthedLayout() {
 
   return (
     <>
-      {/* Mounted first, before the header — it is the only consumer of the
-          `data-no-pull-to-refresh` opt-out contract. */}
       <PullToRefresh />
       <Header
         organizations={shell.organizations}

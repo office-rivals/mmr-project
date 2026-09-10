@@ -20,15 +20,6 @@ interface InviteLanding {
   alreadyMember: boolean;
 }
 
-/**
- * An unknown code is **not** a 404: the API answers 200 with
- * `isValid: false` and empty org strings, which is why "expired" vs "unknown"
- * copy is chosen by `organizationName`, never by a status code.
- *
- * Nothing is caught here, matching the Svelte load: a failure — including the
- * 429 from the 10-requests-per-minute `InviteLookup` rate limit — surfaces as a
- * 500 document rather than a friendly state.
- */
 const getInviteLandingFn = createServerFn({ method: 'GET' })
   .validator((code: string) => code)
   .handler(async ({ data: code }): Promise<InviteLanding> => {
@@ -38,8 +29,6 @@ const getInviteLandingFn = createServerFn({ method: 'GET' })
       apiClientV3.meApi.getMe(),
     ]);
 
-    // `me.organizations` only lists Active memberships, so a pending
-    // "Invited" membership deliberately does not count as already a member.
     const alreadyMember =
       info.isValid &&
       (me.organizations ?? []).some(
@@ -53,11 +42,6 @@ type JoinResult =
   | { status: 'ok'; organizationSlug: string }
   | { status: 'error'; error: string };
 
-/**
- * The redirect lives on the client side of this call, not inside the handler,
- * so there is no thrown-redirect for the catch-all to swallow — the Svelte
- * action needed an explicit `status === 303` re-throw for exactly that reason.
- */
 async function joinOrganization(code: string): Promise<JoinResult> {
   const apiClientV3 = await requireApiClientV3();
   try {
@@ -96,7 +80,7 @@ export const Route = createFileRoute('/_authed/join/$code')({
     },
   },
   loader: ({ context, params }) =>
-    context.queryClient.ensureQueryData({
+    context.queryClient.fetchQuery({
       queryKey: ['invite', params.code],
       queryFn: () => getInviteLandingFn({ data: params.code }),
       staleTime: 0,
@@ -247,7 +231,7 @@ function InviteClaimCard({ organizationName }: { organizationName: string }) {
               join.mutate();
             }}
           >
-            <input type="hidden" name="_action" value="join" />
+            <input hidden type="hidden" name="_action" value="join" />
             <Button type="submit" className="w-full" disabled={join.isPending}>
               {join.isPending ? 'Joining...' : 'Join Organization'}
             </Button>

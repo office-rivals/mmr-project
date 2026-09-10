@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { RefreshCw } from 'lucide-react';
-import { meQueryKey } from '@/lib/shell';
+import { requireSuccessfulShellRefresh } from '@/lib/shell';
 import { cn } from '@/lib/utils';
 
 const THRESHOLD = 80; // px of damped pull required to commit a refresh
@@ -26,7 +26,6 @@ export function PullToRefresh() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshFailed, setRefreshFailed] = useState(false);
 
-  // Window listeners are registered once, so their mutable state lives in refs.
   const startY = useRef(0);
   const isPulling = useRef(false);
   const pullDistanceRef = useRef(0);
@@ -38,9 +37,7 @@ export function PullToRefresh() {
   queryClientRef.current = queryClient;
 
   useEffect(() => {
-    // The feature is PWA-only; outside standalone mode attach nothing so
-    // ordinary browser users pay no touch-listener cost. Standalone status is
-    // fixed for the session, so it's resolved once here, not per gesture.
+    // Standalone status cannot change during this mount.
     if (!isStandaloneMode()) return;
 
     const setPull = (next: number) => {
@@ -58,8 +55,6 @@ export function PullToRefresh() {
     };
 
     const onTouchStart = (e: TouchEvent) => {
-      // Single-finger pull, at the very top, while idle. Bail on surfaces that
-      // own their own touch gestures (e.g. the /random touch randomizer).
       if (
         isRefreshingRef.current ||
         window.scrollY !== 0 ||
@@ -85,8 +80,6 @@ export function PullToRefresh() {
     };
 
     const onTouchEnd = async (e: TouchEvent) => {
-      // Commit only once the last finger lifts, so a multi-finger gesture
-      // can't fire the refresh early.
       if (!isPulling.current || e.touches.length > 0) return;
       isPulling.current = false;
 
@@ -98,17 +91,12 @@ export function PullToRefresh() {
       setRefreshing(true);
       setPull(THRESHOLD);
       try {
-        // Inactive loader queries must refetch too, and a failed request must
-        // reject so the gesture can show its failure state.
+        // Preflight failures leave the current route mounted.
         await queryClientRef.current.refetchQueries(
-          {
-            type: 'all',
-            predicate: (query) =>
-              query.queryKey.length !== meQueryKey.length ||
-              query.queryKey[0] !== meQueryKey[0],
-          },
+          { type: 'all' },
           { throwOnError: true }
         );
+        requireSuccessfulShellRefresh(queryClientRef.current);
         await routerRef.current.invalidate({ sync: true });
         const failedMatch = routerRef.current.state.matches.find(
           (match) => match.status === 'error'
@@ -117,7 +105,6 @@ export function PullToRefresh() {
         setRefreshing(false);
         setPull(0);
       } catch (err) {
-        // Don't reset as if it succeeded — surface a brief error state.
         console.error('Pull-to-refresh failed', err);
         setRefreshing(false);
         setRefreshFailed(true);

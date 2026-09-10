@@ -28,11 +28,6 @@ import { formatLeagueFormat } from '@/lib/utils';
 import type { AuthedShellData } from '@/lib/shell';
 import type { LeagueResponse } from '@/api-v3';
 
-/**
- * Membership is implicit: an org the user does not belong to never appears in
- * `me.organizations`, so it 404s. There is no role gate — any member, including
- * `Member`, may browse and join leagues here.
- */
 function resolveOrg(shell: AuthedShellData, orgSlug: string) {
   if (shell.profileLoadFailed) {
     throw new HttpError(500, 'Failed to load user profile');
@@ -62,11 +57,6 @@ interface JoinLeagueInput {
   leagueSlug: string;
 }
 
-/**
- * Server-authoritative join: the client posts only the league id and slug, and
- * the org id is re-resolved from `getMe()` here — never trusted from the
- * browser. Mirrors the `?/joinLeague` action, error strings included.
- */
 async function joinLeague(data: JoinLeagueInput): Promise<JoinLeagueResult> {
   if (!data.leagueId || !data.leagueSlug) {
     return failServerAction(400, {
@@ -139,16 +129,16 @@ export const Route = createFileRoute('/_authed/$orgSlug/')({
     const shell = context.authedShell;
     const org = resolveOrg(shell, params.orgSlug);
 
-    const leagues = await context.queryClient.ensureQueryData({
+    const leagues = await context.queryClient.fetchQuery({
       queryKey: ['org', org.id, 'leagues'],
       queryFn: () => listLeaguesFn({ data: org.id }),
+      staleTime: 0,
     });
 
     const joinedLeagueIds = new Set((org.leagues ?? []).map((l) => l.id));
 
     return {
       org,
-      // API order, no client-side sorting.
       leagues: leagues.map((league) => ({
         ...league,
         isJoined: joinedLeagueIds.has(league.id),
@@ -215,8 +205,6 @@ function OrgHomePageContent() {
             </CardHeader>
             <CardContent className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {/* Intentional as written: the text next to the people icon is
-                    the league slug, not a member count. */}
                 <Users className="h-4 w-4" />
                 <span>{league.slug}</span>
               </div>
@@ -239,11 +227,24 @@ function OrgHomePageContent() {
                     });
                   }}
                 >
-                  <input type="hidden" name="_action" value="joinLeague" />
-                  <input type="hidden" name="leagueId" value={league.id} />
-                  <input type="hidden" name="leagueSlug" value={league.slug} />
-                  {/* Not disabled while in flight — the Svelte form is a stock
-                      `use:enhance` with no pending state. */}
+                  <input
+                    hidden
+                    type="hidden"
+                    name="_action"
+                    value="joinLeague"
+                  />
+                  <input
+                    hidden
+                    type="hidden"
+                    name="leagueId"
+                    value={league.id}
+                  />
+                  <input
+                    hidden
+                    type="hidden"
+                    name="leagueSlug"
+                    value={league.slug}
+                  />
                   <Button type="submit">Join League</Button>
                 </form>
               )}

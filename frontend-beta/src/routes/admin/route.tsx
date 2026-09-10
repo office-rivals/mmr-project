@@ -12,15 +12,11 @@ import { HttpError } from '@/lib/http-error';
 import { createRouteGuard } from '@/lib/server/http-error';
 import { loadShellDataOnce } from '@/lib/server/shell';
 import { badgesQueryOptions } from '@/lib/badges';
-import { authedShellQueryOptions } from '@/lib/shell';
+import { refreshAuthedShellData } from '@/lib/shell';
 import type { BadgesResponse } from '@/api-v3';
 import type { AuthedShellData } from '@/lib/shell';
 
-/**
- * `/admin` is deliberately NOT role-gated — there is a `TODO(super-admin)` on
- * the Svelte layout and any authenticated user may load the landing page. Its
- * only failure mode is `getMe()` itself throwing.
- */
+/** The landing is authenticated; organization routes apply role gates. */
 function requireProfile(shell: AuthedShellData): AuthedShellData {
   if (shell.profileLoadFailed) {
     throw new HttpError(401, 'Failed to load user profile');
@@ -32,21 +28,21 @@ const adminGuard = createRouteGuard(async () => {
   requireProfile(await loadShellDataOnce());
 });
 
-/** The `/admin` layout data every descendant reads for its flag badges. */
 export interface AdminLayoutData extends AuthedShellData {
   badges: BadgesResponse | null;
 }
 
 export const Route = createFileRoute('/admin')({
   server: { middleware: [adminGuard] },
+  beforeLoad: async ({ context }) => ({
+    adminShell: requireProfile(
+      await refreshAuthedShellData(context.queryClient)
+    ),
+  }),
   loader: async ({ context }): Promise<AdminLayoutData> => {
-    const shell = requireProfile(
-      await context.queryClient.ensureQueryData(authedShellQueryOptions())
-    );
-    // After getMe(), which provisions the user and claims pending invites —
-    // the memberships the counts are derived from. Non-fatal on its own.
+    const shell = context.adminShell;
     const badges = await context.queryClient
-      .ensureQueryData(badgesQueryOptions())
+      .fetchQuery(badgesQueryOptions())
       .catch(() => null);
     return { ...shell, badges };
   },
@@ -54,12 +50,7 @@ export const Route = createFileRoute('/admin')({
   component: AdminLayout,
 });
 
-/**
- * Admin chrome. It lives outside `_authed` on purpose: no app header, no bottom
- * navbar, and none of the `_authed` route's `<head>` styles.
- */
 function AdminLayout() {
-  // `shouldThrow: false` — on `/admin` itself there is no org match at all.
   const orgMatch = useMatch({ from: '/admin/$orgSlug', shouldThrow: false });
   const currentOrg = orgMatch?.loaderData ?? null;
 
