@@ -21,8 +21,6 @@ export default function LineChartImpl({
   height,
   legend = true,
 }: LineChartProps) {
-  // Init-once, matching the Svelte `const`: Carbon re-reads options on
-  // identity change, and rebuilding them every render thrashes the chart.
   const options = useMemo<LineChartOptions>(
     () => ({
       theme: 'g100',

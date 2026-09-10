@@ -15,14 +15,6 @@ export interface HeatmapProps {
 }
 
 export default function HeatmapImpl({ data }: HeatmapProps) {
-  // Labels + options are computed once, matching the Svelte `const`s. They are
-  // locale- and timezone-dependent, which is safe here only because the whole
-  // chart is client-only (see client-chart.tsx) — it never SSRs, so there is
-  // nothing to hydrate-mismatch against.
-  //
-  // Both the axis `domain` and the data rows go through the SAME formatting
-  // helpers, which is what keeps labels and values matching (including the
-  // `hour12: false` midnight-as-`24` locales).
   const { labels, chartOptions } = useMemo(() => {
     const hourOfDayFormatter = new Intl.DateTimeFormat(undefined, {
       hour: 'numeric',
@@ -32,7 +24,7 @@ export default function HeatmapImpl({ data }: HeatmapProps) {
       weekday: 'long',
     });
 
-    // Day-of-week names starting from Monday — Jan 5, 1970 is a Monday.
+    // Jan 5, 1970 anchors locale-formatted labels to a Monday.
     const dayOfWeekLabels = Array.from({ length: 7 }, (_, i) =>
       dayOfWeekFormatter.format(new Date(1970, 0, 5 + i))
     );
@@ -69,7 +61,7 @@ export default function HeatmapImpl({ data }: HeatmapProps) {
             title: 'Day of week',
             mapsTo: 'day',
             scaleType: ScaleTypes.LABELS,
-            domain: [...dayOfWeekLabels].reverse(), // makes Monday appear on top
+            domain: [...dayOfWeekLabels].reverse(),
           },
         },
         heatmap: {
@@ -90,25 +82,17 @@ export default function HeatmapImpl({ data }: HeatmapProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- init-once by design
   }, []);
 
-  // Keyed on `data`, unlike the options: the Svelte component mapped its rows
-  // once at init, so after a season switch (which kept the component mounted)
-  // the heatmap still showed the previous season's cells — spec 05 quirk 9,
-  // flagged there as "fix it, don't reproduce it".
   const mappedChartData = useMemo(
     () =>
       (data ?? []).map((stat) => ({
-        // API dayOfWeek is Sunday=0; shift it onto the Monday-first labels.
-        // NOTE: only the hour is converted UTC→local, never the weekday — the
-        // documented half-done conversion, reproduced verbatim.
+        // The API uses Sunday=0; chart labels start on Monday.
         day: labels.dayOfWeekLabels[(stat.dayOfWeek + 7 - 1) % 7],
-        // API hourOfDay is UTC.
         hour: labels.hourOfDayUTCToCurrentTimezone(stat.hourOfDay),
         value: stat.count,
       })),
     [data, labels]
   );
 
-  // Bottom padding keeps the colour legend visible.
   return (
     <div className="pb-2">
       <HeatmapChart data={mappedChartData} options={chartOptions} />

@@ -18,9 +18,7 @@ export function NavbarNav({
   children,
   badge,
 }: NavbarNavProps) {
-  // Exact string equality, never prefix matching: /org/league/player/x must not
-  // light up Home, and Home lights up only at the league root. This is why the
-  // items are not `activeProps` links.
+  // Only the league root activates Home.
   const pathname = useLocation({ select: (location) => location.pathname });
   const isActive = path === pathname;
 
@@ -32,9 +30,6 @@ export function NavbarNav({
         'text-primary hover:text-primary': !isPrimary && isActive,
       })}
     >
-      {/* AppLink, not Link: these paths are built at runtime from slugs and
-          ids, so they cannot be expressed as literal route ids. It is still a
-          router navigation, not a document load. */}
       <AppLink to={path}>
         {children}
         {badge ? (

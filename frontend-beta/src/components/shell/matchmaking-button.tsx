@@ -12,18 +12,6 @@ interface MatchmakingButtonProps {
 export const queueQueryKey = (orgId: string, leagueId: string) =>
   ['queue', orgId, leagueId] as const;
 
-/**
- * Navbar queue badge.
- *
- * In the Svelte app this poll is dead code: it fetches `/api/v3/.../queue` from
- * the browser, `handleFetch` only rewrites *server* fetches, and no proxy route
- * for that URL exists — so every poll 404s and the badge never appears. This
- * app ships the proxy route (`routes/api/v3/organizations/$orgId/leagues/
- * $leagueId/queue.ts`), which is a deliberate improvement. The client-side
- * rules are unchanged: 10s cadence with an immediate fetch on mount, `0 queued`
- * shows no badge at all, and an error leaves the previous value in place
- * (TanStack Query keeps the last successful `data` on a failed refetch).
- */
 export function MatchmakingButton({
   path,
   orgId,

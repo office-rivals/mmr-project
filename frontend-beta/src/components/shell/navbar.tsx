@@ -19,15 +19,13 @@ export function Navbar({
   defaultLeaguePlayerId,
 }: NavbarProps) {
   const params = useParams({ strict: false });
-  // Replaces `page.data.orgId / leagueId / leaguePlayerId`, which the league
-  // layout published into SvelteKit's page store.
   const leagueMatch = useMatch({
     from: '/_authed/$orgSlug/$leagueSlug',
     shouldThrow: false,
   });
   const league = leagueMatch?.loaderData;
 
-  // The league the user is currently inside wins over the layout defaults.
+  // Prefer the league in the current route over shell defaults.
   const orgSlug = params.orgSlug ?? defaultOrgSlug;
   const leagueSlug = params.leagueSlug ?? defaultLeagueSlug;
   const orgId = league?.orgId ?? defaultOrgId;
@@ -38,8 +36,6 @@ export function Navbar({
   const profilePath =
     base && leaguePlayerId ? `${base}/player/${leaguePlayerId}` : '/settings';
 
-  // A user with no joined league anywhere, off a league route, gets no navbar
-  // at all — not a stub nav with dead links.
   if (!base) return null;
 
   return (

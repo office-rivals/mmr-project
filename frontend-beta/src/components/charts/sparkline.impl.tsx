@@ -7,9 +7,6 @@ export interface SparklineProps {
 }
 
 export default function SparklineImpl({ data, options = {} }: SparklineProps) {
-  // Computed once, exactly like the Svelte `const` — changing `options` after
-  // mount does not reconfigure the chart, and a fresh object every render
-  // would thrash Carbon.
   const chartOptions = useMemo<AreaChartOptions>(
     () => ({
       theme: 'g100',
@@ -43,8 +40,6 @@ export default function SparklineImpl({ data, options = {} }: SparklineProps) {
       color: {
         gradient: { enabled: true },
       },
-      // The literal `var()` string is handed to Carbon, which sets it as an
-      // inline style, so it resolves against the themed variable.
       getStrokeColor: () => 'hsl(var(--primary) / 1)',
       toolbar: { enabled: false },
       tooltip: { enabled: false },
@@ -55,10 +50,6 @@ export default function SparklineImpl({ data, options = {} }: SparklineProps) {
     []
   );
 
-  // ⚠️ Quirk preserved from the Svelte original: with 0 or 1 points nothing is
-  // rendered at all — which also swallows the intended `loading: true` state,
-  // since the leaderboard's loading branch passes `data={[]}`. Do not "fix"
-  // this without deciding it deliberately; it is a visible behaviour change.
   if (data.length <= 1) return null;
 
   return <AreaChart data={data} options={chartOptions} />;

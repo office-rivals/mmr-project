@@ -1,7 +1,5 @@
 import { fontFamily } from 'tailwindcss/defaultTheme';
-// The Svelte app shipped no Tailwind plugins, but the canonical shadcn/ui
-// dialog and dropdown-menu emit `data-[state=open]:animate-in` utilities that
-// only exist with this plugin. Purely additive — no existing utility changes.
+// Dialog exit transitions rely on the animation utilities from this plugin.
 import tailwindcssAnimate from 'tailwindcss-animate';
 
 /** @type {import('tailwindcss').Config} */
