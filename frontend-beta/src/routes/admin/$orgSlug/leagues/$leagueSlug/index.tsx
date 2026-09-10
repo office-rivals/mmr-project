@@ -162,10 +162,10 @@ function LeagueAdminOverviewPage() {
                         {(team1?.players ?? [])
                           .map((p) => getPlayerDisplayName(p, '?'))
                           .join(' & ')}
-                      </span>
+                      </span>{' '}
                       <span className="mx-2 text-muted-foreground">
-                        {team1?.score} – {team2?.score}
-                      </span>
+                        {`${team1?.score ?? ''} – ${team2?.score ?? ''}`}
+                      </span>{' '}
                       <span className={team2?.isWinner ? 'font-semibold' : ''}>
                         {(team2?.players ?? [])
                           .map((p) => getPlayerDisplayName(p, '?'))

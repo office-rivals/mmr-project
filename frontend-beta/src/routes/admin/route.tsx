@@ -85,14 +85,14 @@ function AdminLayout() {
             {currentOrg && (
               <Button asChild variant="ghost" size="sm">
                 <AppLink to={`/${currentOrg.slug}`}>
-                  <Building2 className="h-4 w-4" />
+                  <Building2 className="mr-2 h-4 w-4" />
                   Open Org
                 </AppLink>
               </Button>
             )}
             <Button asChild variant="ghost" size="sm">
               <Link to="/">
-                <Home className="h-4 w-4" />
+                <Home className="mr-2 h-4 w-4" />
                 Exit Admin
               </Link>
             </Button>

@@ -102,9 +102,7 @@ function OrgAdminOverviewPage() {
           <CardContent>
             <div className="text-2xl font-bold">{data.activeMemberCount}</div>
             <p className="text-xs text-muted-foreground">
-              {data.ownerCount} Owner{plural(data.ownerCount)} ·{' '}
-              {data.moderatorCount} Mod{plural(data.moderatorCount)} ·{' '}
-              {data.memberCount} Member{plural(data.memberCount)}
+              {`${data.ownerCount} Owner${plural(data.ownerCount)} · ${data.moderatorCount} Mod${plural(data.moderatorCount)} · ${data.memberCount} Member${plural(data.memberCount)}`}
             </p>
           </CardContent>
         </Card>
@@ -161,7 +159,7 @@ function OrgAdminOverviewPage() {
                     <div>
                       <div className="font-medium">{league.name}</div>
                       <p className="text-xs text-muted-foreground">
-                        {formatLeagueFormat(league.teamSize)} · {league.slug}
+                        {`${formatLeagueFormat(league.teamSize)} · ${league.slug}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">

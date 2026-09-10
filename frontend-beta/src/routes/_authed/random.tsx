@@ -464,7 +464,7 @@ function NamesRandomizer({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {players.map((value, index) => (
           <div key={index} className="flex flex-col gap-2">
-            <Label htmlFor={`player-${index}`}>Player {index + 1}</Label>
+            <Label htmlFor={`player-${index}`}>{`Player ${index + 1}`}</Label>
             <Input
               id={`player-${index}`}
               value={value}
