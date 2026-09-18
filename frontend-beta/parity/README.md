@@ -47,6 +47,37 @@ A separate keyboard case verifies season selection. Beta-specific functional
 regressions live alongside the visual harness and run with
 `npm run e2e:regressions`; they use a separate configuration and fresh seed.
 
+`npm run parity:behavior` runs the same interaction assertions against both
+apps, including keyboard focus/highlighting, menu dismissal, disabled links,
+form reset, feedback after navigation, delayed loader responses, pending-match
+actions, report-dialog state, and real touch events in the randomizer. It uses
+the same isolated backend and must also run alone. Its token cases explicitly
+verify the documented scope difference rather than claiming identical behavior.
+
+## Intentional behavior differences
+
+The parity target has four explicit runtime exceptions:
+
+- The Svelte token form sends the unsupported `full` scope and visibly fails.
+  Beta sends the API's supported `write` scope and creates the token. The paired
+  behavior suite verifies both outcomes without retaining the plaintext token in
+  an artifact. This browser-verified repair uses the
+  [supported API scope](../../api/MMRProject.Api/Auth/PatScopes.cs).
+- Native beta form success uses a 303 redirect, while native failure returns an
+  escaped error document with the original status. SvelteKit instead renders
+  action data back into the original page. This source-level framework contract
+  and its beta regressions are described in the
+  [runtime contract](../../plans/frontend-beta/specs/10-runtime-contract.md#http-and-native-forms).
+- Enhanced beta mutations preserve validation and API failure statuses. They
+  also show generic inline feedback when the server-function transport fails;
+  the reference has paths that return error data with status 200 or leave a
+  rejected enhanced request without equivalent feedback. These are required
+  error-contract improvements covered by beta-specific regressions.
+- Beta polls the active-match list every two seconds. The reference polls queue
+  state and refreshes the page only when that response reports the current
+  user's active match, so an independently created active match can remain
+  absent. The beta-specific live-state regression covers the required repair.
+
 No visual differences have been accepted. A failed comparison is not an
 accepted baseline. The HTML report and per-scene metrics record the actual
 result of each run.

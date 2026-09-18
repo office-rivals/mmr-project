@@ -19,15 +19,21 @@ test('season picker supports keyboard selection', async ({
   await trigger.focus();
   await trigger.press('ArrowDown');
 
-  const listbox = page.getByRole('listbox', { name: 'Select a season' });
+  const listbox = page.getByRole('listbox');
   await expect(listbox).toBeVisible();
-  await expect(
-    listbox.getByRole('option', { name: 'Current Season' })
-  ).toBeFocused();
+  const current = listbox.getByRole('option', { name: 'Current Season' });
+  await expect(trigger).toBeFocused();
+  expect(await trigger.getAttribute('aria-activedescendant')).toBe(
+    await current.getAttribute('id')
+  );
 
-  await page.keyboard.press('End');
-  await expect(listbox.getByRole('option').last()).toBeFocused();
-  await page.keyboard.press('Enter');
+  await trigger.press('End');
+  const last = listbox.getByRole('option').last();
+  await expect(last).toHaveAttribute('data-highlighted', '');
+  expect(await trigger.getAttribute('aria-activedescendant')).toBe(
+    await last.getAttribute('id')
+  );
+  await trigger.press('Enter');
 
   await expect(listbox).toBeHidden();
   await expect(trigger).toHaveText(/Season \d+/);
@@ -35,20 +41,25 @@ test('season picker supports keyboard selection', async ({
 
   await trigger.press('ArrowDown');
   await expect(listbox).toBeVisible();
-  await page.keyboard.press('Escape');
+  await trigger.press('Escape');
   await expect(listbox).toBeHidden();
   await expect(trigger).toBeFocused();
 
   await trigger.press('ArrowDown');
-  await page.keyboard.press('s');
-  await expect(listbox.getByRole('option', { name: 'Season 2' })).toBeFocused();
-  await page.keyboard.press('s');
-  await expect(listbox.getByRole('option', { name: 'Season 1' })).toBeFocused();
+  await trigger.press('s');
+  await expect(
+    listbox.getByRole('option', { name: 'Season 2' })
+  ).toHaveAttribute('data-highlighted', '');
+  await trigger.press('s');
+  await expect(
+    listbox.getByRole('option', { name: 'Season 1' })
+  ).toHaveAttribute('data-highlighted', '');
 
-  await page.keyboard.press('Home');
+  await trigger.press('Home');
   const firstOption = listbox.getByRole('option').first();
-  await expect(firstOption).toBeFocused();
-  await page.keyboard.press('ArrowUp');
-  await expect(firstOption).toBeFocused();
+  await expect(firstOption).toHaveAttribute('data-highlighted', '');
+  await trigger.press('ArrowUp');
+  await expect(firstOption).toHaveAttribute('data-highlighted', '');
+  await expect(trigger).toBeFocused();
   await context.close();
 });

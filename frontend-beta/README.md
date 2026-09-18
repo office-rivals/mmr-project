@@ -83,6 +83,12 @@ A nonzero diff fails the comparison; captures are never promoted automatically.
 A functional test pass is not a visual parity claim. See `parity/README.md` for
 capture coverage, determinism rules, and any remaining measured differences.
 
+Run `npm run parity:behavior` to exercise the same interaction assertions against
+both apps, including keyboard focus, touch input, modal state, and mutation
+feedback. Run it alone, like the other browser suites. The harness README records
+the intentional runtime differences; `parity/VERIFICATION.md` records measured
+results.
+
 ## Data and mutation lifecycle
 
 The app and admin layouts fetch one fresh `['me']` snapshot in `beforeLoad`

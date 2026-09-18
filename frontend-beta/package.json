@@ -15,7 +15,8 @@
     "e2e:ui": "cd ../frontend && E2E_FRONTEND_DIR=frontend-beta npx playwright test --ui",
     "generate-api-v3": "openapi-generator-cli generate -i http://localhost:8081/swagger/v3/swagger.json -g typescript-fetch -o src/api-v3 --additional-properties=supportsES6=true --skip-validate-spec",
     "parity:visual": "../frontend/node_modules/.bin/playwright test --config parity/playwright.config.ts",
-    "e2e:regressions": "../frontend/node_modules/.bin/playwright test --config parity/functional.config.ts"
+    "e2e:regressions": "../frontend/node_modules/.bin/playwright test --config parity/functional.config.ts",
+    "parity:behavior": "../frontend/node_modules/.bin/playwright test --config parity/behavior.config.ts"
   },
   "dependencies": {
     "@carbon/charts-react": "^1.27.16",
