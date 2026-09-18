@@ -312,15 +312,21 @@ function MembersPage() {
   const isOwner = org.role === 'Owner';
   const canModerate = isModeratorOrAbove(org.role);
 
-  const run = async (action: Promise<ActionResult>) => {
+  const run = async (
+    action: Promise<ActionResult>,
+    beforeRefresh?: () => void
+  ) => {
     let actionResult: ActionResult;
     try {
       actionResult = await action;
     } catch {
       actionResult = { error: 'Request failed. Please try again.' };
     }
+    if (actionResult.success) {
+      beforeRefresh?.();
+      await router.invalidate({ sync: true });
+    }
     setResult(actionResult);
-    if (actionResult.success) await router.invalidate({ sync: true });
     return actionResult;
   };
 
@@ -504,10 +510,11 @@ function MembersPage() {
                 method="post"
                 action={`/admin/${org.slug}/members`}
                 className="flex flex-col gap-4"
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault();
-                  const formData = new FormData(event.currentTarget);
-                  void run(
+                  const form = event.currentTarget;
+                  const formData = new FormData(form);
+                  await run(
                     inviteMemberFn({
                       data: {
                         orgSlug: org.slug,
@@ -516,7 +523,8 @@ function MembersPage() {
                         displayName: String(formData.get('displayName') ?? ''),
                         username: String(formData.get('username') ?? ''),
                       },
-                    })
+                    }),
+                    () => form.reset()
                   );
                 }}
               >

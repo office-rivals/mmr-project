@@ -43,18 +43,17 @@ export function resolveEnterTarget({
   return undefined;
 }
 
-/** Next highlight for an arrow press, wrapping at both ends (bits-ui `loop`). */
+/** Next highlight for an arrow or page press. Both player pickers enable loop. */
 export function moveHighlight(
   options: string[],
   highlighted: string | null,
-  direction: 'down' | 'up'
+  direction: 'down' | 'up',
+  steps = 1
 ): string | null {
   if (options.length === 0) return null;
   const index = highlighted === null ? -1 : options.indexOf(highlighted);
   if (index === -1) return direction === 'down' ? options[0] : options.at(-1)!;
-  const next =
-    direction === 'down'
-      ? (index + 1) % options.length
-      : (index - 1 + options.length) % options.length;
+  const unwrapped = direction === 'down' ? index + steps : index - steps;
+  const next = ((unwrapped % options.length) + options.length) % options.length;
   return options[next];
 }

@@ -79,6 +79,7 @@ describe('moveHighlight', () => {
     expect(moveHighlight(OPTIONS, 'league:a', 'down')).toBe('league:b');
     expect(moveHighlight(OPTIONS, 'member:c', 'down')).toBe('league:a');
     expect(moveHighlight(OPTIONS, 'league:a', 'up')).toBe('member:c');
+    expect(moveHighlight(OPTIONS, 'league:a', 'down', 10)).toBe('league:b');
   });
 
   it('restarts from the ends when the highlight has fallen out of the list', () => {

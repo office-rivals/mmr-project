@@ -174,9 +174,9 @@ function SeasonsPage() {
                     message: 'Request failed. Please try again.',
                   };
                 }
-                setResult(actionResult);
                 if (actionResult.success)
                   await router.invalidate({ sync: true });
+                setResult(actionResult);
                 if (actionResult.success) setShowCreate(false);
               }}
             >

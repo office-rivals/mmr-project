@@ -1,18 +1,14 @@
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { moveHighlight, resolveEnterTarget } from '@/lib/combobox';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 
 interface UsePlayerComboboxOptions {
-  /** Option values in render order. */
   options: string[];
   filterLength: number;
-  /** See `resolveEnterTarget`. */
   requireArrow: boolean;
   minFilterLength: number;
-  /** Start open — an autofocused input never sends a focus event we can hear. */
   initialOpen?: boolean;
   onSelect: (optionValue: string) => void;
-  /** Escape: clear the filter text the component owns. */
   onEscape: () => void;
 }
 
@@ -20,18 +16,6 @@ interface UsePlayerComboboxOptions {
 // is not id-safe out of the option value.
 const idSafe = (value: string) => value.replace(/[^A-Za-z0-9_-]/g, '-');
 
-/**
- * The keyboard half of the two player pickers, with the ARIA wiring the e2e
- * suite asserts (`role="combobox"` input, `role="listbox"` popup,
- * `role="option"` suggestions carrying `data-highlighted`).
- *
- * There is no Radix/shadcn combobox in this app — `components/ui` is the plain
- * CLI set — and adding `cmdk` would change the DOM roles the specs pin, so this
- * is deliberately headless.
- *
- * Highlighting is keyboard-only: bits-ui also highlighted on hover, but that
- * would make Enter act on whatever the pointer happened to rest over.
- */
 export function usePlayerCombobox({
   options,
   filterLength,
@@ -42,6 +26,7 @@ export function usePlayerCombobox({
   onEscape,
 }: UsePlayerComboboxOptions) {
   const id = useId();
+  const inputId = `${id}-input`;
   const listboxId = `${id}-listbox`;
   const [open, setOpen] = useState(initialOpen);
   const [highlighted, setHighlighted] = useState<string | null>(null);
@@ -52,13 +37,11 @@ export function usePlayerCombobox({
     [id]
   );
 
-  /** Forget the keyboard state — after a pick, a reset or an Escape. */
   const clearHighlight = useCallback(() => {
     setHighlighted(null);
     setArrowed(false);
   }, []);
 
-  /** Input arrived (typed, pasted, autofilled or adopted at hydration). */
   const onFilterInput = useCallback(() => {
     setOpen(true);
     clearHighlight();
@@ -67,10 +50,59 @@ export function usePlayerCombobox({
   const select = useCallback(
     (value: string) => {
       clearHighlight();
+      setOpen(false);
       onSelect(value);
     },
     [clearHighlight, onSelect]
   );
+
+  const dismiss = useCallback(() => {
+    setOpen(false);
+    setHighlighted(null);
+  }, []);
+
+  useEffect(() => {
+    if (!open || options.length === 0) {
+      if (options.length === 0) setHighlighted(null);
+      return;
+    }
+    setHighlighted((current) =>
+      current !== null && options.includes(current) ? current : options[0]
+    );
+  }, [open, options]);
+
+  useEffect(() => {
+    if (!open || highlighted === null) return;
+    document
+      .getElementById(optionId(highlighted))
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [highlighted, open, optionId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleOutsideInteraction = (event: Event) => {
+      const target = event.target as Node | null;
+      // A dialog opened from the list is a higher layer; keep its source
+      // mounted behind the modal, as Bits UI does.
+      if (target instanceof Element && target.closest('[role="dialog"]')) {
+        return;
+      }
+      if (
+        target !== null &&
+        (document.getElementById(inputId)?.contains(target) ||
+          document.getElementById(listboxId)?.contains(target))
+      ) {
+        return;
+      }
+      dismiss();
+    };
+    document.addEventListener('pointerdown', handleOutsideInteraction);
+    document.addEventListener('focusin', handleOutsideInteraction);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideInteraction);
+      document.removeEventListener('focusin', handleOutsideInteraction);
+    };
+  }, [dismiss, inputId, listboxId, open]);
 
   const onKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
@@ -78,8 +110,17 @@ export function usePlayerCombobox({
       if (event.nativeEvent.isComposing) return;
       if (event.key === 'Escape') {
         onEscape();
-        setOpen(false);
+        dismiss();
         clearHighlight();
+        return;
+      }
+      if (event.key === 'Tab') {
+        dismiss();
+        return;
+      }
+      if (event.key === 'ArrowUp' && event.altKey) {
+        event.preventDefault();
+        dismiss();
         return;
       }
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -95,6 +136,28 @@ export function usePlayerCombobox({
             event.key === 'ArrowDown' ? 'down' : 'up'
           )
         );
+        return;
+      }
+      if (
+        event.key === 'Home' ||
+        event.key === 'End' ||
+        event.key === 'PageUp' ||
+        event.key === 'PageDown'
+      ) {
+        if (!open || options.length === 0) return;
+        event.preventDefault();
+        if (event.key === 'Home') setHighlighted(options[0]);
+        else if (event.key === 'End')
+          setHighlighted(options[options.length - 1]);
+        else
+          setHighlighted((current) =>
+            moveHighlight(
+              options,
+              current,
+              event.key === 'PageDown' ? 'down' : 'up',
+              10
+            )
+          );
         return;
       }
       if (event.key !== 'Enter') return;
@@ -115,6 +178,7 @@ export function usePlayerCombobox({
     [
       arrowed,
       clearHighlight,
+      dismiss,
       filterLength,
       highlighted,
       minFilterLength,
@@ -127,6 +191,7 @@ export function usePlayerCombobox({
   );
 
   const inputProps = {
+    id: inputId,
     role: 'combobox' as const,
     'aria-expanded': open,
     'aria-controls': listboxId,
@@ -143,8 +208,21 @@ export function usePlayerCombobox({
   const getOptionProps = (value: string) => ({
     id: optionId(value),
     role: 'option' as const,
-    'aria-selected': highlighted === value,
+    'aria-selected': undefined,
     'data-highlighted': highlighted === value ? '' : undefined,
+    onPointerMove: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      if (event.pointerType !== 'touch') setHighlighted(value);
+    },
+    onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+    },
+    onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      // A touch click is handled after pointerup so it cannot fall through to
+      // the element revealed when selecting removes the popup.
+      if (event.pointerType === 'touch') return;
+      event.preventDefault();
+      select(value);
+    },
     onClick: () => select(value),
   });
 

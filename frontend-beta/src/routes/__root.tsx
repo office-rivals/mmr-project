@@ -26,7 +26,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           content: 'black-translucent',
         },
         { name: 'apple-mobile-web-app-title', content: 'MMR Project' },
-        { title: 'MMR Project' },
       ],
       links: [
         { rel: 'stylesheet', href: appCss },

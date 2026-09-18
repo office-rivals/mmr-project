@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import {
@@ -375,6 +375,14 @@ function MatchFlagsPage() {
   const [editing, setEditing] = useState<MatchResponse | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
+  useEffect(() => {
+    setResult(
+      search.actionSuccess
+        ? { success: true, message: search.actionSuccess }
+        : null
+    );
+  }, [orgSlug, leagueSlug, data.statusFilter, search.actionSuccess]);
+
   const selectedFlag = data.flags.find((f) => f.id === selectedFlagId);
   const selectedMatch = selectedFlag
     ? (data.matchesById[selectedFlag.matchId] ?? null)
@@ -390,8 +398,8 @@ function MatchFlagsPage() {
         message: 'Request failed. Please try again.',
       };
     }
-    setResult(actionResult);
     if (actionResult.success) await router.invalidate({ sync: true });
+    setResult(actionResult);
     return actionResult;
   };
 

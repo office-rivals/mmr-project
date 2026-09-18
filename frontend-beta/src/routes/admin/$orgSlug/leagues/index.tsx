@@ -171,11 +171,11 @@ function AdminLeaguesPage() {
                     error: 'Request failed. Please try again.',
                   };
                 }
-                setResult(actionResult);
                 if (actionResult.success) {
                   await refreshAuthedShellData(queryClient);
                   await router.invalidate({ sync: true });
                 }
+                setResult(actionResult);
                 if (actionResult.success) setShowCreate(false);
               }}
             >

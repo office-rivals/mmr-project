@@ -350,18 +350,17 @@ function PlayerProfilePage() {
             seasons={data.seasons}
             currentSeason={data.currentSeason}
             selectedSeasonId={season}
-            onSeasonChange={(next) =>
-              navigate({
-                // Picking the current season REMOVES `?season=`, it does not
-                // set it — the loaders then re-derive it themselves.
+            onSeasonChange={(next) => {
+              setFlagResult(null);
+              void navigate({
                 search: (prev) => ({
                   ...prev,
                   season:
                     next.id === data.currentSeason?.id ? undefined : next.id,
                 }),
                 replace: true,
-              })
-            }
+              });
+            }}
           />
         </div>
       ) : null}

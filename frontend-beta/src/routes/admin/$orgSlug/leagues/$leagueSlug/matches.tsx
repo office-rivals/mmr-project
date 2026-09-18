@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import {
@@ -291,6 +291,14 @@ function AdminMatchesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
+  useEffect(() => {
+    setResult(
+      search.actionSuccess
+        ? { success: true, message: search.actionSuccess }
+        : null
+    );
+  }, [orgSlug, leagueSlug, data.offset, search.actionSuccess]);
+
   // Use refreshed scores when an older save finishes after the dialog reopens.
   const editing = data.matches.find((match) => match.id === editingId) ?? null;
 
@@ -308,8 +316,8 @@ function AdminMatchesPage() {
         message: 'Request failed. Please try again.',
       };
     }
-    setResult(actionResult);
     if (actionResult.success) await router.invalidate({ sync: true });
+    setResult(actionResult);
     return actionResult;
   };
 
@@ -343,11 +351,14 @@ function AdminMatchesPage() {
           </form>
         </div>
 
-        {result?.success ? (
-          <Alert variant="success">{result.message}</Alert>
-        ) : result?.success === false ? (
-          <Alert variant="destructive">{result.message}</Alert>
-        ) : null}
+        {/* Keep the live region mounted so modal isolation preserves late feedback. */}
+        <div aria-live="assertive">
+          {result?.success ? (
+            <Alert variant="success">{result.message}</Alert>
+          ) : result?.success === false ? (
+            <Alert variant="destructive">{result.message}</Alert>
+          ) : null}
+        </div>
 
         <Card>
           <CardHeader>
@@ -491,8 +502,8 @@ function AdminMatchesPage() {
 
         <div className="flex items-center justify-between">
           {data.offset === 0 ? (
-            <Button asChild variant="outline" size="sm" disabled>
-              <a href="#">
+            <Button asChild variant="outline" size="sm">
+              <a role="link" aria-disabled="true" tabIndex={-1}>
                 <ChevronLeft className="mr-1 h-4 w-4" />
                 Newer
               </a>
@@ -521,8 +532,8 @@ function AdminMatchesPage() {
               </Link>
             </Button>
           ) : (
-            <Button asChild variant="outline" size="sm" disabled>
-              <a href="#">
+            <Button asChild variant="outline" size="sm">
+              <a role="link" aria-disabled="true" tabIndex={-1}>
                 Older
                 <ChevronRight className="ml-1 h-4 w-4" />
               </a>
