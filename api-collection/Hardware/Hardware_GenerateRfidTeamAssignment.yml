@@ -1,20 +1,13 @@
 info:
-  name: V3MatchMaking_GenerateRfidTeamAssignment
+  name: Hardware_GenerateRfidTeamAssignment
   type: http
-  seq: 1
+  seq: 4
   tags:
-    - V3MatchMaking
+    - Hardware
 
 http:
   method: POST
-  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/matchmaking/rfid"
-  params:
-    - name: orgId
-      value: ""
-      type: path
-    - name: leagueId
-      value: ""
-      type: path
+  url: "{{baseUrl}}/api/v3/hardware/matchmaking"
   body:
     type: json
     data: |-
@@ -35,15 +28,8 @@ examples:
   - name: 200 Response
     description: Ordered team indexes; 0 is white and 1 is red
     request:
-      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/matchmaking/rfid"
+      url: "{{baseUrl}}/api/v3/hardware/matchmaking"
       method: POST
-      params:
-        - name: orgId
-          value: ""
-          type: path
-        - name: leagueId
-          value: ""
-          type: path
       body:
         type: json
         data: |-
@@ -59,5 +45,4 @@ examples:
           value: application/json
       body:
         type: json
-        data: |-
-          [0, 1, 1, 0]
+        data: "[0, 1, 1, 0]"

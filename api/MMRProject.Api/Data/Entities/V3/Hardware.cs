@@ -10,6 +10,10 @@ public class Hardware : TenantEntity
 
     public DateTimeOffset LastSeenAt { get; set; }
 
+    public byte[]? SecretHash { get; set; }
+
+    public DateTimeOffset? RevokedAt { get; set; }
+
     public virtual Organization Organization { get; set; } = null!;
 
     public virtual League League { get; set; } = null!;

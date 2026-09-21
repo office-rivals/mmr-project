@@ -1,18 +1,19 @@
 info:
-  name: Hardware_RecordHeartbeat
+  name: Hardware_SubmitPairing
   type: http
-  seq: 1
+  seq: 3
   tags:
     - Hardware
 
 http:
   method: POST
-  url: "{{baseUrl}}/api/v3/hardware/heartbeat"
+  url: "{{baseUrl}}/api/v3/hardware/pairing"
   body:
     type: json
     data: |-
       {
-        "localIpAddress": "192.168.4.1"
+        "rfidUid": "",
+        "colors": ["Red", "Green", "Blue", "Yellow"]
       }
   auth: inherit
 
@@ -27,17 +28,24 @@ examples:
   - name: 200 Response
     description: OK
     request:
-      url: "{{baseUrl}}/api/v3/hardware/heartbeat"
+      url: "{{baseUrl}}/api/v3/hardware/pairing"
       method: POST
       body:
         type: json
         data: |-
           {
-            "localIpAddress": ""
+            "rfidUid": "",
+            "colors": ["Red", "Green", "Blue", "Yellow"]
           }
     response:
       status: 200
       statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
       body:
-        type: text
-        data: ""
+        type: json
+        data: |-
+          {
+            "success": true
+          }

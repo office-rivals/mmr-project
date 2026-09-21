@@ -9,4 +9,5 @@ public static class V3AuthorizationPolicies
     public const string RequirePatWrite = "RequirePatWrite";
     public const string RequirePatAuthentication = "RequirePatAuthentication";
     public const string DenyPatAuthentication = "DenyPatAuthentication";
+    public const string RequireHardwareSecret = "RequireHardwareSecret";
 }

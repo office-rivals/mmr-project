@@ -62,6 +62,8 @@ builder.Services.AddAuthorization(options =>
         policy.Requirements.Add(new PatAuthenticationRequirement()));
     options.AddPolicy(V3AuthorizationPolicies.DenyPatAuthentication, policy =>
         policy.Requirements.Add(new DenyPatAuthenticationRequirement()));
+    options.AddPolicy(V3AuthorizationPolicies.RequireHardwareSecret, policy =>
+        policy.Requirements.Add(new HardwareAuthenticationRequirement()));
 });
 
 builder.Services.AddSingleton<IAuthorizationHandler, OrganizationRoleAuthorizationHandler>();
@@ -69,6 +71,7 @@ builder.Services.AddSingleton<IAuthorizationHandler, LeagueAccessAuthorizationHa
 builder.Services.AddSingleton<IAuthorizationHandler, PatAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, PatAuthenticationHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, DenyPatAuthenticationHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, HardwareAuthorizationHandler>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddRateLimiter(options =>

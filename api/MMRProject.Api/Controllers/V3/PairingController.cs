@@ -33,11 +33,4 @@ public class PairingController(IPairingService pairingService) : ControllerBase
         await pairingService.UnlinkTagAsync(tagId);
         return NoContent();
     }
-
-    [HttpPost("submit")]
-    [Authorize(Policy = V3AuthorizationPolicies.RequirePatWrite)]
-    public async Task<ActionResult<PairingSubmitResponse>> SubmitPairing(PairingSubmitRequest request)
-    {
-        return await pairingService.SubmitPairingAsync(request);
-    }
 }

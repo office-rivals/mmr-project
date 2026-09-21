@@ -39,11 +39,14 @@ public class PairingTests(PostgresFixture postgres) : IntegrationTestBase(postgr
             await Client.PostAsync("api/v3/pairing/code", null));
         Assert.NotNull(issued);
 
-        AuthenticateAsPat("box-1", PatScopes.Write);
+        var organization = await CreateOrganization();
+        var league = await CreateLeague(organization.Id);
+        var hardwareId = await SeedHardware(organization.Id, league.Id);
+        AuthenticateAsHardware(hardwareId, organization.Id, league.Id);
         var wrongColors = issued!.Colors.Select(c => (PairingColor)(((int)c + 1) % 4)).ToList();
 
         var wrongSubmit = await ReadJsonAsync<PairingSubmitResponse>(
-            await Client.PostAsJsonAsync("api/v3/pairing/submit", new PairingSubmitRequest
+            await Client.PostAsJsonAsync("api/v3/hardware/pairing", new PairingSubmitRequest
             {
                 RfidUid = "tag-1",
                 Colors = wrongColors,
@@ -51,7 +54,7 @@ public class PairingTests(PostgresFixture postgres) : IntegrationTestBase(postgr
         Assert.False(wrongSubmit!.Success);
 
         var correctSubmit = await ReadJsonAsync<PairingSubmitResponse>(
-            await Client.PostAsJsonAsync("api/v3/pairing/submit", new PairingSubmitRequest
+            await Client.PostAsJsonAsync("api/v3/hardware/pairing", new PairingSubmitRequest
             {
                 RfidUid = "tag-1",
                 Colors = issued.Colors,
@@ -70,13 +73,16 @@ public class PairingTests(PostgresFixture postgres) : IntegrationTestBase(postgr
     {
         var userA = await SeedUser("user-a");
         var userB = await SeedUser("user-b");
+        var organization = await CreateOrganization();
+        var league = await CreateLeague(organization.Id);
+        var hardwareId = await SeedHardware(organization.Id, league.Id);
 
         AuthenticateAs("user-a");
         var codeA = await ReadJsonAsync<PairingCodeResponse>(
             await Client.PostAsync("api/v3/pairing/code", null));
 
-        AuthenticateAsPat("box-1", PatScopes.Write);
-        await Client.PostAsJsonAsync("api/v3/pairing/submit", new PairingSubmitRequest
+        AuthenticateAsHardware(hardwareId, organization.Id, league.Id);
+        await Client.PostAsJsonAsync("api/v3/hardware/pairing", new PairingSubmitRequest
         {
             RfidUid = "shared-tag",
             Colors = codeA!.Colors,
@@ -86,9 +92,9 @@ public class PairingTests(PostgresFixture postgres) : IntegrationTestBase(postgr
         var codeB = await ReadJsonAsync<PairingCodeResponse>(
             await Client.PostAsync("api/v3/pairing/code", null));
 
-        AuthenticateAsPat("box-1", PatScopes.Write);
+        AuthenticateAsHardware(hardwareId, organization.Id, league.Id);
         var conflictSubmit = await ReadJsonAsync<PairingSubmitResponse>(
-            await Client.PostAsJsonAsync("api/v3/pairing/submit", new PairingSubmitRequest
+            await Client.PostAsJsonAsync("api/v3/hardware/pairing", new PairingSubmitRequest
             {
                 RfidUid = "shared-tag",
                 Colors = codeB!.Colors,
@@ -107,6 +113,9 @@ public class PairingTests(PostgresFixture postgres) : IntegrationTestBase(postgr
     public async Task SubmitPairing_ExpiredCode_Rejected()
     {
         var user = await SeedUser("user-1");
+        var organization = await CreateOrganization();
+        var league = await CreateLeague(organization.Id);
+        var hardwareId = await SeedHardware(organization.Id, league.Id);
 
         using (var scope = Factory.Services.CreateScope())
         {
@@ -120,9 +129,9 @@ public class PairingTests(PostgresFixture postgres) : IntegrationTestBase(postgr
             await dbContext.SaveChangesAsync();
         }
 
-        AuthenticateAsPat("box-1", PatScopes.Write);
+        AuthenticateAsHardware(hardwareId, organization.Id, league.Id);
         var response = await ReadJsonAsync<PairingSubmitResponse>(
-            await Client.PostAsJsonAsync("api/v3/pairing/submit", new PairingSubmitRequest
+            await Client.PostAsJsonAsync("api/v3/hardware/pairing", new PairingSubmitRequest
             {
                 RfidUid = "tag-expired",
                 Colors = [PairingColor.Red, PairingColor.Green, PairingColor.Blue, PairingColor.Yellow],
@@ -140,8 +149,11 @@ public class PairingTests(PostgresFixture postgres) : IntegrationTestBase(postgr
         var issued = await ReadJsonAsync<PairingCodeResponse>(
             await Client.PostAsync("api/v3/pairing/code", null));
 
-        AuthenticateAsPat("box-1", PatScopes.Write);
-        await Client.PostAsJsonAsync("api/v3/pairing/submit", new PairingSubmitRequest
+        var organization = await CreateOrganization();
+        var league = await CreateLeague(organization.Id);
+        var hardwareId = await SeedHardware(organization.Id, league.Id);
+        AuthenticateAsHardware(hardwareId, organization.Id, league.Id);
+        await Client.PostAsJsonAsync("api/v3/hardware/pairing", new PairingSubmitRequest
         {
             RfidUid = "tag-1",
             Colors = issued!.Colors,

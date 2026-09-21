@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
+using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
 
 namespace MMRProject.Api.IntegrationTests.MatchMaking;
@@ -20,6 +21,7 @@ public class RfidTeamAssignmentTests(PostgresFixture postgres) : IntegrationTest
         var player2 = await SeedTestUser(organization.Id, league.Id, "p2", "p2@test.com");
         var player3 = await SeedTestUser(organization.Id, league.Id, "p3", "p3@test.com");
         var player4 = await SeedTestUser(organization.Id, league.Id, "p4", "p4@test.com");
+        var hardwareId = await SeedHardware(organization.Id, league.Id);
 
         using (var scope = Factory.Services.CreateScope())
         {
@@ -47,23 +49,14 @@ public class RfidTeamAssignmentTests(PostgresFixture postgres) : IntegrationTest
             await dbContext.SaveChangesAsync();
         }
 
-        AuthenticateAs("p1");
+        AuthenticateAsHardware(hardwareId, organization.Id, league.Id);
         var response = await Client.PostAsJsonAsync(
-            $"api/v3/organizations/{organization.Id}/leagues/{league.Id}/matchmaking/rfid",
-            new { rfidUids = new[] { "A", "B", "C", "D" }, temperature = 0d }
+            "api/v3/hardware/matchmaking",
+            new RfidTeamAssignmentRequest { RfidUids = ["A", "B", "C", "D"] }
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal([0, 1, 1, 0], await ReadJsonAsync<List<int>>(response));
-
-        AuthenticateAsPat("p1", "write", organization.Id, league.Id);
-        var patResponse = await Client.PostAsJsonAsync(
-            $"api/v3/organizations/{organization.Id}/leagues/{league.Id}/matchmaking/rfid",
-            new { rfidUids = new[] { "A", "B", "C", "D" } }
-        );
-
-        Assert.Equal(HttpStatusCode.OK, patResponse.StatusCode);
-        Assert.Equal([0, 1, 1, 0], await ReadJsonAsync<List<int>>(patResponse));
     }
 
     [Fact]
@@ -72,11 +65,12 @@ public class RfidTeamAssignmentTests(PostgresFixture postgres) : IntegrationTest
         var organization = await CreateOrganization();
         var league = await CreateLeague(organization.Id, teamSize: 2);
         await SeedTestUser(organization.Id, league.Id, "p1", "p1@test.com");
+        var hardwareId = await SeedHardware(organization.Id, league.Id);
 
-        AuthenticateAs("p1");
+        AuthenticateAsHardware(hardwareId, organization.Id, league.Id);
         var response = await Client.PostAsJsonAsync(
-            $"api/v3/organizations/{organization.Id}/leagues/{league.Id}/matchmaking/rfid",
-            new { rfidUids = new[] { "A", "B", "C", "D" } }
+            "api/v3/hardware/matchmaking",
+            new RfidTeamAssignmentRequest { RfidUids = ["A", "B", "C", "D"] }
         );
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -88,11 +82,12 @@ public class RfidTeamAssignmentTests(PostgresFixture postgres) : IntegrationTest
         var organization = await CreateOrganization();
         var league = await CreateLeague(organization.Id, teamSize: 2);
         await SeedTestUser(organization.Id, league.Id, "p1", "p1@test.com");
+        var hardwareId = await SeedHardware(organization.Id, league.Id);
 
-        AuthenticateAs("p1");
+        AuthenticateAsHardware(hardwareId, organization.Id, league.Id);
         var response = await Client.PostAsJsonAsync(
-            $"api/v3/organizations/{organization.Id}/leagues/{league.Id}/matchmaking/rfid",
-            new { rfidUids = new[] { "A", "B", "C" } }
+            "api/v3/hardware/matchmaking",
+            new RfidTeamAssignmentRequest { RfidUids = ["A", "B", "C"] }
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -108,11 +103,12 @@ public class RfidTeamAssignmentTests(PostgresFixture postgres) : IntegrationTest
         var organization = await CreateOrganization();
         var league = await CreateLeague(organization.Id, teamSize: 2);
         await SeedTestUser(organization.Id, league.Id, "p1", "p1@test.com");
+        var hardwareId = await SeedHardware(organization.Id, league.Id);
 
-        AuthenticateAs("p1");
+        AuthenticateAsHardware(hardwareId, organization.Id, league.Id);
         var response = await Client.PostAsJsonAsync(
-            $"api/v3/organizations/{organization.Id}/leagues/{league.Id}/matchmaking/rfid",
-            new { rfidUids = new[] { "A", "B", "C", "D" }, temperature }
+            "api/v3/hardware/matchmaking",
+            new RfidTeamAssignmentRequest { RfidUids = ["A", "B", "C", "D"], Temperature = temperature }
         );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -125,6 +121,7 @@ public class RfidTeamAssignmentTests(PostgresFixture postgres) : IntegrationTest
         var league = await CreateLeague(organization.Id, teamSize: 1);
         var player = await SeedTestUser(organization.Id, league.Id, "p1", "p1@test.com");
         var outsider = await SeedOrgMember(organization.Id, "outsider", "outsider@test.com");
+        var hardwareId = await SeedHardware(organization.Id, league.Id);
 
         using (var scope = Factory.Services.CreateScope())
         {
@@ -136,10 +133,10 @@ public class RfidTeamAssignmentTests(PostgresFixture postgres) : IntegrationTest
             await dbContext.SaveChangesAsync();
         }
 
-        AuthenticateAs("p1");
+        AuthenticateAsHardware(hardwareId, organization.Id, league.Id);
         var response = await Client.PostAsJsonAsync(
-            $"api/v3/organizations/{organization.Id}/leagues/{league.Id}/matchmaking/rfid",
-            new { rfidUids = new[] { "A", "B" } }
+            "api/v3/hardware/matchmaking",
+            new RfidTeamAssignmentRequest { RfidUids = ["A", "B"] }
         );
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);

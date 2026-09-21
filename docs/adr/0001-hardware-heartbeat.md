@@ -1,3 +1,8 @@
+**Status**: partially superseded by [0002](./0002-hardware-secret-auth.md) —
+the PAT-bearer auth and Wi-Fi-portal-driven league reassignment described below
+no longer apply; the latest-state heartbeat model and payload shape are otherwise
+unchanged.
+
 # Store Hardware heartbeats in the ASP.NET API
 
 Hardware reports its identity, selected league, and LAN address to a fixed
