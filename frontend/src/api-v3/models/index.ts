@@ -13,6 +13,14 @@ export enum OrganizationRole {
 export enum MembershipStatus {
   Invited = 'Invited',
   Active = 'Active',
+  Removed = 'Removed',
+}
+
+export enum MembershipClaimStatus {
+  Pending = 'Pending',
+  Approved = 'Approved',
+  Rejected = 'Rejected',
+  Cancelled = 'Cancelled',
 }
 
 export enum MatchSource {
@@ -116,6 +124,53 @@ export interface UpdateMemberProfileRequest {
   displayName?: string;
   username?: string;
   email?: string;
+}
+
+export interface ClaimableMembershipsResponse {
+  requesterEligible: boolean;
+  memberships: ClaimableMembershipResponse[];
+}
+
+export interface ClaimableMembershipResponse {
+  organizationMembershipId: string;
+  displayName?: string;
+  username?: string;
+  matchCount: number;
+  lastPlayedAt?: string;
+  leagues: ClaimableMembershipLeagueStatsResponse[];
+}
+
+export interface ClaimableMembershipLeagueStatsResponse {
+  leagueId: string;
+  leagueName: string;
+  matchCount: number;
+  lastPlayedAt?: string;
+}
+
+export interface CreateMembershipClaimRequest {
+  organizationMembershipId: string;
+  note?: string;
+}
+
+export interface ReviewMembershipClaimRequest {
+  reviewNote?: string;
+}
+
+export interface MembershipClaimRequestResponse {
+  id: string;
+  organizationId: string;
+  organizationMembershipId: string;
+  userId: string;
+  requesterDisplayName?: string;
+  requesterEmail: string;
+  target: ClaimableMembershipResponse;
+  status: MembershipClaimStatus;
+  note?: string;
+  reviewNote?: string;
+  reviewedByMembershipId?: string;
+  reviewedAt?: string;
+  retiredMembershipId?: string;
+  createdAt: string;
 }
 
 // League DTOs

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { resolve } from '$app/paths';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { Alert } from '$lib/components/ui/alert';
@@ -10,11 +11,13 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
-  import { Trophy, Users } from 'lucide-svelte';
+  import { CircleUserRound, Clock3, Trophy, Users } from 'lucide-svelte';
   import { formatLeagueFormat } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
+
+  const claimPending = $derived(data.claimRequest?.status === 'Pending');
 </script>
 
 <div class="space-y-6">
@@ -27,6 +30,35 @@
 
   {#if form?.error}
     <Alert variant="destructive">{form.error}</Alert>
+  {/if}
+
+  {#if claimPending}
+    <a
+      href={resolve('/(authed)/[orgSlug]/claim', {
+        orgSlug: data.org.slug,
+      })}
+      class="flex items-center gap-2 rounded-lg border bg-muted/40 px-4 py-3 text-sm"
+    >
+      <Clock3 class="h-4 w-4 text-muted-foreground" />
+      <span>Player claim awaiting approval</span>
+      <Badge variant="outline" class="ml-auto">Pending</Badge>
+    </a>
+  {:else if data.claimable.requesterEligible}
+    <Card>
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2">
+          <CircleUserRound class="h-5 w-5" />
+          Played here before you had an account?
+        </CardTitle>
+        <CardDescription>
+          Claim your player to keep the matches and rating already recorded for
+          you.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button href={`/${data.org.slug}/claim`}>Claim your player</Button>
+      </CardContent>
+    </Card>
   {/if}
 
   <div class="grid gap-4">
@@ -56,7 +88,7 @@
             <Button href={`/${data.org.slug}/${league.slug}`}>
               Open League
             </Button>
-          {:else}
+          {:else if !claimPending}
             <form method="POST" action="?/joinLeague" use:enhance>
               <input type="hidden" name="leagueId" value={league.id} />
               <input type="hidden" name="leagueSlug" value={league.slug} />

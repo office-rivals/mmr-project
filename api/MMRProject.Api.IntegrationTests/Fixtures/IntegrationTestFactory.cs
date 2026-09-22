@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using MMRProject.Api.BackgroundServices;
@@ -17,14 +18,16 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
     private readonly PostgresFixture _postgresFixture;
     private readonly TestClaimsProvider _claimsProvider = new();
     private readonly StubMMRCalculationApiClient _stubMmrCalculationApiClient = new();
+    private readonly IInterceptor[] _interceptors;
     private bool _migrated;
 
     public TestClaimsProvider ClaimsProvider => _claimsProvider;
     public StubMMRCalculationApiClient StubMmrCalculationApiClient => _stubMmrCalculationApiClient;
 
-    public IntegrationTestFactory(PostgresFixture postgresFixture)
+    public IntegrationTestFactory(PostgresFixture postgresFixture, params IInterceptor[] interceptors)
     {
         _postgresFixture = postgresFixture;
+        _interceptors = interceptors;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -43,11 +46,14 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
             }
 
             services.AddDbContextPool<ApiDbContext>(opt =>
+            {
                 opt.UseNpgsql(
                     _postgresFixture.GetConnectionString(),
                     o => o.SetPostgresVersion(13, 0)
-                )
-            );
+                );
+                if (_interceptors.Length > 0)
+                    opt.AddInterceptors(_interceptors);
+            });
 
             var bgServices = services
                 .Where(d => d.ServiceType == typeof(IHostedService) &&

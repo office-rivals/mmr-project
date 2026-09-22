@@ -263,6 +263,35 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
     }
 
     [Fact]
+    public async Task UpdateMemberProfile_AsModerator_CannotChangeOwnerInviteEmail()
+    {
+        var org = await CreateOrganization("Protected Invite Org", "protected-invite-org");
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        await SeedOrgMember(org.Id, "mod-1", "mod@test.com", OrganizationRole.Moderator);
+
+        AuthenticateAs("owner-1");
+        var inviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "owner2@example.com", Role = OrganizationRole.Owner });
+        inviteResponse.EnsureSuccessStatusCode();
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
+        Assert.NotNull(invited);
+
+        AuthenticateAs("mod-1");
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members/{invited.Id}/profile",
+            new UpdateMemberProfileRequest { Email = "attacker@example.com" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var stored = await dbContext.OrganizationMemberships.FirstAsync(m => m.Id == invited.Id);
+        Assert.Equal("owner2@example.com", stored.InviteEmail);
+        Assert.Equal(OrganizationRole.Owner, stored.Role);
+    }
+
+    [Fact]
     public async Task UpdateMemberProfile_OnUnclaimedMembership_UpdatesInviteEmail()
     {
         var org = await CreateOrganization("Unclaimed Email Org", "unclaimed-email-org");

@@ -9,6 +9,7 @@ public interface IUserContextResolver
     ClaimsPrincipal GetUserIdentity();
     string GetIdentityUserId();
     string? GetEmail();
+    bool IsEmailVerified();
     bool IsPatAuthentication();
     PlayerRole GetRole();
     bool HasRole(PlayerRole minimumRole);
@@ -35,6 +36,10 @@ public class UserContextResolver : IUserContextResolver
     public string? GetEmail()
         => GetCurrentUser().FindFirstValue(ClaimTypes.Email)
            ?? GetCurrentUser().FindFirstValue("email");
+
+    public bool IsEmailVerified()
+        => bool.TryParse(GetCurrentUser().FindFirstValue("email_verified"), out var verified)
+           && verified;
 
     public bool IsPatAuthentication()
     {
