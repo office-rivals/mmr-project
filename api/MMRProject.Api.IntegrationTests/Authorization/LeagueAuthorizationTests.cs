@@ -93,6 +93,38 @@ public class LeagueAuthorizationTests(PostgresFixture postgres) : IntegrationTes
     }
 
     [Fact]
+    public async Task OrgModerator_CannotAccessLeagueFromDifferentOrganization()
+    {
+        var orgA = await CreateOrganization("Org A", "league-auth-mod-org-a");
+        var orgB = await CreateOrganization("Org B", "league-auth-mod-org-b");
+        var leagueB = await CreateLeague(orgB.Id, "League B", "league-auth-mod-league-b");
+        await SeedOrgMember(orgA.Id, "moderator-1", "moderator@test.com", OrganizationRole.Moderator);
+
+        AuthenticateAs("moderator-1");
+
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{orgA.Id}/leagues/{leagueB.Id}/leaderboard");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task OrgModerator_CannotUseDifferentOrganizationLeagueOnModeratorEndpoint()
+    {
+        var orgA = await CreateOrganization("Org A", "league-auth-admin-org-a");
+        var orgB = await CreateOrganization("Org B", "league-auth-admin-org-b");
+        var leagueB = await CreateLeague(orgB.Id, "League B", "league-auth-admin-league-b");
+        await SeedOrgMember(orgA.Id, "moderator-1", "moderator@test.com", OrganizationRole.Moderator);
+
+        AuthenticateAs("moderator-1");
+
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{orgA.Id}/leagues/{leagueB.Id}/admin/seasons");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task OrgMember_CannotAccessNonExistentLeague()
     {
         var org = await CreateOrganization("Org", "league-auth-missing-org");
