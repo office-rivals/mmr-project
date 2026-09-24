@@ -52,6 +52,23 @@ public class AuthorizationTests(PostgresFixture postgres) : IntegrationTestBase(
     }
 
     [Fact]
+    public void NonTenantHardwareSecretEndpoints_AreExplicitlyAllowlisted()
+    {
+        var routes = GetV3ControllerEndpoints()
+            .Where(endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>()
+                .Any(data => data.Policy == V3AuthorizationPolicies.RequireHardwareSecret))
+            .Where(endpoint => endpoint.RoutePattern.RawText?.Contains(
+                "{orgId", StringComparison.OrdinalIgnoreCase) != true)
+            .Select(endpoint => endpoint.RoutePattern.RawText)
+            .Order()
+            .ToList();
+
+        Assert.Equal([
+            "api/v3/hardware/heartbeat",
+        ], routes);
+    }
+
+    [Fact]
     public async Task Member_CannotAccessOwnerOnlyEndpoints()
     {
         var org = await CreateOrganization();
