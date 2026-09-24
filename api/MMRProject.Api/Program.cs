@@ -117,6 +117,7 @@ builder.Services.AddScoped<IV3PendingMatchCoordinator, V3PendingMatchCoordinator
 builder.Services.AddScoped<IV3PersonalAccessTokenService, V3PersonalAccessTokenService>();
 builder.Services.AddScoped<IV3MatchFlagService, V3MatchFlagService>();
 builder.Services.AddScoped<IInviteLinkService, InviteLinkService>();
+builder.Services.AddScoped<IPairingService, PairingService>();
 builder.Services.AddScoped<IHardwareService, HardwareService>();
 
 builder.Services.AddHostedService<V3MatchMakingBackgroundService>();

@@ -75,6 +75,10 @@ public partial class ApiDbContext : DbContext
 
     public virtual DbSet<OrganizationInviteLink> OrganizationInviteLinks { get; set; }
 
+    public virtual DbSet<RfidTag> RfidTags { get; set; }
+
+    public virtual DbSet<PairingCode> PairingCodes { get; set; }
+
     public virtual DbSet<Hardware> Hardware { get; set; }
 
 //     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
