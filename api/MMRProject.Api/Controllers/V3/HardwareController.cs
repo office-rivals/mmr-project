@@ -13,7 +13,8 @@ namespace MMRProject.Api.Controllers.V3;
 [Authorize]
 public class HardwareController(
     IHardwareService hardwareService,
-    IPairingService pairingService) : ControllerBase
+    IPairingService pairingService,
+    IV3MatchMakingService matchMakingService) : ControllerBase
 {
     [HttpPost("hardware/heartbeat")]
     [Authorize(Policy = V3AuthorizationPolicies.RequireHardwareSecret)]
@@ -28,6 +29,16 @@ public class HardwareController(
     public async Task<ActionResult<PairingSubmitResponse>> SubmitPairing([FromBody] PairingSubmitRequest request)
     {
         return await pairingService.SubmitPairingAsync(request);
+    }
+
+    [HttpPost("hardware/matchmaking")]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireHardwareSecret)]
+    public async Task<ActionResult<List<int>>> GenerateRfidTeamAssignment([FromBody] RfidTeamAssignmentRequest request)
+    {
+        return await matchMakingService.GenerateRfidTeamAssignmentAsync(
+            User.GetHardwareOrganizationId()!.Value,
+            User.GetHardwareLeagueId()!.Value,
+            request);
     }
 
     [HttpGet("organizations/{orgId:guid}/leagues/{leagueId:guid}/hardware")]
