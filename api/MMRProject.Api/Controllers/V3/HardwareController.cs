@@ -11,7 +11,9 @@ namespace MMRProject.Api.Controllers.V3;
 [ApiExplorerSettings(GroupName = "v3")]
 [Route("api/v3")]
 [Authorize]
-public class HardwareController(IHardwareService hardwareService) : ControllerBase
+public class HardwareController(
+    IHardwareService hardwareService,
+    IPairingService pairingService) : ControllerBase
 {
     [HttpPost("hardware/heartbeat")]
     [Authorize(Policy = V3AuthorizationPolicies.RequireHardwareSecret)]
@@ -19,6 +21,13 @@ public class HardwareController(IHardwareService hardwareService) : ControllerBa
     {
         await hardwareService.RecordHeartbeatAsync(User.GetHardwareId()!.Value, request);
         return NoContent();
+    }
+
+    [HttpPost("hardware/pairing")]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireHardwareSecret)]
+    public async Task<ActionResult<PairingSubmitResponse>> SubmitPairing([FromBody] PairingSubmitRequest request)
+    {
+        return await pairingService.SubmitPairingAsync(request);
     }
 
     [HttpGet("organizations/{orgId:guid}/leagues/{leagueId:guid}/hardware")]

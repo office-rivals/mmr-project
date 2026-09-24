@@ -37,6 +37,8 @@ import type {
   ResolveMatchFlagRequest,
   MatchFlagResponse,
   HardwareResponse,
+  PairingCodeResponse,
+  RfidTagResponse,
   CreateTokenRequest,
   TokenResponse,
   CreateTokenResponse,
@@ -222,6 +224,35 @@ export class HardwareApi extends runtime.BaseAPI {
       headers: {},
     });
     return await response.json();
+  }
+}
+
+// Pairing API
+export class PairingApi extends runtime.BaseAPI {
+  async issuePairingCode(): Promise<PairingCodeResponse> {
+    const response = await this.request({
+      path: '/api/v3/pairing/code',
+      method: 'POST',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async listTags(): Promise<RfidTagResponse[]> {
+    const response = await this.request({
+      path: '/api/v3/pairing/tags',
+      method: 'GET',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async unlinkTag(tagId: string): Promise<void> {
+    await this.request({
+      path: `/api/v3/pairing/tags/${tagId}`,
+      method: 'DELETE',
+      headers: {},
+    });
   }
 }
 
