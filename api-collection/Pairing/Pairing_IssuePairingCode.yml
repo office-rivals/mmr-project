@@ -1,0 +1,80 @@
+info:
+  name: Pairing_IssuePairingCode
+  type: http
+  seq: 1
+  tags:
+    - Pairing
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v3/pairing/code"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/pairing/code"
+      method: POST
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          {
+            "colors": [
+              "Red"
+            ],
+            "expiresAt": ""
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/pairing/code"
+      method: POST
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "colors": [
+              "Red"
+            ],
+            "expiresAt": ""
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/pairing/code"
+      method: POST
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          {
+            "colors": [
+              "Red"
+            ],
+            "expiresAt": ""
+          }

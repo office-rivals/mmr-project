@@ -1,0 +1,51 @@
+info:
+  name: Hardware_SubmitPairing
+  type: http
+  seq: 3
+  tags:
+    - Hardware
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v3/hardware/pairing"
+  body:
+    type: json
+    data: |-
+      {
+        "rfidUid": "",
+        "colors": ["Red", "Green", "Blue", "Yellow"]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/hardware/pairing"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "rfidUid": "",
+            "colors": ["Red", "Green", "Blue", "Yellow"]
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "success": true
+          }

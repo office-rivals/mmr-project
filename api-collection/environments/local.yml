@@ -1,0 +1,9 @@
+name: local
+variables:
+  - name: api_host
+    value: http://localhost:8081
+  - name: baseUrl
+    value: "{{api_host}}"
+  - secret: true
+    name: pat
+    description: ""
