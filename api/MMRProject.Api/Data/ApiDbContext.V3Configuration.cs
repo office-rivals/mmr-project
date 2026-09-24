@@ -474,6 +474,46 @@ public partial class ApiDbContext
                 .HasConstraintName("fk_match_flags_resolved_by");
         });
 
+        modelBuilder.Entity<RfidTag>(entity =>
+        {
+            entity.ToTable("rfid_tags");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.RfidUid).HasColumnName("rfid_uid");
+
+            entity.HasIndex(e => e.RfidUid, "ix_rfid_tags_rfid_uid").IsUnique();
+            entity.HasIndex(e => e.UserId, "ix_rfid_tags_user");
+
+            entity.HasOne(e => e.User).WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_rfid_tags_user");
+        });
+
+        modelBuilder.Entity<PairingCode>(entity =>
+        {
+            entity.ToTable("pairing_codes");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Code).HasColumnName("code");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.UsedAt).HasColumnName("used_at");
+
+            // Submit resolves an active code by value across all users, so it needs
+            // to be searchable directly; UserId lookup serves issuance idempotency.
+            entity.HasIndex(e => e.Code, "ix_pairing_codes_code");
+            entity.HasIndex(e => e.UserId, "ix_pairing_codes_user");
+
+            entity.HasOne(e => e.User).WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_pairing_codes_user");
+        });
+
         modelBuilder.Entity<Hardware>(entity =>
         {
             entity.ToTable("hardware");
