@@ -40,7 +40,7 @@ _Avoid_: Pairing, provisioning, onboarding
 
 **Hardware Secret**:
 The credential a Hardware presents to authenticate its own requests (heartbeat,
-pairing submission). Issued once at Hardware Registration
+pairing submission, RFID team assignment). Issued once at Hardware Registration
 or Hardware Secret Rotation and shown in that response only — never retrievable
 again, stored only as a hash. Exactly one Hardware Secret is valid for a
 Hardware at any time.
@@ -65,3 +65,26 @@ heartbeat state so administrators can see whether the Hardware is still online.
 The reporting Hardware's identity and league come from its Hardware Secret, never
 from the report's own body.
 _Avoid_: Hardware ping, health check
+
+**Pending Match**:
+A proposed match whose selected players must respond before it becomes an Active
+Match.
+_Avoid_: Match offer, provisional game
+
+**Active Match**:
+A match with fixed teams that is ready for its result to be recorded.
+_Avoid_: Live match, confirmed game
+
+**RFID Team Assignment**:
+An ordered array assigning each presented RFID Tag to a team side in a league.
+It does not create a match, expose player details, or reserve any player.
+_Avoid_: RFID match, match result, scan match
+
+**Team Side**:
+The physical or display designation assigned to a team in an RFID Team Assignment.
+The Randomizer Box interprets side `0` as white and side `1` as red.
+
+**Match Temperature**:
+A value from 0 to 1 controlling how much team assignment favors randomness over
+MMR balance; 0 is fully MMR-based and 1 is fully random.
+_Avoid_: Randomness, shuffle level
