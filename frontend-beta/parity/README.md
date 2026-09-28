@@ -29,7 +29,7 @@ Artifacts appear in `test-results/visual/<scene>/`:
 - `reference.png`: Svelte screenshot
 - `beta.png`: React screenshot
 - `diff.png`: highlighted differences
-- `metrics.json`: dimensions, raw/approved/unexpected pixel counts and approved regions
+- `metrics.json`: dimensions, raw/approved/unexpected pixel counts, collected icon metadata and approved regions
 
 The HTML report embeds these images. Artifacts are gitignored because seeded
 sessions can contain the configured test user's identity. Do not commit them.
@@ -98,8 +98,10 @@ check. These four updated glyphs are approved; they use the current Lucide runti
 and are not replaced with copies of older SVG paths.
 
 The harness classifies changed pixels inside those four SVGs separately, only
-when each corresponding icon has identical position, dimensions, color, fill,
-stroke and effective opacity in both apps. Hidden icons and icons beneath an
+when each corresponding icon has identical position, dimensions, rendered sRGB
+color/fill/stroke and effective opacity in both apps. A one-pixel canvas normalizes
+equivalent CSS color formats; a browser regression checks this without relaxing
+the hidden, recolored, faded or covered-icon checks. Hidden icons and icons beneath an
 open popup or fixed header/navigation receive no exemption, nor do missing,
 additional, moved or resized icons. Icons beneath a translucent modal backdrop
 remain eligible; the raw comparison still records their changed pixels.

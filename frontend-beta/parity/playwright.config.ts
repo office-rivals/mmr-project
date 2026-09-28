@@ -68,7 +68,7 @@ export default defineConfig({
     {
       name: 'visual',
       dependencies: ['fixtures'],
-      testMatch: /(?:visual|.*\.keyboard)\.spec\.ts/,
+      testMatch: /(?:visual|visual-policy|.*\.keyboard)\.spec\.ts/,
       use: {
         storageState: path.join(here, '../test-results/visual/auth.json'),
         locale: 'en-US',

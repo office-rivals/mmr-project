@@ -14,6 +14,7 @@ import {
   matchingVisualRegions,
   type VisualRegion,
 } from './accepted-differences';
+import { collectVisualRegions } from './visual-regions';
 
 const league = '/test-org/test-league';
 const admin = '/admin/test-org/leagues/test-league';
@@ -298,71 +299,11 @@ for (const viewport of [
           );
         }
         iconRegions.push(
-          await page.evaluate(
-            (selectors) =>
-              selectors.flatMap((selector) =>
-                Array.from(document.querySelectorAll(selector)).map(
-                  (element) => {
-                    const { x, y, width, height } =
-                      element.getBoundingClientRect();
-                    const style = getComputedStyle(element);
-                    let opacity = 1;
-                    let ancestor: Element | null = element;
-                    while (ancestor) {
-                      opacity *= Number(getComputedStyle(ancestor).opacity);
-                      ancestor = ancestor.parentElement;
-                    }
-                    const occluded = Array.from(
-                      document.querySelectorAll(
-                        '[role="dialog"], [role="menu"], [role="listbox"], header, nav'
-                      )
-                    ).some((popup) => {
-                      if (popup.contains(element)) return false;
-                      if (
-                        popup.matches('header, nav') &&
-                        !['fixed', 'sticky'].includes(
-                          getComputedStyle(popup).position
-                        )
-                      )
-                        return false;
-                      const box = popup.getBoundingClientRect();
-                      return (
-                        box.width > 0 &&
-                        box.height > 0 &&
-                        box.left < x + width &&
-                        box.right > x &&
-                        box.top < y + height &&
-                        box.bottom > y
-                      );
-                    });
-                    return {
-                      selector,
-                      x: x + window.scrollX,
-                      y: y + window.scrollY,
-                      width,
-                      height,
-                      visible: element.checkVisibility({
-                        checkOpacity: true,
-                        checkVisibilityCSS: true,
-                      }),
-                      occluded,
-                      appearance: {
-                        color: style.color,
-                        stroke: style.stroke,
-                        fill: style.fill,
-                        strokeWidth: style.strokeWidth,
-                        opacity,
-                      },
-                    };
-                  }
-                )
-              ),
-            [
-              ...acceptedIconSelectors,
-              dialogCloseSelector,
-              legacyDialogCloseSelector,
-            ]
-          )
+          await page.evaluate(collectVisualRegions, [
+            ...acceptedIconSelectors,
+            dialogCloseSelector,
+            legacyDialogCloseSelector,
+          ])
         );
         const buffer = await page.screenshot({
           fullPage: true,
@@ -427,6 +368,10 @@ for (const viewport of [
             acceptedPixels,
             unexpectedPixels,
             acceptedRegions,
+            collectedRegions: {
+              reference: iconRegions[0],
+              beta: iconRegions[1],
+            },
             total: width * height,
             reference: { width: reference.width, height: reference.height },
             beta: { width: beta.width, height: beta.height },
