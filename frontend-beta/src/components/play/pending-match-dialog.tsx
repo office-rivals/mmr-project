@@ -43,6 +43,7 @@ export function PendingMatchDialog({
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
+        hideCloseButton
         className="sm:max-w-md"
         onInteractOutside={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}

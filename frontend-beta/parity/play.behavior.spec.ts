@@ -82,6 +82,9 @@ for (const [app, port] of [
     await expect(page).toHaveURL(url);
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
+    if (app === 'beta') {
+      await expect(page.locator('[data-dialog-close]')).toHaveCount(0);
+    }
     await expect(dialog.getByText('⌛ pending', { exact: true })).toHaveCount(
       2
     );

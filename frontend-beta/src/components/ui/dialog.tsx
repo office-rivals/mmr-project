@@ -92,6 +92,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
       initialFocus,
       onCloseAutoFocus,
       onEscapeKeyDown,
+      onFocusCapture,
       onInteractOutside,
       onOpenAutoFocus,
       onPointerDownOutside,
@@ -100,6 +101,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
     ref
   ) => {
     const dismissHandlers = React.useContext(DialogDismissContext);
+    const selectInitialInputRef = React.useRef(false);
 
     React.useEffect(() => {
       if (!dismissHandlers) return;
@@ -119,15 +121,19 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
       onPointerDownOutside,
     ]);
 
-    const resolvedInitialFocus = onOpenAutoFocus
-      ? () => {
-          const event = new Event('dialog.openAutoFocus', {
-            cancelable: true,
-          });
-          onOpenAutoFocus(event);
-          return event.defaultPrevented ? false : true;
-        }
-      : (initialFocus ?? true);
+    const resolvedInitialFocus =
+      onOpenAutoFocus || initialFocus === undefined
+        ? () => {
+            const event = new Event('dialog.openAutoFocus', {
+              cancelable: true,
+            });
+            onOpenAutoFocus?.(event);
+            if (event.defaultPrevented) return false;
+
+            selectInitialInputRef.current = true;
+            return true;
+          }
+        : initialFocus;
 
     const resolvedFinalFocus = onCloseAutoFocus
       ? () => {
@@ -148,6 +154,15 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
           aria-modal="true"
           initialFocus={resolvedInitialFocus}
           finalFocus={resolvedFinalFocus}
+          onFocusCapture={(event) => {
+            onFocusCapture?.(event);
+            if (!selectInitialInputRef.current) return;
+
+            selectInitialInputRef.current = false;
+            if (event.target instanceof HTMLInputElement) {
+              event.target.select();
+            }
+          }}
           className={cn(
             'fixed top-[50%] left-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 sm:rounded-lg md:w-full',
             className
@@ -155,17 +170,17 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
           {...props}
         >
           {children}
+          {!hideCloseButton ? (
+            <DialogPrimitive.Close
+              data-dialog-close
+              data-slot="dialog-close"
+              className="absolute top-4 right-4 rounded-sm bg-accent text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none disabled:pointer-events-none"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          ) : null}
         </DialogPrimitive.Popup>
-        {!hideCloseButton ? (
-          <DialogPrimitive.Close
-            data-dialog-close
-            data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-sm bg-accent text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none disabled:pointer-events-none"
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        ) : null}
       </DialogPortal>
     );
   }

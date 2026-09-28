@@ -1,6 +1,7 @@
 import playwright from '../../frontend/node_modules/@playwright/test/index.js';
 import type {
   Browser,
+  Page,
   TestInfo,
 } from '../../frontend/node_modules/@playwright/test/index.js';
 
@@ -24,6 +25,19 @@ function serverFnExport(pathname: string): string {
   } catch {
     return '';
   }
+}
+
+async function openFirstEditDialog(page: Page) {
+  const dialog = page.getByRole('dialog');
+  await expect(async () => {
+    await page
+      .getByTestId('admin-match-row')
+      .first()
+      .getByTestId('admin-match-edit')
+      .click();
+    await expect(dialog).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
+  return dialog;
 }
 
 for (const [app, port] of [
@@ -144,6 +158,23 @@ for (const [app, port] of [
     await page.getByRole('link', { name: 'Older' }).click();
     await expect(page).toHaveURL(/\?offset=25$/);
     await expect(feedback).toHaveCount(0);
+    await context.close();
+  });
+
+  test(`${app}: typing replaces the initially focused score`, async ({
+    browser,
+  }, info) => {
+    const { context, page } = await openPage(browser, info, MATCHES);
+    const dialog = await openFirstEditDialog(page);
+    const score = dialog.locator('input[type="number"]').first();
+
+    await expect(score).toBeFocused();
+    expect(await score.inputValue()).not.toBe('');
+    await score.press('9');
+    await expect(score).toHaveValue('9');
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toHaveCount(0);
     await context.close();
   });
 
