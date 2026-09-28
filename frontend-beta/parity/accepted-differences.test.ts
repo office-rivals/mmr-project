@@ -3,11 +3,13 @@ import {
   countAcceptedPixels,
   addedDialogCloseRegions,
   dialogCloseSelector,
-  matchingIconRegions,
-  type IconRegion,
+  legacyDialogCloseSelector,
+  removedDialogCloseRegions,
+  matchingVisualRegions,
+  type VisualRegion,
 } from './accepted-differences';
 
-const icon: IconRegion = {
+const icon: VisualRegion = {
   selector: 'svg.lucide-trophy',
   x: 2,
   y: 2,
@@ -17,17 +19,19 @@ const icon: IconRegion = {
 
 describe('accepted visual differences', () => {
   it('accepts an approved glyph only when its geometry matches', () => {
-    expect(matchingIconRegions([icon], [{ ...icon }])).toEqual([icon]);
+    expect(matchingVisualRegions([icon], [{ ...icon }])).toEqual([icon]);
     for (const change of [{ x: 3 }, { y: 3 }, { width: 5 }, { height: 5 }]) {
-      expect(matchingIconRegions([icon], [{ ...icon, ...change }])).toEqual([]);
+      expect(matchingVisualRegions([icon], [{ ...icon, ...change }])).toEqual(
+        []
+      );
     }
   });
 
   it('does not accept missing, additional or unapproved glyphs', () => {
-    expect(matchingIconRegions([icon], [])).toEqual([]);
-    expect(matchingIconRegions([icon], [icon, icon])).toEqual([]);
+    expect(matchingVisualRegions([icon], [])).toEqual([]);
+    expect(matchingVisualRegions([icon], [icon, icon])).toEqual([]);
     const unknown = { ...icon, selector: 'svg.lucide-user' };
-    expect(matchingIconRegions([unknown], [unknown])).toEqual([]);
+    expect(matchingVisualRegions([unknown], [unknown])).toEqual([]);
   });
 
   it('counts only changed pixels wholly inside approved icon bounds', () => {
@@ -56,4 +60,18 @@ it('permits the added accessible close control only within its small button boun
   expect(addedDialogCloseRegions([{ ...close, width: 200 }])).toEqual([]);
   expect(addedDialogCloseRegions([{ ...close, height: 0 }])).toEqual([]);
   expect(addedDialogCloseRegions([icon])).toEqual([]);
+});
+
+it('permits removal of the legacy outside-popup close but not arbitrary buttons', () => {
+  const oldClose = {
+    ...icon,
+    selector: legacyDialogCloseSelector,
+    width: 16,
+    height: 16,
+  };
+  expect(removedDialogCloseRegions([oldClose])).toEqual([oldClose]);
+  expect(
+    removedDialogCloseRegions([{ ...oldClose, selector: dialogCloseSelector }])
+  ).toEqual([]);
+  expect(removedDialogCloseRegions([{ ...oldClose, width: 25 }])).toEqual([]);
 });

@@ -8,9 +8,11 @@ import {
   acceptedIconSelectors,
   addedDialogCloseRegions,
   dialogCloseSelector,
+  legacyDialogCloseSelector,
+  removedDialogCloseRegions,
   countAcceptedPixels,
-  matchingIconRegions,
-  type IconRegion,
+  matchingVisualRegions,
+  type VisualRegion,
 } from './accepted-differences';
 
 const league = '/test-org/test-league';
@@ -219,7 +221,7 @@ for (const viewport of [
     test(`${viewport.width} ${scene.name}`, async ({ browser }, testInfo) => {
       test.setTimeout(60_000);
       const images: Buffer[] = [];
-      const iconRegions: IconRegion[][] = [];
+      const iconRegions: VisualRegion[][] = [];
       for (const [app, port] of [
         ['reference', process.env.E2E_PORT ?? '5180'],
         ['beta', process.env.PARITY_BETA_PORT ?? '5181'],
@@ -313,7 +315,11 @@ for (const viewport of [
                   }
                 )
               ),
-            [...acceptedIconSelectors, dialogCloseSelector]
+            [
+              ...acceptedIconSelectors,
+              dialogCloseSelector,
+              legacyDialogCloseSelector,
+            ]
           )
         );
         const buffer = await page.screenshot({
@@ -356,8 +362,9 @@ for (const viewport of [
         { threshold: 0.1 }
       );
       const acceptedRegions = [
-        ...matchingIconRegions(iconRegions[0], iconRegions[1]),
+        ...matchingVisualRegions(iconRegions[0], iconRegions[1]),
         ...addedDialogCloseRegions(iconRegions[1]),
+        ...removedDialogCloseRegions(iconRegions[0]),
       ];
       const acceptedPixels = countAcceptedPixels(
         diff.data,
@@ -388,7 +395,7 @@ for (const viewport of [
       );
       expect(
         unexpectedPixels,
-        `${pixels} differing pixels (${acceptedPixels} approved icon pixels, ${unexpectedPixels} unexpected); see reference.png, beta.png and diff.png`
+        `${pixels} differing pixels (${acceptedPixels} approved pixels, ${unexpectedPixels} unexpected); see reference.png, beta.png and diff.png`
       ).toBe(0);
     });
   }

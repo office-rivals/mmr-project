@@ -94,8 +94,8 @@ A missing, additional, moved or resized icon receives no exemption.
 
 Dismissible beta dialogs also place their accessible Close button inside the
 modal. The reference places it outside the modal, where its backdrop and focus
-isolation make it unusable. The small, added close-button bounds are an approved
-visual improvement; a beta browser regression verifies that the button is visible,
+isolation make it unusable. The small bounds of both the removed outside button and added inside button are
+an approved visual improvement; a beta browser regression verifies that the button is visible,
 accessible and dismisses the dialog. Non-dismissible pending-match dialogs omit it.
 
 Raw screenshots and diff images remain unmodified. Metrics report `pixels`,

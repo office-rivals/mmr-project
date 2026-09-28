@@ -7,7 +7,10 @@ export const acceptedIconSelectors = [
 
 export const dialogCloseSelector = '[role="dialog"] button[data-dialog-close]';
 
-export interface IconRegion {
+export const legacyDialogCloseSelector =
+  '[role="dialog"] + button[data-dialog-close]';
+
+export interface VisualRegion {
   selector: string;
   x: number;
   y: number;
@@ -15,10 +18,10 @@ export interface IconRegion {
   height: number;
 }
 
-export function matchingIconRegions(
-  reference: IconRegion[],
-  beta: IconRegion[]
-): IconRegion[] {
+export function matchingVisualRegions(
+  reference: VisualRegion[],
+  beta: VisualRegion[]
+): VisualRegion[] {
   return acceptedIconSelectors.flatMap((selector) => {
     const before = reference.filter((region) => region.selector === selector);
     const after = beta.filter((region) => region.selector === selector);
@@ -40,7 +43,7 @@ export function matchingIconRegions(
 export function countAcceptedPixels(
   diff: Uint8Array,
   width: number,
-  regions: IconRegion[]
+  regions: VisualRegion[]
 ): number {
   let count = 0;
   for (let offset = 0; offset < diff.length; offset += 4) {
@@ -69,13 +72,26 @@ export function countAcceptedPixels(
   return count;
 }
 
-export function addedDialogCloseRegions(beta: IconRegion[]): IconRegion[] {
-  return beta.filter(
+function smallCloseRegions(
+  regions: VisualRegion[],
+  selector: string
+): VisualRegion[] {
+  return regions.filter(
     (region) =>
-      region.selector === dialogCloseSelector &&
+      region.selector === selector &&
       region.width > 0 &&
       region.width <= 24 &&
       region.height > 0 &&
       region.height <= 24
   );
+}
+
+export function addedDialogCloseRegions(beta: VisualRegion[]): VisualRegion[] {
+  return smallCloseRegions(beta, dialogCloseSelector);
+}
+
+export function removedDialogCloseRegions(
+  reference: VisualRegion[]
+): VisualRegion[] {
+  return smallCloseRegions(reference, legacyDialogCloseSelector);
 }
