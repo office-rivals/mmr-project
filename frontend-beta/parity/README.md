@@ -76,6 +76,10 @@ The parity target has five explicit runtime exceptions:
   the reference has paths that return error data with status 200 or leave a
   rejected enhanced request without equivalent feedback. These are required
   error-contract improvements covered by beta-specific regressions.
+  If a session expires during a mutation, beta retains the form and shows failure
+  feedback; the next navigation or pull-to-refresh returns to login. Svelte can
+  redirect immediately. Navigation and refresh expiry are browser-tested; the
+  mutation feedback difference was checked in the server-function call paths.
 - Beta polls the active-match list every two seconds. The reference polls queue
   state and refreshes the page only when that response reports the current
   user's active match, so an independently created active match can remain
