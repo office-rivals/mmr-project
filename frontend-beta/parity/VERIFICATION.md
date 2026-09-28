@@ -21,7 +21,7 @@ spec changes were needed for the upgrade.
 | TypeScript | Passed |
 | Vitest | 87 tests passed across 14 files |
 | Production build | Passed |
-| Production server browser smoke | Authenticated SSR/hydration, menus, dialogs, admin, play form and actual sign-out passed; no page errors |
+| Production server browser smoke | Authenticated page rendering/hydration, menus, dialogs, admin chrome, submit input and actual sign-out passed; no uncaught page exceptions |
 | Dependency audit | Zero known vulnerabilities reported by npm |
 
 All 37 direct dependencies were checked against the npm registry and match its
@@ -34,7 +34,7 @@ LTS is the development baseline. A clean beta `npm ci` also passed.
 
 Three independent Claude Opus 5.5 agents, each running at xhigh effort through
 Herdr, reviewed runtime/data/auth, UI/accessibility, and dependencies/build/gate
-reliability. Their actionable findings were fixed and rechecked:
+reliability. Their findings were addressed and rechecked:
 
 - Explicit reverse-proxy trust preserves strict native-form Origin checks behind
   TLS termination. Integration tests exercise the actual form parser through srvx.
@@ -49,7 +49,9 @@ reliability. Their actionable findings were fixed and rechecked:
 - Icon exceptions require matching geometry, rendered sRGB paint and effective
   opacity. A browser test confirms that equivalent RGBA/OKLab syntax compares
   equally while actual paint, visibility and overlap changes are rejected. Hidden icons and icons covered by popups or fixed navigation receive
-  no exemption. Raw screenshots and pixel differences remain intact.
+  no exemption. The exception covers the listed Lucide icons' solid-color and
+  `none` paints; gradients require a newly reviewed policy. Raw screenshots and
+  pixel differences remain intact.
 
 The original shell-cache, stale-mutation, superseded-save, HTTP/native-form,
 pull-refresh failure, keyboard-picker, polling and transport-feedback repairs
@@ -62,7 +64,10 @@ baseline. It passed against beta too, so neither gate uses an exclusion. One
 earlier beta run encountered an expired Clerk session during a mutation; a fresh
 seed rerun passed. The first step-navigation repair also failed its new regression
 because native hash changes emit `popstate`; the final scroll-only repair passes.
-Final gate results above are fresh runs after the fixes, with no retries or skips.
+The final beta browser gates ran after the application fixes, with no retries or
+skips. The earlier reference baseline remains valid because its source and shared
+assertions were unchanged. The build covers the final runtime source; TypeScript
+and unit tests were also rechecked after the later collector-only change.
 
 The visual matrix contains 59 scenes at 1440×1000 and 390×844. Pixelmatch uses
 threshold 0.1 and default antialias handling. Only the advancing pending-match
@@ -89,6 +94,9 @@ These results cover Chromium at the recorded widths, selected states and
 interactions, not every possible browser/device combination. The shared suites
 use Vite's development server; the separate production smoke verifies the built
 srvx server and hydration but does not repeat the entire suite in production mode.
+It checks rendered pages and a visible submit input; it does not separately assert
+pre-hydration server HTML or exercise the full play flow. Its error collection
+covers uncaught page exceptions, not every console message or failed request.
 
 The rewrite is not a configured release component yet. No component version was
 manually bumped; the Svelte application source is unchanged. No deployment, push,
