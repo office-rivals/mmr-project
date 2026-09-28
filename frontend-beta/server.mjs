@@ -1,7 +1,4 @@
-// Production entry. TanStack Start emits a WinterCG handler
-// (dist/server/server.js) but no Node listener, so srvx supplies one.
-// Server config is read from process.env at run time, never baked into the
-// bundle — the image is built once and configured per environment.
+// TanStack Start emits a request handler; srvx supplies the Node listener.
 import { readFile, stat } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,16 +7,13 @@ try {
   // Optional: present in local dev, pruned from the production image.
   await import('dotenv/config');
 } catch {
-  // no .env available; rely on the ambient environment
+  // dotenv is optional; production can use the ambient environment.
 }
 
 const handler = (await import('./dist/server/server.js')).default;
 const { serve } = await import('srvx');
 
-// dist/server/server.js only renders routes — it does not serve dist/client.
-// adapter-node did, so the static layer has to live here or every hashed asset
-// 404s (and, because the auth guard exempts asset paths, would 404 rather than
-// redirect).
+// Start renders routes but needs a separate static asset handler.
 const clientDir = resolve(
   fileURLToPath(new URL('./dist/client', import.meta.url))
 );

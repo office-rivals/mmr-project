@@ -1,12 +1,25 @@
 # frontend-beta
 
 React 19 / TanStack Start rewrite of the SvelteKit application in `../frontend`.
-The reference application defines both behavior and appearance. shadcn/Radix
-components provide the base, with styles adapted to match the Svelte rendering.
+The reference application defines both behavior and appearance. shadcn components
+use Base UI primitives, with styles adapted to match the Svelte rendering.
+
+The stack uses React 19.3, TanStack Start/Router, TanStack Query for server data,
+Clerk for authentication, TypeScript 7, Tailwind CSS 4 and Vite 8. Carbon Charts
+and Lucide provide charts and icons. Vitest 5 covers unit tests; Playwright 1.63
+runs the shared functional and screenshot comparisons.
+
+shadcn components are owned source files in `src/components/ui`, not a versioned
+component runtime. `components.json` selects the Base UI `base-vega` registry;
+the local shadcn CLI is pinned by the lockfile. Generated styles and compatibility
+wrappers intentionally preserve the reference UI. Regenerating components must
+be followed by the behavior and visual gates. Tailwind uses its Vite plugin and
+CSS-first configuration in `src/app.css`.
 
 ## Development
 
-Install dependencies in both app directories with `npm ci`. Run this app with:
+Use Node 24 LTS (see the repository `.nvmrc`). Install dependencies in both app
+directories with `npm ci`. Run this app with:
 
 ```sh
 npm run dev

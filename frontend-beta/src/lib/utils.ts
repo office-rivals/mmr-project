@@ -1,10 +1,5 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+export { cn } from 'cn';
 import type { BadgesResponse } from '@/api-v3';
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 function parseLocalDate(d: string | null | undefined): Date | null {
   if (!d) return null;

@@ -233,6 +233,40 @@ for (const [app, port] of [
     await context.close();
   });
 
+  test(`${app}: a touch-opened new-player dialog focuses its first field`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      ...info.project.use,
+      hasTouch: true,
+      isMobile: true,
+      viewport: { width: 390, height: 844 },
+    });
+    const page = await context.newPage();
+    const path = `${TEST_LEAGUE}/submit`;
+    const url = `http://localhost:${port}${path}`;
+    await page.goto(url);
+    await page.waitForLoadState('networkidle');
+    if (new URL(page.url()).pathname !== path) {
+      await page.goto(url);
+      await page.waitForLoadState('networkidle');
+    }
+
+    await page
+      .locator('input[placeholder="Filter..."]')
+      .first()
+      .fill('zzzzznoplayer');
+    await page
+      .getByRole('button', { name: 'Add new player', exact: true })
+      .tap();
+
+    const dialog = page.getByRole('dialog');
+    const displayName = dialog.getByLabel('Display name', { exact: true });
+    await expect(dialog).toBeVisible();
+    await expect(displayName).toBeFocused();
+    await context.close();
+  });
+
   test(`${app}: disabled pagination links are inert and leave the tab order`, async ({
     browser,
   }, info) => {

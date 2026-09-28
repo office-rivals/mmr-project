@@ -22,6 +22,7 @@ const Alert = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
 >(({ className, variant, ...props }, ref) => (
   <div
+    data-slot="alert"
     ref={ref}
     role="alert"
     aria-live="assertive"

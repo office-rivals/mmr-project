@@ -1,11 +1,11 @@
 import * as React from 'react';
-import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+import { Menu as MenuPrimitive } from '@base-ui/react/menu';
 
 import { cn } from '@/lib/utils';
 
 interface DropdownMenuContextValue {
-  setOpen: (open: boolean) => void;
-  triggerRef: React.MutableRefObject<HTMLButtonElement | null>;
+  requestClose: () => void;
+  triggerRef: React.MutableRefObject<HTMLElement | null>;
   tabTargetRef: React.MutableRefObject<HTMLElement | null>;
 }
 
@@ -16,42 +16,50 @@ function DropdownMenu({
   open: controlledOpen,
   defaultOpen,
   onOpenChange,
+  actionsRef: externalActionsRef,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+}: MenuPrimitive.Root.Props) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(
     defaultOpen ?? false
   );
-  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const triggerRef = React.useRef<HTMLElement>(null);
   const tabTargetRef = React.useRef<HTMLElement>(null);
+  const internalActionsRef = React.useRef<MenuPrimitive.Root.Actions>(null);
+  const actionsRef = externalActionsRef ?? internalActionsRef;
   const open = controlledOpen ?? uncontrolledOpen;
-  const setOpen = React.useCallback(
-    (nextOpen: boolean) => {
-      if (controlledOpen === undefined) setUncontrolledOpen(nextOpen);
-      onOpenChange?.(nextOpen);
-    },
-    [controlledOpen, onOpenChange]
+  const requestClose = React.useCallback(
+    () => actionsRef.current?.close(),
+    [actionsRef]
   );
 
   return (
-    <DropdownMenuContext.Provider value={{ setOpen, triggerRef, tabTargetRef }}>
-      <DropdownMenuPrimitive.Root
+    <DropdownMenuContext.Provider
+      value={{ requestClose, triggerRef, tabTargetRef }}
+    >
+      <MenuPrimitive.Root
+        data-slot="dropdown-menu"
         {...props}
+        actionsRef={actionsRef}
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(nextOpen, eventDetails) => {
+          if (controlledOpen === undefined) setUncontrolledOpen(nextOpen);
+          onOpenChange?.(nextOpen, eventDetails);
+        }}
       />
     </DropdownMenuContext.Provider>
   );
 }
 
 const DropdownMenuTrigger = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
+  HTMLElement,
+  MenuPrimitive.Trigger.Props
 >((props, forwardedRef) => {
   const context = React.useContext(DropdownMenuContext);
   return (
-    <DropdownMenuPrimitive.Trigger
+    <MenuPrimitive.Trigger
+      data-slot="dropdown-menu-trigger"
       {...props}
-      ref={(node) => {
+      ref={(node: HTMLElement | null) => {
         if (context) context.triggerRef.current = node;
         if (typeof forwardedRef === 'function') forwardedRef(node);
         else if (forwardedRef) forwardedRef.current = node;
@@ -59,29 +67,11 @@ const DropdownMenuTrigger = React.forwardRef<
     />
   );
 });
-DropdownMenuTrigger.displayName = DropdownMenuPrimitive.Trigger.displayName;
+DropdownMenuTrigger.displayName = 'DropdownMenuTrigger';
 
-const DropdownMenuGroupContext = React.createContext<string | null>(null);
-
-const DropdownMenuGroup = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Group>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Group>
->(({ 'aria-labelledby': ariaLabelledBy, ...props }, ref) => {
-  const generatedLabelId = React.useId();
-  const labelId = ariaLabelledBy ?? generatedLabelId;
-  return (
-    <DropdownMenuGroupContext.Provider value={labelId}>
-      <DropdownMenuPrimitive.Group
-        ref={ref}
-        aria-labelledby={labelId}
-        {...props}
-      />
-    </DropdownMenuGroupContext.Provider>
-  );
-});
-DropdownMenuGroup.displayName = DropdownMenuPrimitive.Group.displayName;
-
-const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
+function DropdownMenuPortal(props: MenuPrimitive.Portal.Props) {
+  return <MenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />;
+}
 
 const tabbableSelector = [
   'a[href]',
@@ -106,96 +96,165 @@ function adjacentTabTarget(trigger: HTMLElement, reverse: boolean) {
   return triggerIndex < 0 ? null : (ordered[triggerIndex + 1] ?? null);
 }
 
+type DropdownMenuContentProps = MenuPrimitive.Popup.Props &
+  Pick<
+    MenuPrimitive.Positioner.Props,
+    'align' | 'alignOffset' | 'side' | 'sideOffset'
+  > & {
+    onCloseAutoFocus?: (event: Event) => void;
+  };
+
 const DropdownMenuContent = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
+  HTMLDivElement,
+  DropdownMenuContentProps
 >(
   (
-    { className, sideOffset = 6, onKeyDown, onCloseAutoFocus, ...props },
+    {
+      align = 'start',
+      alignOffset = 0,
+      className,
+      finalFocus,
+      onCloseAutoFocus,
+      onKeyDown,
+      side = 'bottom',
+      sideOffset = 6,
+      ...props
+    },
     ref
   ) => {
     const context = React.useContext(DropdownMenuContext);
+
     return (
-      <DropdownMenuPrimitive.Portal>
-        <DropdownMenuPrimitive.Content
-          ref={ref}
+      <MenuPrimitive.Portal>
+        <MenuPrimitive.Positioner
+          className="isolate z-50 outline-none"
+          align={align}
+          alignOffset={alignOffset}
+          side={side}
           sideOffset={sideOffset}
-          className={cn(
-            'z-50 rounded-md border border-muted bg-popover p-1 text-popover-foreground shadow-lg focus:outline-none',
-            className
-          )}
-          onKeyDown={(event) => {
-            onKeyDown?.(event);
-            if (event.defaultPrevented || event.key !== 'Tab' || !context) {
-              return;
-            }
-            event.preventDefault();
-            context.tabTargetRef.current = context.triggerRef.current
-              ? adjacentTabTarget(context.triggerRef.current, event.shiftKey)
-              : null;
-            context.setOpen(false);
-          }}
-          onCloseAutoFocus={(event) => {
-            onCloseAutoFocus?.(event);
-            const target = context?.tabTargetRef.current;
-            if (!target) return;
-            event.preventDefault();
-            context.tabTargetRef.current = null;
-            requestAnimationFrame(() => target.focus());
-          }}
-          {...props}
-        />
-      </DropdownMenuPrimitive.Portal>
+        >
+          <MenuPrimitive.Popup
+            data-slot="dropdown-menu-content"
+            ref={ref}
+            className={cn(
+              'z-50 rounded-md border border-muted bg-popover p-1 text-popover-foreground shadow-lg focus:outline-none',
+              className
+            )}
+            finalFocus={(closeType) => {
+              const target = context?.tabTargetRef.current;
+              if (target && context) {
+                context.tabTargetRef.current = null;
+                return target;
+              }
+
+              if (onCloseAutoFocus) {
+                const event = new Event('menu.closeAutoFocus', {
+                  cancelable: true,
+                });
+                onCloseAutoFocus(event);
+                if (event.defaultPrevented) return false;
+              }
+
+              if (finalFocus === undefined) return true;
+              if (typeof finalFocus === 'function')
+                return finalFocus(closeType);
+              if (typeof finalFocus === 'object') return finalFocus.current;
+              return finalFocus;
+            }}
+            onKeyDown={(event) => {
+              onKeyDown?.(event);
+              if (event.defaultPrevented || event.key !== 'Tab' || !context) {
+                return;
+              }
+              event.preventDefault();
+              event.preventBaseUIHandler();
+              context.tabTargetRef.current = context.triggerRef.current
+                ? adjacentTabTarget(context.triggerRef.current, event.shiftKey)
+                : null;
+              context.requestClose();
+            }}
+            {...props}
+          />
+        </MenuPrimitive.Positioner>
+      </MenuPrimitive.Portal>
     );
   }
 );
-DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
+DropdownMenuContent.displayName = 'DropdownMenuContent';
 
-const DropdownMenuItem = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item>
+const DropdownMenuGroup = React.forwardRef<
+  HTMLDivElement,
+  MenuPrimitive.Group.Props
+>((props, ref) => (
+  <MenuPrimitive.Group data-slot="dropdown-menu-group" ref={ref} {...props} />
+));
+DropdownMenuGroup.displayName = 'DropdownMenuGroup';
+
+type DropdownMenuItemProps = Omit<
+  MenuPrimitive.Item.Props,
+  'className' | 'onClick'
+> & {
+  className?: string;
+  onClick?: React.MouseEventHandler<HTMLElement>;
+  onSelect?: (event: Event) => void;
+};
+
+const DropdownMenuItem = React.forwardRef<HTMLElement, DropdownMenuItemProps>(
+  ({ className, onClick, onSelect, ...props }, ref) => (
+    <MenuPrimitive.Item
+      data-slot="dropdown-menu-item"
+      ref={ref}
+      className={cn(
+        'flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-muted',
+        className
+      )}
+      onClick={(event) => {
+        onClick?.(event);
+        if (event.defaultPrevented) {
+          event.preventBaseUIHandler();
+          return;
+        }
+
+        if (onSelect) {
+          const selectEvent = new Event('menu.select', { cancelable: true });
+          onSelect(selectEvent);
+          if (selectEvent.defaultPrevented) event.preventBaseUIHandler();
+        }
+      }}
+      {...props}
+    />
+  )
+);
+DropdownMenuItem.displayName = 'DropdownMenuItem';
+
+const DropdownMenuGroupHeading = React.forwardRef<
+  HTMLDivElement,
+  MenuPrimitive.GroupLabel.Props
 >(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.Item
+  <MenuPrimitive.GroupLabel
+    data-slot="dropdown-menu-label"
     ref={ref}
     className={cn(
-      'flex cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[disabled]:opacity-50',
+      'flex items-center gap-2 px-2 pt-2 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase',
       className
     )}
     {...props}
   />
 ));
-DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
-
-const DropdownMenuGroupHeading = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label>
->(({ className, id, ...props }, ref) => {
-  const groupLabelId = React.useContext(DropdownMenuGroupContext);
-  return (
-    <DropdownMenuPrimitive.Label
-      ref={ref}
-      id={id ?? groupLabelId ?? undefined}
-      className={cn(
-        'flex items-center gap-2 px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground',
-        className
-      )}
-      {...props}
-    />
-  );
-});
-DropdownMenuGroupHeading.displayName = DropdownMenuPrimitive.Label.displayName;
+DropdownMenuGroupHeading.displayName = 'DropdownMenuGroupHeading';
 
 const DropdownMenuSeparator = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
+  HTMLDivElement,
+  MenuPrimitive.Separator.Props
 >(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.Separator
+  <MenuPrimitive.Separator
+    data-slot="dropdown-menu-separator"
     ref={ref}
     className={cn('my-1 h-px bg-muted', className)}
     {...props}
   />
 ));
-DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
+DropdownMenuSeparator.displayName = 'DropdownMenuSeparator';
 
 const DropdownMenuLabel = DropdownMenuGroupHeading;
 

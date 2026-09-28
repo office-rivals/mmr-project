@@ -1,13 +1,10 @@
 import { defineConfig, loadEnv } from 'vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ command, mode }) => {
-  // Vite only surfaces VITE_-prefixed vars on import.meta.env and never touches
-  // process.env. Server-only config (API_BASE_PATH, CLERK_SECRET_KEY) is read
-  // through process.env so it stays runtime-resolved in the container, so the
-  // dev server has to mirror .env into process.env itself. Only in `serve` —
-  // during `build` this would risk baking local values into the output.
+  // Mirror local server config in dev; production reads its environment at runtime.
   if (command === 'serve') {
     const fileEnv = loadEnv(mode, process.cwd(), '');
     for (const [key, value] of Object.entries(fileEnv)) {
@@ -23,6 +20,7 @@ export default defineConfig(({ command, mode }) => {
     resolve: { tsconfigPaths: true },
     // Plugin order matters: tanstackStart() before viteReact().
     plugins: [
+      tailwindcss(),
       tanstackStart({
         // Preserve the shared suite's observable loader-refetch URL marker.
         serverFns: { base: '/_serverFn/__data.json' },

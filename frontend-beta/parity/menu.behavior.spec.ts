@@ -55,6 +55,31 @@ for (const [app, port] of [
 
     await context.close();
   });
+
+  test(`${app}: Escape closes a header menu and returns focus to its trigger`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({ ...info.project.use });
+    const page = await context.newPage();
+    const url = `http://localhost:${port}/test-org/test-league`;
+    await page.goto(url);
+    await page.waitForLoadState('networkidle');
+    if (new URL(page.url()).pathname !== '/test-org/test-league') {
+      await page.goto(url);
+      await page.waitForLoadState('networkidle');
+    }
+
+    const settings = page.getByRole('button', { name: /^Settings menu/ });
+    await settings.focus();
+    await settings.press('Enter');
+    await expect(page.getByRole('menu')).toBeVisible();
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByRole('menu')).toBeHidden();
+    await expect(settings).toBeFocused();
+    await context.close();
+  });
 }
 
 test('reverse Tab from a header menu matches reference focus', async ({

@@ -1,5 +1,7 @@
 import * as React from 'react';
-import { Slot } from '@radix-ui/react-slot';
+import { Button as ButtonPrimitive } from '@base-ui/react/button';
+import { mergeProps } from '@base-ui/react/merge-props';
+import { useRender } from '@base-ui/react/use-render';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
@@ -33,22 +35,41 @@ const buttonVariants = cva(
   }
 );
 
-export interface ButtonProps
-  extends
-    React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
-}
+export type ButtonProps = Omit<ButtonPrimitive.Props, 'className' | 'style'> &
+  VariantProps<typeof buttonVariants> & {
+    className?: string;
+    style?: React.CSSProperties;
+    /** Compatibility for existing call sites; new composition uses `render`. */
+    asChild?: boolean;
+  };
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button';
+const Button = React.forwardRef<HTMLElement, ButtonProps>(
+  (
+    { className, variant, size, asChild = false, children, render, ...props },
+    ref
+  ) => {
+    const classes = cn(buttonVariants({ variant, size, className }));
+    const child = asChild ? React.Children.only(children) : undefined;
+    const composed = useRender({
+      defaultTagName: 'button',
+      enabled: asChild,
+      ref,
+      render: React.isValidElement(child) ? child : undefined,
+      props: mergeProps<'button'>({ className: classes }, props),
+    });
+
+    if (asChild) return composed;
+
     return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+      <ButtonPrimitive
+        data-slot="button"
         ref={ref}
+        render={render}
+        className={classes}
         {...props}
-      />
+      >
+        {children}
+      </ButtonPrimitive>
     );
   }
 );

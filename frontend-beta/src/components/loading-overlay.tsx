@@ -21,7 +21,6 @@ export function LoadingOverlay({
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        {/* Radix requires an accessible dialog title. */}
         <DialogTitle className="sr-only">{message ?? 'Loading'}</DialogTitle>
         {message ? message : null}
         <LoaderCircle className="animate-spin" />
