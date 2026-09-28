@@ -15,6 +15,15 @@ const icon: VisualRegion = {
   y: 2,
   width: 4,
   height: 4,
+  visible: true,
+  occluded: false,
+  appearance: {
+    color: 'rgb(255, 255, 255)',
+    stroke: 'rgb(255, 255, 255)',
+    fill: 'none',
+    strokeWidth: '2px',
+    opacity: 1,
+  },
 };
 
 describe('accepted visual differences', () => {
@@ -32,6 +41,32 @@ describe('accepted visual differences', () => {
     expect(matchingVisualRegions([icon], [icon, icon])).toEqual([]);
     const unknown = { ...icon, selector: 'svg.lucide-user' };
     expect(matchingVisualRegions([unknown], [unknown])).toEqual([]);
+  });
+
+  it('does not excuse hidden, faded, recolored or covered icons', () => {
+    const changes: Partial<VisualRegion>[] = [
+      { visible: false },
+      { occluded: true },
+      ...[
+        { opacity: 0 },
+        { opacity: 0.5 },
+        { color: 'rgb(0, 0, 0)' },
+        { stroke: 'none' },
+        { fill: 'rgb(0, 0, 0)' },
+        { strokeWidth: '0px' },
+      ].map((appearance) => ({
+        appearance: { ...icon.appearance, ...appearance },
+      })),
+    ];
+    for (const change of changes) {
+      const changed = { ...icon, ...change };
+      expect(matchingVisualRegions([icon], [changed])).toEqual([]);
+      expect(matchingVisualRegions([changed], [icon])).toEqual([]);
+    }
+    const invisible = { ...icon, visible: false };
+    expect(matchingVisualRegions([invisible], [invisible])).toEqual([]);
+    const covered = { ...icon, occluded: true };
+    expect(matchingVisualRegions([covered], [covered])).toEqual([]);
   });
 
   it('counts only changed pixels wholly inside approved icon bounds', () => {

@@ -16,6 +16,15 @@ export interface VisualRegion {
   y: number;
   width: number;
   height: number;
+  visible: boolean;
+  occluded: boolean;
+  appearance: {
+    color: string;
+    stroke: string;
+    fill: string;
+    strokeWidth: string;
+    opacity: number;
+  };
 }
 
 export function matchingVisualRegions(
@@ -31,6 +40,16 @@ export function matchingVisualRegions(
       return (
         region.width > 0 &&
         region.height > 0 &&
+        region.visible &&
+        other.visible &&
+        !region.occluded &&
+        !other.occluded &&
+        region.appearance.opacity > 0 &&
+        region.appearance.opacity === other.appearance.opacity &&
+        region.appearance.color === other.appearance.color &&
+        region.appearance.stroke === other.appearance.stroke &&
+        region.appearance.fill === other.appearance.fill &&
+        region.appearance.strokeWidth === other.appearance.strokeWidth &&
         region.x === other.x &&
         region.y === other.y &&
         region.width === other.width &&

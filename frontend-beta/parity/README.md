@@ -89,8 +89,9 @@ check. These four updated glyphs are approved; they use the current Lucide runti
 and are not replaced with copies of older SVG paths.
 
 The harness classifies changed pixels inside those four SVGs separately, only
-when each corresponding icon has identical position and dimensions in both apps.
-A missing, additional, moved or resized icon receives no exemption.
+when each corresponding icon has identical position, dimensions, color, fill,
+stroke and effective opacity in both apps. Hidden icons and icons beneath an
+open popup receive no exemption, nor do missing, additional, moved or resized icons.
 
 Dismissible beta dialogs also place their accessible Close button inside the
 modal. The reference places it outside the modal, where its backdrop and focus

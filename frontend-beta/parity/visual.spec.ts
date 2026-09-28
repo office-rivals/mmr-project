@@ -305,12 +305,47 @@ for (const viewport of [
                   (element) => {
                     const { x, y, width, height } =
                       element.getBoundingClientRect();
+                    const style = getComputedStyle(element);
+                    let opacity = 1;
+                    let ancestor: Element | null = element;
+                    while (ancestor) {
+                      opacity *= Number(getComputedStyle(ancestor).opacity);
+                      ancestor = ancestor.parentElement;
+                    }
+                    const occluded = Array.from(
+                      document.querySelectorAll(
+                        '[role="dialog"], [role="menu"]'
+                      )
+                    ).some((popup) => {
+                      if (popup.contains(element)) return false;
+                      const box = popup.getBoundingClientRect();
+                      return (
+                        box.width > 0 &&
+                        box.height > 0 &&
+                        box.left < x + width &&
+                        box.right > x &&
+                        box.top < y + height &&
+                        box.bottom > y
+                      );
+                    });
                     return {
                       selector,
                       x: x + window.scrollX,
                       y: y + window.scrollY,
                       width,
                       height,
+                      visible: element.checkVisibility({
+                        checkOpacity: true,
+                        checkVisibilityCSS: true,
+                      }),
+                      occluded,
+                      appearance: {
+                        color: style.color,
+                        stroke: style.stroke,
+                        fill: style.fill,
+                        strokeWidth: style.strokeWidth,
+                        opacity,
+                      },
                     };
                   }
                 )
