@@ -1,66 +1,95 @@
 # Parity verification
 
-Reverified locally on 2026-09-18 on `feat/frontend-beta`, with runtime fixes
-through `a26cc56`. The reference `frontend/src` was byte-identical to freshly
-fetched `origin/main` (`92f2e34`). Neither reference source nor shared Playwright
-tests were changed during this second pass.
+Reverified locally on 2026-09-28 on `feat/frontend-beta`, after the dependency
+upgrade and independent review fixes through `a723328`. The reference
+`frontend/src` remains byte-identical to `origin/main` (`2fa3b90`). Reference
+application source and shared test assertions were not changed during this upgrade. Both test
+installations use Playwright 1.63. The existing shared-suite adapter recognizes
+Svelte action/reload URLs versus Start RPC identifiers, selects the equivalent
+delete form, and accepts beta's form-level confirmation for the scripted concurrent
+delete. Those transport adapters preserve the same assertions; no further shared
+spec changes were needed for the upgrade.
 
-| Gate                                                            | Result                                 |
-| --------------------------------------------------------------- | -------------------------------------- |
-| Shared Svelte reference suite                                   | 96 passed, no skips or flaky tests     |
-| Shared beta suite                                               | 96 passed, no skips or flaky tests     |
-| Paired behavior runner                                          | 53 passed: 49 cases and 4 setup tests  |
-| Beta HTTP, native-form, cache, refresh, and polling regressions | 18 passed                              |
-| Visual matrix                                                   | 118 comparisons, zero differing pixels |
-| Complete visual runner, including fixtures and keyboard test    | 123 passed                             |
-| TypeScript                                                      | Passed                                 |
-| Vitest                                                          | 75 tests passed across 10 files        |
-| Production build                                                | Passed                                 |
+| Gate | Result |
+| --- | --- |
+| Shared Svelte reference suite | 96 passed, no skips or flaky tests |
+| Shared beta suite | 96 passed, no skips or flaky tests |
+| Paired behavior runner | 59 passed: 55 cases and 4 setup tests |
+| Beta HTTP, native-form, cache, refresh, polling and navigation regressions | 23 passed |
+| Visual matrix | 118 comparisons, zero unexplained pixels |
+| Complete visual runner, including fixtures, keyboard and policy tests | 124 passed |
+| TypeScript | Passed |
+| Vitest | 87 tests passed across 14 files |
+| Production build | Passed |
+| Production server browser smoke | Authenticated SSR/hydration, menus, dialogs, admin, play form and actual sign-out passed; no page errors |
+| Dependency audit | Zero known vulnerabilities reported by npm |
+
+All 37 direct dependencies were checked against the npm registry and match its
+latest stable releases on the verification date. The stack includes React
+19.3.0, TypeScript 7.0.2, TanStack Start 1.168.59, Router 1.170.40, Query 5.104.0,
+Base UI 1.8.0, shadcn CLI 4.21.0, Tailwind CSS 4.3.3, Vite 8.3.1, Vitest 5.0.2,
+and Lucide 1.48.0. shadcn components are owned source files using the Base UI
+registry; they retain app-specific styling and compatibility wrappers. Node 24
+LTS is the development baseline. A clean beta `npm ci` also passed.
+
+Three independent Claude Opus 5.5 agents, each running at xhigh effort through
+Herdr, reviewed runtime/data/auth, UI/accessibility, and dependencies/build/gate
+reliability. Their actionable findings were fixed and rechecked:
+
+- Explicit reverse-proxy trust preserves strict native-form Origin checks behind
+  TLS termination. Integration tests exercise the actual form parser through srvx.
+- Step controls scroll after React renders the next step, without router reloads
+  or extra browser-history entries. A phone regression blocks every server RPC
+  and checks that selections, scores and scrolling still work.
+- Expired sessions produce serialized server-function redirects instead of
+  invalid shell data. Navigation and pull-to-refresh return to login; the built
+  production handler separately verifies document 303 and RPC redirect semantics.
+- Admin native-action feedback accepts route-owned keys instead of arbitrary URL
+  text. Tests cover native success and spoofed messages on all three affected pages.
+- Icon exceptions require matching geometry, rendered sRGB paint and effective
+  opacity. A browser test confirms that equivalent RGBA/OKLab syntax compares
+  equally while actual paint, visibility and overlap changes are rejected. Hidden icons and icons covered by popups or fixed navigation receive
+  no exemption. Raw screenshots and pixel differences remain intact.
+
+The original shell-cache, stale-mutation, superseded-save, HTTP/native-form,
+pull-refresh failure, keyboard-picker, polling and transport-feedback repairs
+remain covered by the shared, paired and beta regression suites. The upgrade
+also corrected menu Tab/Escape focus, dialog initial selection and touch focus,
+usable modal Close controls, and Tailwind spacing/input-size changes.
 
 The previously reported reference MMR-delta failure did not reproduce in this
-baseline. It also passed against beta, so neither gate used an exclusion.
+baseline. It passed against beta too, so neither gate uses an exclusion. One
+earlier beta run encountered an expired Clerk session during a mutation; a fresh
+seed rerun passed. The first step-navigation repair also failed its new regression
+because native hash changes emit `popstate`; the final scroll-only repair passes.
+Final gate results above are fresh runs after the fixes, with no retries or skips.
 
-The original shared suite passed before this second pass, but additional paired
-tests exposed real gaps. Fixes cover picker focus, highlighting, keyboard and
-touch selection, long-list scrolling, menu Tab behavior and accessible groups,
-modal semantics, disabled pagination, invite reset timing, feedback after
-navigation and delayed reloads, and the reference document title. The visual
-rerun also caught the originating player picker disappearing behind its own
-creation dialog; that state now survives opening and cancelling the dialog.
+The visual matrix contains 59 scenes at 1440×1000 and 390×844. Pixelmatch uses
+threshold 0.1 and default antialias handling. Only the advancing pending-match
+countdown is masked. Updated Lucide Trophy, Calendar Days, Swords and circled-check
+shapes, plus the small bounds of the repaired dialog Close control, are documented
+improvements rather than exact copies of Svelte. 55 captures have zero raw differences. The other 63 contain only approved
+differences: 4,606 raw differing pixels, all classified by the documented policy.
+The full serial visual run took 12.8 minutes, with no skips, retries or flaky tests.
 
-The paired suite additionally checks pending-match acceptance/decline, report
-pagination and cancellation, and randomizer persistence and touch interactions.
-These assertions run against both apps; this is measured coverage, not a claim
-that every possible browser interaction has been exhaustively proven identical.
+The local report is `frontend-beta/playwright-report/visual/index.html`.
+Each scene's reference, beta, diff and metrics files are under
+`frontend-beta/test-results/visual/`. Artifacts are intentionally ignored by Git.
+See [the harness instructions](README.md) for coverage and reproducible commands.
 
-One intermediate shared run failed queue entry when its server-function POST
-returned HTTP 303 and the UI showed `Failed to join queue`. The fresh-seed
-isolated rerun and the subsequent complete 96-test run passed without a source
-change. A session/authentication transient is suspected; the final run had no
-retries, skips, or exclusions. An earlier superseded-save failure was a real
-accessibility issue with late feedback under a reopened modal and was fixed,
-then verified in both focused and complete runs.
+Five intentional runtime differences are documented in
+[the harness README](README.md#intentional-behavior-differences): working token
+creation, native POST response presentation, enhanced error feedback, independently
+refreshed active-match lists, and progressive-step scrolling without URL fragments.
+An expired mutation retains its form and shows failure feedback; subsequent
+navigation or pull-to-refresh returns to login. This last feedback distinction
+was reviewed in code, while navigation and refresh expiry have browser tests.
 
-The visual matrix contains 59 scenes at 1440×1000 and 390×844. The metric is
-pixelmatch with threshold 0.1 and its default antialias handling, with zero
-allowed differing pixels; this is not a claim of byte-identical PNG files.
-Only the advancing pending-match countdown is masked. No cosmetic differences
-are accepted. See [the harness instructions](README.md) for coverage and commands.
+These results cover Chromium at the recorded widths, selected states and
+interactions, not every possible browser/device combination. The shared suites
+use Vite's development server; the separate production smoke verifies the built
+srvx server and hydration but does not repeat the entire suite in production mode.
 
-The final local report is `frontend-beta/playwright-report/visual/index.html`.
-Each scene's reference, beta, diff, and metrics files are under
-`frontend-beta/test-results/visual/`. These artifacts are intentionally ignored
-by Git. The full visual run took 13.2 minutes and used one worker.
-
-Four intentional runtime differences remain: supported token creation, native
-POST response presentation, enhanced error statuses/transport feedback, and
-independently refreshed active-match lists. Their rationale and evidence are
-listed in [the harness README](README.md#intentional-behavior-differences), with
-the HTTP details in
-[the runtime contract](../../plans/frontend-beta/specs/10-runtime-contract.md).
-The paired token cases explicitly confirm that the current Svelte form fails
-with its unsupported scope while beta creates and revokes the token successfully.
-
-The rewrite is not a configured release component yet; these changes do not
-bump or release the unchanged Svelte frontend. No deployment, push, or PR was
-performed.
+The rewrite is not a configured release component yet. No component version was
+manually bumped; the Svelte application source is unchanged. No deployment, push,
+or pull request was performed.
