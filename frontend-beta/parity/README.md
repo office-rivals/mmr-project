@@ -101,7 +101,9 @@ The harness classifies changed pixels inside those four SVGs separately, only
 when each corresponding icon has identical position, dimensions, rendered sRGB
 color/fill/stroke and effective opacity in both apps. A one-pixel canvas normalizes
 equivalent CSS color formats; a browser regression checks this without relaxing
-the hidden, recolored, faded or covered-icon checks. Hidden icons and icons beneath an
+the hidden, recolored, faded or covered-icon checks. This exception covers only
+the listed Lucide icons' solid-color and `none` paints; gradient references would
+require a newly reviewed policy. Hidden icons and icons beneath an
 open popup or fixed header/navigation receive no exemption, nor do missing,
 additional, moved or resized icons. Icons beneath a translucent modal backdrop
 remain eligible; the raw comparison still records their changed pixels.
