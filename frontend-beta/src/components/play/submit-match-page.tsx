@@ -52,7 +52,7 @@ interface SubmitMatchPageProps {
   formMessage: string | null;
   submitting: boolean;
   onSubmit: (input: SubmitMatchInput) => void;
-  /** `goto('#score-step')` — router navigation so the hash lands in the URL. */
+  /** Scrolls to the named progressive form step. */
   onGoToStep: (hash: string) => void;
 }
 

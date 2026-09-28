@@ -59,7 +59,7 @@ verify the documented scope difference rather than claiming identical behavior.
 
 ## Intentional behavior differences
 
-The parity target has four explicit runtime exceptions:
+The parity target has five explicit runtime exceptions:
 
 - The Svelte token form sends the unsupported `full` scope and visibly fails.
   Beta sends the API's supported `write` scope and creates the token. The paired
@@ -80,6 +80,11 @@ The parity target has four explicit runtime exceptions:
   state and refreshes the page only when that response reports the current
   user's active match, so an independently created active match can remain
   absent. The beta-specific live-state regression covers the required repair.
+- Progressive match forms scroll to newly revealed steps without adding URL
+  fragments or browser-history entries. The reference writes a fragment through
+  router navigation; in TanStack Router that would also reload shell data and
+  could discard the form when the refresh fails. A beta regression blocks server
+  RPCs while exercising each step and verifies the selections remain intact.
 
 ## Approved visual differences
 

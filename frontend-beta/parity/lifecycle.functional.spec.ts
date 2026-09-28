@@ -143,3 +143,21 @@ test('pull-to-refresh reports a failed refetch', async ({ page }) => {
   );
   expect(abortedRpc).toBe(true);
 });
+
+test('pull-to-refresh redirects when the session has expired', async ({
+  page,
+}) => {
+  await markStandalone(page);
+  const client = await page.context().newCDPSession(page);
+  await gotoAuthed(page, '/test-org/test-league');
+  await expect(page.getByLabel('Settings menu')).toBeVisible();
+  await page.waitForTimeout(400);
+  await page.context().clearCookies();
+
+  await pull(client);
+
+  await expect(page).toHaveURL('/login');
+  await expect(page.getByText('Refresh failed', { exact: true })).toHaveCount(
+    0
+  );
+});

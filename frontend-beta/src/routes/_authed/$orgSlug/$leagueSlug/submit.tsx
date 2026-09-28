@@ -12,6 +12,7 @@ import { HttpError } from '@/lib/http-error';
 import { failServerAction } from '@/lib/server/action-result';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import { scrollToStep } from '@/lib/scroll-to-step';
 import type {
   SlotName,
   SubmitMatchInput,
@@ -225,11 +226,7 @@ function LeagueSubmitRoute({
       formMessage={formMessage}
       submitting={submitMatch.isPending}
       onSubmit={(input) => submitMatch.mutate(input)}
-      onGoToStep={(hash) => {
-        void router.navigate({
-          href: `${window.location.pathname}${window.location.search}#${hash}`,
-        });
-      }}
+      onGoToStep={scrollToStep}
     />
   );
 }

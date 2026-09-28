@@ -11,6 +11,7 @@ import { ActiveMatchPage } from '@/components/play/active-match-page';
 import { failServerAction } from '@/lib/server/action-result';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import { scrollToStep } from '@/lib/scroll-to-step';
 import type { LeagueContext } from './route';
 import type { ActiveMatchResponse } from '@/api-v3';
 
@@ -167,11 +168,7 @@ function LeagueActiveMatchRoute({
       formMessage={formMessage}
       submitting={submitResult.isPending}
       onSubmit={(scores) => submitResult.mutate(scores)}
-      onGoToStep={(hash) => {
-        void router.navigate({
-          href: `${window.location.pathname}${window.location.search}#${hash}`,
-        });
-      }}
+      onGoToStep={scrollToStep}
     />
   );
 }

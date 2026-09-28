@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from '@tanstack/react-router';
+import { isRedirect, useRouter } from '@tanstack/react-router';
 import { RefreshCw } from 'lucide-react';
 import {
   meQueryKey,
@@ -116,6 +116,16 @@ export function PullToRefresh() {
         setRefreshing(false);
         setPull(0);
       } catch (err) {
+        if (isRedirect(err)) {
+          setRefreshing(false);
+          setPull(0);
+          err.options._fromLocation = routerRef.current.stores.location.get();
+          await routerRef.current.navigate(
+            routerRef.current.resolveRedirect(err).options
+          );
+          return;
+        }
+
         console.error('Pull-to-refresh failed', err);
         setRefreshing(false);
         setRefreshFailed(true);
@@ -146,7 +156,7 @@ export function PullToRefresh() {
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed left-0 right-0 z-20 flex justify-center"
+      className="pointer-events-none fixed right-0 left-0 z-20 flex justify-center"
       style={{
         top: `calc(env(safe-area-inset-top) + var(--header-height) + ${pullDistance - 40}px)`,
         opacity: Math.min(pullDistance / THRESHOLD, 1),

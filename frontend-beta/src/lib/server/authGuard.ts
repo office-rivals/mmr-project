@@ -1,11 +1,12 @@
 import { createMiddleware } from '@tanstack/react-start';
+import { redirect } from '@tanstack/react-router';
 
 import { isPublicAssetPath } from '../public-assets';
 
 const PUBLIC_PATH_PREFIXES = ['/login', '/sign-up'];
 
 const redirect303 = (location: string) =>
-  new Response(null, { status: 303, headers: { location } });
+  redirect({ href: location, statusCode: 303 });
 
 type ClerkRequestContext = {
   auth?: (
