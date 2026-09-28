@@ -50,11 +50,18 @@ or deployment identifiers.
 | `CLERK_SECRET_KEY`           | Server-only Clerk secret                        |
 | `CLERK_SIGN_IN_URL`          | `/login`                                        |
 | `CLERK_SIGN_UP_URL`          | `/sign-up`                                      |
+| `TRUST_PROXY`                | Forwarded-header trust policy; defaults false   |
 
 The browser Clerk key is fixed at build time; unlike Svelte's dynamic public env,
 a single built image cannot change Clerk instances without rebuilding. The API
 base URL and server secret remain runtime configuration. Vite loads local env
 for development; `server.mjs` loads optional dotenv configuration for production.
+
+`TRUST_PROXY` accepts `false`, `true`, `loopback`, or a comma-separated list of
+proxy IP addresses. Keep the default when the app receives traffic directly.
+When a controlled reverse proxy terminates HTTPS, use `loopback` for a same-host
+proxy or list its exact peer addresses. Use `true` only when every immediate peer
+is controlled and overwrites forwarded headers; invalid values stop startup.
 
 `src/api-v3` is hand-maintained, like the reference client. Update it alongside
 API contract changes; do not overwrite custom client methods with generated code.

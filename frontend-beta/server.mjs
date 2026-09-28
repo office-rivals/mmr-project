@@ -2,9 +2,10 @@
 import { readFile, stat } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseTrustProxy } from './server-config.mjs';
 
 try {
-  // Optional: present in local dev, pruned from the production image.
+  // Local runs can use dotenv; deployments can supply the environment directly.
   await import('dotenv/config');
 } catch {
   // dotenv is optional; production can use the ambient environment.
@@ -73,4 +74,5 @@ serve({
   },
   port: Number(process.env.PORT ?? 3000),
   hostname: process.env.HOST ?? '0.0.0.0',
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
 });
