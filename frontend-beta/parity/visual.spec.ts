@@ -314,7 +314,7 @@ for (const viewport of [
                     }
                     const occluded = Array.from(
                       document.querySelectorAll(
-                        '[role="dialog"], [role="menu"]'
+                        '[role="dialog"], [role="menu"], [role="listbox"]'
                       )
                     ).some((popup) => {
                       if (popup.contains(element)) return false;
