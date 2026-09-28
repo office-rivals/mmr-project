@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { serve } from 'srvx';
 import { parseTrustProxy } from '../server-config.mjs';
+import { parseNativeFormData } from '../src/lib/server/action-result';
 
 const servers = [];
 
@@ -10,13 +11,21 @@ afterEach(async () => {
 
 async function startOriginCheckServer(trustProxy) {
   const server = serve({
-    fetch(request) {
+    async fetch(request) {
       const requestOrigin = new URL(request.url).origin;
-      const accepted = request.headers.get('origin') === requestOrigin;
-      return new Response(null, {
-        status: accepted ? 204 : 403,
-        headers: { 'x-request-origin': requestOrigin },
-      });
+      try {
+        await parseNativeFormData(request);
+        return new Response(null, {
+          status: 204,
+          headers: { 'x-request-origin': requestOrigin },
+        });
+      } catch (error) {
+        if (!(error instanceof Response)) throw error;
+        return new Response(null, {
+          status: error.status,
+          headers: { 'x-request-origin': requestOrigin },
+        });
+      }
     },
     hostname: '127.0.0.1',
     port: 0,
@@ -30,6 +39,7 @@ async function startOriginCheckServer(trustProxy) {
 
 function forwardedRequest(url, origin) {
   return fetch(`${url}/form`, {
+    body: new URLSearchParams({ action: 'test' }),
     method: 'POST',
     headers: {
       origin,
