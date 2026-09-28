@@ -323,7 +323,7 @@ function TokenCreateForm({
           id="token-expiry"
           name="expiresAt"
           type="datetime-local"
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
       </div>
 
