@@ -183,17 +183,19 @@
     scale: none;
   }
 
-  :is(
-      .space-y-0,
-      .space-y-1,
-      .space-y-1\.5,
-      .space-y-2,
-      .space-y-3,
-      .space-y-4,
-      .space-y-5,
-      .space-y-6
-    )
-    > :not(:last-child) {
+  :where(
+    :is(
+        .space-y-0,
+        .space-y-1,
+        .space-y-1\.5,
+        .space-y-2,
+        .space-y-3,
+        .space-y-4,
+        .space-y-5,
+        .space-y-6
+      )
+      > :not(:last-child)
+  ) {
     margin-block-end: 0;
   }
 
@@ -245,7 +247,7 @@
     margin-bottom: calc(1.5rem * var(--tw-space-y-reverse));
   }
 
-  :is(.space-x-1, .space-x-2, .space-x-3) > :not(:last-child) {
+  :where(:is(.space-x-1, .space-x-2, .space-x-3) > :not(:last-child)) {
     margin-inline-end: 0;
   }
   :is(.space-x-1, .space-x-2, .space-x-3) > :not([hidden]) ~ :not([hidden]) {
