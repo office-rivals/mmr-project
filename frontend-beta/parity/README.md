@@ -91,7 +91,9 @@ and are not replaced with copies of older SVG paths.
 The harness classifies changed pixels inside those four SVGs separately, only
 when each corresponding icon has identical position, dimensions, color, fill,
 stroke and effective opacity in both apps. Hidden icons and icons beneath an
-open popup receive no exemption, nor do missing, additional, moved or resized icons.
+open popup or fixed header/navigation receive no exemption, nor do missing,
+additional, moved or resized icons. Icons beneath a translucent modal backdrop
+remain eligible; the raw comparison still records their changed pixels.
 
 Dismissible beta dialogs also place their accessible Close button inside the
 modal. The reference places it outside the modal, where its backdrop and focus

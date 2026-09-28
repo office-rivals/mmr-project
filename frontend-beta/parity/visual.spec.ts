@@ -314,10 +314,17 @@ for (const viewport of [
                     }
                     const occluded = Array.from(
                       document.querySelectorAll(
-                        '[role="dialog"], [role="menu"], [role="listbox"]'
+                        '[role="dialog"], [role="menu"], [role="listbox"], header, nav'
                       )
                     ).some((popup) => {
                       if (popup.contains(element)) return false;
+                      if (
+                        popup.matches('header, nav') &&
+                        !['fixed', 'sticky'].includes(
+                          getComputedStyle(popup).position
+                        )
+                      )
+                        return false;
                       const box = popup.getBoundingClientRect();
                       return (
                         box.width > 0 &&
