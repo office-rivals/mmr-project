@@ -1,7 +1,8 @@
 # frontend-beta
 
 React 19 / TanStack Start rewrite of the SvelteKit application in `../frontend`.
-The reference application defines both behavior and appearance. shadcn components
+The reference application guides behavior and appearance; known bugs and older
+icon drawings need not be reproduced. shadcn components
 use Base UI primitives, with styles adapted to match the Svelte rendering.
 
 The stack uses React 19.3, TanStack Start/Router, TanStack Query for server data,
@@ -91,7 +92,9 @@ against one seeded API. It uses the shared authentication setup and Playwright
 installation, so `../frontend/node_modules` must be installed. Reference, beta,
 and pixel-diff PNGs plus numerical results are retained under
 `test-results/visual/`. Open `playwright-report/visual/index.html` for the report.
-A nonzero diff fails the comparison; captures are never promoted automatically.
+Raw pixel differences are retained. The gate permits documented icon changes
+inside matching SVG bounds and rejects unexplained differences; captures are
+never promoted automatically.
 
 A functional test pass is not a visual parity claim. See `parity/README.md` for
 capture coverage, determinism rules, and any remaining measured differences.

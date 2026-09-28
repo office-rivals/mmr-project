@@ -15,8 +15,11 @@ storage state, en-US locale, UTC timezone, device scale, and reduced-motion
 setting. Renewed authentication cookies are carried forward without carrying
 scene-specific local storage. The frontend servers use UTC too. Captures wait for fonts, hydration
 network activity, and chart rendering; CSS animations and carets are disabled.
-Comparisons use pixelmatch with a 0.1 color threshold and zero allowed differing
-pixels. Image size differences are included, not cropped away. The only masked region
+The pointer moves to the page origin after opening each scene, so screenshots
+compare neutral controls rather than whichever trigger the setup last clicked.
+Comparisons use pixelmatch with a 0.1 color threshold. Raw differences are always
+retained; the gate rejects differences outside the approved regions below. Image
+size differences are included, not cropped away. The only masked region
 is the “Accept within …s” countdown sentence in the pending-match dialog; its
 expiration clock advances between the two captures. The rest of that dialog
 is compared normally.
@@ -26,7 +29,7 @@ Artifacts appear in `test-results/visual/<scene>/`:
 - `reference.png`: Svelte screenshot
 - `beta.png`: React screenshot
 - `diff.png`: highlighted differences
-- `metrics.json`: dimensions and differing-pixel count
+- `metrics.json`: dimensions, raw/approved/unexpected pixel counts and approved regions
 
 The HTML report embeds these images. Artifacts are gitignored because seeded
 sessions can contain the configured test user's identity. Do not commit them.
@@ -78,6 +81,26 @@ The parity target has four explicit runtime exceptions:
   user's active match, so an independently created active match can remain
   absent. The beta-specific live-state regression covers the required repair.
 
-No visual differences have been accepted. A failed comparison is not an
-accepted baseline. The HTML report and per-scene metrics record the actual
-result of each run.
+## Approved visual differences
+
+Exact replication of Svelte bugs and older icon drawings is not a requirement.
+The latest Lucide versions redraw Trophy, Calendar Days, Swords and the circled
+check. These four updated glyphs are approved; they use the current Lucide runtime
+and are not replaced with copies of older SVG paths.
+
+The harness classifies changed pixels inside those four SVGs separately, only
+when each corresponding icon has identical position and dimensions in both apps.
+A missing, additional, moved or resized icon receives no exemption.
+
+Dismissible beta dialogs also place their accessible Close button inside the
+modal. The reference places it outside the modal, where its backdrop and focus
+isolation make it unusable. The small, added close-button bounds are an approved
+visual improvement; a beta browser regression verifies that the button is visible,
+accessible and dismisses the dialog. Non-dismissible pending-match dialogs omit it.
+
+Raw screenshots and diff images remain unmodified. Metrics report `pixels`,
+`acceptedPixels`, `unexpectedPixels`, and the exact `acceptedRegions`; the gate
+requires zero unexpected pixels. This is a narrow regression check, not a claim
+that every Svelte rendering choice must be reproduced. Further intended changes
+must be reviewed and documented explicitly rather than hidden behind a larger
+whole-page tolerance.

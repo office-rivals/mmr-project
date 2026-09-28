@@ -4,6 +4,14 @@ const { test, expect } =
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import fs from 'node:fs/promises';
+import {
+  acceptedIconSelectors,
+  addedDialogCloseRegions,
+  dialogCloseSelector,
+  countAcceptedPixels,
+  matchingIconRegions,
+  type IconRegion,
+} from './accepted-differences';
 
 const league = '/test-org/test-league';
 const admin = '/admin/test-org/leagues/test-league';
@@ -211,6 +219,7 @@ for (const viewport of [
     test(`${viewport.width} ${scene.name}`, async ({ browser }, testInfo) => {
       test.setTimeout(60_000);
       const images: Buffer[] = [];
+      const iconRegions: IconRegion[][] = [];
       for (const [app, port] of [
         ['reference', process.env.E2E_PORT ?? '5180'],
         ['beta', process.env.PARITY_BETA_PORT ?? '5181'],
@@ -242,6 +251,7 @@ for (const viewport of [
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(500);
         if (scene.open) await scene.open(page);
+        await page.mouse.move(0, 0);
         // Carbon animates after its initial render; wait for its final geometry.
         await page.waitForTimeout(800);
         if (process.env.PARITY_DOM) {
@@ -285,6 +295,27 @@ for (const viewport of [
             JSON.stringify(geometry, null, 2)
           );
         }
+        iconRegions.push(
+          await page.evaluate(
+            (selectors) =>
+              selectors.flatMap((selector) =>
+                Array.from(document.querySelectorAll(selector)).map(
+                  (element) => {
+                    const { x, y, width, height } =
+                      element.getBoundingClientRect();
+                    return {
+                      selector,
+                      x: x + window.scrollX,
+                      y: y + window.scrollY,
+                      width,
+                      height,
+                    };
+                  }
+                )
+              ),
+            [...acceptedIconSelectors, dialogCloseSelector]
+          )
+        );
         const buffer = await page.screenshot({
           fullPage: true,
           animations: 'disabled',
@@ -324,6 +355,16 @@ for (const viewport of [
         height,
         { threshold: 0.1 }
       );
+      const acceptedRegions = [
+        ...matchingIconRegions(iconRegions[0], iconRegions[1]),
+        ...addedDialogCloseRegions(iconRegions[1]),
+      ];
+      const acceptedPixels = countAcceptedPixels(
+        diff.data,
+        width,
+        acceptedRegions
+      );
+      const unexpectedPixels = pixels - acceptedPixels;
       const buffer = PNG.sync.write(diff);
       await fs.writeFile(testInfo.outputPath('diff.png'), buffer);
       await testInfo.attach('diff', { body: buffer, contentType: 'image/png' });
@@ -334,6 +375,9 @@ for (const viewport of [
             scene: scene.name,
             viewport,
             pixels,
+            acceptedPixels,
+            unexpectedPixels,
+            acceptedRegions,
             total: width * height,
             reference: { width: reference.width, height: reference.height },
             beta: { width: beta.width, height: beta.height },
@@ -343,8 +387,8 @@ for (const viewport of [
         )
       );
       expect(
-        pixels,
-        `${pixels} differing pixels; see reference.png, beta.png and diff.png`
+        unexpectedPixels,
+        `${pixels} differing pixels (${acceptedPixels} approved icon pixels, ${unexpectedPixels} unexpected); see reference.png, beta.png and diff.png`
       ).toBe(0);
     });
   }
