@@ -89,6 +89,7 @@ function adjacentTabTarget(trigger: HTMLElement, reverse: boolean) {
   ).filter(
     (element) =>
       element.getClientRects().length > 0 &&
+      !element.hasAttribute('data-base-ui-focus-guard') &&
       element.getAttribute('aria-disabled') !== 'true'
   );
   const ordered = reverse ? candidates.reverse() : candidates;
