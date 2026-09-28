@@ -3,10 +3,6 @@ import { isModeratorOrAbove } from '@/lib/utils';
 import type { OrganizationRole } from '@/api-v3';
 import type { AuthedShellData } from '@/lib/shell';
 
-/**
- * The `{ org, orgId, orgSlug, orgRole }` bundle the SvelteKit
- * `admin/[orgSlug]/+layout.server.ts` exposed to every descendant.
- */
 export interface AdminOrg {
   id: string;
   name: string;
@@ -14,18 +10,7 @@ export interface AdminOrg {
   role: OrganizationRole;
 }
 
-/**
- * The only real authorization gate in the admin tree.
- *
- * Order matters and is asserted by `admin-rbac.spec.ts`:
- *  - `getMe()` itself failed  → 401 (the `/admin` layout's only failure mode)
- *  - the org is not in `me`   → 404 (not a member at all)
- *  - the role is `Member`     → 403
- *
- * The lookup is against the `me` payload, never a per-org server call, so an
- * org the user does not belong to is indistinguishable from one that does not
- * exist — deliberately.
- */
+// Membership lookup keeps absent and inaccessible organizations indistinguishable.
 export function resolveAdminOrg(
   shell: AuthedShellData,
   orgSlug: string

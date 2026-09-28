@@ -2,10 +2,6 @@ import type { ReactNode } from 'react';
 
 interface PageTitleProps {
   children?: ReactNode;
-  /**
-   * Render the heading visually hidden but still in the document outline /
-   * exposed to assistive tech — for pages whose visible title lives elsewhere.
-   */
   srOnly?: boolean;
 }
 

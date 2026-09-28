@@ -6,11 +6,6 @@ import type { BadgesResponse } from '@/api-v3';
 /** Separate from `['me']`: the counts change on their own schedule. */
 export const badgesQueryKey = ['badges'] as const;
 
-/**
- * Open match-flag counts for the admin tree. Non-fatal by construction — a
- * failure yields `null` and every badge falls back to 0 rather than taking the
- * page down with it.
- */
 export const getBadges = createServerFn({ method: 'GET' }).handler(
   async (): Promise<BadgesResponse | null> => {
     try {
