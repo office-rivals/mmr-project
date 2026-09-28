@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/card';
 import { HttpErrorView } from '@/components/http-error-view';
 import { useHydrated } from '@/hooks/use-hydrated';
+import { parseActionSuccessKey } from '@/lib/action-feedback';
 import {
   failServerAction,
   nativeFormResponse,
@@ -38,6 +39,13 @@ import type { LeaguePlayerResponse, MatchResponse } from '@/api-v3';
 const PAGE_SIZE = 25;
 
 type ActionResult = { success: boolean; message: string };
+
+const MATCH_SUCCESS_MESSAGES = {
+  'match-deleted': 'Match deleted',
+  'matches-recalculated': 'Matches recalculated successfully',
+} as const;
+
+type MatchSuccessKey = keyof typeof MATCH_SUCCESS_MESSAGES;
 
 interface MatchesPageData {
   matches: MatchResponse[];
@@ -213,12 +221,12 @@ export const Route = createFileRoute(
   // Keep page 1 at the bare `/matches` URL.
   validateSearch: (
     search: Record<string, unknown>
-  ): { offset?: number; actionSuccess?: string } => {
+  ): { offset?: number; actionSuccess?: MatchSuccessKey } => {
     const raw = search.offset;
-    const actionSuccess =
-      typeof search.actionSuccess === 'string'
-        ? search.actionSuccess
-        : undefined;
+    const actionSuccess = parseActionSuccessKey(
+      search.actionSuccess,
+      MATCH_SUCCESS_MESSAGES
+    );
     if (raw === undefined || raw === null || raw === '') {
       return actionSuccess ? { actionSuccess } : {};
     }
@@ -242,9 +250,11 @@ export const Route = createFileRoute(
       POST: async ({ request, params }) => {
         const formData = await parseNativeFormData(request);
         let actionResult: ActionResult;
+        let successQueryValue: MatchSuccessKey | undefined;
         try {
           switch (formData.get('_action')) {
             case 'recalculate':
+              successQueryValue = 'matches-recalculated';
               actionResult = await recalculateMatches({
                 orgSlug: params.orgSlug,
                 leagueSlug: params.leagueSlug,
@@ -253,6 +263,7 @@ export const Route = createFileRoute(
               });
               break;
             case 'delete':
+              successQueryValue = 'match-deleted';
               actionResult = await deleteMatch({
                 orgSlug: params.orgSlug,
                 leagueSlug: params.leagueSlug,
@@ -268,7 +279,9 @@ export const Route = createFileRoute(
             message: 'Request failed. Please try again.',
           });
         }
-        return nativeFormResponse(request, actionResult);
+        return nativeFormResponse(request, actionResult, {
+          successQueryValue,
+        });
       },
     },
   },
@@ -285,7 +298,10 @@ function AdminMatchesPage() {
 
   const [result, setResult] = useState<ActionResult | null>(() =>
     search.actionSuccess
-      ? { success: true, message: search.actionSuccess }
+      ? {
+          success: true,
+          message: MATCH_SUCCESS_MESSAGES[search.actionSuccess],
+        }
       : null
   );
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -294,7 +310,10 @@ function AdminMatchesPage() {
   useEffect(() => {
     setResult(
       search.actionSuccess
-        ? { success: true, message: search.actionSuccess }
+        ? {
+            success: true,
+            message: MATCH_SUCCESS_MESSAGES[search.actionSuccess],
+          }
         : null
     );
   }, [orgSlug, leagueSlug, data.offset, search.actionSuccess]);

@@ -23,6 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HttpErrorView } from '@/components/http-error-view';
+import { parseActionSuccessKey } from '@/lib/action-feedback';
 import {
   failServerAction,
   nativeFormResponse,
@@ -43,6 +44,15 @@ import type {
 
 // Fixed messages keep submitted fields out of native error documents.
 type ActionResult = { error?: string; success?: string };
+
+const MEMBER_SUCCESS_MESSAGES = {
+  'member-invited': 'Member invited successfully',
+  'role-updated': 'Role updated successfully',
+  'member-removed': 'Member removed successfully',
+  'invite-link-deleted': 'Invite link deleted',
+} as const;
+
+type MemberSuccessKey = keyof typeof MEMBER_SUCCESS_MESSAGES;
 
 interface InviteMemberInput {
   orgSlug: string;
@@ -234,19 +244,23 @@ const deleteInviteLinkFn = createServerFn({ method: 'POST' })
 export const Route = createFileRoute('/admin/$orgSlug/members')({
   validateSearch: (
     search: Record<string, unknown>
-  ): { actionSuccess?: string } => ({
-    ...(typeof search.actionSuccess === 'string'
-      ? { actionSuccess: search.actionSuccess }
-      : {}),
-  }),
+  ): { actionSuccess?: MemberSuccessKey } => {
+    const actionSuccess = parseActionSuccessKey(
+      search.actionSuccess,
+      MEMBER_SUCCESS_MESSAGES
+    );
+    return actionSuccess ? { actionSuccess } : {};
+  },
   server: {
     handlers: {
       POST: async ({ request, params }) => {
         const formData = await parseNativeFormData(request);
         let actionResult: ActionResult;
+        let successQueryValue: MemberSuccessKey | undefined;
         try {
           switch (formData.get('_action')) {
             case 'invite':
+              successQueryValue = 'member-invited';
               actionResult = await inviteMember({
                 orgSlug: params.orgSlug,
                 email: String(formData.get('email') ?? ''),
@@ -256,12 +270,14 @@ export const Route = createFileRoute('/admin/$orgSlug/members')({
               });
               break;
             case 'deleteInviteLink':
+              successQueryValue = 'invite-link-deleted';
               actionResult = await deleteInviteLink({
                 orgSlug: params.orgSlug,
                 linkId: String(formData.get('linkId') ?? ''),
               });
               break;
             case 'updateRole':
+              successQueryValue = 'role-updated';
               actionResult = await updateMemberRole({
                 orgSlug: params.orgSlug,
                 membershipId: String(formData.get('membershipId') ?? ''),
@@ -269,6 +285,7 @@ export const Route = createFileRoute('/admin/$orgSlug/members')({
               });
               break;
             case 'remove':
+              successQueryValue = 'member-removed';
               actionResult = await removeMember({
                 orgSlug: params.orgSlug,
                 membershipId: String(formData.get('membershipId') ?? ''),
@@ -282,7 +299,9 @@ export const Route = createFileRoute('/admin/$orgSlug/members')({
             error: 'Request failed. Please try again.',
           });
         }
-        return nativeFormResponse(request, actionResult);
+        return nativeFormResponse(request, actionResult, {
+          successQueryValue,
+        });
       },
     },
   },
@@ -301,7 +320,9 @@ function MembersPage() {
   const router = useRouter();
 
   const [result, setResult] = useState<ActionResult | null>(() =>
-    search.actionSuccess ? { success: search.actionSuccess } : null
+    search.actionSuccess
+      ? { success: MEMBER_SUCCESS_MESSAGES[search.actionSuccess] }
+      : null
   );
   const [showCreateLink, setShowCreateLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);

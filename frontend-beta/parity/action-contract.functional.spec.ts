@@ -5,6 +5,7 @@ const { expect, test } =
 
 const MEMBERS = '/admin/test-org/members';
 const MATCHES = '/admin/test-org/leagues/test-league/matches';
+const FLAGS = '/admin/test-org/leagues/test-league/match-flags';
 
 test.describe('native admin forms', () => {
   test.use({ javaScriptEnabled: false });
@@ -40,10 +41,13 @@ test.describe('native admin forms', () => {
       const response = await postRole(nextRole);
       expect(response.status()).toBe(303);
       expect(response.headers().location).toContain(
-        'actionSuccess=Role+updated+successfully'
+        'actionSuccess=role-updated'
       );
 
-      await page.reload();
+      await page.goto(response.headers().location);
+      await expect(
+        page.getByRole('alert').filter({ hasText: 'Role updated successfully' })
+      ).toBeVisible();
       await expect(select).toHaveValue(nextRole);
     } finally {
       expect((await postRole(originalRole)).status()).toBe(303);
@@ -90,6 +94,27 @@ test.describe('native admin forms', () => {
     });
     expect(failed.status()).toBe(400);
     expect(await failed.text()).toContain('Failed to invite member');
+  });
+
+  test('admin success banners only accept route-owned keys', async ({
+    page,
+  }) => {
+    const cases = [
+      [MEMBERS, 'role-updated', 'Role updated successfully'],
+      [MATCHES, 'matches-recalculated', 'Matches recalculated successfully'],
+      [FLAGS, 'matches-recalculated', 'Matches recalculated successfully'],
+    ] as const;
+
+    for (const [route, key, message] of cases) {
+      await page.goto(`${route}?actionSuccess=${key}`);
+      await expect(
+        page.getByRole('alert').filter({ hasText: message })
+      ).toBeVisible();
+
+      const spoofed = 'Your account permissions were upgraded';
+      await page.goto(`${route}?actionSuccess=${encodeURIComponent(spoofed)}`);
+      await expect(page.getByText(spoofed, { exact: true })).toHaveCount(0);
+    }
   });
 });
 

@@ -18,7 +18,8 @@ export function parseNativeFormData(request: Request): Promise<FormData> {
 
 export function nativeFormResponse(
   request: Request,
-  result: { success?: string | boolean; error?: string; message?: string }
+  result: { success?: string | boolean; error?: string; message?: string },
+  options?: { successQueryValue?: string }
 ): Response {
   if (result.error || result.success === false) {
     const message = result.error ?? result.message ?? 'Request failed';
@@ -29,10 +30,11 @@ export function nativeFormResponse(
   const location = new URL(request.url);
   location.searchParams.delete('actionError');
   location.searchParams.delete('actionSuccess');
-  const successMessage =
-    typeof result.success === 'string' ? result.success : result.message;
-  if (successMessage) {
-    location.searchParams.set('actionSuccess', successMessage);
+  const successQueryValue =
+    options?.successQueryValue ??
+    (typeof result.success === 'string' ? result.success : result.message);
+  if (successQueryValue) {
+    location.searchParams.set('actionSuccess', successQueryValue);
   }
   return new Response(null, {
     status: 303,

@@ -26,6 +26,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { HttpErrorView } from '@/components/http-error-view';
 import { useHydrated } from '@/hooks/use-hydrated';
+import { parseActionSuccessKey } from '@/lib/action-feedback';
 import { HttpError } from '@/lib/http-error';
 import {
   failServerAction,
@@ -46,6 +47,12 @@ import type {
 } from '@/api-v3';
 
 type ActionResult = { success: boolean; message: string };
+
+const FLAG_SUCCESS_MESSAGES = {
+  'matches-recalculated': 'Matches recalculated successfully',
+} as const;
+
+type FlagSuccessKey = keyof typeof FLAG_SUCCESS_MESSAGES;
 
 const isMatchFlagStatus = (value: string): value is MatchFlagStatus =>
   (Object.values(MatchFlagStatus) as string[]).includes(value);
@@ -260,16 +267,16 @@ export const Route = createFileRoute(
   // Open is the default, so the common view keeps a bare URL.
   validateSearch: (
     search: Record<string, unknown>
-  ): { status?: FlagStatusFilter; actionSuccess?: string } => {
+  ): { status?: FlagStatusFilter; actionSuccess?: FlagSuccessKey } => {
     const raw = search.status;
     const status =
       raw === 'all' || (typeof raw === 'string' && isMatchFlagStatus(raw))
         ? (raw as FlagStatusFilter)
         : undefined;
-    const actionSuccess =
-      typeof search.actionSuccess === 'string'
-        ? search.actionSuccess
-        : undefined;
+    const actionSuccess = parseActionSuccessKey(
+      search.actionSuccess,
+      FLAG_SUCCESS_MESSAGES
+    );
     return {
       ...(status ? { status } : {}),
       ...(actionSuccess ? { actionSuccess } : {}),
@@ -311,7 +318,9 @@ export const Route = createFileRoute(
             message: 'Request failed. Please try again.',
           });
         }
-        return nativeFormResponse(request, actionResult);
+        return nativeFormResponse(request, actionResult, {
+          successQueryValue: 'matches-recalculated',
+        });
       },
     },
   },
@@ -365,7 +374,10 @@ function MatchFlagsPage() {
 
   const [result, setResult] = useState<ActionResult | null>(() =>
     search.actionSuccess
-      ? { success: true, message: search.actionSuccess }
+      ? {
+          success: true,
+          message: FLAG_SUCCESS_MESSAGES[search.actionSuccess],
+        }
       : null
   );
   const [selectedFlagId, setSelectedFlagId] = useState<string | null>(null);
@@ -378,7 +390,10 @@ function MatchFlagsPage() {
   useEffect(() => {
     setResult(
       search.actionSuccess
-        ? { success: true, message: search.actionSuccess }
+        ? {
+            success: true,
+            message: FLAG_SUCCESS_MESSAGES[search.actionSuccess],
+          }
         : null
     );
   }, [orgSlug, leagueSlug, data.statusFilter, search.actionSuccess]);
