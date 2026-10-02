@@ -23,7 +23,7 @@ export const actions: Actions = {
     try {
       const result = await apiClientV3.personalAccessTokensApi.generateToken({
         name: name.trim(),
-        scope: 'full',
+        scope: 'write',
         expiresAt:
           expiresAt && typeof expiresAt === 'string' && expiresAt !== ''
             ? new Date(expiresAt).toISOString()
