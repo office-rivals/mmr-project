@@ -14,7 +14,9 @@ http:
       {
         "localIpAddress": "192.168.4.1"
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: "{{hardware_secret}}"
 
 settings:
   encodeUrl: true

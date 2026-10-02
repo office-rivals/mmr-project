@@ -15,7 +15,9 @@ http:
         "rfidUid": "",
         "colors": ["Red", "Green", "Blue", "Yellow"]
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: "{{hardware_secret}}"
 
 settings:
   encodeUrl: true

@@ -15,7 +15,9 @@ http:
         "rfidUids": ["", "", "", ""],
         "temperature": 0
       }
-  auth: inherit
+  auth:
+    type: bearer
+    token: "{{hardware_secret}}"
 
 settings:
   encodeUrl: true
