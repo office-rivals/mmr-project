@@ -1,3 +1,8 @@
+---
+title: API Design
+description: Architectural guidance for the Office Rivals API, including multi-tenancy and authorization.
+---
+
 # API Design Document
 
 **Version:** 1.0
