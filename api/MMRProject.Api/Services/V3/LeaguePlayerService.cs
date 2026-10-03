@@ -22,6 +22,7 @@ public class LeaguePlayerService(
 {
     public async Task<LeaguePlayerResponse> JoinLeagueAsync(Guid orgId, Guid leagueId)
     {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
         var league = await dbContext.Leagues
             .FirstOrDefaultAsync(l => l.Id == leagueId && l.OrganizationId == orgId)
             ?? throw new NotFoundException($"League with ID '{leagueId}' not found");
@@ -32,11 +33,18 @@ public class LeaguePlayerService(
             ?? throw new NotFoundException("User not found");
 
         var membership = await dbContext.OrganizationMemberships
-            .Include(m => m.User)
-            .FirstOrDefaultAsync(m => m.OrganizationId == orgId
-                                      && m.UserId == user.Id
-                                      && m.Status == MembershipStatus.Active)
-            ?? throw new ForbiddenException("You are not an active member of this organization");
+            .FromSqlInterpolated(
+                $"SELECT *, xmin FROM organization_memberships WHERE organization_id = {orgId} AND user_id = {user.Id} FOR UPDATE")
+            .AsTracking()
+            .FirstOrDefaultAsync();
+
+        if (membership == null
+            || membership.OrganizationId != orgId
+            || membership.UserId != user.Id
+            || membership.Status != MembershipStatus.Active)
+        {
+            throw new ForbiddenException("You are not an active member of this organization");
+        }
 
         var existingPlayer = await dbContext.LeaguePlayers
             .FirstOrDefaultAsync(lp => lp.LeagueId == leagueId
@@ -57,6 +65,7 @@ public class LeaguePlayerService(
 
         dbContext.LeaguePlayers.Add(leaguePlayer);
         await dbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return MapToResponse(leaguePlayer, membership);
     }

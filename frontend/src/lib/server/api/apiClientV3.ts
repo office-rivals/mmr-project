@@ -19,6 +19,7 @@ import {
   V3PersonalAccessTokensApi,
   OrganizationInviteLinksApi,
   InvitesApi,
+  OrganizationClaimRequestsApi,
 } from '$api3';
 import { env } from '$env/dynamic/private';
 
@@ -61,6 +62,9 @@ export const createApiClientV3 = (getToken: () => Promise<string | null>) => {
     personalAccessTokensApi: new V3PersonalAccessTokensApi(configuration),
     organizationInviteLinksApi: new OrganizationInviteLinksApi(configuration),
     invitesApi: new InvitesApi(configuration),
+    organizationClaimRequestsApi: new OrganizationClaimRequestsApi(
+      configuration
+    ),
   };
 };
 

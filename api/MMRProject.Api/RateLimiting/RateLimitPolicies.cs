@@ -6,4 +6,5 @@ public static class RateLimitPolicies
     // enumeration oracle, so throttle attempts per user to keep brute force
     // impractical independent of code length.
     public const string InviteLookup = "invite-lookup";
+    public const string ClaimRequestCreate = "claim-request-create";
 }

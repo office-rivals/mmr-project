@@ -25,13 +25,14 @@ public class V3MatchFlagService(
 {
     public async Task<MatchFlagResponse> CreateFlagAsync(Guid orgId, Guid leagueId, CreateMatchFlagRequest request)
     {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
         var matchExists = await dbContext.Set<V3Match>()
             .AnyAsync(m => m.OrganizationId == orgId && m.LeagueId == leagueId && m.Id == request.MatchId);
 
         if (!matchExists)
             throw new NotFoundException("Match not found");
 
-        var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
+        var membership = await LockCurrentMembershipAsync(orgId);
 
         var now = DateTimeOffset.UtcNow;
         var flag = new V3MatchFlag
@@ -39,7 +40,7 @@ public class V3MatchFlagService(
             OrganizationId = orgId,
             LeagueId = leagueId,
             MatchId = request.MatchId,
-            FlaggedByMembershipId = membershipId,
+            FlaggedByMembershipId = membership.Id,
             Reason = request.Reason,
             Status = MatchFlagStatus.Open,
             UpdatedAt = now,
@@ -50,6 +51,7 @@ public class V3MatchFlagService(
         try
         {
             await dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
         {
@@ -86,6 +88,8 @@ public class V3MatchFlagService(
 
     public async Task<MatchFlagResponse> ResolveFlagAsync(Guid orgId, Guid leagueId, Guid flagId, ResolveMatchFlagRequest request)
     {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        var membership = await LockCurrentMembershipAsync(orgId);
         var flag = await dbContext.Set<V3MatchFlag>()
             .FirstOrDefaultAsync(f => f.OrganizationId == orgId && f.LeagueId == leagueId && f.Id == flagId);
 
@@ -95,15 +99,14 @@ public class V3MatchFlagService(
         if (flag.Status != MatchFlagStatus.Open)
             throw new InvalidArgumentException("Flag is already resolved");
 
-        var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
-
         flag.Status = request.Status;
         flag.ResolutionNote = request.ResolutionNote;
-        flag.ResolvedByMembershipId = membershipId;
+        flag.ResolvedByMembershipId = membership.Id;
         flag.ResolvedAt = DateTimeOffset.UtcNow;
         flag.UpdatedAt = DateTimeOffset.UtcNow;
 
         await dbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return await LoadAndMapFlag(orgId, leagueId, flag.Id);
     }
@@ -183,6 +186,27 @@ public class V3MatchFlagService(
             throw new NotFoundException("Match flag not found");
 
         return MapToResponse(flag);
+    }
+
+    private async Task<OrganizationMembership> LockCurrentMembershipAsync(Guid orgId)
+    {
+        var membership = await organizationService.GetMembershipForCurrentUserAsync(orgId)
+            ?? throw new ForbiddenException("You are not an active member of this organization");
+        var expectedUserId = membership.UserId;
+
+        var locked = await dbContext.OrganizationMemberships
+            .FromSqlInterpolated(
+                $"SELECT *, xmin FROM organization_memberships WHERE id = {membership.Id} AND organization_id = {orgId} FOR UPDATE")
+            .AsTracking()
+            .FirstOrDefaultAsync();
+        if (locked == null)
+            throw new ConflictException("Your membership changed. Reload and retry.");
+
+        await dbContext.Entry(membership).ReloadAsync();
+        if (membership.UserId != expectedUserId || membership.Status != MembershipStatus.Active)
+            throw new ConflictException("Your membership changed. Reload and retry.");
+
+        return membership;
     }
 
     private static MatchFlagResponse MapToResponse(V3MatchFlag flag)
