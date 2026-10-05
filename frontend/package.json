@@ -44,7 +44,7 @@
   "type": "module",
   "dependencies": {
     "@carbon/charts-svelte": "^1.27.17",
-    "bits-ui": "^1.8.0",
+    "bits-ui": "^2.19.4",
     "clsx": "^2.1.1",
     "d3": "^7.9.0",
     "d3-cloud": "^1.2.9",
