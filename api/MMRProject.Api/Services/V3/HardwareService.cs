@@ -161,6 +161,7 @@ public class HardwareService(ApiDbContext dbContext) : IHardwareService
             LocalIpAddress = hardware.LocalIpAddress,
             LastSeenAt = hardware.LastSeenAt,
             IsOnline = hardware.LastSeenAt >= now - OnlineWindow,
+            RevokedAt = hardware.RevokedAt,
         };
     }
 }

@@ -187,6 +187,29 @@ public class HardwareTests(PostgresFixture postgres) : IntegrationTestBase(postg
     }
 
     [Fact]
+    public async Task List_ExposesRevocation()
+    {
+        var organization = await CreateOrganization("Hardware Org", "hardware-org");
+        var league = await CreateLeague(organization.Id, "Hardware League", "hardware-league");
+        await SeedOrgMember(organization.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        var revokedId = await SeedHardware(organization.Id, league.Id, "AA:BB:CC:DD:EE:FF");
+        await SeedHardware(organization.Id, league.Id, "11:22:33:44:55:66");
+        AuthenticateAs("owner-1");
+
+        var revokeResponse = await Client.PostAsync(
+            $"api/v3/organizations/{organization.Id}/leagues/{league.Id}/hardware/{revokedId}/revoke", null);
+        Assert.Equal(HttpStatusCode.NoContent, revokeResponse.StatusCode);
+
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{organization.Id}/leagues/{league.Id}/hardware");
+
+        var hardware = (await ReadJsonAsync<List<HardwareResponse>>(response))!;
+        Assert.Equal(2, hardware.Count);
+        Assert.NotNull(hardware.Single(h => h.Id == revokedId).RevokedAt);
+        Assert.Null(hardware.Single(h => h.Id != revokedId).RevokedAt);
+    }
+
+    [Fact]
     public async Task List_RejectsOrganizationMember()
     {
         var organization = await CreateOrganization("Hardware Org", "hardware-org");

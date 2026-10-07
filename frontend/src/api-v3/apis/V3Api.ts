@@ -37,6 +37,9 @@ import type {
   ResolveMatchFlagRequest,
   MatchFlagResponse,
   HardwareResponse,
+  RegisterHardwareRequest,
+  RegisterHardwareResponse,
+  RotateHardwareSecretResponse,
   CreateTokenRequest,
   TokenResponse,
   CreateTokenResponse,
@@ -222,6 +225,45 @@ export class HardwareApi extends runtime.BaseAPI {
       headers: {},
     });
     return await response.json();
+  }
+
+  async register(
+    orgId: string,
+    leagueId: string,
+    request: RegisterHardwareRequest
+  ): Promise<RegisterHardwareResponse> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/hardware`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: request,
+    });
+    return await response.json();
+  }
+
+  async rotateSecret(
+    orgId: string,
+    leagueId: string,
+    hardwareId: string
+  ): Promise<RotateHardwareSecretResponse> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/hardware/${hardwareId}/rotate`,
+      method: 'POST',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async revoke(
+    orgId: string,
+    leagueId: string,
+    hardwareId: string
+  ): Promise<void> {
+    await this.request({
+      path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/hardware/${hardwareId}/revoke`,
+      method: 'POST',
+      headers: {},
+    });
   }
 }
 

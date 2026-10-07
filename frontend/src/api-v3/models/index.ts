@@ -381,6 +381,23 @@ export interface HardwareResponse {
   localIpAddress: string;
   lastSeenAt: string;
   isOnline: boolean;
+  revokedAt?: string | null;
+}
+
+export interface RegisterHardwareRequest {
+  hardwareId: string;
+}
+
+export interface RegisterHardwareResponse {
+  id: string;
+  hardwareId: string;
+  organizationId: string;
+  leagueId: string;
+  secret: string;
+}
+
+export interface RotateHardwareSecretResponse {
+  secret: string;
 }
 
 // Invite Link DTOs

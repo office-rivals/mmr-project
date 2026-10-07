@@ -18,6 +18,7 @@ public record HardwareResponse
     [Required] public required string LocalIpAddress { get; init; }
     [Required] public required DateTimeOffset LastSeenAt { get; init; }
     [Required] public required bool IsOnline { get; init; }
+    public DateTimeOffset? RevokedAt { get; init; }
 }
 
 public record RegisterHardwareRequest
