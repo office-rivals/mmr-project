@@ -1,0 +1,172 @@
+info:
+  name: V3AdminMatchFlags_ResolveFlag
+  type: http
+  seq: 3
+  tags:
+    - V3AdminMatchFlags
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/admin/match-flags/:flagId/resolve"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+    - name: flagId
+      value: ""
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "status": "Open",
+        "resolutionNote": ""
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/admin/match-flags/:flagId/resolve"
+      method: PATCH
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: flagId
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "status": "Open",
+            "resolutionNote": ""
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          {
+            "id": "",
+            "matchId": "",
+            "flaggedByMembershipId": "",
+            "flaggedByDisplayName": "",
+            "reason": "",
+            "status": "Open",
+            "resolutionNote": "",
+            "resolvedByMembershipId": "",
+            "resolvedByDisplayName": "",
+            "resolvedAt": "",
+            "createdAt": "",
+            "updatedAt": ""
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/admin/match-flags/:flagId/resolve"
+      method: PATCH
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: flagId
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "status": "Open",
+            "resolutionNote": ""
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "matchId": "",
+            "flaggedByMembershipId": "",
+            "flaggedByDisplayName": "",
+            "reason": "",
+            "status": "Open",
+            "resolutionNote": "",
+            "resolvedByMembershipId": "",
+            "resolvedByDisplayName": "",
+            "resolvedAt": "",
+            "createdAt": "",
+            "updatedAt": ""
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/admin/match-flags/:flagId/resolve"
+      method: PATCH
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: flagId
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "status": "Open",
+            "resolutionNote": ""
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "matchId": "",
+            "flaggedByMembershipId": "",
+            "flaggedByDisplayName": "",
+            "reason": "",
+            "status": "Open",
+            "resolutionNote": "",
+            "resolvedByMembershipId": "",
+            "resolvedByDisplayName": "",
+            "resolvedAt": "",
+            "createdAt": "",
+            "updatedAt": ""
+          }

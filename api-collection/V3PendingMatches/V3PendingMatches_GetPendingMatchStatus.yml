@@ -1,0 +1,177 @@
+info:
+  name: V3PendingMatches_GetPendingMatchStatus
+  type: http
+  seq: 1
+  tags:
+    - V3PendingMatches
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/pending-matches/:pendingMatchId"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+    - name: pendingMatchId
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/pending-matches/:pendingMatchId"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: pendingMatchId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          {
+            "id": "",
+            "status": "Pending",
+            "expiresAt": "",
+            "teams": [
+              {
+                "index": 0,
+                "players": [
+                  {
+                    "leaguePlayerId": "",
+                    "displayName": "",
+                    "username": "",
+                    "index": 0
+                  }
+                ]
+              }
+            ],
+            "acceptances": [
+              {
+                "leaguePlayerId": "",
+                "status": "Pending",
+                "acceptedAt": ""
+              }
+            ]
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/pending-matches/:pendingMatchId"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: pendingMatchId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "status": "Pending",
+            "expiresAt": "",
+            "teams": [
+              {
+                "index": 0,
+                "players": [
+                  {
+                    "leaguePlayerId": "",
+                    "displayName": "",
+                    "username": "",
+                    "index": 0
+                  }
+                ]
+              }
+            ],
+            "acceptances": [
+              {
+                "leaguePlayerId": "",
+                "status": "Pending",
+                "acceptedAt": ""
+              }
+            ]
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/pending-matches/:pendingMatchId"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: pendingMatchId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "status": "Pending",
+            "expiresAt": "",
+            "teams": [
+              {
+                "index": 0,
+                "players": [
+                  {
+                    "leaguePlayerId": "",
+                    "displayName": "",
+                    "username": "",
+                    "index": 0
+                  }
+                ]
+              }
+            ],
+            "acceptances": [
+              {
+                "leaguePlayerId": "",
+                "status": "Pending",
+                "acceptedAt": ""
+              }
+            ]
+          }
