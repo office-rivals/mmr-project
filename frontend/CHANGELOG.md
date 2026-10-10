@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.6.1
+
+- chore(deps): bump shell-quote and @openapitools/openapi-generator-cli in /frontend
+- chore(deps-dev): bump ip-address from 10.2.0 to 10.4.0 in /frontend
+- chore(deps-dev): bump @sveltejs/kit from 2.70.1 to 2.70.2 in /frontend
+- chore(deps): bump dompurify from 3.4.12 to 3.4.13 in /frontend
+- chore(deps-dev): bump postcss from 8.5.25 to 8.5.26 in /frontend
+- chore(deps): bump dotenv from 16.6.1 to 17.4.2 in /frontend
+- chore(deps-dev): bump autoprefixer from 10.5.0 to 10.5.4 in /frontend
+- chore(deps): bump tailwind-variants from 0.3.1 to 3.3.1 in /frontend
+- chore(deps-dev): bump eslint from 10.3.0 to 10.8.1 in /frontend
+- chore(deps-dev): bump svelte from 5.55.7 to 5.56.10 in /frontend
+- chore(deps): bump postcss-selector-parser in /frontend
+- chore(deps-dev): bump @openapitools/openapi-generator-cli from 2.40.1 to 2.41.0 in /frontend
+- chore(deps): bump @vitest/mocker and vitest in /frontend
+- chore(deps): bump joi from 17.13.4 to 17.13.7 in /frontend
+- chore(deps): bump devalue from 5.8.1 to 5.9.2 in /frontend
+- chore(deps-dev): bump @playwright/test from 1.60.0 to 1.63.0 in /frontend
+- chore(deps-dev): bump ip-address from 10.4.0 to 10.7.2 in /frontend
+- chore(deps): bump bits-ui from 1.8.0 to 2.19.4 in /frontend
+- chore(deps): bump devalue from 5.9.2 to 5.9.4 in /frontend
+- chore(deps): bump dompurify from 3.4.13 to 3.4.16 in /frontend
+- chore(deps-dev): bump brace-expansion from 5.0.7 to 5.0.12 in /frontend
+- chore(deps): bump joi from 17.13.7 to 17.13.8 in /frontend
+- chore(deps): bump source-map-js from 1.2.1 to 1.2.2 in /frontend
+- Fix creating a personal access token from Settings, which the API rejected with "Unsupported PAT scope".
+
 ## 1.6.0
 
 - Group the admin matches list under date headers, matching the player-facing
