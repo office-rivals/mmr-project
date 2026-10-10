@@ -5,6 +5,7 @@ using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
 using MMRProject.Api.Services.V3;
+using HardwareEntity = MMRProject.Api.Data.Entities.V3.Hardware;
 using Npgsql;
 using Respawn;
 using Respawn.Graph;
@@ -242,6 +243,31 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         {
             Factory.ClaimsProvider.AddClaim("pat_league_id", leagueId.Value.ToString());
         }
+    }
+
+    protected void AuthenticateAsHardware(Guid hardwareId, Guid organizationId, Guid leagueId)
+    {
+        Factory.ClaimsProvider.AddClaim("auth_method", "hardware");
+        Factory.ClaimsProvider.AddClaim("hardware_id", hardwareId.ToString());
+        Factory.ClaimsProvider.AddClaim("hardware_org_id", organizationId.ToString());
+        Factory.ClaimsProvider.AddClaim("hardware_league_id", leagueId.ToString());
+    }
+
+    protected async Task<Guid> SeedHardware(Guid organizationId, Guid leagueId, string hardwareId = "AA:BB:CC:DD:EE:FF")
+    {
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var hardware = new HardwareEntity
+        {
+            OrganizationId = organizationId,
+            LeagueId = leagueId,
+            HardwareId = hardwareId,
+            LocalIpAddress = "0.0.0.0",
+            SecretHash = System.Security.Cryptography.SHA256.HashData("hw_test-secret"u8.ToArray()),
+        };
+        dbContext.Hardware.Add(hardware);
+        await dbContext.SaveChangesAsync();
+        return hardware.Id;
     }
 
     protected static async Task<T?> ReadJsonAsync<T>(HttpResponseMessage response)

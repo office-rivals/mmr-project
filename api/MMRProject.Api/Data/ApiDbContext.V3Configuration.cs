@@ -473,5 +473,33 @@ public partial class ApiDbContext
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_match_flags_resolved_by");
         });
+
+        modelBuilder.Entity<Hardware>(entity =>
+        {
+            entity.ToTable("hardware");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.OrganizationId).HasColumnName("organization_id");
+            entity.Property(e => e.LeagueId).HasColumnName("league_id");
+            entity.Property(e => e.HardwareId).HasColumnName("hardware_id").HasMaxLength(64);
+            entity.Property(e => e.LocalIpAddress).HasColumnName("local_ip_address").HasMaxLength(45);
+            entity.Property(e => e.LastSeenAt).HasColumnName("last_seen_at");
+            entity.Property(e => e.SecretHash).HasColumnName("secret_hash");
+            entity.Property(e => e.RevokedAt).HasColumnName("revoked_at");
+
+            entity.HasIndex(e => e.HardwareId, "ix_hardware_hardware_id").IsUnique();
+            entity.HasIndex(e => new { e.OrganizationId, e.LeagueId }, "ix_hardware_org_league");
+
+            entity.HasOne(e => e.Organization).WithMany()
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_hardware_organization");
+
+            entity.HasOne(e => e.League).WithMany()
+                .HasForeignKey(e => e.LeagueId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_hardware_league");
+        });
     }
 }

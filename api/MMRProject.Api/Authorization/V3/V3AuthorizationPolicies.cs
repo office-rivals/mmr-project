@@ -8,4 +8,5 @@ public static class V3AuthorizationPolicies
     public const string RequireLeagueAccess = "RequireLeagueAccess";
     public const string RequirePatWrite = "RequirePatWrite";
     public const string DenyPatAuthentication = "DenyPatAuthentication";
+    public const string RequireHardwareSecret = "RequireHardwareSecret";
 }

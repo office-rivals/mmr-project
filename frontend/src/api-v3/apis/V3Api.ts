@@ -36,6 +36,7 @@ import type {
   UpdateMatchFlagReasonRequest,
   ResolveMatchFlagRequest,
   MatchFlagResponse,
+  HardwareResponse,
   CreateTokenRequest,
   TokenResponse,
   CreateTokenResponse,
@@ -204,6 +205,21 @@ export class LeaguesApi extends runtime.BaseAPI {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: request,
+    });
+    return await response.json();
+  }
+}
+
+// Hardware API
+export class HardwareApi extends runtime.BaseAPI {
+  async listForLeague(
+    orgId: string,
+    leagueId: string
+  ): Promise<HardwareResponse[]> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/hardware`,
+      method: 'GET',
+      headers: {},
     });
     return await response.json();
   }
