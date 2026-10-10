@@ -65,6 +65,7 @@ public class AuthorizationTests(PostgresFixture postgres) : IntegrationTestBase(
 
         Assert.Equal([
             "api/v3/hardware/heartbeat",
+            "api/v3/hardware/pairing",
         ], routes);
     }
 
