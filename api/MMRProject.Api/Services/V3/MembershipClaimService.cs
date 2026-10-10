@@ -54,6 +54,8 @@ public class MembershipClaimService(
     public async Task<MembershipClaimRequestResponse> CreateAsync(
         Guid orgId, CreateMembershipClaimRequest request)
     {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        await dbContext.LockOrganizationClaimsAsync(orgId);
         var (user, requesterMembership) = await GetCurrentRequesterAsync(orgId);
         var existing = await dbContext.MembershipClaimRequests
             .AsNoTracking()
@@ -103,6 +105,7 @@ public class MembershipClaimService(
         try
         {
             await dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException
                                            {
@@ -110,6 +113,7 @@ public class MembershipClaimService(
                                                ConstraintName: PendingTargetIndex
                                            })
         {
+            await transaction.RollbackAsync();
             dbContext.ChangeTracker.Clear();
             var pending = await dbContext.MembershipClaimRequests
                 .AsNoTracking()
@@ -126,6 +130,7 @@ public class MembershipClaimService(
                                                ConstraintName: PendingUserIndex
                                            })
         {
+            await transaction.RollbackAsync();
             dbContext.ChangeTracker.Clear();
             var pending = await dbContext.MembershipClaimRequests
                 .AsNoTracking()

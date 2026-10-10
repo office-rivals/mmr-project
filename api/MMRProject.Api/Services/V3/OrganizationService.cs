@@ -284,6 +284,7 @@ public class OrganizationService(
     public async Task RemoveMemberAsync(Guid orgId, Guid membershipId)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        await dbContext.LockOrganizationClaimsAsync(orgId);
         var membership = await dbContext.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.Id == membershipId
                                       && m.OrganizationId == orgId

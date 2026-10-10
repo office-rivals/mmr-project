@@ -612,6 +612,52 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task CreateClaim_RacingRequesterRemoval_LeavesNoPendingClaim()
+    {
+        var org = await CreateOrganization("Removal Race", "removal-race");
+        await SeedOrgMember(org.Id, "removal-owner", "removal-owner@test.com", OrganizationRole.Owner);
+        var (_, requester) = await SeedOrgMember(
+            org.Id, "removal-requester", "removal-requester@test.com");
+        var target = await SeedPlaceholder(org.Id, "Removal Target");
+        var insertGate = new DbCommandGate(
+            "INSERT INTO membership_claim_requests", CommandGateTiming.Before);
+
+        await using var createFactory = new IntegrationTestFactory(PostgresFixture, insertGate);
+        await using var ownerFactory = new IntegrationTestFactory(PostgresFixture);
+        using var createClient = createFactory.CreateClient();
+        using var ownerClient = ownerFactory.CreateClient();
+        createFactory.ClaimsProvider.SetUser("removal-requester", "removal-requester@test.com");
+        ownerFactory.ClaimsProvider.SetUser("removal-owner", "removal-owner@test.com");
+
+        var createTask = createClient.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/claim-requests",
+            new CreateMembershipClaimRequest { OrganizationMembershipId = target.Id });
+        try
+        {
+            await insertGate.WaitUntilReachedAsync();
+            var removeTask = ownerClient.DeleteAsync(
+                $"api/v3/organizations/{org.Id}/members/{requester.Id}");
+            // Proceed once the removal is blocked or has finished; the end state is what's asserted.
+            await Task.WhenAny(removeTask, WaitForBlockedQueriesAsync(1, "pg_advisory_xact_lock"));
+
+            insertGate.Release();
+            Assert.Equal(HttpStatusCode.Created, (await createTask).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await removeTask).StatusCode);
+        }
+        finally
+        {
+            insertGate.Release();
+        }
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.Equal(MembershipStatus.Removed,
+            (await db.OrganizationMemberships.SingleAsync(m => m.Id == requester.Id)).Status);
+        Assert.Equal(MembershipClaimStatus.Cancelled,
+            (await db.MembershipClaimRequests.SingleAsync(c => c.OrganizationMembershipId == target.Id)).Status);
+    }
+
+    [Fact]
     public async Task MatchSubmitEmailReuse_PrefersExactCaseAndRejectsAmbiguity()
     {
         var org = await CreateOrganization("Submit Email", "submit-email");
