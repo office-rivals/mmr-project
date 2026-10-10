@@ -254,13 +254,18 @@ public class InviteLinkService(
             await using var transaction = await dbContext.Database.BeginTransactionAsync();
             await dbContext.LockOrganizationClaimsAsync(orgInvites.Key);
 
-            // Parallel /me requests race to claim the same invitation. The guarded update
-            // lets the loser match no row instead of failing the membership row version.
+            // Parallel /me requests race to claim the same invitation, and a join may link the
+            // user to another row after the reads above. The guarded update lets the loser match
+            // no row instead of failing the row version or the (organization, user) key.
             var claimed = await dbContext.OrganizationMemberships
                 .Where(m => m.Id == invite.Id
                             && m.Status == MembershipStatus.Invited
                             && m.UserId == invite.UserId
-                            && m.InviteEmail == invite.InviteEmail)
+                            && m.InviteEmail == invite.InviteEmail
+                            && !dbContext.OrganizationMemberships.Any(other =>
+                                other.OrganizationId == m.OrganizationId
+                                && other.UserId == userId
+                                && other.Id != m.Id))
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(m => m.UserId, userId)
                     .SetProperty(m => m.DisplayName, m => m.DisplayName ?? user.DisplayName)

@@ -115,10 +115,13 @@ public class MembershipClaimService(
         {
             await transaction.RollbackAsync();
             dbContext.ChangeTracker.Clear();
+            // The rollback released the claim lock, so the conflicting request may already
+            // have been decided; the caller can retry against the new state.
             var pending = await dbContext.MembershipClaimRequests
                 .AsNoTracking()
-                .FirstAsync(c => c.OrganizationMembershipId == target.Id
-                                 && c.Status == MembershipClaimStatus.Pending);
+                .FirstOrDefaultAsync(c => c.OrganizationMembershipId == target.Id
+                                          && c.Status == MembershipClaimStatus.Pending)
+                ?? throw new ConflictException("Claim requests for this player changed. Reload and try again.");
             if (pending.UserId == user.Id)
                 return await LoadAndMapAsync(orgId, pending.Id);
 
@@ -134,9 +137,10 @@ public class MembershipClaimService(
             dbContext.ChangeTracker.Clear();
             var pending = await dbContext.MembershipClaimRequests
                 .AsNoTracking()
-                .FirstAsync(c => c.OrganizationId == orgId
-                                 && c.UserId == user.Id
-                                 && c.Status == MembershipClaimStatus.Pending);
+                .FirstOrDefaultAsync(c => c.OrganizationId == orgId
+                                          && c.UserId == user.Id
+                                          && c.Status == MembershipClaimStatus.Pending)
+                ?? throw new ConflictException("Your claim requests changed. Reload and try again.");
             if (pending.OrganizationMembershipId == target.Id)
                 return await LoadAndMapAsync(orgId, pending.Id);
 

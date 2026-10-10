@@ -758,40 +758,25 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
             c.OrganizationMembershipId == target.Id && c.Status == MembershipClaimStatus.Pending));
     }
 
-    [Theory]
-    [InlineData("edit")]
-    [InlineData("variant")]
-    public async Task RemovedMember_ReaddressedByEmail_KeepsMeWorkingAndRejoinsOwnMembership(string readdress)
+    [Fact]
+    public async Task RemovedMember_EmailSetOnAnotherPlayer_KeepsMeWorkingAndRejoinsOwnMembership()
     {
-        var org = await CreateOrganization($"Readdress {readdress}", $"readdress-{readdress}");
-        var owner = $"readdress-owner-{readdress}";
-        var email = $"readdress-member-{readdress}@test.com";
+        var org = await CreateOrganization("Readdress", "readdress");
+        const string owner = "readdress-owner";
+        const string email = "readdress-member@test.com";
         await SeedOrgMember(org.Id, owner, $"{owner}@test.com", OrganizationRole.Owner);
-        var (user, member) = await SeedOrgMember(org.Id, $"readdress-member-{readdress}", email);
+        var (user, member) = await SeedOrgMember(org.Id, "readdress-member", email);
         var inviteLink = await CreateInviteLinkForAsync(org.Id, owner);
 
         AuthenticateAs(owner);
         Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync(
             $"api/v3/organizations/{org.Id}/members/{member.Id}")).StatusCode);
-        Guid invitationId;
-        if (readdress == "variant")
-        {
-            var invite = await Client.PostAsJsonAsync(
-                $"api/v3/organizations/{org.Id}/members",
-                new InviteMemberRequest { Email = email.ToUpperInvariant(), Role = OrganizationRole.Member });
-            Assert.Equal(HttpStatusCode.OK, invite.StatusCode);
-            invitationId = (await ReadJsonAsync<OrganizationMemberResponse>(invite))!.Id;
-        }
-        else
-        {
-            invitationId = (await SeedPlaceholder(org.Id, "Readdressed History")).Id;
-            Assert.Equal(HttpStatusCode.OK, (await Client.PatchAsJsonAsync(
-                $"api/v3/organizations/{org.Id}/members/{invitationId}/profile",
-                new UpdateMemberProfileRequest { Email = email })).StatusCode);
-        }
-        Assert.NotEqual(member.Id, invitationId);
+        var invitationId = (await SeedPlaceholder(org.Id, "Readdressed History")).Id;
+        Assert.Equal(HttpStatusCode.OK, (await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members/{invitationId}/profile",
+            new UpdateMemberProfileRequest { Email = email })).StatusCode);
 
-        AuthenticateAs($"readdress-member-{readdress}", email: email);
+        AuthenticateAs("readdress-member", email: email);
         Assert.Equal(HttpStatusCode.OK, (await Client.GetAsync("api/v3/me")).StatusCode);
         var join = await Client.PostAsync($"api/v3/invites/{inviteLink.Code}/join", null);
         Assert.Equal(HttpStatusCode.OK, join.StatusCode);
@@ -807,6 +792,98 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
         var invitation = await db.OrganizationMemberships.SingleAsync(m => m.Id == invitationId);
         Assert.Null(invitation.UserId);
         Assert.Equal(MembershipStatus.Invited, invitation.Status);
+    }
+
+    [Fact]
+    public async Task AutoClaimInvites_JoinLinkingAnotherInvitationMeanwhile_KeepsMeWorking()
+    {
+        var org = await CreateOrganization("Late Join", "late-join");
+        await SeedOrgMember(org.Id, "late-join-owner", "late-join-owner@test.com", OrganizationRole.Owner);
+        var variantInvite = await SeedPlaceholder(
+            org.Id, "Variant Invite", "Late-Joiner@Test.com", MembershipStatus.Invited);
+        var inviteLink = await CreateInviteLinkForAsync(org.Id, "late-join-owner");
+        var lockGate = new DbCommandGate("pg_advisory_xact_lock", CommandGateTiming.Before);
+
+        await using var meFactory = new IntegrationTestFactory(PostgresFixture, lockGate);
+        using var meClient = meFactory.CreateClient();
+        meFactory.ClaimsProvider.SetUser("late-joiner", "late-joiner@test.com");
+
+        var meTask = meClient.GetAsync("api/v3/me");
+        try
+        {
+            await lockGate.WaitUntilReachedAsync();
+            AuthenticateAs("late-join-owner");
+            var exactInvite = await Client.PostAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/members",
+                new InviteMemberRequest { Email = "late-joiner@test.com", Role = OrganizationRole.Member });
+            Assert.Equal(HttpStatusCode.OK, exactInvite.StatusCode);
+            AuthenticateAs("late-joiner", email: "late-joiner@test.com");
+            Assert.Equal(HttpStatusCode.OK,
+                (await Client.PostAsync($"api/v3/invites/{inviteLink.Code}/join", null)).StatusCode);
+
+            lockGate.Release();
+            Assert.Equal(HttpStatusCode.OK, (await meTask).StatusCode);
+        }
+        finally
+        {
+            lockGate.Release();
+        }
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var joiner = await db.V3Users.SingleAsync(u => u.IdentityUserId == "late-joiner");
+        Assert.Equal(1, await db.OrganizationMemberships.CountAsync(m =>
+            m.OrganizationId == org.Id && m.UserId == joiner.Id));
+        var untouched = await db.OrganizationMemberships.SingleAsync(m => m.Id == variantInvite.Id);
+        Assert.Null(untouched.UserId);
+        Assert.Equal(MembershipStatus.Invited, untouched.Status);
+    }
+
+    [Theory]
+    [InlineData("cancel")]
+    [InlineData("approve")]
+    public async Task CreateClaim_ConflictDecidedBeforeItIsReported_ReturnsConflict(string decision)
+    {
+        var org = await CreateOrganization($"Decided Conflict {decision}", $"decided-conflict-{decision}");
+        var owner = $"decided-owner-{decision}";
+        var first = $"decided-first-{decision}";
+        var second = $"decided-second-{decision}";
+        await SeedOrgMember(org.Id, owner, $"{owner}@test.com", OrganizationRole.Owner);
+        await SeedOrgMember(org.Id, first, $"{first}@test.com");
+        await SeedOrgMember(org.Id, second, $"{second}@test.com");
+        var target = await SeedPlaceholder(org.Id, "Decided Target");
+        var firstClaim = await CreateClaimAsync(org.Id, target.Id, first);
+        // Holds the conflict handler's re-read of the competing request, after its rollback.
+        var rereadGate = new DbCommandGate("m.organization_membership_id = @", CommandGateTiming.Before);
+
+        await using var createFactory = new IntegrationTestFactory(PostgresFixture, rereadGate);
+        using var createClient = createFactory.CreateClient();
+        createFactory.ClaimsProvider.SetUser(second, $"{second}@test.com");
+
+        var createTask = createClient.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/claim-requests",
+            new CreateMembershipClaimRequest { OrganizationMembershipId = target.Id });
+        try
+        {
+            await rereadGate.WaitUntilReachedAsync();
+            if (decision == "approve")
+            {
+                await ApproveClaimAsync(org.Id, firstClaim.Id, owner);
+            }
+            else
+            {
+                AuthenticateAs(first);
+                Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync(
+                    $"api/v3/organizations/{org.Id}/claim-requests/{firstClaim.Id}")).StatusCode);
+            }
+
+            rereadGate.Release();
+            Assert.Equal(HttpStatusCode.Conflict, (await createTask).StatusCode);
+        }
+        finally
+        {
+            rereadGate.Release();
+        }
     }
 
     [Fact]

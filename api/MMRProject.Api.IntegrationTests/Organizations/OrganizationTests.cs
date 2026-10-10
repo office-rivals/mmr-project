@@ -234,6 +234,38 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
     }
 
     [Fact]
+    public async Task ReinviteRemovedMember_WithDifferentEmailCasing_ReusesTheirMembershipAndRole()
+    {
+        var org = await CreateOrganization("Recase Org", "recase-org");
+        await SeedOrgMember(org.Id, "recase-owner", "recase-owner@test.com", OrganizationRole.Owner);
+        var (_, membership) = await SeedOrgMember(org.Id, "recase-member", "recase-member@test.com");
+
+        AuthenticateAs("recase-owner");
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/members/{membership.Id}")).StatusCode);
+        var inviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "Recase-Member@Test.com", Role = OrganizationRole.Moderator });
+        Assert.Equal(HttpStatusCode.OK, inviteResponse.StatusCode);
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
+        Assert.NotNull(invited);
+        Assert.Equal(membership.Id, invited.Id);
+
+        AuthenticateAs("recase-member", email: "recase-member@test.com");
+        var meResponse = await Client.GetAsync("api/v3/me");
+        Assert.Equal(HttpStatusCode.OK, meResponse.StatusCode);
+        var me = await ReadJsonAsync<MeResponse>(meResponse);
+        Assert.NotNull(me);
+        Assert.Equal(org.Id, Assert.Single(me.Organizations).Id);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var rejoined = await dbContext.OrganizationMemberships.SingleAsync(m => m.Id == membership.Id);
+        Assert.Equal(MembershipStatus.Active, rejoined.Status);
+        Assert.Equal(OrganizationRole.Moderator, rejoined.Role);
+    }
+
+    [Fact]
     public async Task UpdateMemberProfile_AsModerator_UpdatesDisplayNameAndUsername()
     {
         var org = await CreateOrganization("Profile Org", "profile-org");

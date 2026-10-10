@@ -156,12 +156,16 @@ public class OrganizationService(
         if (existingByUser != null)
             throw new InvalidArgumentException($"A member with email '{request.Email}' already exists in this organization");
 
+        // A removed member keeps their row, and the (organization, user) key means it is the
+        // only one their account can be linked to again, so match it whatever the casing.
         var removedMembership = await dbContext.OrganizationMemberships
             .Include(m => m.User)
-            .FirstOrDefaultAsync(m => m.OrganizationId == orgId
-                                      && m.Status == MembershipStatus.Removed
-                                      && (m.InviteEmail == request.Email
-                                          || (m.User != null && m.User.Email == request.Email)));
+            .Where(m => m.OrganizationId == orgId
+                        && m.Status == MembershipStatus.Removed
+                        && ((m.InviteEmail != null && m.InviteEmail.ToLower() == request.Email.ToLower())
+                            || (m.User != null && m.User.Email.ToLower() == request.Email.ToLower())))
+            .OrderByDescending(m => m.UserId != null)
+            .FirstOrDefaultAsync();
 
         var displayName = string.IsNullOrWhiteSpace(request.DisplayName)
             ? null
