@@ -503,6 +503,115 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task AutoClaimInvites_SkipsAmbiguousUnjoinedOrgAndClaimsTheRest()
+    {
+        var ambiguousOrg = await CreateOrganization("Auto Ambiguous", "auto-ambiguous");
+        var otherOrg = await CreateOrganization("Auto Other", "auto-other");
+        var firstVariant = await SeedPlaceholder(
+            ambiguousOrg.Id, "Variant One", "Auto-Ambiguous@Test.com", MembershipStatus.Invited);
+        var secondVariant = await SeedPlaceholder(
+            ambiguousOrg.Id, "Variant Two", "AUTO-AMBIGUOUS@test.com", MembershipStatus.Invited);
+        var otherInvite = await SeedPlaceholder(
+            otherOrg.Id, "Other Guest", "auto-ambiguous@test.com", MembershipStatus.Invited);
+
+        AuthenticateAs("auto-ambiguous", email: "auto-ambiguous@test.com");
+        var response = await Client.GetAsync("api/v3/me");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.All(await db.OrganizationMemberships
+                .Where(m => m.Id == firstVariant.Id || m.Id == secondVariant.Id)
+                .ToListAsync(),
+            membership =>
+            {
+                Assert.Null(membership.UserId);
+                Assert.Equal(MembershipStatus.Invited, membership.Status);
+            });
+        var claimed = await db.OrganizationMemberships.SingleAsync(m => m.Id == otherInvite.Id);
+        Assert.NotNull(claimed.UserId);
+        Assert.Equal(MembershipStatus.Active, claimed.Status);
+    }
+
+    [Fact]
+    public async Task AutoClaimInvites_ConcurrentMeRequestsClaimOnceWithoutConflict()
+    {
+        var org = await CreateOrganization("Auto Race", "auto-race");
+        var racer = await SeedUser("auto-racer", "auto-racer@test.com");
+        var invite = await SeedPlaceholder(
+            org.Id, "Racing Guest", "auto-racer@test.com", MembershipStatus.Invited);
+
+        AuthenticateAs("auto-racer", email: "auto-racer@test.com");
+        Task<HttpResponseMessage> first;
+        Task<HttpResponseMessage> second;
+        await using (var blocker = await LockRowAsync("organization_memberships", invite.Id))
+        {
+            first = Client.GetAsync("api/v3/me");
+            second = Client.GetAsync("api/v3/me");
+            Assert.True(await WaitForBlockedQueriesAsync(2, "UPDATE", "organization_memberships"));
+            await blocker.ReleaseAsync();
+        }
+
+        Assert.Equal(HttpStatusCode.OK, (await first).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await second).StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var claimed = await db.OrganizationMemberships.SingleAsync(m => m.Id == invite.Id);
+        Assert.Equal(racer.Id, claimed.UserId);
+        Assert.Equal(MembershipStatus.Active, claimed.Status);
+        Assert.Equal("Racing Guest", claimed.DisplayName);
+        Assert.Equal(1, await db.OrganizationMemberships.CountAsync(m =>
+            m.OrganizationId == org.Id && m.UserId == racer.Id));
+    }
+
+    [Fact]
+    public async Task InviteClaims_CancelPendingClaimsOnTheClaimedPlayer()
+    {
+        var org = await CreateOrganization("Redirected Claim", "redirected-claim");
+        await SeedOrgMember(org.Id, "redirect-owner", "redirect-owner@test.com", OrganizationRole.Owner);
+        await SeedOrgMember(org.Id, "auto-requester", "auto-requester@test.com");
+        await SeedOrgMember(org.Id, "join-requester", "join-requester@test.com");
+        var autoTarget = await SeedPlaceholder(org.Id, "Auto Target");
+        var joinTarget = await SeedPlaceholder(org.Id, "Join Target");
+        var autoClaim = await CreateClaimAsync(org.Id, autoTarget.Id, "auto-requester");
+        var joinClaim = await CreateClaimAsync(org.Id, joinTarget.Id, "join-requester");
+
+        AuthenticateAs("redirect-owner");
+        foreach (var (targetId, email) in new[]
+                 {
+                     (autoTarget.Id, "auto-addressee@test.com"),
+                     (joinTarget.Id, "join-addressee@test.com"),
+                 })
+        {
+            var edit = await Client.PatchAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/members/{targetId}/profile",
+                new UpdateMemberProfileRequest { Email = email });
+            Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+        }
+        var invite = await CreateInviteLinkForAsync(org.Id, "redirect-owner");
+
+        AuthenticateAs("auto-addressee", email: "auto-addressee@test.com");
+        Assert.Equal(HttpStatusCode.OK, (await Client.GetAsync("api/v3/me")).StatusCode);
+        AuthenticateAs("join-addressee", email: "join-addressee@test.com");
+        Assert.Equal(HttpStatusCode.OK,
+            (await Client.PostAsync($"api/v3/invites/{invite.Code}/join", null)).StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        foreach (var targetId in new[] { autoTarget.Id, joinTarget.Id })
+        {
+            var target = await db.OrganizationMemberships.SingleAsync(m => m.Id == targetId);
+            Assert.NotNull(target.UserId);
+            Assert.Equal(MembershipStatus.Active, target.Status);
+        }
+        Assert.Equal(MembershipClaimStatus.Cancelled,
+            (await db.MembershipClaimRequests.SingleAsync(c => c.Id == autoClaim.Id)).Status);
+        Assert.Equal(MembershipClaimStatus.Cancelled,
+            (await db.MembershipClaimRequests.SingleAsync(c => c.Id == joinClaim.Id)).Status);
+    }
+
+    [Fact]
     public async Task MatchSubmitEmailReuse_PrefersExactCaseAndRejectsAmbiguity()
     {
         var org = await CreateOrganization("Submit Email", "submit-email");
@@ -1456,6 +1565,33 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
         }
 
         throw new TimeoutException("No request was observed waiting on an organization membership lock.");
+    }
+
+    private async Task<bool> WaitForBlockedQueriesAsync(int count, params string[] queryFragments)
+    {
+        await using var connection = new NpgsqlConnection(PostgresFixture.GetConnectionString());
+        await connection.OpenAsync();
+        var patterns = queryFragments.Select(fragment => $"%{fragment}%").ToArray();
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            await using var command = new NpgsqlCommand("""
+                SELECT count(*)
+                FROM pg_stat_activity AS activity
+                WHERE activity.datname = current_database()
+                  AND activity.wait_event_type = 'Lock'
+                  AND cardinality(pg_blocking_pids(activity.pid)) > 0
+                  AND activity.query ILIKE ALL (@patterns)
+                """, connection);
+            command.Parameters.AddWithValue("patterns", patterns);
+            if ((long)(await command.ExecuteScalarAsync())! >= count)
+                return true;
+
+            await Task.Delay(25);
+        }
+
+        return false;
     }
 
     private sealed class DatabaseRowLock(
