@@ -6,8 +6,9 @@ namespace MMRProject.Api.Services.V3;
 
 internal static class MembershipLockingExtensions
 {
-    // Serializes claim creation with member removal. Removal cancels the member's pending
-    // claims, so a claim inserted while a removal is in flight would otherwise survive it.
+    // Serializes claim creation with the operations that settle pending claims: member
+    // removal, approval, and linking a player through an invitation. A claim inserted while
+    // one of them is in flight would otherwise land after its cleanup and stay pending.
     public static async Task LockOrganizationClaimsAsync(this ApiDbContext dbContext, Guid orgId)
     {
         await dbContext.Database.ExecuteSqlInterpolatedAsync(

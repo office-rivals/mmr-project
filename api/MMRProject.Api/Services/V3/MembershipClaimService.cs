@@ -220,6 +220,7 @@ public class MembershipClaimService(
     {
         var (actorUser, actorMembership) = await GetCurrentRequesterAsync(orgId);
         await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        await dbContext.LockOrganizationClaimsAsync(orgId);
         var claim = await LockClaimAsync(orgId, claimId)
             ?? throw new NotFoundException("Claim request not found");
 
