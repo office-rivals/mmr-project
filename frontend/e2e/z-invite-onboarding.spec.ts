@@ -125,6 +125,7 @@ async function signInAndJoinOrganization(
 test.describe.serial('Invite onboarding claims a name-only player', () => {
   let clerkUserId = '';
   let skippingClerkUserId = '';
+  let guestLeaguePlayerId = '';
 
   test.beforeAll(async () => {
     expect(
@@ -256,13 +257,12 @@ test.describe.serial('Invite onboarding claims a name-only player', () => {
       )
     ).toBe('1');
 
-    expect(
-      psql(
-        `SELECT count(*) FROM league_players lp
-         JOIN organization_memberships m ON m.id = lp.organization_membership_id
-         WHERE lp.league_id = '${LEAGUE_ID}' AND m.display_name = '${GUEST_NAME}';`
-      )
-    ).toBe('1');
+    guestLeaguePlayerId = psql(
+      `SELECT lp.id FROM league_players lp
+       JOIN organization_memberships m ON m.id = lp.organization_membership_id
+       WHERE lp.league_id = '${LEAGUE_ID}' AND m.display_name = '${GUEST_NAME}';`
+    );
+    expect(guestLeaguePlayerId).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   test('the real human can return, cancel, and re-request the guest player', async ({
@@ -389,9 +389,10 @@ test.describe.serial('Invite onboarding claims a name-only player', () => {
       )
     ).toBe('1');
 
+    // Exactly one row, and it is the guest's original player, not a replacement.
     expect(
       psql(
-        `SELECT count(*) FROM league_players lp
+        `SELECT lp.id FROM league_players lp
          JOIN membership_claim_requests c
            ON lp.organization_membership_id IN
              (c.organization_membership_id, c.retired_membership_id)
@@ -399,7 +400,7 @@ test.describe.serial('Invite onboarding claims a name-only player', () => {
          WHERE lp.league_id = '${LEAGUE_ID}' AND c.status = 1
            AND u.identity_user_id = '${clerkUserId}';`
       )
-    ).toBe('1');
+    ).toBe(guestLeaguePlayerId);
 
     expect(
       psql(

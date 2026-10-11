@@ -1211,9 +1211,16 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
         Assert.Equal(MembershipStatus.Invited,
             (await ReadJsonAsync<OrganizationMemberResponse>(setEmail))!.Status);
 
-        await SeedUser("guest", "guest@test.com");
+        var guest = await SeedUser("guest", "guest@test.com");
         AuthenticateAs("guest", email: "guest@test.com");
         Assert.Equal(HttpStatusCode.OK, (await Client.GetAsync("api/v3/me")).StatusCode);
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+            var repaired = await db.OrganizationMemberships.SingleAsync(m => m.Id == target.Id);
+            Assert.Equal(guest.Id, repaired.UserId);
+            Assert.Equal(MembershipStatus.Active, repaired.Status);
+        }
 
         var clearTarget = await SeedPlaceholder(
             org.Id, "Clear Email", "clear@test.com", MembershipStatus.Invited);
@@ -1418,7 +1425,7 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
     }
 
     [Fact]
-    public async Task PendingMatchActivity_IgnoresDeclinedDebrisButBlocksLiveMatches()
+    public async Task PendingMatchActivity_IgnoresDeclinedDebris()
     {
         var org = await CreateOrganization();
         var league = await CreateLeague(org.Id, teamSize: 1);
@@ -1441,14 +1448,20 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
             Assert.False(await db.LeaguePlayers.AnyAsync(lp =>
                 lp.OrganizationMembershipId == requesterMembership.Id));
         }
+    }
 
+    [Theory]
+    [InlineData(AcceptanceStatus.Pending)]
+    [InlineData(AcceptanceStatus.Accepted)]
+    public async Task PendingMatchActivity_LiveMatchBlocksClaim(AcceptanceStatus status)
+    {
         var liveOrg = await CreateOrganization("Live Pending", "live-pending");
         var liveLeague = await CreateLeague(liveOrg.Id, "Live League", "live-league", teamSize: 1);
         await SeedOrgMember(liveOrg.Id, "live-owner", "live-owner@test.com", OrganizationRole.Owner);
         var (_, _, livePlayer) = await SeedTestUser(
             liveOrg.Id, liveLeague.Id, "live-requester", "live-requester@test.com");
         var liveTarget = await SeedPlaceholder(liveOrg.Id, "Live Target");
-        await SeedPendingMatchAsync(liveOrg.Id, liveLeague.Id, livePlayer.Id, AcceptanceStatus.Pending);
+        await SeedPendingMatchAsync(liveOrg.Id, liveLeague.Id, livePlayer.Id, status);
 
         AuthenticateAs("live-requester");
         var response = await Client.PostAsJsonAsync(
@@ -1456,6 +1469,53 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
             new CreateMembershipClaimRequest { OrganizationMembershipId = liveTarget.Id });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("match activity", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Approve_KeepsClaimantLeagueAndFlagsWhereTargetHasNoPlayer()
+    {
+        var org = await CreateOrganization();
+        var flaggedLeague = await CreateLeague(org.Id, teamSize: 1);
+        var targetLeague = await CreateLeague(org.Id, "Target League", "target-league", teamSize: 1);
+        await CreateSeason(org.Id, flaggedLeague.Id);
+        var (_, _, ownerPlayer) = await SeedTestUser(
+            org.Id, flaggedLeague.Id, "owner", "owner@test.com", OrganizationRole.Owner);
+        var (_, _, opponent) = await SeedTestUser(
+            org.Id, flaggedLeague.Id, "opponent", "opponent@test.com");
+        var (_, requesterMembership, requesterPlayer) = await SeedTestUser(
+            org.Id, flaggedLeague.Id, "requester", "requester@test.com");
+        AuthenticateAs("owner");
+        var match = await ReadJsonAsync<MatchResponse>(await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{flaggedLeague.Id}/matches",
+            OneVsOne(ownerPlayer.Id, opponent.Id)));
+        Assert.NotNull(match);
+
+        AuthenticateAs("requester");
+        var flagResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{flaggedLeague.Id}/match-flags",
+            new CreateMatchFlagRequest { MatchId = match.Id, Reason = "Wrong score" });
+        Assert.Equal(HttpStatusCode.Created, flagResponse.StatusCode);
+        var flag = await ReadJsonAsync<MatchFlagResponse>(flagResponse);
+        var target = await SeedPlaceholder(org.Id, "Target");
+        await SeedLeaguePlayerAsync(org.Id, targetLeague.Id, target.Id);
+        var claim = await CreateClaimAsync(org.Id, target.Id, "requester");
+        await ApproveClaimAsync(org.Id, claim.Id, "owner");
+
+        AuthenticateAs("requester");
+        var flagsPath = $"api/v3/organizations/{org.Id}/leagues/{flaggedLeague.Id}/match-flags";
+        var mineResponse = await Client.GetAsync($"{flagsPath}/me");
+        Assert.Equal(HttpStatusCode.OK, mineResponse.StatusCode);
+        Assert.Equal(flag!.Id, Assert.Single((await ReadJsonAsync<List<MatchFlagResponse>>(mineResponse))!).Id);
+        Assert.Equal(HttpStatusCode.OK, (await Client.PutAsJsonAsync($"{flagsPath}/{flag.Id}",
+            new UpdateMatchFlagReasonRequest { Reason = "Updated reason" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync($"{flagsPath}/{flag.Id}")).StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.Equal(target.Id, (await db.LeaguePlayers.SingleAsync(lp => lp.Id == requesterPlayer.Id))
+            .OrganizationMembershipId);
+        Assert.False(await db.LeaguePlayers.AnyAsync(lp =>
+            lp.OrganizationMembershipId == requesterMembership.Id));
     }
 
     [Fact]
@@ -1789,6 +1849,9 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
         var (_, _, ownerPlayer) = await SeedTestUser(
             org.Id, league.Id, $"{prefix}-owner", $"{prefix}-owner@test.com", OrganizationRole.Owner);
         var target = await SeedPlaceholder(org.Id, $"Target {prefix}");
+        // The target plays this league, so approval deletes the requester's player there
+        // rather than moving it; the race is with that DELETE.
+        await SeedLeaguePlayerAsync(org.Id, league.Id, target.Id);
         var claim = await CreateClaimAsync(
             org.Id, target.Id, $"{prefix}-requester");
 

@@ -291,11 +291,24 @@ public class MembershipClaimService(
             var leaguePlayers = await dbContext.LeaguePlayers
                 .Where(lp => claimantPlayerIds.Contains(lp.Id))
                 .ToListAsync();
+            var targetLeagueIds = await dbContext.LeaguePlayers
+                .Where(lp => lp.OrganizationMembershipId == target.Id)
+                .Select(lp => lp.LeagueId)
+                .ToListAsync();
 
             dbContext.PendingMatchTeamPlayers.RemoveRange(staleTeamPlayers);
             dbContext.PendingMatchAcceptances.RemoveRange(staleAcceptances);
             dbContext.QueueEntries.RemoveRange(queueEntries);
-            dbContext.LeaguePlayers.RemoveRange(leaguePlayers);
+            // A history-free player in a league the target never played moves to the target,
+            // so the user keeps that league, and the flags repointed below stay reachable
+            // through it. Only duplicates of the target's own players are deleted.
+            foreach (var leaguePlayer in leaguePlayers)
+            {
+                if (targetLeagueIds.Contains(leaguePlayer.LeagueId))
+                    dbContext.LeaguePlayers.Remove(leaguePlayer);
+                else
+                    leaguePlayer.OrganizationMembershipId = target.Id;
+            }
         }
 
         var flags = await dbContext.V3MatchFlags

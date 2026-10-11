@@ -404,6 +404,11 @@
                         value={member.email ?? ''}
                         placeholder="user@example.com"
                       />
+                      <p class="text-xs text-muted-foreground">
+                        Saving an email invites this player: they're linked when
+                        that person signs in, so there's no need to send a
+                        separate invite.
+                      </p>
                     {/if}
                   </div>
                 </div>

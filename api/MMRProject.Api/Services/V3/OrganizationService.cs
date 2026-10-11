@@ -219,12 +219,7 @@ public class OrganizationService(
 
         if (membership.Role == OrganizationRole.Owner && request.Role != OrganizationRole.Owner)
         {
-            var hasOtherOwner = await dbContext.OrganizationMemberships
-                .AnyAsync(m => m.OrganizationId == orgId
-                               && m.Status == MembershipStatus.Active
-                               && m.Role == OrganizationRole.Owner
-                               && m.Id != membershipId);
-            if (!hasOtherOwner)
+            if (!await HasOtherSignedInOwnerAsync(orgId, membershipId))
                 throw new InvalidArgumentException("Cannot remove the last owner of the organization");
         }
 
@@ -297,12 +292,7 @@ public class OrganizationService(
 
         if (membership.Role == OrganizationRole.Owner)
         {
-            var hasOtherOwner = await dbContext.OrganizationMemberships
-                .AnyAsync(m => m.OrganizationId == orgId
-                               && m.Status == MembershipStatus.Active
-                               && m.Role == OrganizationRole.Owner
-                               && m.Id != membershipId);
-            if (!hasOtherOwner)
+            if (!await HasOtherSignedInOwnerAsync(orgId, membershipId))
                 throw new InvalidArgumentException("Cannot remove the last owner of the organization");
         }
 
@@ -335,6 +325,16 @@ public class OrganizationService(
             ?? throw new NotFoundException("You are not a member of this organization");
         return membership.Id;
     }
+
+    // An Active Owner row without an account (an invitation whose email was cleared, or a
+    // promoted placeholder) can't sign in, so it doesn't keep the organization administrable.
+    private Task<bool> HasOtherSignedInOwnerAsync(Guid orgId, Guid membershipId) =>
+        dbContext.OrganizationMemberships
+            .AnyAsync(m => m.OrganizationId == orgId
+                           && m.Status == MembershipStatus.Active
+                           && m.Role == OrganizationRole.Owner
+                           && m.UserId != null
+                           && m.Id != membershipId);
 
     private static void ValidateSlug(string slug)
     {

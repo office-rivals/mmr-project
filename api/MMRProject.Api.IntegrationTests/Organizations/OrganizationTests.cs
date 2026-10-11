@@ -168,6 +168,34 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
         Assert.True(response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict);
     }
 
+    [Theory]
+    [InlineData("demote")]
+    [InlineData("remove")]
+    public async Task LastOwner_CannotStepDownLeavingOnlyAnAccountlessOwner(string action)
+    {
+        var org = await CreateOrganization("Ghost Owner Org", "ghost-owner-org");
+        var (_, ownerMembership) = await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("owner-1");
+
+        var inviteResponse = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "second-owner@test.com", Role = OrganizationRole.Owner });
+        inviteResponse.EnsureSuccessStatusCode();
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
+        var clearEmail = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members/{invited!.Id}/profile",
+            new UpdateMemberProfileRequest { Email = "" });
+        Assert.Equal(MembershipStatus.Active,
+            (await ReadJsonAsync<OrganizationMemberResponse>(clearEmail))!.Status);
+
+        var response = action == "demote"
+            ? await Client.PatchAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/members/{ownerMembership.Id}",
+                new UpdateMemberRoleRequest { Role = OrganizationRole.Member })
+            : await Client.DeleteAsync($"api/v3/organizations/{org.Id}/members/{ownerMembership.Id}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task RemoveMember_PreservesLeagueHistoryAndHidesMembership()
     {
