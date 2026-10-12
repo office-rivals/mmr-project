@@ -9,6 +9,8 @@ internal static class MembershipLockingExtensions
     // Serializes claim creation with the operations that settle pending claims: member
     // removal, approval, and linking a player through an invitation. A claim inserted while
     // one of them is in flight would otherwise land after its cleanup and stay pending.
+    // Role changes take it too, so two owners stepping each other down can't both pass
+    // the last-owner check.
     public static async Task LockOrganizationClaimsAsync(this ApiDbContext dbContext, Guid orgId)
     {
         await dbContext.Database.ExecuteSqlInterpolatedAsync(

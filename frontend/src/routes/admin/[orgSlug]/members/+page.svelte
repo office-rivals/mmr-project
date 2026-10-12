@@ -405,9 +405,11 @@
                         placeholder="user@example.com"
                       />
                       <p class="text-xs text-muted-foreground">
-                        Saving an email invites this player: they're linked when
-                        that person signs in, so there's no need to send a
-                        separate invite.
+                        Saving an email invites this player: they're linked the
+                        next time that person signs in, so there's no need to
+                        send a separate invite. If they're already a member
+                        here, they can claim this player from the organization
+                        page instead.
                       </p>
                     {/if}
                   </div>

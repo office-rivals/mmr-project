@@ -207,6 +207,8 @@ public class OrganizationService(
     public async Task<OrganizationMemberResponse> UpdateMemberRoleAsync(
         Guid orgId, Guid membershipId, UpdateMemberRoleRequest request)
     {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        await dbContext.LockOrganizationClaimsAsync(orgId);
         var membership = await dbContext.OrganizationMemberships
             .Include(m => m.User)
             .FirstOrDefaultAsync(m => m.Id == membershipId
@@ -228,6 +230,7 @@ public class OrganizationService(
         membership.RoleAssignedAt = DateTimeOffset.UtcNow;
 
         await dbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return MapToMemberResponse(membership);
     }

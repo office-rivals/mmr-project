@@ -660,6 +660,53 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
             (await db.MembershipClaimRequests.SingleAsync(c => c.OrganizationMembershipId == target.Id)).Status);
     }
 
+    [Fact]
+    public async Task LastOwner_RacingRemovalAndDemotionKeepAnOwner()
+    {
+        var org = await CreateOrganization("Owner Race", "owner-race");
+        var (_, first) = await SeedOrgMember(
+            org.Id, "first-owner", "first-owner@test.com", OrganizationRole.Owner);
+        var (_, second) = await SeedOrgMember(
+            org.Id, "second-owner", "second-owner@test.com", OrganizationRole.Owner);
+        var updateGate = new DbCommandGate("UPDATE organization_memberships", CommandGateTiming.Before);
+
+        await using var removeFactory = new IntegrationTestFactory(PostgresFixture, updateGate);
+        await using var demoteFactory = new IntegrationTestFactory(PostgresFixture);
+        using var removeClient = removeFactory.CreateClient();
+        using var demoteClient = demoteFactory.CreateClient();
+        removeFactory.ClaimsProvider.SetUser("first-owner", "first-owner@test.com");
+        demoteFactory.ClaimsProvider.SetUser("second-owner", "second-owner@test.com");
+
+        // The removal has passed its last-owner check and is about to write.
+        var removeTask = removeClient.DeleteAsync($"api/v3/organizations/{org.Id}/members/{second.Id}");
+        HttpResponseMessage demote;
+        try
+        {
+            await updateGate.WaitUntilReachedAsync();
+            var demoteTask = demoteClient.PatchAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/members/{first.Id}",
+                new UpdateMemberRoleRequest { Role = OrganizationRole.Member });
+            await Task.WhenAny(demoteTask, WaitForBlockedQueriesAsync(1, "pg_advisory_xact_lock"));
+
+            updateGate.Release();
+            Assert.Equal(HttpStatusCode.NoContent, (await removeTask).StatusCode);
+            demote = await demoteTask;
+        }
+        finally
+        {
+            updateGate.Release();
+        }
+
+        Assert.NotEqual(HttpStatusCode.OK, demote.StatusCode);
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.True(await db.OrganizationMemberships.AnyAsync(m =>
+            m.OrganizationId == org.Id
+            && m.Status == MembershipStatus.Active
+            && m.Role == OrganizationRole.Owner
+            && m.UserId != null));
+    }
+
     [Theory]
     [InlineData("me")]
     [InlineData("join")]
@@ -1299,10 +1346,16 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
             var demoteTask = roleClient.PatchAsJsonAsync(
                 $"api/v3/organizations/{raceOrg.Id}/members/{claimant.Id}",
                 new UpdateMemberRoleRequest { Role = OrganizationRole.Member });
+            var renameTask = roleClient.PatchAsJsonAsync(
+                $"api/v3/organizations/{raceOrg.Id}/members/{claimant.Id}/profile",
+                new UpdateMemberProfileRequest { DisplayName = "Renamed Claimant" });
             await Task.Delay(250);
             await blocker.ReleaseAsync();
             Assert.Equal(HttpStatusCode.OK, (await approveTask).StatusCode);
-            Assert.Equal(HttpStatusCode.Conflict, (await demoteTask).StatusCode);
+            // Role changes take the claim lock, so the demote waits for approval and finds
+            // the claimant retired; the profile edit read it earlier and loses on xmin.
+            Assert.Equal(HttpStatusCode.NotFound, (await demoteTask).StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, (await renameTask).StatusCode);
         }
     }
 
@@ -1424,8 +1477,10 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
         }
     }
 
-    [Fact]
-    public async Task PendingMatchActivity_IgnoresDeclinedDebris()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PendingMatchActivity_IgnoresDeclinedDebris(bool targetPlaysLeague)
     {
         var org = await CreateOrganization();
         var league = await CreateLeague(org.Id, teamSize: 1);
@@ -1433,6 +1488,10 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
         var (_, requesterMembership, requesterPlayer) = await SeedTestUser(
             org.Id, league.Id, "requester", "requester@test.com");
         var target = await SeedPlaceholder(org.Id, "Target");
+        // With a target player in the league, approval deletes the requester's player
+        // instead of moving it, and the declined rows must be gone before that delete.
+        if (targetPlaysLeague)
+            await SeedLeaguePlayerAsync(org.Id, league.Id, target.Id);
         await SeedPendingMatchAsync(org.Id, league.Id, requesterPlayer.Id, AcceptanceStatus.Declined);
 
         var claim = await CreateClaimAsync(org.Id, target.Id, "requester");
@@ -1447,6 +1506,8 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
                 a.LeaguePlayerId == requesterPlayer.Id));
             Assert.False(await db.LeaguePlayers.AnyAsync(lp =>
                 lp.OrganizationMembershipId == requesterMembership.Id));
+            Assert.Equal(!targetPlaysLeague,
+                await db.LeaguePlayers.AnyAsync(lp => lp.Id == requesterPlayer.Id));
         }
     }
 
