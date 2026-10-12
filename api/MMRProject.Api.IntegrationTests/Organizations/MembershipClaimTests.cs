@@ -697,7 +697,8 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
             updateGate.Release();
         }
 
-        Assert.NotEqual(HttpStatusCode.OK, demote.StatusCode);
+        // The demoting owner was just removed, so the request is refused as theirs.
+        Assert.Equal(HttpStatusCode.Forbidden, demote.StatusCode);
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
         Assert.True(await db.OrganizationMemberships.AnyAsync(m =>
@@ -705,6 +706,117 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
             && m.Status == MembershipStatus.Active
             && m.Role == OrganizationRole.Owner
             && m.UserId != null));
+    }
+
+    [Fact]
+    public async Task LastOwner_RacingSelfDemotionsKeepAnOwner()
+    {
+        var org = await CreateOrganization("Self Demotion Race", "self-demotion-race");
+        var (_, first) = await SeedOrgMember(
+            org.Id, "first-owner", "first-owner@test.com", OrganizationRole.Owner);
+        var (_, second) = await SeedOrgMember(
+            org.Id, "second-owner", "second-owner@test.com", OrganizationRole.Owner);
+        var updateGate = new DbCommandGate("UPDATE organization_memberships", CommandGateTiming.Before);
+
+        await using var firstFactory = new IntegrationTestFactory(PostgresFixture, updateGate);
+        await using var secondFactory = new IntegrationTestFactory(PostgresFixture);
+        using var firstClient = firstFactory.CreateClient();
+        using var secondClient = secondFactory.CreateClient();
+        firstFactory.ClaimsProvider.SetUser("first-owner", "first-owner@test.com");
+        secondFactory.ClaimsProvider.SetUser("second-owner", "second-owner@test.com");
+
+        // Each owner steps down, so the second request is still an owner's and only the
+        // last-owner check can refuse it.
+        var firstTask = firstClient.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members/{first.Id}",
+            new UpdateMemberRoleRequest { Role = OrganizationRole.Member });
+        HttpResponseMessage secondResponse;
+        try
+        {
+            await updateGate.WaitUntilReachedAsync();
+            var secondTask = secondClient.PatchAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/members/{second.Id}",
+                new UpdateMemberRoleRequest { Role = OrganizationRole.Member });
+            await Task.WhenAny(secondTask, WaitForBlockedQueriesAsync(1, "pg_advisory_xact_lock"));
+
+            updateGate.Release();
+            Assert.Equal(HttpStatusCode.OK, (await firstTask).StatusCode);
+            secondResponse = await secondTask;
+        }
+        finally
+        {
+            updateGate.Release();
+        }
+
+        Assert.Equal(HttpStatusCode.BadRequest, secondResponse.StatusCode);
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.Equal(OrganizationRole.Owner,
+            (await db.OrganizationMemberships.SingleAsync(m => m.Id == second.Id)).Role);
+    }
+
+    [Theory]
+    [InlineData("promote-self")]
+    [InlineData("remove-owner")]
+    [InlineData("approve-claim")]
+    public async Task DemotedOwner_QueuedRequestIsRefused(string queuedRequest)
+    {
+        var org = await CreateOrganization("Demotion Race", "demotion-race");
+        await SeedOrgMember(org.Id, "demoter", "demoter@test.com", OrganizationRole.Owner);
+        var (_, demoted) = await SeedOrgMember(
+            org.Id, "demoted", "demoted@test.com", OrganizationRole.Owner);
+        var (_, bystander) = await SeedOrgMember(
+            org.Id, "bystander", "bystander@test.com", OrganizationRole.Owner);
+        await SeedOrgMember(org.Id, "requester", "requester@test.com");
+        var target = await SeedPlaceholder(org.Id, "Demotion Target");
+        var claim = await CreateClaimAsync(org.Id, target.Id, "requester");
+        var updateGate = new DbCommandGate("UPDATE organization_memberships", CommandGateTiming.Before);
+
+        await using var demoterFactory = new IntegrationTestFactory(PostgresFixture, updateGate);
+        await using var demotedFactory = new IntegrationTestFactory(PostgresFixture);
+        using var demoterClient = demoterFactory.CreateClient();
+        using var demotedClient = demotedFactory.CreateClient();
+        demoterFactory.ClaimsProvider.SetUser("demoter", "demoter@test.com");
+        demotedFactory.ClaimsProvider.SetUser("demoted", "demoted@test.com");
+
+        var demoteTask = demoterClient.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members/{demoted.Id}",
+            new UpdateMemberRoleRequest { Role = OrganizationRole.Member });
+        HttpResponseMessage queuedResponse;
+        try
+        {
+            await updateGate.WaitUntilReachedAsync();
+            // Authorized while still an owner, then queued behind the demotion.
+            var queuedTask = queuedRequest switch
+            {
+                "promote-self" => demotedClient.PatchAsJsonAsync(
+                    $"api/v3/organizations/{org.Id}/members/{demoted.Id}",
+                    new UpdateMemberRoleRequest { Role = OrganizationRole.Owner }),
+                "remove-owner" => demotedClient.DeleteAsync(
+                    $"api/v3/organizations/{org.Id}/members/{bystander.Id}"),
+                _ => demotedClient.PostAsync(
+                    $"api/v3/organizations/{org.Id}/claim-requests/{claim.Id}/approve", null),
+            };
+            await Task.WhenAny(queuedTask, WaitForBlockedQueriesAsync(1, "pg_advisory_xact_lock"));
+
+            updateGate.Release();
+            Assert.Equal(HttpStatusCode.OK, (await demoteTask).StatusCode);
+            queuedResponse = await queuedTask;
+        }
+        finally
+        {
+            updateGate.Release();
+        }
+
+        Assert.Equal(HttpStatusCode.Forbidden, queuedResponse.StatusCode);
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.Equal(OrganizationRole.Member,
+            (await db.OrganizationMemberships.SingleAsync(m => m.Id == demoted.Id)).Role);
+        Assert.Equal(MembershipStatus.Active,
+            (await db.OrganizationMemberships.SingleAsync(m => m.Id == bystander.Id)).Status);
+        Assert.Equal(MembershipClaimStatus.Pending,
+            (await db.MembershipClaimRequests.SingleAsync(c => c.Id == claim.Id)).Status);
     }
 
     [Theory]

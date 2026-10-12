@@ -222,9 +222,13 @@ public class MembershipClaimService(
 
     public async Task<MembershipClaimRequestResponse> ApproveAsync(Guid orgId, Guid claimId)
     {
-        var (actorUser, actorMembership) = await GetCurrentRequesterAsync(orgId);
         await using var transaction = await dbContext.Database.BeginTransactionAsync();
         await dbContext.LockOrganizationClaimsAsync(orgId);
+        // Read under the lock: the moderator policy ran before it, and a demotion may have
+        // committed while this request waited.
+        var (actorUser, actorMembership) = await GetCurrentRequesterAsync(orgId);
+        if (actorMembership.Role > OrganizationRole.Moderator)
+            throw new ForbiddenException("Only moderators and owners can approve claim requests");
         var claim = await LockClaimAsync(orgId, claimId)
             ?? throw new NotFoundException("Claim request not found");
 

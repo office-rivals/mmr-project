@@ -216,8 +216,7 @@ public class OrganizationService(
                                       && m.Status != MembershipStatus.Removed)
             ?? throw new NotFoundException($"Membership with ID '{membershipId}' not found");
 
-        var currentUserMembership = await GetMembershipForCurrentUserAsync(orgId)
-            ?? throw new ForbiddenException("You are not a member of this organization");
+        var currentUserMembership = await RequireCurrentOwnerAsync(orgId);
 
         if (membership.Role == OrganizationRole.Owner && request.Role != OrganizationRole.Owner)
         {
@@ -287,6 +286,7 @@ public class OrganizationService(
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync();
         await dbContext.LockOrganizationClaimsAsync(orgId);
+        await RequireCurrentOwnerAsync(orgId);
         var membership = await dbContext.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.Id == membershipId
                                       && m.OrganizationId == orgId
@@ -320,6 +320,17 @@ public class OrganizationService(
             .FirstOrDefaultAsync(m => m.OrganizationId == orgId
                                       && m.User != null && m.User.IdentityUserId == identityUserId
                                       && m.Status == MembershipStatus.Active);
+    }
+
+    // The owner policy runs before the request waits for the organization lock, so a
+    // demotion committed in the meantime is only visible here.
+    private async Task<OrganizationMembership> RequireCurrentOwnerAsync(Guid orgId)
+    {
+        var membership = await GetMembershipForCurrentUserAsync(orgId)
+            ?? throw new ForbiddenException("You are not a member of this organization");
+        if (membership.Role != OrganizationRole.Owner)
+            throw new ForbiddenException("Only owners can change roles or remove members");
+        return membership;
     }
 
     public async Task<Guid> GetCurrentMembershipIdAsync(Guid orgId)
