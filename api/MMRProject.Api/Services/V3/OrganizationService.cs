@@ -176,6 +176,16 @@ public class OrganizationService(
 
         if (removedMembership != null)
         {
+            // An older removed invitation may still hold this address, and the invite-email
+            // index covers removed rows; the reused row takes it over.
+            await dbContext.OrganizationMemberships
+                .Where(m => m.OrganizationId == orgId
+                            && m.Status == MembershipStatus.Removed
+                            && m.Id != removedMembership.Id
+                            && m.InviteEmail != null
+                            && m.InviteEmail.ToLower() == request.Email.ToLower())
+                .ExecuteUpdateAsync(setters => setters.SetProperty(m => m.InviteEmail, (string?)null));
+
             removedMembership.InviteEmail = request.Email;
             removedMembership.Role = request.Role;
             removedMembership.Status = MembershipStatus.Invited;

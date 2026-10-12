@@ -2,4 +2,4 @@
 "api": minor
 ---
 
-Add moderated membership claim-request endpoints so invited users can take ownership of an existing unclaimed player without losing its match history.
+Let members claim an existing player and keep its match history once a moderator approves, via the new `/api/v3/organizations/{orgId}/claim-requests` endpoints (create, list, `mine`, cancel, `approve`, `reject`) and `GET /api/v3/organizations/{orgId}/members/claimable`.

@@ -294,6 +294,45 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
     }
 
     [Fact]
+    public async Task ReinviteRemovedMember_WithAnOlderRemovedInvite_ReusesTheirMembership()
+    {
+        var org = await CreateOrganization("Stale Invite Org", "stale-invite-org");
+        await SeedOrgMember(org.Id, "stale-owner", "stale-owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("stale-owner");
+        var firstInviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "returner@test.com", Role = OrganizationRole.Member });
+        var firstInvite = await ReadJsonAsync<OrganizationMemberResponse>(firstInviteResponse);
+        Assert.NotNull(firstInvite);
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/members/{firstInvite.Id}")).StatusCode);
+
+        // The person later joined on a separate row, which was removed too.
+        var (_, joined) = await SeedOrgMember(org.Id, "returner", "returner@test.com");
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/members/{joined.Id}")).StatusCode);
+
+        var inviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "returner@test.com", Role = OrganizationRole.Member });
+        Assert.Equal(HttpStatusCode.OK, inviteResponse.StatusCode);
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
+        Assert.NotNull(invited);
+        Assert.Equal(joined.Id, invited.Id);
+
+        AuthenticateAs("returner", email: "returner@test.com");
+        Assert.Equal(HttpStatusCode.OK, (await Client.GetAsync("api/v3/me")).StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.Equal(MembershipStatus.Active,
+            (await dbContext.OrganizationMemberships.SingleAsync(m => m.Id == joined.Id)).Status);
+        var stale = await dbContext.OrganizationMemberships.SingleAsync(m => m.Id == firstInvite.Id);
+        Assert.Equal(MembershipStatus.Removed, stale.Status);
+        Assert.Null(stale.InviteEmail);
+    }
+
+    [Fact]
     public async Task UpdateMemberProfile_AsModerator_UpdatesDisplayNameAndUsername()
     {
         var org = await CreateOrganization("Profile Org", "profile-org");
