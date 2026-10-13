@@ -275,16 +275,28 @@ export function TeamMemberField({
           />
           <div className="flex min-w-0 flex-1 flex-col">
             {value.kind === 'league' ? (
-              <>
+              value.player.displayName && value.player.username ? (
+                // Phone columns are narrow: the short handle leads there, and
+                // the full name stays on hover.
+                <>
+                  <p
+                    className="line-clamp-1 text-sm font-semibold"
+                    title={value.player.displayName}
+                  >
+                    <span className="hidden sm:inline">
+                      {value.player.displayName}
+                    </span>
+                    <span className="sm:hidden">{value.player.username}</span>
+                  </p>
+                  <p className="hidden truncate text-xs text-muted-foreground sm:block">
+                    {value.player.username}
+                  </p>
+                </>
+              ) : (
                 <p className="line-clamp-1 text-sm font-semibold">
                   {playerName(value.player)}
                 </p>
-                {value.player.displayName && value.player.username ? (
-                  <p className="truncate text-xs text-muted-foreground">
-                    {value.player.username}
-                  </p>
-                ) : null}
-              </>
+              )
             ) : value.kind === 'member' ? (
               <>
                 <p className="line-clamp-1 text-sm font-semibold">
@@ -305,14 +317,15 @@ export function TeamMemberField({
               </>
             )}
           </div>
+          {/* A full touch target, pulled into the chip's padding. */}
           <Button
             type="button"
-            className="h-7 w-7 shrink-0 rounded p-1 text-sm text-muted-foreground"
+            className="-my-1.5 -mr-1.5 size-11 shrink-0 rounded p-0 text-sm text-muted-foreground"
             onClick={reset}
             variant="ghost"
             aria-label={`Remove ${label.toLowerCase()}`}
           >
-            <X className="h-full w-full" />
+            <X className="size-4" />
           </Button>
         </div>
       )}
