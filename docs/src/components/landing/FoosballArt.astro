@@ -1,0 +1,63 @@
+---
+// The design system's cover motif: foosball rods over brand blocks, seen from above.
+---
+
+<svg class="rods" viewBox="0 0 480 288" aria-hidden="true">
+  <rect x="24" y="-8" width="176" height="232" rx="8" class="brand" />
+  <rect x="216" y="96" width="112" height="128" rx="8" class="tint" />
+  <rect x="344" y="40" width="160" height="184" rx="8" class="blue" />
+  <g class="rod">
+    <rect y="70" width="480" height="4" rx="2" />
+    <rect y="134" width="480" height="4" rx="2" />
+    <rect y="198" width="480" height="4" rx="2" />
+    <rect y="262" width="480" height="4" rx="2" />
+  </g>
+  <g class="cut">
+    <rect x="96" y="56" width="16" height="32" rx="6" />
+    <rect x="400" y="120" width="16" height="32" rx="6" />
+    <rect x="112" y="184" width="16" height="32" rx="6" />
+  </g>
+  <g class="brand">
+    <rect x="264" y="56" width="16" height="32" rx="6" />
+    <rect x="408" y="56" width="16" height="32" rx="6" />
+    <rect x="240" y="184" width="16" height="32" rx="6" />
+    <rect x="376" y="184" width="16" height="32" rx="6" />
+    <rect x="440" y="184" width="16" height="32" rx="6" />
+  </g>
+  <g class="blue">
+    <rect x="56" y="120" width="16" height="32" rx="6" />
+    <rect x="152" y="120" width="16" height="32" rx="6" />
+    <rect x="288" y="120" width="16" height="32" rx="6" />
+    <rect x="72" y="248" width="16" height="32" rx="6" />
+    <rect x="200" y="248" width="16" height="32" rx="6" />
+    <rect x="328" y="248" width="16" height="32" rx="6" />
+    <rect x="440" y="248" width="16" height="32" rx="6" />
+  </g>
+</svg>
+
+<style>
+  .rods {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(560px, 100%);
+    height: auto;
+    overflow: hidden;
+  }
+  .brand {
+    fill: var(--primary);
+  }
+  .tint {
+    fill: var(--muted-foreground);
+  }
+  .blue {
+    fill: var(--blue-500);
+  }
+  .rod {
+    fill: var(--foreground);
+  }
+  .cut {
+    fill: var(--background);
+  }
+</style>

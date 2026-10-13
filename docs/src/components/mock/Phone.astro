@@ -1,0 +1,26 @@
+---
+// A phone-shaped frame for mock-ups of the beta app.
+interface Props {
+  label: string;
+}
+const { label } = Astro.props;
+---
+
+<div class="phone not-content" role="img" aria-label={label}>
+  <slot />
+</div>
+
+<style>
+  .phone {
+    position: relative;
+    z-index: 1;
+    width: min(330px, 100%);
+    border: 10px solid var(--muted);
+    border-radius: 36px;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.8);
+    overflow: hidden;
+  }
+</style>

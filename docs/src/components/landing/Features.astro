@@ -1,0 +1,62 @@
+---
+import { Trophy, Play, Shuffle, Swords, BuildingComplex, Users, Flag, KeyRound } from '@lucide/astro';
+
+const features = [
+  { icon: Trophy, title: 'Leaderboards and seasons', text: 'Standings per league and per season, with win and loss streaks and a separate list for unranked newcomers.' },
+  { icon: Play, title: 'Matchmaking queue', text: 'Join from anywhere. A match forms at four players and waits for everyone to accept.' },
+  { icon: Shuffle, title: 'Random teams', text: 'Already four at the table? Shuffle them into two teams and start playing.' },
+  { icon: Swords, title: 'Fair ratings', text: "OpenSkill ratings from a dedicated Go service, with a snapshot of every match in each player's history." },
+  { icon: BuildingComplex, title: 'Organizations and leagues', text: 'One organization, as many leagues as you have tables. Members browse and join leagues themselves.' },
+  { icon: Users, title: 'Invites and roles', text: 'Share an invite link, or add people by email and they join when they sign in. Owners, moderators and members.' },
+  { icon: Flag, title: 'Flags and moderation', text: 'Players flag a wrong result; moderators edit the match and recalculate ratings.' },
+  { icon: KeyRound, title: 'API and tokens', text: 'A versioned v3 API, plus personal access tokens for your own scripts and integrations.' },
+];
+---
+
+<section class="wrap section">
+  <p class="eyebrow">Features</p>
+  <h2 class="h2">Everything a league needs</h2>
+  <div class="features">
+    {
+      features.map(({ icon: Icon, title, text }) => (
+        <div class="card feature">
+          <div class="ico"><Icon size={20} /></div>
+          <h3>{title}</h3>
+          <p>{text}</p>
+        </div>
+      ))
+    }
+  </div>
+</section>
+
+<style>
+  .features {
+    margin-top: 36px;
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+  }
+  .feature {
+    padding: 20px;
+  }
+  .ico {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+  h3 {
+    margin: 0 0 6px;
+    font: 600 17px/1.25 var(--font-sans);
+  }
+  p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--muted-foreground);
+  }
+</style>

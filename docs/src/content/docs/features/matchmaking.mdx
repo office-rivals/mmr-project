@@ -1,0 +1,65 @@
+---
+title: Matchmaking
+description: How the per-league queue builds balanced matches, and what happens when players accept, decline or time out.
+---
+
+import Figure from '../../../components/mock/Figure.astro';
+import QueueButton from '../../../components/mock/QueueButton.astro';
+import AppNavbar from '../../../components/mock/AppNavbar.astro';
+import MatchFound from '../../../components/mock/MatchFound.astro';
+
+Matchmaking is per league. Open it from the play button in the bottom navigation, which goes to `/<org>/<league>/matchmaking`. The button shows how many players are in the queue.
+
+<Figure caption="The queue button, and the queue count on the play button">
+  <QueueButton />
+  <AppNavbar queueCount={3} />
+</Figure>
+
+## Flow
+
+1. **Queue up.** Choose **Queue up**. You need to have joined the league, and you can't queue while you already have a pending or active match in it.
+2. **Wait for a full match.** A match needs both teams filled: 4 players in a 2v2 league, 2 in a 1v1 league. The page shows how many more players are missing.
+3. **A match is proposed.** The players who queued first are picked, and teams are balanced by MMR: players are sorted by rating and dealt out in snake order, so in 2v2 the strongest and weakest player face the middle two. A league has at most one proposed match at a time.
+4. **Accept or decline.** Each player gets a prompt with the teams and a countdown, and about 30 seconds to respond. A sound plays when the match is found, if your browser allows audio.
+5. **The match starts.** When everyone accepts, the match becomes active and all its players leave the queue.
+6. **Submit the result.** Any player in the match opens it from **Active matches** on the matchmaking page and enters the score, the same way as a [manual submission](/features/match-submission/). Ratings update when the result is saved.
+
+<Figure caption="The accept prompt">
+  <MatchFound
+    secondsRemaining={24}
+    teams={[
+      [{ name: 'alex', status: 'accepted' }, { name: 'samlee', status: 'accepted' }],
+      [{ name: 'riley', status: 'accepted' }, { name: 'jordan', status: 'pending' }],
+    ]}
+  />
+</Figure>
+
+The accept prompt and the sound only appear on the matchmaking page, so keep it open while you wait.
+
+## Declines and timeouts
+
+- **Someone declines.** The proposed match is cancelled, and every player in it leaves the queue.
+- **Time runs out.** Players who didn't accept leave the queue. Players who did accept stay queued for the next match.
+
+## Access rules
+
+- Queueing, accepting and declining are for league players only. Moderators and owners have to join the league to queue.
+- Anyone with access to the league can see its active matches.
+- Players in an active match can submit its result or cancel it. Moderators and owners can do both for any active match in their organization.
+- The beta has no cancel button. Cancel through the API with `DELETE /api/v3/organizations/{orgId}/leagues/{leagueId}/active-matches/{activeMatchId}`.
+
+## How it runs
+
+A background worker inside the API process checks the queues once a second. It expires proposed matches that ran out of time and proposes new ones where a league has enough players. There's no separate queue service to deploy.
+
+The queue, proposed matches and active matches are stored in PostgreSQL, so they survive an API restart. While the API is down, though, nothing gets proposed, and players can't accept or submit. Plan maintenance for a time when nobody is queued or mid-match.
+
+## Smoke test
+
+After deploying or upgrading, check matchmaking end to end:
+
+1. Make sure the league has a current season and enough players to fill both teams.
+2. Have each player queue up from the matchmaking page.
+3. Confirm the accept prompt appears for all of them.
+4. Accept from every account and confirm the match appears under **Active matches**.
+5. Submit a result and confirm the match leaves **Active matches** and shows up under **Recent Matches** on the league page.

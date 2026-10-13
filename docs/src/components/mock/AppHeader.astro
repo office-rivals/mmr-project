@@ -1,0 +1,46 @@
+---
+import { ChevronDown, Settings } from '@lucide/astro';
+
+interface Props {
+  org: string;
+  league: string;
+}
+const { org, league } = Astro.props;
+---
+
+<div class="app-header">
+  <div class="switcher">
+    <span class="org">{org}</span>
+    <span class="league">{league} <ChevronDown size={16} /></span>
+  </div>
+  <Settings size={20} class="settings" />
+</div>
+
+<style>
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 56px;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .org {
+    display: block;
+    font: 600 11px/1.5 var(--font-sans);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .league {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font: 600 16px/1.25 var(--font-sans);
+  }
+  .league :global(svg),
+  .app-header > :global(svg) {
+    color: var(--muted-foreground);
+  }
+</style>

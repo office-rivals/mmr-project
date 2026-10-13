@@ -1,0 +1,126 @@
+---
+import { Play } from '@lucide/astro';
+---
+
+<section class="wrap section">
+  <p class="eyebrow">How it works</p>
+  <h2 class="h2">From queue to leaderboard</h2>
+  <ol class="steps">
+    <li class="card step">
+      <span class="num">Step 1</span>
+      <h3>Queue up</h3>
+      <p>Tap <b>Queue up</b>. Once <b>4 players</b> are in the queue, a match is created and everyone is notified.</p>
+      <div class="ex"><span class="btn btn-primary btn-lg" aria-hidden="true"><Play size={16} />Queue up</span></div>
+    </li>
+    <li class="card step">
+      <span class="num">Step 2</span>
+      <h3>Match found!</h3>
+      <p>Everyone has <b>30 seconds</b> to accept. A sound plays, so nobody misses their turn at the table.</p>
+      <div class="ex">
+        <div class="accepts" aria-label="Three players accepted, one pending">
+          <span><em>✅</em>alex</span><span><em>✅</em>samlee</span><span><em>✅</em>riley</span><span><em>⌛</em>jordan</span>
+        </div>
+      </div>
+    </li>
+    <li class="card step">
+      <span class="num">Step 3</span>
+      <h3>Play and report</h3>
+      <p>Pick the winning team, then the loser's score. Got it wrong? Flag the match for a moderator.</p>
+      <div class="ex"><div class="mini-score"><span class="win">10</span><span class="vs">vs.</span><span>7</span></div></div>
+    </li>
+    <li class="card step">
+      <span class="num">Step 4</span>
+      <h3>Climb</h3>
+      <p>Every result feeds your OpenSkill rating. Streaks, seasons and past results stay on your profile.</p>
+      <div class="ex"><div class="climb"><span>alex</span><span class="mmr">1544</span><span class="muted">(+12)</span></div></div>
+    </li>
+  </ol>
+</section>
+
+<style>
+  .steps {
+    list-style: none;
+    margin: 36px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  }
+  .step {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .num {
+    font: 600 12px/16px var(--font-sans);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  h3 {
+    margin: 0;
+    font: 600 18px/1.2 var(--font-sans);
+    letter-spacing: -0.025em;
+  }
+  p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--muted-foreground);
+    flex: 1;
+  }
+  p b {
+    color: var(--foreground);
+    font-weight: 600;
+  }
+  .ex {
+    margin-top: 6px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    min-height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .accepts {
+    display: flex;
+    gap: 14px;
+    font-size: 13px;
+    color: var(--muted-foreground);
+  }
+  .accepts span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .accepts em {
+    font-style: normal;
+    font-size: 20px;
+    line-height: 1;
+  }
+  .mini-score {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font: 700 32px/36px var(--font-sans);
+  }
+  .mini-score .win {
+    color: var(--primary);
+  }
+  .vs {
+    font: 400 14px/20px var(--font-sans);
+    color: var(--muted-foreground);
+  }
+  .climb {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 15px;
+  }
+  .mmr {
+    font: 700 24px/32px var(--font-sans);
+    color: var(--primary);
+  }
+</style>

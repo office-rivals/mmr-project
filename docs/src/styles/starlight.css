@@ -1,0 +1,115 @@
+/*
+ * Maps Starlight's theme onto the design system. Surfaces share one fill and
+ * are separated by borders, so the nav and sidebar use the page background.
+ */
+:root,
+::backdrop {
+  --sl-font: var(--font-sans);
+  --sl-font-mono: var(--font-mono);
+
+  --sl-color-accent-low: hsl(20.5 90.2% 48.2% / 0.2);
+  --sl-color-accent: var(--primary);
+  --sl-color-accent-high: var(--primary);
+
+  --sl-color-white: var(--foreground);
+  --sl-color-gray-1: hsl(20 5.9% 90%);
+  --sl-color-gray-2: hsl(24 5.7% 82.9%);
+  --sl-color-gray-3: var(--muted-foreground);
+  --sl-color-gray-4: hsl(25 5.3% 44.7%);
+  --sl-color-gray-5: var(--border);
+  --sl-color-gray-6: hsl(24 9.8% 10%);
+  --sl-color-black: var(--background);
+
+  --sl-color-bg-nav: var(--card);
+  --sl-color-bg-sidebar: var(--card);
+  --sl-color-hairline-light: var(--border);
+  --sl-color-hairline: var(--border);
+  --sl-color-hairline-shade: var(--border);
+}
+
+.sidebar-content a[aria-current='page'],
+.sidebar-content a[aria-current='page']:hover,
+.sidebar-content a[aria-current='page']:focus {
+  background-color: var(--accent);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.sidebar-content .group-label .large {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.sl-markdown-content :is(h2, h3, h4) {
+  font-weight: 600;
+}
+
+.sl-markdown-content code:not(:where(.not-content *, pre *)) {
+  background-color: var(--muted);
+  border-radius: var(--radius-sm);
+}
+
+.sl-markdown-content a:not(:where(.not-content *)) {
+  color: var(--primary);
+  text-underline-offset: 3px;
+}
+
+.beta-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid rgb(249 115 22 / 0.3);
+  background: rgb(249 115 22 / 0.2);
+  color: var(--orange-400);
+  font: 600 12px/16px var(--font-sans);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+/* Primary is reserved for actions, winners, "you" and focus, so chrome stays neutral. */
+.site-title {
+  color: var(--foreground);
+}
+
+a[rel='me'] {
+  color: var(--muted-foreground);
+}
+
+a[rel='me']:hover {
+  color: var(--foreground);
+}
+
+/* Asides follow the app's Alert: a tinted box with a full border. */
+.starlight-aside {
+  border: 1px solid var(--sl-color-asides-border);
+  border-radius: var(--radius);
+}
+
+.starlight-aside--note {
+  --sl-color-asides-text-accent: var(--foreground);
+  --sl-color-asides-border: var(--border);
+  background-color: transparent;
+}
+
+.starlight-aside--tip {
+  --sl-color-asides-text-accent: var(--green-400);
+  --sl-color-asides-border: rgb(34 197 94 / 0.5);
+  background-color: rgb(34 197 94 / 0.1);
+}
+
+.starlight-aside--caution {
+  --sl-color-asides-text-accent: var(--orange-400);
+  --sl-color-asides-border: rgb(249 115 22 / 0.5);
+  background-color: rgb(249 115 22 / 0.1);
+}
+
+.starlight-aside--danger {
+  --sl-color-asides-text-accent: var(--destructive);
+  --sl-color-asides-border: hsl(0 72.2% 50.6% / 0.5);
+  background-color: hsl(0 72.2% 50.6% / 0.1);
+}

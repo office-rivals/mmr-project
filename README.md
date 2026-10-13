@@ -6,6 +6,9 @@ This repository contains a matchmaking and rating system split into three main c
 2. **API**: ASP.NET Core service handling business logic and data
 3. **MMR API**: Go service specializing in MMR calculations and team balancing
 
+Setup, configuration and feature docs live at
+<https://office-rivals.github.io/mmr-project/> (sources in [`docs/`](docs/)).
+
 ## Project Structure
 
 ```
@@ -15,6 +18,7 @@ This repository contains a matchmaking and rating system split into three main c
 ├── mmr-api/            # Go MMR calculation service
 ├── local-dev/          # .NET Aspire AppHost (one-command local stack)
 ├── local-development/  # e2e/CI database compose
+├── docs/               # Landing page and docs site (Astro + Starlight)
 └── api-collection/     # API test collection
 ```
 

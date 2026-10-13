@@ -1,0 +1,37 @@
+---
+// Frames a mock-up inside a docs page and labels it as one.
+interface Props {
+  caption: string;
+}
+const { caption } = Astro.props;
+---
+
+<figure class="mock-figure not-content">
+  <div class="stage"><slot /></div>
+  <figcaption>{caption} · mock-up of the beta app with illustrative data</figcaption>
+</figure>
+
+<style>
+  .mock-figure {
+    margin: 1.5rem 0;
+  }
+  .stage {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--background);
+    font-family: var(--font-sans);
+  }
+  .stage > :global(.phone) {
+    align-self: center;
+  }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--muted-foreground);
+  }
+</style>

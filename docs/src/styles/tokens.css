@@ -1,0 +1,42 @@
+/*
+ * MMR Project design system tokens, Dark theme only: the app hard-codes
+ * class="dark", and its Light values are not designed.
+ */
+:root {
+  --background: hsl(20 14.3% 4.1%);
+  --foreground: hsl(60 9.1% 97.8%);
+  --card: hsl(20 14.3% 4.1%);
+  --card-foreground: hsl(60 9.1% 97.8%);
+  --primary: hsl(20.5 90.2% 48.2%);
+  --primary-foreground: hsl(60 9.1% 97.8%);
+  --secondary: hsl(12 6.5% 15.1%);
+  --muted: hsl(12 6.5% 15.1%);
+  --muted-foreground: hsl(24 5.4% 63.9%);
+  --accent: hsl(12 6.5% 15.1%);
+  --border: hsl(12 6.5% 15.1%);
+  --input: hsl(12 6.5% 15.1%);
+  --ring: hsl(20.5 90.2% 48.2%);
+  --destructive: hsl(0 72.2% 50.6%);
+  --brand-navy: #01182e;
+  --white: #ffffff;
+  --gray-300: #d1d5db;
+  --gray-800: #1f2937;
+  --green-400: #4ade80;
+  --green-500: #22c55e;
+  --orange-400: #fb923c;
+  --orange-500: #f97316;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+
+  --radius: 0.5rem;
+  --radius-md: 6px;
+  --radius-sm: 4px;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --content-max-width: 640px;
+
+  --font-sans: 'Chakra Petch', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  color-scheme: dark;
+}

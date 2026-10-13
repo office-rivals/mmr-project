@@ -1,12 +1,17 @@
-# V3 Migration Guide
+---
+title: V3 migration guide
+description: Move a database from the legacy single-tenant model to the v3 model with organizations and leagues.
+---
 
 This guide covers migrating from the legacy single-tenant data model to the v3 multi-tenant model with organizations and leagues.
+
+You only need it if you ran MMR Project before v3. A new installation starts on the v3 model: its legacy tables are created empty, so there is nothing to backfill.
 
 ## Overview
 
 The migration involves two steps:
 
-1. **Schema migration** — EF Core migration renames tables (automatic on startup)
+1. **Schema migration** — EF Core migration renames tables (applied on startup when `Migration__Enabled=true`)
 2. **Data backfill** — SQL script copies legacy data into the v3 tables
 
 After migration, the legacy tables remain in the database (prefixed with `legacy_`) as a safety net. They can be dropped after the v3 model is verified stable.
@@ -17,7 +22,7 @@ After migration, the legacy tables remain in the database (prefixed with `legacy
 - Database access with write permissions
 - A maintenance window (no active matchmaking during migration)
 
-## Table Rename Summary
+## Table rename summary
 
 The EF Core migration `RenameTablesRemoveV3Prefix` performs these renames:
 
@@ -61,11 +66,11 @@ The EF Core migration `RenameTablesRemoveV3Prefix` performs these renames:
 | `v3_match_flags` | `match_flags` |
 | `v3_organization_invite_links` | `organization_invite_links` |
 
-## Data Backfill
+## Data backfill
 
 ### What the backfill does
 
-The script `scripts/backfill-legacy-data.sql` migrates all legacy data into the v3 model:
+The script [`scripts/backfill-legacy-data.sql`](https://github.com/office-rivals/mmr-project/blob/main/scripts/backfill-legacy-data.sql) migrates all legacy data into the v3 model:
 
 1. Creates a **default Organization** (slug: `default`)
 2. Creates a **default League** (slug: `default`) in the default org
@@ -109,7 +114,7 @@ Stop the API to ensure no new data is written during migration.
 
 ### 2. Deploy the API (without starting it)
 
-Deploy the new API build. On first startup, EF Core will apply `RenameTablesRemoveV3Prefix` which renames all tables. You can either:
+Deploy the new API build. On first startup with `Migration__Enabled=true`, EF Core will apply `RenameTablesRemoveV3Prefix` which renames all tables. You can either:
 - Start the API briefly to apply the migration, then stop it
 - Run `dotnet ef database update` directly
 
@@ -123,17 +128,17 @@ The script runs in a single transaction and prints a summary at the end:
 
 ```
 === Migration Summary ===
-Legacy players:        82
-Users created:         59
-Memberships created:   83
-League players:        82
-Seasons:               7
-Legacy matches:        5351
-Matches migrated:      5351
-Match teams:           10702 (expect ~2x matches)
-Match team players:    21404 (expect ~4x matches)
-Rating histories:      21404 (expect ~4x matches)
-PATs:                  2
+Legacy players:        <n>
+Users created:         <n>
+Memberships created:   <n>
+League players:        <n>
+Seasons:               <n>
+Legacy matches:        <n>
+Matches migrated:      <n>
+Match teams:           <n> (expect ~2x matches)
+Match team players:    <n> (expect ~4x matches)
+Rating histories:      <n> (expect ~4x matches)
+PATs:                  <n>
 =========================
 ```
 
@@ -152,7 +157,7 @@ Check that:
 psql -h <host> -U <user> -d <db> -f scripts/verify-migration.sql
 ```
 
-This runs 17 checks covering:
+[`scripts/verify-migration.sql`](https://github.com/office-rivals/mmr-project/blob/main/scripts/verify-migration.sql) makes 17 checks covering:
 - Every legacy player has a user, membership, and league player
 - Every match is migrated with correct teams, scores, and player links
 - Every season is migrated
@@ -213,5 +218,5 @@ After dropping legacy tables, the `Legacy*Id` columns on v3 entities can also be
 If issues are found after migration:
 
 1. The legacy tables remain untouched — no data is modified or deleted from them
-2. To revert, redeploy the previous API version which reads from legacy tables
+2. To revert, roll the schema back to `AddOrganizationInviteLinks`, the migration before `RenameTablesRemoveV3Prefix`, with `dotnet ef database update AddOrganizationInviteLinks -c ApiDbContext`. This reverses the renames along with every later migration. Then redeploy the previous API version, which reads the legacy tables under their original names
 3. The v3 data can be truncated and re-backfilled after fixing issues

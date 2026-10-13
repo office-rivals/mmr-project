@@ -1,26 +1,17 @@
-# API Design Document
-
-**Version:** 1.0
-**Last Updated:** 2025-11-01
-**Purpose:** Architectural blueprint for ASP.NET Core APIs with RBAC and multi-tenancy support
-
+---
+title: API design
+description: The original design document for the API, covering multi-tenancy, endpoint layout, authentication, authorization and conventions.
 ---
 
-## Table of Contents
+:::caution[Design document, not a specification]
+This document (version 1.0, last updated 2025-11-01) was written before the v3 API was built, and the implemented API differs from it in places:
 
-1. [Introduction & Design Principles](#1-introduction--design-principles)
-2. [Multi-Tenancy Architecture](#2-multi-tenancy-architecture)
-3. [Endpoint Organization Strategy](#3-endpoint-organization-strategy)
-4. [Authentication & Authorization](#4-authentication--authorization)
-5. [API Endpoint Design Patterns](#5-api-endpoint-design-patterns)
-6. [Admin Endpoints](#6-admin-endpoints)
-7. [Public/User Endpoints](#7-publicuser-endpoints)
-8. [API Versioning Strategy](#8-api-versioning-strategy)
-9. [Request/Response Formats](#9-requestresponse-formats)
-10. [API Conventions](#10-api-conventions)
-11. [Security & Validation](#11-security--validation)
+- Requests are scoped by path, as in `/api/v3/organizations/{orgId}/leagues/{leagueId}/...`, not by an `X-Tenant-ID` header.
+- Roles belong to an organization membership: Owner, Moderator or Member. There is no platform-admin role.
+- League administration endpoints sit under the league path, for example `.../leagues/{leagueId}/admin/seasons`, not under `/api/v1/admin`.
 
----
+For the API as it is, use the Swagger UI that the API serves at `/swagger`.
+:::
 
 ## 1. Introduction & Design Principles
 
@@ -113,7 +104,7 @@ Authorization: Bearer <jwt-token>
 - Tenant switching doesn't require domain changes
 
 **Alternative Approaches (Not Recommended):**
-- **Subdomain-based:** `acme.api.mmr.com` - Requires wildcard SSL, complex DNS, harder mobile support
+- **Subdomain-based:** `acme.api.example.com` - Requires wildcard SSL, complex DNS, harder mobile support
 - **Path-based:** `/api/tenants/acme/users` - Pollutes URLs, harder versioning
 - **Token claims:** Tenant in JWT - Inflexible, requires re-authentication to switch tenants
 
@@ -470,7 +461,7 @@ public async Task<IActionResult> ListMatches(...)
   "sub": "user_2abc123xyz",
   "email": "user@example.com",
   "email_verified": true,
-  "iss": "https://clerk.mmr.com",
+  "iss": "https://clerk.example.com",
   "iat": 1698765432,
   "exp": 1698769032
 }
@@ -565,7 +556,7 @@ Request → Authentication Middleware (validates token)
 
 **Standard Format:**
 ```
-https://api.mmr.com/api/v{version}/{prefix?}/{resource}/{identifier?}/{action?}
+https://api.example.com/api/v{version}/{prefix?}/{resource}/{identifier?}/{action?}
 ```
 
 **Components:**
@@ -1745,7 +1736,7 @@ Response: 204 No Content
 **RFC 7807 Problem Details:**
 ```json
 {
-  "type": "https://api.mmr.com/errors/validation-error",
+  "type": "https://api.example.com/errors/validation-error",
   "title": "Validation Error",
   "status": 400,
   "detail": "One or more validation errors occurred.",
@@ -1772,7 +1763,7 @@ Response: 204 No Content
 **400 Bad Request - Validation Error:**
 ```json
 {
-  "type": "https://api.mmr.com/errors/validation-error",
+  "type": "https://api.example.com/errors/validation-error",
   "title": "Validation Error",
   "status": 400,
   "detail": "One or more validation errors occurred.",
@@ -1783,7 +1774,7 @@ Response: 204 No Content
 **401 Unauthorized - Missing or Invalid Token:**
 ```json
 {
-  "type": "https://api.mmr.com/errors/unauthorized",
+  "type": "https://api.example.com/errors/unauthorized",
   "title": "Unauthorized",
   "status": 401,
   "detail": "Authentication token is missing or invalid."
@@ -1793,7 +1784,7 @@ Response: 204 No Content
 **403 Forbidden - Insufficient Permissions:**
 ```json
 {
-  "type": "https://api.mmr.com/errors/forbidden",
+  "type": "https://api.example.com/errors/forbidden",
   "title": "Forbidden",
   "status": 403,
   "detail": "You do not have permission to perform this action. Owner role required."
@@ -1803,7 +1794,7 @@ Response: 204 No Content
 **404 Not Found - Resource Doesn't Exist:**
 ```json
 {
-  "type": "https://api.mmr.com/errors/not-found",
+  "type": "https://api.example.com/errors/not-found",
   "title": "Not Found",
   "status": 404,
   "detail": "User with ID '550e8400-e29b-41d4-a716-446655440000' was not found."
@@ -1813,7 +1804,7 @@ Response: 204 No Content
 **409 Conflict - Business Rule Violation:**
 ```json
 {
-  "type": "https://api.mmr.com/errors/conflict",
+  "type": "https://api.example.com/errors/conflict",
   "title": "Conflict",
   "status": 409,
   "detail": "A user with this email already exists.",
@@ -1824,7 +1815,7 @@ Response: 204 No Content
 **500 Internal Server Error:**
 ```json
 {
-  "type": "https://api.mmr.com/errors/internal-server-error",
+  "type": "https://api.example.com/errors/internal-server-error",
   "title": "Internal Server Error",
   "status": 500,
   "detail": "An unexpected error occurred. Please try again later.",
@@ -1955,7 +1946,7 @@ Sunset: Sat, 31 Dec 2024 23:59:59 GMT              // Deprecation date
 
 **CORS Headers (if applicable):**
 ```http
-Access-Control-Allow-Origin: https://app.mmr.com
+Access-Control-Allow-Origin: https://app.example.com
 Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS
 Access-Control-Allow-Headers: Authorization, Content-Type, X-Tenant-ID
 Access-Control-Max-Age: 86400
@@ -2005,7 +1996,7 @@ HTTP/1.1 429 Too Many Requests
 Retry-After: 60
 
 {
-  "type": "https://api.mmr.com/errors/rate-limit-exceeded",
+  "type": "https://api.example.com/errors/rate-limit-exceeded",
   "title": "Rate Limit Exceeded",
   "status": 429,
   "detail": "You have exceeded the rate limit of 100 requests per minute.",
@@ -2167,7 +2158,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("https://app.mmr.com")
+        policy.WithOrigins("https://app.example.com")
               .AllowCredentials()
               .AllowMethods("GET", "POST", "PATCH", "DELETE")
               .AllowHeaders("Authorization", "Content-Type", "X-Tenant-ID");
@@ -2300,7 +2291,7 @@ Consider GraphQL for complex query requirements:
 ### B.2 WebSockets for Real-Time
 
 For real-time matchmaking updates:
-- WebSocket endpoint: `wss://api.mmr.com/ws`
+- WebSocket endpoint: `wss://api.example.com/ws`
 - Send queue position updates in real-time
 - Notify when match is found
 

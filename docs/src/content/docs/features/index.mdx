@@ -1,0 +1,59 @@
+---
+title: Features overview
+description: What players and admins can do in the MMR Project beta frontend, and how access is split between organizations and leagues.
+---
+
+import Figure from '../../../components/mock/Figure.astro';
+import Leaderboard from '../../../components/mock/Leaderboard.astro';
+import Kpis from '../../../components/mock/Kpis.astro';
+
+These pages describe the beta frontend in [`frontend-beta/`](https://github.com/office-rivals/mmr-project/tree/main/frontend-beta). The SvelteKit app in `frontend/` still exists alongside it, and both talk to the same V3 API.
+
+## Feature areas
+
+- **Leaderboards and seasons.** Each league has a leaderboard ranked by MMR, a feed of recent matches with each player's rating change, and a season picker for past seasons. You need 10 matches in a season to be ranked. Until then you're listed under "Unranked", with 🐣 in place of your MMR. A streak of three or more wins shows 🔥, and three or more losses show 🌧️ (⛈️ from seven).
+- **Matchmaking queue.** Queue up in a league. Once enough players are waiting to fill both teams, the app proposes balanced teams and everyone has about 30 seconds to accept. See [Matchmaking](/features/matchmaking/).
+- **Match submission.** Record a 1v1 or 2v2 result with existing league players, organization members who haven't joined the league yet, or new players you create on the spot. A league uses either fixed-target scoring (the winner reaches an exact score, 10 by default) or free-form scoring (you enter both scores and the higher one wins). See [Match submission](/features/match-submission/).
+- **Random teams.** `/random` splits four names into two teams of two. On a touch screen it can also pick teams from fingers placed on the screen.
+- **Player profiles and statistics.** A player page shows rank, MMR, match count, wins, losses, win rate and current streak, plus a rating-over-time chart, most common opponents and teammates, and match history. The league statistics page at `/<org>/<league>/statistics` charts every player's rating over time and shows when matches are played.
+- **Organizations, leagues and invites.** Members join an organization through an invite link or an email invite, then join whichever leagues they like. See [Organizations and leagues](/features/organizations-and-leagues/).
+- **Roles.** Every organization member is an Owner, a Moderator or a Member. Owners and moderators get the admin area at `/admin`. See [Admin operations](/features/admin-operations/).
+- **Match flags and moderation.** League players report a match they think is wrong. Moderators and owners correct the match, recalculate ratings, and resolve or dismiss the flag.
+- **Personal access tokens.** Create and revoke tokens for scripted API access from your settings. See [Access control and tokens](/features/access-control-and-tokens/).
+
+<Figure caption="A leaderboard with an unranked newcomer, and the KPIs on a player profile">
+  <Leaderboard
+    rows={[
+      { rank: 1, name: 'riley', wins: 42, losses: 18, score: 1611, winStreak: true },
+      { rank: 2, name: 'alex', wins: 37, losses: 21, score: 1544, me: true },
+      { rank: 3, name: 'jordan', wins: 12, losses: 25, score: 1290, lossStreak: 'storm' },
+      { rank: null, name: 'casey', wins: 1, losses: 2, score: null },
+    ]}
+  />
+  <Kpis
+    items={[
+      { label: 'MMR', value: '1544' },
+      { label: 'Rank', value: '#2' },
+      { label: 'Win rate', value: '64%' },
+      { label: 'Streak', value: '🔥 3' },
+    ]}
+  />
+</Figure>
+
+## Tenant model
+
+Access is checked at two levels:
+
+- organization membership controls access to the tenant
+- league membership controls a regular member's access to data inside a league
+
+Roles belong to the organization, not to a league. Moderators and owners can manage every league in their organization without joining it. Regular members must join a league before they can read or write its data.
+
+## Security boundaries
+
+- Non-admins can't read or write league data for leagues they haven't joined.
+- Nobody can read or write data in an organization they aren't an active member of.
+- Moderators and owners have organization-wide access by design, but no access to other organizations.
+- Personal access tokens act as the user who created them and can be restricted further to one organization or league.
+
+The rest of this section covers each area in detail.
