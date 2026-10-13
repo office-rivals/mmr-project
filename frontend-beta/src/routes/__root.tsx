@@ -63,7 +63,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <ClerkProvider signInUrl="/login" signUpUrl="/sign-up">
+        <ClerkProvider
+          signInUrl="/login"
+          signUpUrl="/sign-up"
+          signInForceRedirectUrl="/"
+          signUpForceRedirectUrl="/"
+        >
           {children}
         </ClerkProvider>
         <Scripts />

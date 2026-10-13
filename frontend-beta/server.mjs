@@ -2,7 +2,11 @@
 import { readFile, stat } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseTrustProxy } from './server-config.mjs';
+import {
+  normalizeRequestOrigin,
+  parseAppOrigin,
+  parseTrustProxy,
+} from './server-config.mjs';
 
 try {
   // Local runs can use dotenv; deployments can supply the environment directly.
@@ -13,6 +17,7 @@ try {
 
 const handler = (await import('./dist/server/server.js')).default;
 const { serve } = await import('srvx');
+const appOrigin = parseAppOrigin(process.env.APP_ORIGIN);
 
 // Start renders routes but needs a separate static asset handler.
 const clientDir = resolve(
@@ -70,7 +75,21 @@ async function serveStatic(request) {
 
 serve({
   async fetch(request) {
-    return (await serveStatic(request)) ?? handler.fetch(request);
+    if (
+      new URL(request.url).pathname === '/health' &&
+      ['GET', 'HEAD'].includes(request.method)
+    ) {
+      return new Response(request.method === 'HEAD' ? null : 'OK', {
+        headers: {
+          'content-type': 'text/plain; charset=utf-8',
+          'cache-control': 'no-store',
+        },
+      });
+    }
+    return (
+      (await serveStatic(request)) ??
+      handler.fetch(normalizeRequestOrigin(request, appOrigin))
+    );
   },
   port: Number(process.env.PORT ?? 3000),
   hostname: process.env.HOST ?? '0.0.0.0',

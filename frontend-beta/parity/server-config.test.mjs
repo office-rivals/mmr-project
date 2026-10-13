@@ -1,12 +1,88 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { serve } from 'srvx';
-import { parseTrustProxy } from '../server-config.mjs';
+import { createClerkRequest } from '@clerk/backend/internal';
+import {
+  normalizeRequestOrigin,
+  parseAppOrigin,
+  parseTrustProxy,
+} from '../server-config.mjs';
 import { parseNativeFormData } from '../src/lib/server/action-result';
 
 const servers = [];
 
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.close(true)));
+});
+
+describe('canonical production origin', () => {
+  it('requires an origin without credentials, paths or query parameters', () => {
+    expect(parseAppOrigin(undefined)).toBeUndefined();
+    expect(parseAppOrigin('https://beta.example.com/')).toBe(
+      'https://beta.example.com'
+    );
+    for (const value of [
+      'ftp://example.com',
+      'https://user@example.com',
+      'https://example.com/login',
+      'https://example.com/?x=1',
+      'https://example.com/#x',
+    ]) {
+      expect(() => parseAppOrigin(value)).toThrow();
+    }
+  });
+
+  it('preserves the POST body while rejecting a forged forwarded origin', async () => {
+    const request = new Request('http://container:3000/settings?x=1', {
+      method: 'POST',
+      headers: {
+        origin: 'https://beta.example.com',
+        'x-forwarded-host': 'attacker.example',
+        'x-forwarded-proto': 'http',
+        'cloudfront-forwarded-proto': 'http',
+      },
+      body: new URLSearchParams({ name: 'Example' }),
+    });
+    const normalized = normalizeRequestOrigin(
+      request,
+      'https://beta.example.com'
+    );
+    expect(normalized.url).toBe('https://beta.example.com/settings?x=1');
+    expect(normalized.headers.get('host')).toBe('beta.example.com');
+    expect(normalized.headers.has('x-forwarded-host')).toBe(false);
+    expect(normalized.headers.has('x-forwarded-proto')).toBe(false);
+    expect(normalized.headers.has('cloudfront-forwarded-proto')).toBe(false);
+    expect(createClerkRequest(normalized).clerkUrl.href).toBe(
+      'https://beta.example.com/settings?x=1'
+    );
+    expect((await parseNativeFormData(normalized)).get('name')).toBe('Example');
+
+    const forged = normalizeRequestOrigin(
+      new Request('http://container:3000/settings', {
+        method: 'POST',
+        headers: {
+          origin: 'https://attacker.example',
+          'x-forwarded-host': 'attacker.example',
+        },
+        body: new URLSearchParams({ name: 'Example' }),
+      }),
+      'https://beta.example.com'
+    );
+    expect(() => parseNativeFormData(forged)).toThrow();
+  });
+
+  it('does not let Clerk override an untrusted srvx origin', () => {
+    const normalized = normalizeRequestOrigin(
+      new Request('http://localhost:3000/login', {
+        headers: {
+          'x-forwarded-host': 'attacker.example',
+          'x-forwarded-proto': 'https',
+        },
+      })
+    );
+    expect(normalized.url).toBe('http://localhost:3000/login');
+    expect(normalized.headers.get('host')).toBe('localhost:3000');
+    expect(normalized.headers.has('x-forwarded-host')).toBe(false);
+  });
 });
 
 async function startOriginCheckServer(trustProxy) {

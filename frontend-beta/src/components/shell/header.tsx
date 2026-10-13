@@ -268,7 +268,9 @@ export function Header({
             <DropdownMenuSeparator />
 
             <div className="p-1">
-              <DropdownMenuItem onSelect={() => void signOut()}>
+              <DropdownMenuItem
+                onSelect={() => void signOut({ redirectUrl: '/login' })}
+              >
                 <LogOut className="h-4 w-4 text-muted-foreground" />
                 Sign out
               </DropdownMenuItem>
