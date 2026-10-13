@@ -29,16 +29,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Its own job so the deploy job can be named after the resolved version: the
+  # run name is fixed at dispatch, while `latest` is still unresolved.
+  resolve:
+    name: Resolve ${{ inputs.component }} ${{ inputs.version }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     env:
       COMPONENT: ${{ inputs.component }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      image: ${{ steps.image.outputs.image }}
+      digest: ${{ steps.image.outputs.digest }}
     steps:
       # `latest` resolves to the highest released version (by semver, not date)
       # rather than the image's `latest` tag, which a rebuild only moves on
       # request — and a pinned version is what makes the revision traceable.
       - name: Resolve the version
+        id: version
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REQUESTED_VERSION: ${{ inputs.version }}
@@ -56,12 +64,13 @@ jobs:
             fi
             echo "Latest $COMPONENT release: $version"
           fi
-          # The version reaches a release tag, an image reference and GITHUB_ENV.
+          # The version reaches a release tag, an image reference and env/output files.
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Version must be MAJOR.MINOR.PATCH or latest, got: $version" >&2
             exit 1
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Verify release exists
         env:
@@ -72,6 +81,7 @@ jobs:
       # packages are public, so neither this check nor Azure's pull needs
       # registry credentials.
       - name: Verify the released image exists
+        id: image
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}/$COMPONENT:$VERSION"
           # Likeliest straight after a release merge, while its image still builds.
@@ -79,9 +89,20 @@ jobs:
             echo "$image is not in GHCR. Wait for Publish GitHub Releases to push it, or run Rebuild Release Image if that build failed." >&2
             exit 1
           fi
-          echo "IMAGE=$image" >> "$GITHUB_ENV"
-          echo "DIGEST=$digest" >> "$GITHUB_ENV"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
+  deploy:
+    name: Deploy ${{ inputs.component }} ${{ needs.resolve.outputs.version }}
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPONENT: ${{ inputs.component }}
+      VERSION: ${{ needs.resolve.outputs.version }}
+      IMAGE: ${{ needs.resolve.outputs.image }}
+      DIGEST: ${{ needs.resolve.outputs.digest }}
+    steps:
       - name: Resolve the Container App
         env:
           UI_APP: ${{ secrets.UI_CONTAINER_APP_NAME }}
