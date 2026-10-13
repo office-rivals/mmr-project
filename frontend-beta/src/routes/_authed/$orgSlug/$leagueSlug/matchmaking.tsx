@@ -31,6 +31,7 @@ interface OrgLeagueInput {
 }
 
 interface MatchmakingPageData {
+  now: number;
   queueStatus: QueueStatusResponse | null;
   activeMatches: ActiveMatchResponse[];
 }
@@ -48,7 +49,7 @@ const getMatchmakingDataFn = createServerFn({ method: 'GET' })
         .listActiveMatches(data.orgId, data.leagueId)
         .catch(() => [] as ActiveMatchResponse[]),
     ]);
-    return { queueStatus, activeMatches };
+    return { queueStatus, activeMatches, now: Date.now() };
   });
 
 const listActiveMatchesFn = createServerFn({ method: 'GET' })
@@ -231,7 +232,7 @@ function MatchmakingPage({
   );
 
   // 250 ms tick for the countdown only — deliberately not a 4 Hz refetch.
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(seed.now);
   useEffect(() => {
     const ticker = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(ticker);

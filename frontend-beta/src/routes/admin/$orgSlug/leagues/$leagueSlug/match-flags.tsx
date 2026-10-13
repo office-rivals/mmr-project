@@ -36,7 +36,7 @@ import {
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireAdminOrg, resolveOrgAndLeagueIds } from '@/lib/server/admin';
-import { formatDate } from '@/lib/utils';
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { MatchFlagStatus } from '@/api-v3/models';
 import { ResponseError } from '@/api-v3/runtime';
 import type { EditMatchTeamPayload } from '@/components/admin/edit-match-dialog';
@@ -366,6 +366,7 @@ const statusTabs: { label: string; value: FlagStatusFilter }[] = [
 ];
 
 function MatchFlagsPage() {
+  const { formatDate } = useLocaleFormatters();
   const { orgSlug, leagueSlug } = Route.useParams();
   const search = Route.useSearch();
   const data = Route.useLoaderData();

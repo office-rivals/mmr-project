@@ -1,3 +1,4 @@
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { Link, createFileRoute, getRouteApi } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { CalendarDays, Flag, Trophy, Users } from 'lucide-react';
@@ -14,7 +15,6 @@ import { HttpErrorView } from '@/components/http-error-view';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { requireAdminOrg } from '@/lib/server/admin';
 import {
-  formatDate,
   formatLeagueFormat,
   getPlayerDisplayName,
   openFlagsForLeague,
@@ -62,6 +62,7 @@ export const Route = createFileRoute('/admin/$orgSlug/leagues/$leagueSlug/')({
 const adminRoute = getRouteApi('/admin');
 
 function LeagueAdminOverviewPage() {
+  const { formatDate } = useLocaleFormatters();
   const { orgSlug, leagueSlug } = Route.useParams();
   const { league } = Route.useRouteContext();
   const data = Route.useLoaderData();

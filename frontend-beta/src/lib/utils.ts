@@ -1,6 +1,11 @@
 export { cn } from 'cn';
 import type { BadgesResponse } from '@/api-v3';
 
+export interface DatePresentation {
+  locale?: string;
+  timeZone?: 'UTC';
+}
+
 function parseLocalDate(d: string | null | undefined): Date | null {
   if (!d) return null;
   const date = new Date(d);
@@ -10,18 +15,27 @@ function parseLocalDate(d: string | null | undefined): Date | null {
 export function formatDate(
   d: string | null | undefined,
   fallback = '—',
-  localeOptions?: Intl.DateTimeFormatOptions
+  localeOptions?: Intl.DateTimeFormatOptions,
+  presentation?: DatePresentation
 ): string {
   const date = parseLocalDate(d);
   if (!date) return fallback;
-  return localeOptions
-    ? date.toLocaleDateString(undefined, localeOptions)
-    : date.toLocaleDateString();
+  return date.toLocaleDateString(presentation?.locale, {
+    ...localeOptions,
+    timeZone: presentation?.timeZone,
+  });
 }
 
-export function formatDateTime(d: string | null | undefined): string {
+export function formatDateTime(
+  d: string | null | undefined,
+  presentation?: DatePresentation
+): string {
   const date = parseLocalDate(d);
-  return date ? date.toLocaleString() : '—';
+  return date
+    ? date.toLocaleString(presentation?.locale, {
+        timeZone: presentation?.timeZone,
+      })
+    : '—';
 }
 
 const isSameDay = (d1: Date, d2: Date): boolean =>
@@ -42,8 +56,12 @@ export function isToday(
   return !!date && isSameDay(date, new Date(now));
 }
 
-function localDateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+function localDateKey(date: Date, presentation?: DatePresentation): string {
+  const utc = presentation?.timeZone === 'UTC';
+  const year = utc ? date.getUTCFullYear() : date.getFullYear();
+  const month = utc ? date.getUTCMonth() : date.getMonth();
+  const day = utc ? date.getUTCDate() : date.getDate();
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 /**
@@ -53,16 +71,22 @@ function localDateKey(date: Date): string {
  */
 export function matchDateGroupKey(
   d: string | null | undefined,
-  now: number = Date.now()
+  now: number = Date.now(),
+  presentation?: DatePresentation
 ): string {
   const date = parseLocalDate(d);
   if (!date) return '';
   const today = new Date(now);
   const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  if (isSameDay(date, yesterday)) return 'yesterday';
-  if (isSameDay(date, today)) return 'today';
-  return localDateKey(date);
+  if (presentation?.timeZone === 'UTC') {
+    yesterday.setUTCDate(today.getUTCDate() - 1);
+  } else {
+    yesterday.setDate(today.getDate() - 1);
+  }
+  const key = localDateKey(date, presentation);
+  if (key === localDateKey(yesterday, presentation)) return 'yesterday';
+  if (key === localDateKey(today, presentation)) return 'today';
+  return key;
 }
 
 /**
@@ -72,15 +96,18 @@ export function matchDateGroupKey(
  */
 export function matchDateGroupLabel(
   d: string | null | undefined,
-  now: number = Date.now()
+  now: number = Date.now(),
+  presentation?: DatePresentation
 ): string {
   const date = parseLocalDate(d);
   if (!date) return '';
-  if (matchDateGroupKey(d, now) === 'yesterday') return 'Yesterday';
-  return date.toLocaleDateString(undefined, {
+  if (matchDateGroupKey(d, now, presentation) === 'yesterday')
+    return 'Yesterday';
+  return date.toLocaleDateString(presentation?.locale, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
+    timeZone: presentation?.timeZone,
   });
 }
 
@@ -91,16 +118,24 @@ export function matchDateGroupLabel(
  */
 export function groupMatchesByDate<T extends { id: string; playedAt: string }>(
   matches: readonly T[],
-  now: number = Date.now()
+  now: number = Date.now(),
+  presentation?: DatePresentation
 ): { match: T; label: string | null }[] {
-  const todayKey = matchDateGroupKey(new Date(now).toISOString(), now);
+  const todayKey = matchDateGroupKey(
+    new Date(now).toISOString(),
+    now,
+    presentation
+  );
   return matches.map((match, i, arr) => {
-    const matchKey = matchDateGroupKey(match.playedAt, now);
-    const prevKey = i > 0 ? matchDateGroupKey(arr[i - 1].playedAt, now) : null;
+    const matchKey = matchDateGroupKey(match.playedAt, now, presentation);
+    const prevKey =
+      i > 0 ? matchDateGroupKey(arr[i - 1].playedAt, now, presentation) : null;
     const newGroup = matchKey !== todayKey && matchKey !== prevKey;
     return {
       match,
-      label: newGroup ? matchDateGroupLabel(match.playedAt, now) : null,
+      label: newGroup
+        ? matchDateGroupLabel(match.playedAt, now, presentation)
+        : null,
     };
   });
 }

@@ -22,7 +22,7 @@ import {
 } from '@/lib/match-flag-actions';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { selectCurrentSeason } from '@/lib/util/season';
-import { groupMatchesByDate } from '@/lib/utils';
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import type { FlagActionResult } from '@/lib/match-flag-actions';
 import type {
   LeaderboardEntryResponse,
@@ -178,6 +178,7 @@ function LeagueHomeRoute() {
 }
 
 function LeagueHomePage() {
+  const { groupMatchesByDate } = useLocaleFormatters();
   const data = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();

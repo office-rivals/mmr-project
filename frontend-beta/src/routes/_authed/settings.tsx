@@ -17,7 +17,7 @@ import {
   nativeFormResponse,
   parseNativeFormData,
 } from '@/lib/server/action-result';
-import { formatDate } from '@/lib/utils';
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import type { CreateTokenResponse, TokenResponse } from '@/api-v3';
 
 const tokensQueryKey = ['me', 'tokens'] as const;
@@ -346,6 +346,7 @@ function TokenTable({
   tokens: TokenResponse[];
   onRevoke: (tokenId: string) => void;
 }) {
+  const { formatDate } = useLocaleFormatters();
   return (
     <div className="mt-4 overflow-hidden rounded-lg border border-muted">
       <table className="w-full">

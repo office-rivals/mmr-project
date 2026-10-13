@@ -20,7 +20,7 @@ import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireAdminOrg, resolveOrgAndLeagueIds } from '@/lib/server/admin';
 import { selectCurrentSeason } from '@/lib/util/season';
-import { formatDateTime } from '@/lib/utils';
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import type { SeasonResponse } from '@/api-v3';
 
 type ActionResult = { success: boolean; message: string };
@@ -101,6 +101,7 @@ export const Route = createFileRoute(
 });
 
 function SeasonsPage() {
+  const { formatDateTime } = useLocaleFormatters();
   const { orgSlug, leagueSlug } = Route.useParams();
   const { seasons, now } = Route.useLoaderData();
   const router = useRouter();

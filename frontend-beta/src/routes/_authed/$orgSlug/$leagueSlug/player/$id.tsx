@@ -30,7 +30,8 @@ import {
 import { createRouteGuard } from '@/lib/server/http-error';
 import { loadPlayerProfileOnce } from '@/lib/server/profile';
 import { loadShellDataOnce } from '@/lib/server/shell';
-import { getPlayerDisplayName, groupMatchesByDate } from '@/lib/utils';
+import { getPlayerDisplayName } from '@/lib/utils';
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { resolveLeague } from '../route';
 import type { FlagActionResult } from '@/lib/match-flag-actions';
 import type { PlayerProfileData } from '@/lib/server/profile';
@@ -152,6 +153,8 @@ function PlayerProfileRoute() {
 }
 
 function PlayerProfilePage() {
+  const { groupMatchesByDate, formatNumber, formatRelativeTime } =
+    useLocaleFormatters();
   const data = Route.useLoaderData();
   const { season } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -194,7 +197,7 @@ function PlayerProfilePage() {
   // which would disagree between SSR and hydration across local midnight.
   const matchGroups = useMemo(
     () => groupMatchesByDate(matches, data.now),
-    [matches, data.now]
+    [matches, data.now, groupMatchesByDate]
   );
 
   const chartData = useMemo(() => {
@@ -375,17 +378,17 @@ function PlayerProfilePage() {
         <Kpi title="# Losses">{stats.lost}</Kpi>
         <Kpi title="Win rate">
           {/* 1 fraction digit here; the head-to-head tables use 0. */}
-          {new Intl.NumberFormat(undefined, {
+          {formatNumber(stats.winrate, {
             style: 'percent',
             maximumFractionDigits: 1,
-          }).format(stats.winrate)}
+          })}
         </Kpi>
         {stats.daysSinceLastMatch != null ? (
           <Kpi title="Last match">
-            {new Intl.RelativeTimeFormat(undefined, {
+            {formatRelativeTime(stats.daysSinceLastMatch, 'day', {
               style: 'narrow',
               numeric: stats.daysSinceLastMatch !== 0 ? 'always' : 'auto',
-            }).format(stats.daysSinceLastMatch, 'day')}
+            })}
           </Kpi>
         ) : null}
         {stats.winningStreak > 0 || stats.losingStreak > 0 ? (

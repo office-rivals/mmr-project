@@ -1,3 +1,4 @@
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import type { ReactNode } from 'react';
 import { AppLink } from '@/components/app-link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,15 +11,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { OpponentEntry } from '@/lib/server/profile';
-
-/**
- * `maximumFractionDigits: 0` — deliberately different from the KPI grid's
- * "Win rate" tile, which uses 1. Do not unify the two formatters.
- */
-const winRateFormatter = new Intl.NumberFormat(undefined, {
-  style: 'percent',
-  maximumFractionDigits: 0,
-});
 
 interface HeadToHeadTableProps {
   title: string;
@@ -41,6 +33,7 @@ export function HeadToHeadTable({
   rows,
   playerHref,
 }: HeadToHeadTableProps) {
+  const { formatNumber } = useLocaleFormatters();
   return (
     <Card>
       <CardContent className="flex flex-col p-0 md:p-6">
@@ -87,9 +80,10 @@ export function HeadToHeadTable({
                 <TableCell>{row.wins}</TableCell>
                 <TableCell>{row.losses}</TableCell>
                 <TableCell className="text-right">
-                  {winRateFormatter.format(
-                    row.total > 0 ? row.wins / row.total : 0
-                  )}
+                  {formatNumber(row.total > 0 ? row.wins / row.total : 0, {
+                    style: 'percent',
+                    maximumFractionDigits: 0,
+                  })}
                 </TableCell>
               </TableRow>
             ))}

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   groupMatchesByDate,
+  formatDateTime,
   isToday,
   matchDateGroupKey,
   matchDateGroupLabel,
@@ -13,6 +14,46 @@ const NOW = new Date(2026, 5, 15, 12, 0, 0).getTime(); // 2026-06-15 12:00 local
 const iso = (d: Date) => d.toISOString();
 const at = (year: number, month: number, day: number, hour = 12) =>
   iso(new Date(year, month - 1, day, hour, 0, 0));
+
+describe('UTC server presentation', () => {
+  const presentation = { locale: 'en-US', timeZone: 'UTC' } as const;
+
+  it('groups midnight boundaries using the rendered timezone', () => {
+    const now = Date.parse('2026-06-15T00:30:00Z');
+    expect(matchDateGroupKey('2026-06-14T23:30:00Z', now, presentation)).toBe(
+      'yesterday'
+    );
+    expect(matchDateGroupKey('2026-06-15T00:01:00Z', now, presentation)).toBe(
+      'today'
+    );
+    expect(
+      groupMatchesByDate(
+        [
+          { id: 'a', playedAt: '2026-06-15T00:01:00Z' },
+          { id: 'b', playedAt: '2026-06-14T23:30:00Z' },
+        ],
+        now,
+        presentation
+      ).map(({ label }) => label)
+    ).toEqual([null, 'Yesterday']);
+  });
+
+  it('keeps yesterday a calendar day across DST transitions', () => {
+    const now = Date.parse('2026-03-30T00:30:00Z');
+    expect(matchDateGroupKey('2026-03-29T00:01:00Z', now, presentation)).toBe(
+      'yesterday'
+    );
+    expect(matchDateGroupLabel('2026-03-28T23:30:00Z', now, presentation)).toBe(
+      'Saturday, Mar 28'
+    );
+  });
+
+  it('renders the same timestamp independently of the server timezone', () => {
+    expect(formatDateTime('2026-06-15T00:30:00Z', presentation)).toBe(
+      '6/15/2026, 12:30:00 AM'
+    );
+  });
+});
 
 describe('isToday', () => {
   it('returns true for a timestamp on the same local day as now', () => {

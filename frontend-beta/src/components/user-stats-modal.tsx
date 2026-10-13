@@ -1,3 +1,4 @@
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { useEffect, useState } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
@@ -31,11 +32,6 @@ type RecentMatchState =
   | { status: 'resolved'; match: MatchResponse | null }
   | { status: 'rejected'; message: string };
 
-const percentFormatter = new Intl.NumberFormat(undefined, {
-  style: 'percent',
-  maximumFractionDigits: 0,
-});
-
 export function UserStatsModal({
   entry,
   open,
@@ -44,6 +40,7 @@ export function UserStatsModal({
   playerHrefBase,
   seasonId,
 }: UserStatsModalProps) {
+  const { formatNumber } = useLocaleFormatters();
   const [recentMatch, setRecentMatch] = useState<RecentMatchState>({
     status: 'idle',
   });
@@ -89,9 +86,10 @@ export function UserStatsModal({
             <Kpi title="Rank">{entry.mmr != null ? entry.rank : '–'}</Kpi>
             <Kpi title="MMR">{entry.mmr ?? '🐣'}</Kpi>
             <Kpi title="Win %">
-              {percentFormatter.format(
-                totalGames > 0 ? entry.wins / totalGames : 0
-              )}
+              {formatNumber(totalGames > 0 ? entry.wins / totalGames : 0, {
+                style: 'percent',
+                maximumFractionDigits: 0,
+              })}
             </Kpi>
             <Kpi title="# Wins" className="col-start-1">
               {entry.wins}

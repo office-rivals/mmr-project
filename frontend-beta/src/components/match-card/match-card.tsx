@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import type { MatchResponse, MatchTeamPlayerResponse } from '@/api-v3/models';
 import { MmrDelta } from './mmr-delta';
 
@@ -24,6 +25,7 @@ export function MatchCard({
   playerHref,
   renderPlayerLink,
 }: MatchCardProps) {
+  const { formatDate, formatTime } = useLocaleFormatters();
   const team1 = match.teams.find((t) => t.index === 0) ?? match.teams[0];
   const team2 = match.teams.find((t) => t.index === 1) ?? match.teams[1];
 
@@ -63,15 +65,18 @@ export function MatchCard({
         <div className="flex flex-col items-center">
           vs.
           {match.playedAt ? (
-            <p
+            <time
               className="text-muted-foreground"
-              title={new Date(match.playedAt).toDateString()}
-            >
-              {new Date(match.playedAt).toLocaleTimeString(undefined, {
-                hour: '2-digit',
-                minute: '2-digit',
+              dateTime={match.playedAt}
+              title={formatDate(match.playedAt, '—', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
               })}
-            </p>
+            >
+              {formatTime(match.playedAt)}
+            </time>
           ) : null}
         </div>
         <div

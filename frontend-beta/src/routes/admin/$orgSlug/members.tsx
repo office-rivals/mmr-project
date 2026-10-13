@@ -1,3 +1,4 @@
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { useState } from 'react';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
@@ -31,11 +32,7 @@ import {
 } from '@/lib/server/action-result';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { requireAdminOrg, resolveOrgIdBySlug } from '@/lib/server/admin';
-import {
-  formatDate,
-  getRoleBadgeVariant,
-  isModeratorOrAbove,
-} from '@/lib/utils';
+import { getRoleBadgeVariant, isModeratorOrAbove } from '@/lib/utils';
 import type {
   InviteLinkResponse,
   OrganizationMemberResponse,
@@ -314,6 +311,7 @@ const getStatusBadgeVariant = (status: string) =>
   status === 'Active' ? ('default' as const) : ('outline' as const);
 
 function MembersPage() {
+  const { formatDate } = useLocaleFormatters();
   const { org } = Route.useRouteContext();
   const { members, inviteLinks } = Route.useLoaderData();
   const search = Route.useSearch();

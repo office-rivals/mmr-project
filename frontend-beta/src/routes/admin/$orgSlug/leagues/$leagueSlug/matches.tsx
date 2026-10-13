@@ -32,7 +32,7 @@ import {
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireAdminOrg, resolveOrgAndLeagueIds } from '@/lib/server/admin';
-import { groupMatchesByDate } from '@/lib/utils';
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import type { EditMatchTeamPayload } from '@/components/admin/edit-match-dialog';
 import type { LeaguePlayerResponse, MatchResponse } from '@/api-v3';
 
@@ -290,6 +290,7 @@ export const Route = createFileRoute(
 });
 
 function AdminMatchesPage() {
+  const { groupMatchesByDate } = useLocaleFormatters();
   const { orgSlug, leagueSlug } = Route.useParams();
   const search = Route.useSearch();
   const data = Route.useLoaderData();
