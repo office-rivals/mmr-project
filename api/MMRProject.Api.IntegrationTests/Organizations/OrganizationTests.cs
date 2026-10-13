@@ -333,6 +333,36 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
     }
 
     [Fact]
+    public async Task ReinviteRemovedInvitation_SameAddress_ReusesTheInvitation()
+    {
+        var org = await CreateOrganization("Reinvite Org", "reinvite-org");
+        await SeedOrgMember(org.Id, "reinvite-owner", "reinvite-owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("reinvite-owner");
+        var firstInviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "again@test.com", Role = OrganizationRole.Member });
+        var firstInvite = await ReadJsonAsync<OrganizationMemberResponse>(firstInviteResponse);
+        Assert.NotNull(firstInvite);
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/members/{firstInvite.Id}")).StatusCode);
+
+        // The reused row still holds the address, so clearing stale holders must skip it.
+        var inviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "again@test.com", Role = OrganizationRole.Member });
+        Assert.Equal(HttpStatusCode.OK, inviteResponse.StatusCode);
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
+        Assert.NotNull(invited);
+        Assert.Equal(firstInvite.Id, invited.Id);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var reused = await dbContext.OrganizationMemberships.SingleAsync(m => m.Id == firstInvite.Id);
+        Assert.Equal(MembershipStatus.Invited, reused.Status);
+        Assert.Equal("again@test.com", reused.InviteEmail);
+    }
+
+    [Fact]
     public async Task UpdateMemberProfile_AsModerator_UpdatesDisplayNameAndUsername()
     {
         var org = await CreateOrganization("Profile Org", "profile-org");
