@@ -3,13 +3,22 @@ import { config as loadEnv } from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-loadEnv({ path: '.env.e2e', quiet: true });
-loadEnv({ path: '.env', quiet: true });
-
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..');
 const apiDir = path.join(repoRoot, 'api/MMRProject.Api');
 const mmrApiDir = path.join(repoRoot, 'mmr-api');
+
+// Resolved against this file, not process.cwd(), so the suite's env is the same
+// no matter which app dir the frontend webServer below is pointed at.
+loadEnv({ path: path.join(here, '.env.e2e'), quiet: true });
+loadEnv({ path: path.join(here, '.env'), quiet: true });
+
+// Which app the frontend webServer boots: 'frontend' (SvelteKit, default) or
+// 'frontend-beta' (the React/TanStack Start rewrite) — the specs are shared.
+const frontendDir = path.resolve(
+  repoRoot,
+  process.env.E2E_FRONTEND_DIR ?? 'frontend'
+);
 
 // E2E runs on a parallel set of ports so it never collides with a local dev
 // stack (Postgres 5432, mmr-api 8080, .NET API 8081, Vite 5173). All four are
@@ -99,8 +108,9 @@ export default defineConfig({
       name: 'frontend',
       // --strictPort so a port collision surfaces a clear error instead of
       // Vite silently sliding to the next free port (which Playwright would
-      // then never find).
+      // then never find). Both apps are Vite and forward argv from `dev`.
       command: `npm run dev -- --port ${E2E_FRONTEND_PORT} --strictPort`,
+      cwd: frontendDir,
       url: `${BASE_URL}/login`,
       timeout: 60_000,
       reuseExistingServer,

@@ -14,7 +14,7 @@ which components are bumped and by what level:
 Description of the change.
 ```
 
-Valid components: `frontend`, `api`, `mmr-api`
+Valid components: `frontend`, `frontend-beta`, `api`, `mmr-api`
 Valid bump types: `major`, `minor`, `patch`
 
 ## Writing the description

@@ -1,4 +1,10 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import {
+  DELETE_FORM_SELECTOR,
+  isDataReloadRoute,
+  isEditPostRoute,
+  isEditPostUrl,
+} from './target';
 
 const ADMIN_HOME = '/admin';
 const ORG_ADMIN = '/admin/test-org';
@@ -38,11 +44,14 @@ async function stallDataReload(page: Page) {
   const hits = { count: 0 };
   let open: () => void = () => {};
   const gate = new Promise<void>((resolve) => (open = resolve));
-  await page.route('**/*__data.json*', async (route) => {
-    hits.count += 1;
-    await gate;
-    await route.continue();
-  });
+  await page.route(
+    (url) => isDataReloadRoute(url),
+    async (route) => {
+      hits.count += 1;
+      await gate;
+      await route.continue();
+    }
+  );
   return { hits, release: () => open() };
 }
 
@@ -53,7 +62,7 @@ async function stallEditPost(page: Page) {
   let open: () => void = () => {};
   const gate = new Promise<void>((resolve) => (open = resolve));
   await page.route(
-    (url) => url.pathname.endsWith('/matches') && url.search.includes('/edit'),
+    (url) => isEditPostRoute(url),
     async (route) => {
       if (route.request().method() !== 'POST') return route.fallback();
       hits.count += 1;
@@ -74,7 +83,7 @@ function countEditSubmissions(page: Page) {
   // dialog closes is exactly the bug, and invisible to a response listener.
   const edits = { count: 0 };
   page.on('request', (req) => {
-    if (req.method() === 'POST' && req.url().includes('?/edit')) {
+    if (req.method() === 'POST' && isEditPostUrl(req.url())) {
       edits.count += 1;
     }
   });
@@ -280,7 +289,7 @@ test.describe('League admin', () => {
     // The response event fires before enhance's callback runs; the stalled
     // reload is what actually holds the window open past this point.
     const savePosted = page.waitForResponse(
-      (res) => res.request().method() === 'POST' && res.url().includes('?/edit')
+      (res) => res.request().method() === 'POST' && isEditPostUrl(res.url())
     );
     await saveButton(dialog).click();
     await savePosted;
@@ -331,7 +340,7 @@ test.describe('League admin', () => {
 
     const reload = await stallDataReload(page);
     const savePosted = page.waitForResponse(
-      (res) => res.request().method() === 'POST' && res.url().includes('?/edit')
+      (res) => res.request().method() === 'POST' && isEditPostUrl(res.url())
     );
     await saveButton(dialog).click();
     await savePosted;
@@ -361,7 +370,7 @@ test.describe('League admin', () => {
 
     const post = await stallEditPost(page);
     const savePosted = page.waitForResponse(
-      (res) => res.request().method() === 'POST' && res.url().includes('?/edit')
+      (res) => res.request().method() === 'POST' && isEditPostUrl(res.url())
     );
     await saveButton(dialog).click();
 
@@ -399,7 +408,7 @@ test.describe('League admin', () => {
     await dialog.locator('input[type="number"]').nth(0).fill('10');
     await dialog.locator('input[type="number"]').nth(1).fill('6');
     const savePosted = page.waitForResponse(
-      (res) => res.request().method() === 'POST' && res.url().includes('?/edit')
+      (res) => res.request().method() === 'POST' && isEditPostUrl(res.url())
     );
     await saveButton(dialog).click();
     await dialog.getByRole('button', { name: 'Cancel' }).click();
@@ -433,7 +442,7 @@ test.describe('League admin', () => {
 
     const reload = await stallDataReload(page);
     const savePosted = page.waitForResponse(
-      (res) => res.request().method() === 'POST' && res.url().includes('?/edit')
+      (res) => res.request().method() === 'POST' && isEditPostUrl(res.url())
     );
     await saveButton(dialog).click();
     await savePosted;
@@ -558,13 +567,20 @@ test.describe('League admin', () => {
 
     // Scripted because the modal overlay blocks the row's Delete button; this
     // is the reload a concurrent admin would cause.
-    await page.evaluate((id) => {
-      document
-        .querySelector<HTMLFormElement>(
-          `[data-match-id="${id}"] form[action="?/delete"]`
-        )!
-        .requestSubmit();
-    }, matchId);
+    // requestSubmit() bypasses the button, so SvelteKit sees no confirm() —
+    // the React port's form-level handler does raise one. Accepting is a no-op
+    // for the former and the equivalent of clicking through for the latter.
+    page.once('dialog', (d) => d.accept());
+    await page.evaluate(
+      ([id, selector]) => {
+        document
+          .querySelector<HTMLFormElement>(
+            `[data-match-id="${id}"] ${selector}`
+          )!
+          .requestSubmit();
+      },
+      [matchId, DELETE_FORM_SELECTOR] as const
+    );
 
     await expect(page.locator(`[data-match-id="${matchId}"]`)).toHaveCount(0);
 

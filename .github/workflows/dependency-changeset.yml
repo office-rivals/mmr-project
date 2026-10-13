@@ -59,6 +59,7 @@ jobs:
           changed="$(git diff --name-only --diff-filter=ACMRT "$BASE_SHA"...HEAD)"
           components=()
           if echo "$changed" | grep -qE '^frontend/'; then components+=("frontend"); fi
+          if echo "$changed" | grep -qE '^frontend-beta/'; then components+=("frontend-beta"); fi
           if echo "$changed" | grep -qE '^api/';      then components+=("api");      fi
           if echo "$changed" | grep -qE '^mmr-api/';  then components+=("mmr-api");  fi
 

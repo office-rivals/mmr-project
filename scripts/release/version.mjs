@@ -15,6 +15,20 @@ export function syncCsprojVersion(projectPath, version) {
   fs.writeFileSync(projectPath, updatedProjectFile);
 }
 
+export function syncPackageLockVersion(packageJsonPath, version) {
+  const lockPath = path.join(path.dirname(packageJsonPath), "package-lock.json");
+  if (!fs.existsSync(lockPath)) return;
+  const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+  lock.version = version;
+  if (lock.packages?.[""]) lock.packages[""].version = version;
+  fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + "\n");
+}
+
+export function alignedMajorVersions(versions) {
+  return new Set(versions.filter(({ independentMajor }) => !independentMajor)
+    .map(({ version }) => version.split(".")[0]));
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -35,10 +49,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const versions = components.map((component) => {
     const packageJson = JSON.parse(fs.readFileSync(component.packageJsonPath, "utf8"));
     component.sync?.(packageJson.version);
-    return { name: component.name, version: packageJson.version };
+    syncPackageLockVersion(component.packageJsonPath, packageJson.version);
+    return { name: component.name, version: packageJson.version, independentMajor: component.independentMajor };
   });
 
-  const majors = new Set(versions.map(({ version }) => version.split(".")[0]));
+  const majors = alignedMajorVersions(versions);
 
   if (majors.size !== 1) {
     console.error("Release versions must share the same major:");
