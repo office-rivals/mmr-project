@@ -6,13 +6,18 @@ import { AppLink } from '@/components/app-link';
 import { Eyebrow } from '@/components/eyebrow';
 import { FlagResultAlert } from '@/components/flag-result-alert';
 import { HttpErrorView } from '@/components/http-error-view';
-import { MatchCard, MatchDateHeader } from '@/components/match-card';
+import {
+  MatchCard,
+  MatchDateHeader,
+  MatchFlagButton,
+} from '@/components/match-card';
 import {
   BiggestSwings,
   WeekSummaryCard,
   WeekSummaryCompact,
 } from '@/components/matches/match-summary';
 import { PageTitle } from '@/components/page-title';
+import { FlagDialogs } from '@/components/profile/flag-dialogs';
 import { ReportMatchModal } from '@/components/report-match-modal';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -22,7 +27,8 @@ import { useMatchFlagHandlers } from '@/hooks/use-match-flag-handlers';
 import { useShowMmr } from '@/hooks/use-show-mmr';
 import { getMatchFeedFn, getMatchesPageFn } from '@/lib/league-data';
 import { cn } from '@/lib/utils';
-import type { MatchResponse } from '@/api-v3';
+import type { FlagActionResult } from '@/lib/match-flag-actions';
+import type { MatchFlagResponse, MatchResponse } from '@/api-v3';
 
 interface MatchesSearch {
   season?: string;
@@ -79,6 +85,26 @@ function MatchesPage() {
   const canReport = Boolean(me && data.isCurrentSeason);
   const [reportOpen, setReportOpen] = useState(false);
   const flags = useMatchFlagHandlers(league.orgId, league.leagueId);
+  const flagFor = (matchId: string) =>
+    data.myFlags.find((f) => f.matchId === matchId);
+  const [flagging, setFlagging] = useState<{
+    matchId: string;
+    flag: MatchFlagResponse | undefined;
+  } | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  // Success refreshes the loaders and shows the page banner; a failure is
+  // shown in the same banner, since the reason dialog has no error slot.
+  const settleFlag = async (pending: Promise<FlagActionResult>) => {
+    const result = await pending.catch((): FlagActionResult => ({
+      success: false,
+      message: 'Failed to save the flag',
+    }));
+    if (!result.success) flags.setResult(result);
+    else {
+      setDeleteConfirmOpen(false);
+      setFlagging(null);
+    }
+  };
 
   const [older, setOlder] = useState<MatchResponse[]>([]);
   const [hasMore, setHasMore] = useState(data.feed.hasMore);
@@ -221,22 +247,44 @@ function MatchesPage() {
             {groups.map((group) => (
               <Fragment key={group.label}>
                 <MatchDateHeader label={group.label} />
-                {group.matches.map((match) => (
-                  <MatchCard
-                    key={match.id}
-                    match={match}
-                    showMmr={showMmr}
-                    viewerId={me}
-                    renderPlayerLink={(player, name) => (
-                      <AppLink
-                        to={`${base}/player/${player.leaguePlayerId}`}
-                        className="hover:underline"
-                      >
-                        {name}
-                      </AppLink>
-                    )}
-                  />
-                ))}
+                {group.matches.map((match) => {
+                  const flag = flagFor(match.id);
+                  return (
+                    <div
+                      key={match.id}
+                      className={cn(
+                        'flex items-stretch gap-1 rounded-lg',
+                        flag && 'ring-1 ring-red-400'
+                      )}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <MatchCard
+                          match={match}
+                          showMmr={showMmr}
+                          viewerId={me}
+                          renderPlayerLink={(player, name) => (
+                            <AppLink
+                              to={`${base}/player/${player.leaguePlayerId}`}
+                              className="hover:underline"
+                            >
+                              {name}
+                            </AppLink>
+                          )}
+                        />
+                      </div>
+                      {me ? (
+                        <MatchFlagButton
+                          flagged={flag != null}
+                          disabled={!hydrated}
+                          onClick={() => {
+                            flags.setResult(null);
+                            setFlagging({ matchId: match.id, flag });
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                  );
+                })}
               </Fragment>
             ))}
             {loadOlder.isError ? (
@@ -277,6 +325,28 @@ function MatchesPage() {
           ) : null}
         </div>
       </div>
+
+      <FlagDialogs
+        open={flagging != null}
+        editingFlagId={flagging?.flag?.id ?? null}
+        initialReason={flagging?.flag?.reason ?? ''}
+        onClose={() => setFlagging(null)}
+        onSubmit={(reason) => {
+          if (!flagging) return;
+          void settleFlag(
+            flagging.flag
+              ? flags.onUpdateFlag({ flagId: flagging.flag.id, reason })
+              : flags.onCreateFlag({ matchId: flagging.matchId, reason })
+          );
+        }}
+        deleteConfirmOpen={deleteConfirmOpen}
+        onDeleteConfirmChange={setDeleteConfirmOpen}
+        onDelete={() => {
+          if (flagging?.flag) {
+            void settleFlag(flags.onDeleteFlag({ flagId: flagging.flag.id }));
+          }
+        }}
+      />
 
       {canReport && me ? (
         <ReportMatchModal

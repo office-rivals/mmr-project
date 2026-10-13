@@ -2,11 +2,15 @@ import { Fragment, useCallback, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import { AlertCircle, CheckCircle, Flag, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, X } from 'lucide-react';
 import { HttpErrorView } from '@/components/http-error-view';
 import { SeasonPicker } from '@/components/season-picker';
 import { LineChart } from '@/components/charts';
-import { MatchCard, MatchDateHeader } from '@/components/match-card';
+import {
+  MatchCard,
+  MatchDateHeader,
+  MatchFlagButton,
+} from '@/components/match-card';
 import { FlagDialogs } from '@/components/profile/flag-dialogs';
 import { PlayerFilter } from '@/components/profile/player-filter';
 import {
@@ -504,21 +508,10 @@ function PlayerProfilePage() {
                           viewerId={playerId}
                         />
                       </div>
-                      <button
-                        type="button"
-                        className={`rounded-lg px-2.5 transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                          existingFlag
-                            ? 'text-red-500'
-                            : 'text-muted-foreground'
-                        }`}
-                        title={existingFlag ? 'Edit flag' : 'Flag this match'}
-                        aria-label={
-                          existingFlag ? 'Edit flag' : 'Flag this match'
-                        }
+                      <MatchFlagButton
+                        flagged={existingFlag != null}
                         onClick={() => openFlagDialog(group.match.id)}
-                      >
-                        <Flag aria-hidden="true" className="h-4 w-4" />
-                      </button>
+                      />
                     </div>
                   </div>
                 </Fragment>
