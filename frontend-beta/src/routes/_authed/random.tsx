@@ -510,7 +510,7 @@ function NamesRandomizer({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="size-8 shrink-0 text-muted-foreground"
+                  className="-my-1.5 size-11 shrink-0 text-muted-foreground"
                   aria-label={`Remove ${name}`}
                   onClick={() => {
                     onRemove(index);

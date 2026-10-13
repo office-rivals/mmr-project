@@ -195,7 +195,7 @@ function MatchesPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-10"
+              className="h-11 lg:h-10"
               disabled={!hydrated}
               onClick={() => setReportOpen(true)}
             >
@@ -229,7 +229,7 @@ function MatchesPage() {
                     replace
                     aria-current={active ? 'true' : undefined}
                     className={cn(
-                      'flex-1 rounded-full px-5 py-1.5 text-center text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                      'flex min-h-11 flex-1 items-center justify-center rounded-full px-5 py-1.5 text-center text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:min-h-0',
                       active && 'bg-muted font-semibold text-foreground'
                     )}
                   >
@@ -263,7 +263,7 @@ function MatchesPage() {
               }
             />
           ) : null}
-          <label className="flex items-center gap-3 text-sm lg:ml-auto">
+          <label className="flex min-h-11 items-center gap-3 text-sm lg:ml-auto lg:min-h-0">
             MMR changes
             <button
               type="button"
@@ -337,7 +337,10 @@ function MatchesPage() {
                           renderPlayerLink={(player, name) => (
                             <AppLink
                               to={`${base}/player/${player.leaguePlayerId}`}
-                              className="hover:underline"
+                              // Stacked names cannot each get 44px without
+                              // overlapping; this widens the target as far
+                              // as it can go.
+                              className="relative after:absolute after:-inset-x-1 after:-inset-y-[3px] hover:underline"
                             >
                               {name}
                             </AppLink>

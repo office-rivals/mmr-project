@@ -56,7 +56,7 @@ export function SettingsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="relative flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="relative flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:size-10"
         aria-label={
           showFlagDot
             ? 'Settings menu — unresolved match flags need attention'

@@ -335,12 +335,13 @@ function RecordRows({
         return (
           <li
             key={row.leaguePlayerId}
-            className="grid grid-cols-[minmax(0,1fr)_auto_4rem_2.75rem] items-center gap-3 border-b px-5 py-3 text-sm last:border-b-0"
+            className="relative grid grid-cols-[minmax(0,1fr)_auto_4rem_2.75rem] items-center gap-3 border-b px-5 py-3 text-sm last:border-b-0"
           >
             <span className="flex min-w-0 items-center gap-2">
               <AppLink
                 to={playerHref(row.leaguePlayerId)}
-                className="truncate font-semibold hover:underline"
+                // The overlay makes the whole row the link's target.
+                className="truncate font-semibold after:absolute after:inset-0 hover:underline"
               >
                 {getPlayerDisplayName(row)}
               </AppLink>

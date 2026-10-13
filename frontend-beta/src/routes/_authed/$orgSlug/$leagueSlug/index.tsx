@@ -350,7 +350,7 @@ function LeagueHomePage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-10"
+                className="h-11 lg:h-10"
                 disabled={!hydrated}
                 onClick={() => setReportModalOpen(true)}
               >
@@ -450,7 +450,7 @@ function LeagueHomePage() {
                     data-state={showMmr ? 'checked' : 'unchecked'}
                     disabled={!hydrated}
                     onClick={() => setShowMmr(!showMmr)}
-                    className="inline-flex size-5 items-center justify-center rounded border border-muted-foreground/60 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                    className="relative inline-flex size-5 items-center justify-center rounded border border-muted-foreground/60 transition-colors before:absolute before:-inset-3 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                   >
                     {showMmr ? (
                       <Check className="size-3.5 text-primary-foreground" />
@@ -535,7 +535,7 @@ function ViewAll({ to, label }: { to: string; label: string }) {
   return (
     <AppLink
       to={to}
-      className="inline-flex items-center gap-0.5 rounded-sm text-sm text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="-my-3 inline-flex items-center gap-0.5 rounded-sm py-3 text-sm text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
       View all<span className="sr-only"> {label}</span>
       <ChevronRight aria-hidden="true" className="size-4" />

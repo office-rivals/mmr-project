@@ -172,7 +172,7 @@ function StandingsPage() {
                 replace
                 aria-current={sort === key ? 'true' : undefined}
                 className={cn(
-                  'flex-1 rounded-full px-2.5 py-1.5 text-center text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:px-4',
+                  'flex min-h-11 flex-1 items-center justify-center rounded-full px-2.5 py-1.5 text-center text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:px-4 lg:min-h-0',
                   sort === key && 'bg-muted font-semibold text-foreground'
                 )}
               >

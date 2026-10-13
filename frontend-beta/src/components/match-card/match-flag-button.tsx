@@ -19,7 +19,7 @@ export function MatchFlagButton({
       aria-label={label}
       disabled={disabled}
       className={cn(
-        'rounded-lg px-2.5 transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50',
+        'min-w-11 rounded-lg px-2.5 transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50',
         flagged ? 'text-red-500' : 'text-muted-foreground'
       )}
       onClick={onClick}

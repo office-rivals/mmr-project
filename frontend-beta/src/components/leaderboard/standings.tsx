@@ -66,7 +66,7 @@ export function Podium({ top, me, playerHref }: PodiumProps) {
       <li
         key={entry.leaguePlayerId}
         className={cn(
-          'flex min-w-0 flex-col items-center gap-2 lg:items-stretch lg:gap-3 lg:rounded-lg lg:border lg:p-5',
+          'relative flex min-w-0 flex-col items-center gap-2 lg:items-stretch lg:gap-3 lg:rounded-lg lg:border lg:p-5',
           place === 1
             ? 'order-2 lg:border-primary/50 lg:bg-gradient-to-b lg:from-primary/15 lg:to-primary/5 lg:pb-6'
             : 'lg:mt-10 lg:bg-card',
@@ -106,7 +106,7 @@ export function Podium({ top, me, playerHref }: PodiumProps) {
           <AppLink
             to={playerHref(entry.leaguePlayerId)}
             className={cn(
-              'flex max-w-full min-w-0 items-center gap-1 text-base font-bold hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:text-xl',
+              'flex max-w-full min-w-0 items-center gap-1 text-base font-bold after:absolute after:inset-0 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:text-xl',
               isMe && 'text-primary'
             )}
           >
@@ -460,8 +460,9 @@ export function StandingsTable({
               <tr
                 key={entry.leaguePlayerId}
                 aria-current={isMe ? 'true' : undefined}
+                // Relative so the name link's overlay spans the whole row.
                 className={cn(
-                  'border-b last:border-b-0',
+                  'relative border-b last:border-b-0',
                   isMe && 'bg-primary/10 text-primary',
                   podium && index < 3 && 'hidden lg:table-row'
                 )}
@@ -480,7 +481,7 @@ export function StandingsTable({
                     <div className="flex min-w-0 flex-col leading-tight">
                       <AppLink
                         to={playerHref(entry.leaguePlayerId)}
-                        className="flex items-center gap-1 truncate font-semibold hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        className="flex items-center gap-1 truncate font-semibold after:absolute after:inset-0 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                       >
                         <span className="truncate">{handle(entry)}</span>
                         <StreakIcon entry={entry} />
@@ -570,6 +571,7 @@ export function StandingsTable({
           <Button
             variant="outline"
             size="sm"
+            className="h-11 lg:h-9"
             disabled={!hydrated}
             aria-expanded={expanded}
             onClick={() => setExpanded((v) => !v)}
@@ -604,13 +606,13 @@ export function UnrankedList({
           return (
             <li
               key={entry.leaguePlayerId}
-              className="flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
+              className="relative flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
             >
               <PlayerAvatar name={getPlayerDisplayName(entry)} dashed />
               <div className="flex min-w-0 flex-1 flex-col leading-tight">
                 <AppLink
                   to={playerHref(entry.leaguePlayerId)}
-                  className="truncate font-semibold hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  className="truncate font-semibold after:absolute after:inset-0 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
                   {handle(entry)}
                 </AppLink>

@@ -94,7 +94,7 @@ export function LeagueSwitcher({
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          'flex max-w-full min-w-0 items-center gap-2.5 rounded-md py-1 pr-2 text-left hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+          'flex min-h-11 max-w-full min-w-0 items-center gap-2.5 rounded-md py-1 pr-2 text-left hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
           'lg:min-h-[52px] lg:w-full lg:border lg:p-2'
         )}
         aria-label="Switch organization or league"

@@ -49,7 +49,7 @@ export function PartnerFilters({
           type="button"
           disabled={disabled}
           onClick={() => onChange({})}
-          className="rounded-full px-2 py-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="min-h-11 rounded-full px-2 py-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:min-h-0"
         >
           Clear
         </button>
@@ -74,14 +74,14 @@ function PartnerSelect({
   onChange: (id: string | undefined) => void;
 }) {
   return (
-    <label className="relative flex min-w-0 items-center rounded-full border bg-card text-sm focus-within:ring-2 focus-within:ring-ring has-disabled:opacity-60">
+    <label className="relative flex min-h-11 min-w-0 items-center rounded-full border bg-card text-sm focus-within:ring-2 focus-within:ring-ring has-disabled:opacity-60 lg:min-h-0">
       <span className="pl-3 text-muted-foreground">{label}</span>
       <select
         value={value ?? ''}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value || undefined)}
         // The native picker follows the page theme rather than the OS one.
-        className="max-w-40 min-w-0 appearance-none truncate bg-transparent py-1.5 pr-8 pl-1.5 font-medium [color-scheme:light] focus:outline-none dark:[color-scheme:dark]"
+        className="max-w-40 min-w-0 appearance-none self-stretch truncate bg-transparent py-1.5 pr-8 pl-1.5 font-medium [color-scheme:light] focus:outline-none dark:[color-scheme:dark]"
       >
         <option value="">{anyLabel}</option>
         {options.map((option) => (
