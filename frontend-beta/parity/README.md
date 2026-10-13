@@ -54,18 +54,17 @@ regressions live alongside the visual harness and run with
 apps, including keyboard focus/highlighting, menu dismissal, disabled links,
 form reset, feedback after navigation, delayed loader responses, pending-match
 actions, report-dialog state, and real touch events in the randomizer. It uses
-the same isolated backend and must also run alone. Its token cases explicitly
-verify the documented scope difference rather than claiming identical behavior.
+the same isolated backend and must also run alone. Its token cases verify creation
+and revocation in both apps, including the reference's token-scope fix from main.
 
 ## Intentional behavior differences
 
-The parity target has five explicit runtime exceptions:
+Token creation now works in both apps; the reference's upstream fix sends the
+same supported `write` scope as beta. The paired tests do not retain plaintext
+tokens in artifacts.
 
-- The Svelte token form sends the unsupported `full` scope and visibly fails.
-  Beta sends the API's supported `write` scope and creates the token. The paired
-  behavior suite verifies both outcomes without retaining the plaintext token in
-  an artifact. This browser-verified repair uses the
-  [supported API scope](../../api/MMRProject.Api/Auth/PatScopes.cs).
+The parity target has four explicit runtime exceptions:
+
 - Native beta form success uses a 303 redirect, while native failure returns an
   escaped error document with the original status. SvelteKit instead renders
   action data back into the original page. This source-level framework contract

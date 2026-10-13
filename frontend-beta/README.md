@@ -46,16 +46,27 @@ or deployment identifiers.
 | Variable                     | Purpose                                         |
 | ---------------------------- | ----------------------------------------------- |
 | `API_BASE_PATH`              | Server-side API base URL, resolved per request  |
-| `VITE_CLERK_PUBLISHABLE_KEY` | Clerk public key, included in the browser build |
+| `CLERK_PUBLISHABLE_KEY` | Clerk public key, supplied to the browser during SSR |
 | `CLERK_SECRET_KEY`           | Server-only Clerk secret                        |
 | `CLERK_SIGN_IN_URL`          | `/login`                                        |
 | `CLERK_SIGN_UP_URL`          | `/sign-up`                                      |
 | `TRUST_PROXY`                | Forwarded-header trust policy; defaults false   |
+| `APP_ORIGIN`                 | Fixed public origin behind a TLS-terminating proxy |
+| `CLERK_AUTHORIZED_PARTIES`    | Comma-separated origins allowed to mint session tokens |
 
-The browser Clerk key is fixed at build time; unlike Svelte's dynamic public env,
-a single built image cannot change Clerk instances without rebuilding. The API
-base URL and server secret remain runtime configuration. Vite loads local env
-for development; `server.mjs` loads optional dotenv configuration for production.
+The Clerk middleware reads the runtime public key and supplies it to the browser
+through its SSR initial state. No credentials are required to build the image.
+`VITE_CLERK_PUBLISHABLE_KEY` remains supported for existing local configurations;
+prefer `CLERK_PUBLISHABLE_KEY` for deployments. The API URL and secret key are also
+runtime configuration. Vite loads local env for development; `server.mjs` loads
+optional dotenv configuration for local production runs.
+
+For a fixed public hostname behind managed ingress, set `APP_ORIGIN` to its HTTPS
+origin and leave `TRUST_PROXY=false`. The server uses that origin for Clerk and
+native-form validation and removes conflicting forwarded host/protocol headers.
+Set `CLERK_AUTHORIZED_PARTIES` to the explicitly trusted application origins; a
+shared Clerk instance may need both its primary and beta origins. Sign-in and
+sign-up return to this app's `/`; sign-out returns to `/login`.
 
 `TRUST_PROXY` accepts `false`, `true`, `loopback`, or a comma-separated list of
 proxy IP addresses. Keep the default when the app receives traffic directly.
@@ -74,6 +85,7 @@ Run the shared functional suite from either app directory:
 # Here: boots beta and the isolated e2e backend stack
 npm run e2e
 npm run e2e:ui
+npm run build && npm run e2e:production
 
 # Reference baseline
 cd ../frontend
@@ -86,6 +98,15 @@ E2E_FRONTEND_DIR=frontend-beta PLAYWRIGHT_JSON_OUTPUT_NAME=/tmp/beta.json npx pl
 See `../frontend/e2e/README.md` for prerequisites. These tests reset the database;
 never run two suites (including visual comparisons) concurrently. Ports 8090,
 8091, and 5180 must be free. Postgres uses the dedicated e2e port 5433.
+
+For the production suite, install all three browser engines from `../frontend`
+with `npx playwright install chromium webkit firefox`. It repeats the full shared
+suite against the built Node server in Chromium, then checks sign-in, navigation,
+role restrictions and match submission in WebKit and Firefox. Each browser gets
+a fresh database seed. Final contracts check authenticated HTML without JavaScript,
+native POSTs, forged origins, public health/assets and sign-out. The server runs
+in UTC while browser checks cover multiple timezones and locales. WebKit coverage
+does not replace testing on a physical Safari device.
 
 Run the screenshot comparison from this directory:
 
@@ -113,6 +134,12 @@ the intentional runtime differences; `parity/VERIFICATION.md` records measured
 results.
 
 ## Data and mutation lifecycle
+
+Date and number rendering uses a consistent English/UTC snapshot for SSR and
+initial hydration, then adopts the browser's locale and timezone. Use
+`useLocaleFormatters()` for rendered values and date groups; formatting directly
+with the runtime defaults can disagree between Linux containers and browsers.
+Without JavaScript, date displays retain the UTC snapshot.
 
 The app and admin layouts fetch one fresh `['me']` snapshot in `beforeLoad`
 per navigation or invalidation. Descendants resolve organizations and leagues from
@@ -145,3 +172,30 @@ submit the form. Controls revealed by JavaScript still require JavaScript.
 The detailed contract is in `../plans/frontend-beta/specs/10-runtime-contract.md`.
 Run `npm run e2e:regressions` for beta-specific native-form, transport, and cache
 regressions. It uses the same destructive e2e seed and must run alone.
+
+## Container and release
+
+```sh
+docker build -t frontend-beta:local .
+docker run --rm --env-file /private/path/beta.env -p 127.0.0.1:3000:3000 frontend-beta:local
+```
+
+The image runs as the unprivileged `node` user and excludes local env files,
+test artifacts and development dependencies. `/health` checks the Node listener
+without requiring a Clerk session; it does not check upstream API availability.
+Use port 3000 for ingress and health probes. Set the public origin and production
+Clerk credentials at runtime before testing authentication on the custom hostname.
+
+`frontend-beta` is a separate changeset/release component. After merging its
+release PR, choose `frontend-beta` and the released version in **Deploy Release**.
+Provision a separate Container App first and set `BETA_UI_CONTAINER_APP_NAME` in
+GitHub. Configure its API URL, Clerk keys, public origin and HTTP probes in Azure.
+The workflow rejects an empty beta target or the primary frontend's app name.
+It deploys the image published for that release to GHCR, without rebuilding it,
+and does not configure DNS, TLS, runtime credentials or probes. Roll back by
+deploying the previous version.
+
+For a beta subdomain sharing live users, reuse the production Clerk instance and
+API issuer, check Clerk's Allowed Subdomains setting, and verify login, refresh,
+logout and an agreed live test mutation after binding HTTPS. Beta mutations affect
+the same live database. The destructive Playwright suites must never target it.

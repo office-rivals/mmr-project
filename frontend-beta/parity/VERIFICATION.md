@@ -1,5 +1,87 @@
 # Parity verification
 
+## Readiness check — 2026-10-02
+
+Verified the `feat/frontend-beta` working tree based on `b97d4ff`, including the
+readiness changes prepared in this workspace. An independent checkout of current
+`origin/main` (`45dca00`) passed the full reference suite. The reference token-scope
+fix from that commit is also applied here; the paired token tests now require
+successful creation and revocation in both apps.
+
+| Gate | Result |
+| --- | --- |
+| Current main reference baseline | 97 passed, including its new personal-token test |
+| Final beta development suite | 96 passed |
+| Built production server | 156 passed: full Chromium suite; WebKit/Firefox sign-ins and 26 smoke checks each; six production contracts |
+| Beta HTTP, native-form, cache, refresh, polling and navigation regressions | 23 passed |
+| Paired behavior | 59 passed, including token creation/revocation in both apps after the upstream fix |
+| Visual matrix | 124 passed: 118 comparisons with zero unexplained pixels, plus setup, keyboard and icon-policy checks |
+| TypeScript and Vitest | Passed; 95 tests across 15 files |
+| API integration | 158 passed after dependency patches |
+| Go | `go test ./... -race` passed |
+| Release tooling | 54 tests; both changesets validated; full version/changelog rehearsal passed in a disposable copy |
+| Workflow syntax | `actionlint` passed |
+| Container | Credential-free Linux ARM64 and AMD64 builds passed; AMD64 runtime healthy as UID 1000; runtime-only Clerk keys; authenticated HTML, menus and no-JavaScript rendering passed without page errors |
+| Dependency audit | Beta npm audit, API NuGet audit and integration-test NuGet audit report zero known findings |
+
+The production suite runs `server.mjs` in UTC with an explicit `APP_ORIGIN` and
+Clerk origin allowlist. Its locale checks cover Los Angeles, Copenhagen (Danish)
+and Kiritimati across eight authenticated routes each. It verifies authenticated
+HTML with JavaScript disabled,
+same-origin native POST success, forged-origin rejection, public health and
+manifest responses, anonymous protection, and sign-out that remains on this app.
+The additional engines cover navigation, keyboard menus, phone-width header
+layout, role restrictions and a complete match submission. WebKit is not a
+physical Safari-device test.
+
+Initial failures were investigated without weakening application assertions:
+
+- A beta menu timeout passed a focused rerun and the complete 96-test rerun.
+- Reusing one seed across browser engines triggered the API's duplicate-match
+  guard. Each production browser now gets a fresh seed and sign-in, in order.
+- The anonymous production request inherited Playwright's authenticated project
+  state. Its context now explicitly starts without cookies; all four setup/contract
+  tests passed in isolation, followed by the complete 153-test production run.
+- The first visual run had 6,426 unexplained pixels on the desktop statistics
+  heatmap. A fresh targeted rerun had zero raw differences; the final complete run
+  then passed all 124 tests. The pixel policy and chart implementation were
+  not changed.
+
+A subsequent authenticated Linux-container check reproduced React hydration
+errors because UTC server timestamps differed from the browser timezone. Date
+and number rendering now uses an English/UTC initial snapshot, then adopts the
+browser locale after hydration. Date groups use the same snapshot, and the
+pending-match countdown starts from the loader timestamp. No hydration warnings
+are suppressed. The final development, production, regression, behavior and
+visual runs all passed with this repair.
+
+The final visual run took 12.9 minutes. Of its 118 comparisons,
+55 had no raw differences; the rest contained only the documented icon/dialog
+exceptions (4,606 accepted pixels total). No cases were skipped or retried.
+
+Readiness work adds the beta Docker image, health endpoint, independent release
+component, PR build/unit/container checks, manual production/browser gates and
+beta deployment target. It also pins the public request origin behind ingress,
+removes untrusted forwarding headers before Clerk reads them, restricts Clerk
+session-token origins, and keeps sign-in/up/out redirects on this frontend.
+Release tooling now synchronizes component lockfile version metadata and allows
+beta's independent major without relaxing alignment for the stable components.
+No component version or changelog was manually bumped.
+
+The existing Svelte frontend on current main still reports five production npm
+audit findings (one high, four low). Those inherited packages are outside the
+beta image; this is not a clean dependency-audit claim for the entire repository.
+
+External deployment remains unverified: the actual Azure target and secrets,
+custom-hostname DNS/TLS, production Clerk subdomain settings, shared live sessions
+and a reversible live-data acceptance check. Automated tests only touched the
+isolated local e2e database. No deployment, push or pull request was performed.
+The deployment-specific plan is kept outside this public repository.
+
+## Historical verification — 2026-09-28
+
+The following records the earlier candidate, not the current readiness result.
+
 Reverified locally on 2026-09-28 on `feat/frontend-beta`, after the dependency
 upgrade and independent review fixes through `a723328`. The reference
 `frontend/src` remains byte-identical to `origin/main` (`2fa3b90`). Reference
@@ -82,7 +164,7 @@ Each scene's reference, beta, diff and metrics files are under
 `frontend-beta/test-results/visual/`. Artifacts are intentionally ignored by Git.
 See [the harness instructions](README.md) for coverage and reproducible commands.
 
-Five intentional runtime differences are documented in
+At that checkpoint, five intentional runtime differences were documented in
 [the harness README](README.md#intentional-behavior-differences): working token
 creation, native POST response presentation, enhanced error feedback, independently
 refreshed active-match lists, and progressive-step scrolling without URL fragments.
@@ -98,6 +180,6 @@ It checks rendered pages and a visible submit input; it does not separately asse
 pre-hydration server HTML or exercise the full play flow. Its error collection
 covers uncaught page exceptions, not every console message or failed request.
 
-The rewrite is not a configured release component yet. No component version was
-manually bumped; the Svelte application source is unchanged. No deployment, push,
-or pull request was performed.
+At that checkpoint, the rewrite was not a configured release component. No
+component version had been manually bumped, and the Svelte application source
+was unchanged. No deployment, push, or pull request had been performed.
