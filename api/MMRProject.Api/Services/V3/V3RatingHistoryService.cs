@@ -31,8 +31,7 @@ public class V3RatingHistoryService(ApiDbContext dbContext) : IV3RatingHistorySe
         if (seasonId.HasValue)
             query = query.Where(rh => rh.Match.SeasonId == seasonId.Value);
 
-        var histories = await query
-            .OrderBy(rh => rh.Match.RecordedAt)
+        var histories = await OrderByMatch(query)
             .Select(rh => new RatingHistoryEntryResponse
             {
                 MatchId = rh.MatchId,
@@ -40,6 +39,7 @@ public class V3RatingHistoryService(ApiDbContext dbContext) : IV3RatingHistorySe
                 Mu = rh.Mu,
                 Sigma = rh.Sigma,
                 Delta = rh.Delta,
+                PlayedAt = rh.Match.PlayedAt,
                 RecordedAt = rh.Match.RecordedAt,
             })
             .ToListAsync();
@@ -58,13 +58,13 @@ public class V3RatingHistoryService(ApiDbContext dbContext) : IV3RatingHistorySe
         if (seasonId.HasValue)
             query = query.Where(rh => rh.Match.SeasonId == seasonId.Value);
 
-        var rows = await query
-            .OrderBy(rh => rh.Match.RecordedAt)
+        var rows = await OrderByMatch(query)
             .Select(rh => new
             {
                 rh.LeaguePlayerId,
                 rh.MatchId,
                 rh.Mmr,
+                rh.Match.PlayedAt,
                 rh.Match.RecordedAt,
             })
             .ToListAsync();
@@ -82,10 +82,20 @@ public class V3RatingHistoryService(ApiDbContext dbContext) : IV3RatingHistorySe
                 LeaguePlayerId = r.LeaguePlayerId,
                 MatchId = r.MatchId,
                 Mmr = r.Mmr,
+                PlayedAt = r.PlayedAt,
                 RecordedAt = r.RecordedAt,
             })
             .ToList();
 
         return new LeagueRatingHistoryResponse { Entries = entries };
     }
+
+    // Rating order: a season seeds from the one before it, so season start comes first.
+    // A match moved into a backdated season's overlap still lists after the earlier season.
+    private static IOrderedQueryable<RatingHistory> OrderByMatch(IQueryable<RatingHistory> query) =>
+        query.OrderBy(rh => rh.Match.Season.StartsAt)
+            .ThenBy(rh => rh.Match.PlayedAt)
+            .ThenBy(rh => rh.Match.RecordedAt)
+            .ThenBy(rh => rh.Match.CreatedAt)
+            .ThenBy(rh => rh.Match.Id);
 }
