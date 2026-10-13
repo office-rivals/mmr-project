@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import { HttpErrorView } from '@/components/http-error-view';
+import { LiveMatchBanner } from '@/components/play/live-match-banner';
 import { SubmitMatchPage } from '@/components/play/submit-match-page';
 import { HttpError } from '@/lib/http-error';
 import { failServerAction } from '@/lib/server/action-result';
@@ -227,6 +228,14 @@ function LeagueSubmitRoute({
       submitting={submitMatch.isPending}
       onSubmit={(input) => submitMatch.mutate(input)}
       onGoToStep={scrollToStep}
+      banner={
+        <LiveMatchBanner
+          base={`/${league.orgSlug}/${league.leagueSlug}`}
+          orgId={league.orgId}
+          leagueId={league.leagueId}
+          leaguePlayerId={league.leaguePlayerId}
+        />
+      }
     />
   );
 }

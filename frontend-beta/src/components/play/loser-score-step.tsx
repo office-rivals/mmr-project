@@ -1,4 +1,5 @@
-import { Button } from '@/components/ui/button';
+import { StepHeading } from './step-heading';
+import { cn } from '@/lib/utils';
 
 interface LoserScoreStepProps {
   /** `your` when the current user's side lost, `their` otherwise. */
@@ -8,6 +9,7 @@ interface LoserScoreStepProps {
   /** The losing side's currently picked score, or -1. */
   selected: number;
   onPick: (score: number) => void;
+  step?: number;
 }
 
 /**
@@ -20,20 +22,27 @@ export function LoserScoreStep({
   options,
   selected,
   onPick,
+  step,
 }: LoserScoreStepProps) {
   return (
-    <div id="score-step" className="mt-6 flex flex-col gap-4">
-      <h2 className="text-center text-4xl">What was {possessive} score?</h2>
-      <div className="grid grid-cols-5 gap-2">
+    <div id="score-step" className="flex flex-col gap-4">
+      <StepHeading step={step}>What was {possessive} score?</StepHeading>
+      <div className="grid grid-cols-5 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(3.5rem,1fr))]">
         {options.map((score) => (
-          <Button
+          <button
             key={score}
             type="button"
-            variant={selected === score ? 'default' : 'outline'}
+            aria-pressed={selected === score}
             onClick={() => onPick(score)}
+            className={cn(
+              'flex h-14 items-center justify-center rounded-md border text-xl font-semibold tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
+              selected === score
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'bg-card hover:border-primary/60'
+            )}
           >
             {score === 0 ? '🥚' : score}
-          </Button>
+          </button>
         ))}
       </div>
     </div>

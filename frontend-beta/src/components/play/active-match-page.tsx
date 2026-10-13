@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { FreeFormScoreInputs } from '@/components/free-form-score-inputs';
 import { LoadingOverlay } from '@/components/loading-overlay';
 import { PageTitle } from '@/components/page-title';
 import { LoserScoreStep } from '@/components/play/loser-score-step';
+import { StepHeading } from '@/components/play/step-heading';
 import { WinnerStep } from '@/components/play/winner-step';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -117,45 +118,79 @@ export function ActiveMatchPage({
 
   return (
     <>
-      <div className="flex flex-col gap-8">
-        <PageTitle>Submit match result</PageTitle>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1">
+          <p className="flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] text-green-400 uppercase">
+            <span
+              aria-hidden="true"
+              className="size-1.5 rounded-full bg-green-400 motion-safe:animate-pulse"
+            />
+            Live match
+          </p>
+          <PageTitle>Submit match result</PageTitle>
+        </div>
 
         {formMessage ? (
           <Alert variant="destructive">{formMessage}</Alert>
         ) : null}
 
         <form
-          className="flex flex-col gap-2"
+          className="flex flex-col gap-8 lg:rounded-xl lg:border lg:bg-card lg:p-8"
           onSubmit={(event) => {
             event.preventDefault();
             if (submitting) return;
             onSubmit({ team1Score, team2Score });
           }}
         >
-          <div className="flex gap-3">
-            {orderForUi.map((which) => (
-              <div className="flex flex-1 flex-col gap-2" key={which}>
-                <h3 className="mb-2 text-center text-2xl">
-                  {teamHeading(which)}
-                </h3>
-                {orderedPlayers(which).map((player) => (
-                  <p
-                    className={cn(
-                      'text-center',
-                      player.leaguePlayerId === currentLeaguePlayerId &&
-                        'text-primary'
-                    )}
-                    key={player.leaguePlayerId}
+          <div className="flex items-stretch gap-3">
+            {orderForUi.map((which, i) => (
+              <Fragment key={which}>
+                {i === 1 ? (
+                  <span
+                    aria-hidden="true"
+                    className="self-center text-xs text-muted-foreground"
                   >
-                    {player.displayName ?? player.username ?? 'Unknown'}
-                  </p>
-                ))}
-              </div>
+                    vs
+                  </span>
+                ) : null}
+                <div
+                  className={cn(
+                    'flex flex-1 flex-col gap-1 rounded-lg border p-4',
+                    which === currentUserTeam
+                      ? 'border-primary/50 bg-primary/10'
+                      : 'bg-card text-right'
+                  )}
+                >
+                  <h3
+                    className={cn(
+                      'mb-1 text-[10px] font-semibold tracking-[0.14em] uppercase',
+                      which === currentUserTeam
+                        ? 'text-primary'
+                        : 'text-muted-foreground'
+                    )}
+                  >
+                    {teamHeading(which)}
+                  </h3>
+                  {orderedPlayers(which).map((player) => (
+                    <p
+                      className={cn(
+                        'truncate text-lg font-bold',
+                        player.leaguePlayerId === currentLeaguePlayerId &&
+                          'text-primary'
+                      )}
+                      key={player.leaguePlayerId}
+                    >
+                      {player.displayName ?? player.username ?? 'Unknown'}
+                    </p>
+                  ))}
+                </div>
+              </Fragment>
             ))}
           </div>
 
           {!isFreeForm ? (
             <WinnerStep
+              step={1}
               weDisabled={
                 (currentUserTeam === 'team1' ? team1Score : team2Score) ===
                 winningScore
@@ -171,6 +206,7 @@ export function ActiveMatchPage({
 
           {losingTeam ? (
             <LoserScoreStep
+              step={2}
               possessive={losingTeam === currentUserTeam ? 'your' : 'their'}
               options={loserScores}
               selected={losingTeam === 'team1' ? team1Score : team2Score}
@@ -179,10 +215,8 @@ export function ActiveMatchPage({
           ) : null}
 
           {isFreeForm ? (
-            <div id="free-form-score-step" className="mt-6 flex flex-col gap-4">
-              <h2 className="text-center text-4xl">
-                What was the final score?
-              </h2>
+            <div id="free-form-score-step" className="flex flex-col gap-4">
+              <StepHeading step={1}>What was the final score?</StepHeading>
               <FreeFormScoreInputs
                 team1Label={teamHeading('team1')}
                 team2Label={teamHeading('team2')}
@@ -195,10 +229,16 @@ export function ActiveMatchPage({
           ) : null}
 
           {isPreviewVisible ? (
-            <div id="submit-step" className="mt-6 flex flex-col gap-4">
-              <h2 className="text-center text-4xl">Submit?</h2>
-              <div className="text-center text-2xl">{previewText}</div>
-              <Button type="submit" disabled={submitting}>
+            <div id="submit-step" className="flex flex-col gap-4">
+              <StepHeading step={isFreeForm ? 2 : 3}>Submit?</StepHeading>
+              <div className="rounded-lg border bg-card p-4 text-center text-2xl font-bold">
+                {previewText}
+              </div>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="h-12 text-base font-bold"
+              >
                 Submit the match
               </Button>
             </div>

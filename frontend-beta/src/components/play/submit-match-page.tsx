@@ -8,6 +8,7 @@ import { LoserScoreStep } from '@/components/play/loser-score-step';
 import { NewPlayerDialog } from '@/components/play/new-player-dialog';
 import { TeamMemberField } from '@/components/play/team-member-field';
 import type { SlotValue } from '@/components/play/team-member-field';
+import { StepHeading } from '@/components/play/step-heading';
 import { WinnerStep } from '@/components/play/winner-step';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import {
   isScorePairComplete,
   loserScoreOptions,
 } from '@/lib/scoring';
+import { formatLeagueFormat } from '@/lib/utils';
 import type { NewPlayerDraft } from '@/components/play/new-player-dialog';
 import type {
   LeaguePlayerResponse,
@@ -54,6 +56,8 @@ interface SubmitMatchPageProps {
   onSubmit: (input: SubmitMatchInput) => void;
   /** Scrolls to the named progressive form step. */
   onGoToStep: (hash: string) => void;
+  /** Rendered under the title, e.g. a shortcut to report a live match. */
+  banner?: React.ReactNode;
 }
 
 // Stored values are LeaguePlayer ids, which are scoped to a single league — a
@@ -117,6 +121,7 @@ export function SubmitMatchPage({
   submitting,
   onSubmit,
   onGoToStep,
+  banner,
 }: SubmitMatchPageProps) {
   const teamSize = leagueTeamSize;
   // Fixed-target leagues (foosball: 10) use the "we won / they won" + loser
@@ -359,98 +364,130 @@ export function SubmitMatchPage({
     />
   );
 
+  const teamStep = (
+    <div className="flex flex-col gap-4">
+      <StepHeading step={1}>Teams</StepHeading>
+      <div className="flex gap-3">
+        <div id="team1-step" className="flex min-w-0 flex-1 flex-col gap-3">
+          <h3 className="text-[11px] font-semibold tracking-[0.14em] text-primary uppercase">
+            Team 1
+          </h3>
+          {field('team1_player1', 'You', true)}
+          {teamSize >= 2 &&
+          (slots.team1_player1 !== null || slots.team1_player2 !== null)
+            ? field('team1_player2', 'Your teammate')
+            : null}
+        </div>
+        <span
+          aria-hidden="true"
+          className="self-center pt-6 text-xs text-muted-foreground"
+        >
+          vs
+        </span>
+        <div id="team2-step" className="flex min-w-0 flex-1 flex-col gap-3">
+          <h3 className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+            Team 2
+          </h3>
+          {team1Filled || slots.team2_player1 !== null
+            ? field('team2_player1', opponentLabel)
+            : null}
+          {teamSize >= 2 &&
+          (slots.team2_player1 !== null || slots.team2_player2 !== null)
+            ? field('team2_player2', 'Opponent 2')
+            : null}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <div className="flex flex-col gap-8">
-        <PageTitle>Submit match</PageTitle>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1">
+          <p className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
+            {formatLeagueFormat(teamSize)} ·{' '}
+            {isFreeForm ? 'Any score' : `First to ${winningScore}`}
+          </p>
+          <PageTitle>Submit match</PageTitle>
+          <p className="text-sm text-muted-foreground">
+            Played just now? Lock it in while it&apos;s fresh.
+          </p>
+        </div>
+
+        {banner}
 
         {formMessage ? (
           <Alert variant="destructive">{formMessage}</Alert>
         ) : null}
 
-        <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-3">
-              <div id="team1-step" className="flex flex-1 flex-col gap-4">
-                <h3 className="mb-2 text-center text-2xl">Team 1</h3>
-                {field('team1_player1', 'You', true)}
-                {teamSize >= 2 &&
-                (slots.team1_player1 !== null || slots.team1_player2 !== null)
-                  ? field('team1_player2', 'Your teammate')
-                  : null}
-              </div>
-              <div className="min-h-full w-px bg-border" />
-              <div id="team2-step" className="flex flex-1 flex-col gap-4">
-                <h3 className="mb-2 text-center text-2xl">Team 2</h3>
-                {team1Filled || slots.team2_player1 !== null
-                  ? field('team2_player1', opponentLabel)
-                  : null}
-                {teamSize >= 2 &&
-                (slots.team2_player1 !== null || slots.team2_player2 !== null)
-                  ? field('team2_player2', 'Opponent 2')
-                  : null}
-              </div>
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-8 lg:rounded-xl lg:border lg:bg-card lg:p-8"
+        >
+          {teamStep}
+
+          {allFilled && !isFreeForm ? (
+            <WinnerStep
+              step={2}
+              weDisabled={team1Score === winningScore}
+              theyDisabled={team2Score === winningScore}
+              onWeWon={setTeam1Wins}
+              onTheyWon={setTeam2Wins}
+            />
+          ) : null}
+
+          {/* Deliberately gated on `losingTeam` alone, not on `allFilled`:
+              clearing a player after picking a winner keeps the loser-score
+              picker on screen, exactly as in the Svelte page. */}
+          {losingTeam ? (
+            <LoserScoreStep
+              step={3}
+              possessive={losingTeam === 'team1' ? 'your' : 'their'}
+              options={loserScores}
+              selected={losingTeam === 'team1' ? team1Score : team2Score}
+              onPick={(score) => {
+                if (losingTeam === 'team1') setTeam1Score(score);
+                else setTeam2Score(score);
+                onGoToStep('submit-step');
+              }}
+            />
+          ) : null}
+
+          {allFilled && isFreeForm ? (
+            <div id="free-form-score-step" className="flex flex-col gap-4">
+              <StepHeading step={2}>What was the final score?</StepHeading>
+              <FreeFormScoreInputs
+                team1Label="Your score"
+                team2Label="Their score"
+                team1Score={team1Score}
+                team2Score={team2Score}
+                onTeam1ScoreChange={setTeam1Score}
+                onTeam2ScoreChange={setTeam2Score}
+              />
             </div>
+          ) : null}
 
-            {allFilled && !isFreeForm ? (
-              <WinnerStep
-                weDisabled={team1Score === winningScore}
-                theyDisabled={team2Score === winningScore}
-                onWeWon={setTeam1Wins}
-                onTheyWon={setTeam2Wins}
+          {isPreviewVisible ? (
+            <div id="submit-step" className="flex flex-col gap-4">
+              <StepHeading step={isFreeForm ? 3 : 4}>Submit?</StepHeading>
+              {/* Remounted per score change, matching the Svelte `{#key}`. */}
+              <MatchCard
+                key={`${team1Score}:${team2Score}`}
+                match={previewMatch()}
+                showMmr={false}
               />
-            ) : null}
-
-            {/* Deliberately gated on `losingTeam` alone, not on `allFilled`:
-                clearing a player after picking a winner keeps the loser-score
-                picker on screen, exactly as in the Svelte page. */}
-            {losingTeam ? (
-              <LoserScoreStep
-                possessive={losingTeam === 'team1' ? 'your' : 'their'}
-                options={loserScores}
-                selected={losingTeam === 'team1' ? team1Score : team2Score}
-                onPick={(score) => {
-                  if (losingTeam === 'team1') setTeam1Score(score);
-                  else setTeam2Score(score);
-                  onGoToStep('submit-step');
-                }}
-              />
-            ) : null}
-
-            {allFilled && isFreeForm ? (
-              <div
-                id="free-form-score-step"
-                className="mt-6 flex flex-col gap-4"
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="h-12 text-base font-bold"
               >
-                <h2 className="text-center text-4xl">
-                  What was the final score?
-                </h2>
-                <FreeFormScoreInputs
-                  team1Label="Your score"
-                  team2Label="Their score"
-                  team1Score={team1Score}
-                  team2Score={team2Score}
-                  onTeam1ScoreChange={setTeam1Score}
-                  onTeam2ScoreChange={setTeam2Score}
-                />
-              </div>
-            ) : null}
-
-            {isPreviewVisible ? (
-              <div id="submit-step" className="mt-6 flex flex-col gap-4">
-                <h2 className="text-center text-4xl">Submit?</h2>
-                {/* Remounted per score change, matching the Svelte `{#key}`. */}
-                <MatchCard
-                  key={`${team1Score}:${team2Score}`}
-                  match={previewMatch()}
-                  showMmr={false}
-                />
-                <Button type="submit" disabled={submitting}>
-                  Submit the match
-                </Button>
-              </div>
-            ) : null}
-          </div>
+                Submit the match
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                Everyone in the match can flag it if something&apos;s off.
+              </p>
+            </div>
+          ) : null}
         </form>
       </div>
 
