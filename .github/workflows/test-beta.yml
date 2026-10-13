@@ -1,0 +1,53 @@
+name: Beta UI - build and test
+
+on:
+  push:
+    branches: [main]
+    paths: ['frontend-beta/**', '.github/workflows/test-beta.yml', '.nvmrc']
+  pull_request:
+    branches: [main]
+    paths: ['frontend-beta/**', '.github/workflows/test-beta.yml', '.nvmrc']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            frontend-beta/package-lock.json
+            frontend/package-lock.json
+      - name: Install shared browser test types
+        run: npm ci
+        working-directory: frontend
+      - name: Install
+        run: npm ci
+        working-directory: frontend-beta
+      - name: Type check
+        run: npm run check
+        working-directory: frontend-beta
+      - name: Unit tests
+        run: npm test
+        working-directory: frontend-beta
+      - name: Audit production dependencies
+        run: npm audit --omit=dev
+        working-directory: frontend-beta
+      - name: Build production container without credentials
+        run: docker build -t frontend-beta:ci frontend-beta
+      - name: Check container health as a non-root user
+        run: |
+          docker run --detach --name beta-ci -p 127.0.0.1:3000:3000 frontend-beta:ci
+          trap 'docker logs beta-ci; docker rm -f beta-ci' EXIT
+          test "$(docker exec beta-ci id -u)" != "0"
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/health; then exit 0; fi
+            sleep 1
+          done
+          exit 1

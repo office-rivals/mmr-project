@@ -3,6 +3,14 @@ name: E2E
 # Manual run only — kicked off before a release. NOT triggered by PR or push.
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Frontend verification target
+        type: choice
+        default: frontend
+        options:
+          - frontend
+          - frontend-beta
 
 permissions:
   contents: read
@@ -10,7 +18,7 @@ permissions:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v7
@@ -27,15 +35,29 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            frontend-beta/package-lock.json
 
       - name: Install frontend deps
         working-directory: ./frontend
         run: npm ci
 
+      - name: Install beta deps
+        if: inputs.target == 'frontend-beta'
+        working-directory: ./frontend-beta
+        run: npm ci
+
       - name: Install Playwright browsers
         working-directory: ./frontend
-        run: npx playwright install --with-deps chromium
+        env:
+          E2E_TARGET: ${{ inputs.target }}
+        run: |
+          if [ "$E2E_TARGET" = "frontend-beta" ]; then
+            npx playwright install --with-deps chromium webkit firefox
+          else
+            npx playwright install --with-deps chromium
+          fi
 
       # Bring the e2e Postgres up explicitly so it's already accepting
       # connections by the time Playwright launches the .NET API (which
@@ -76,20 +98,36 @@ jobs:
 
           # Frontend Clerk wiring
           PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
-        run: npm run e2e
+          E2E_TARGET: ${{ inputs.target }}
+        run: |
+          npm run e2e
+          if [ "$E2E_TARGET" = "frontend-beta" ]; then
+            cd ../frontend-beta
+            npm run build
+            npm run e2e
+            npm run e2e:production
+            npm run e2e:regressions
+            npm run parity:behavior
+            npm run parity:visual
+          fi
 
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report
-          path: frontend/playwright-report
+          path: |
+            frontend/playwright-report
+            frontend-beta/playwright-report
           retention-days: 14
       - name: Upload Playwright traces
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-test-results
-          path: frontend/test-results
+          path: |
+            frontend/test-results
+            frontend-beta/test-results
           retention-days: 14

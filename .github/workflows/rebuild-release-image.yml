@@ -12,6 +12,7 @@ on:
         type: choice
         options:
           - frontend
+          - frontend-beta
           - api
           - mmr-api
       version:

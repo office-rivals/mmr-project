@@ -54,7 +54,7 @@ jobs:
             exit 0
           fi
 
-          if ! echo "$changed_files" | grep -qE '^(frontend/|api/|mmr-api/)'; then
+          if ! echo "$changed_files" | grep -qE '^(frontend/|frontend-beta/|api/|mmr-api/)'; then
             exit 0
           fi
 
