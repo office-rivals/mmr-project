@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.2
+
+- chore(deps): bump shell-quote and concurrently in /frontend
+- Fix the frontend container image build by returning `tailwind-variants` to 0.3, the version that matches the app's Tailwind CSS 3 and `tailwind-merge` 2.
+
 ## 1.6.1
 
 - chore(deps): bump shell-quote and @openapitools/openapi-generator-cli in /frontend
