@@ -4,6 +4,8 @@ updates:
     directory: "/mmr-api"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     groups:
       opentelemetry:
         patterns:
@@ -12,6 +14,8 @@ updates:
     directory: "/frontend"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     ignore:
       # bits-ui 2 stops selecting an auto-focused field's value, so typing a
       # new score appends to the old one. The SvelteKit app is being replaced
@@ -22,19 +26,29 @@ updates:
     directory: "/frontend-beta"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "npm"
     directory: "/frontend-beta"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "nuget"
     directory: "/api"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
