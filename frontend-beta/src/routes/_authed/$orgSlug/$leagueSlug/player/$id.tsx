@@ -205,7 +205,7 @@ function PlayerProfilePage() {
       data.player.displayName ?? data.player.username ?? 'Player';
     return (
       data.ratingHistory?.entries?.map((entry) => ({
-        date: entry.recordedAt,
+        date: entry.playedAt,
         player: playerName,
         rating: entry.mmr,
       })) ?? []
