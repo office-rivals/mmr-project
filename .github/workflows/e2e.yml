@@ -18,6 +18,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: mmr-api/go.mod
+          cache-dependency-path: mmr-api/go.sum
 
       - uses: actions/setup-dotnet@v6
         with:
