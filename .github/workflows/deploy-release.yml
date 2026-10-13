@@ -1,4 +1,5 @@
 name: Deploy Release
+run-name: Deploy ${{ inputs.component }} ${{ inputs.version }}
 
 # Deploys the image publish-github-releases.yml pushed to GHCR for a release, so
 # what runs is the artifact that was released rather than a fresh build of it.
@@ -15,8 +16,9 @@ on:
           - api
           - mmr-api
       version:
-        description: Released version to deploy (MAJOR.MINOR.PATCH)
+        description: Released version to deploy (MAJOR.MINOR.PATCH), or latest for the newest release
         required: true
+        default: latest
         type: string
 
 permissions:
@@ -32,15 +34,34 @@ jobs:
     timeout-minutes: 20
     env:
       COMPONENT: ${{ inputs.component }}
-      VERSION: ${{ inputs.version }}
     steps:
-      # The version reaches a release tag, an image reference and GITHUB_ENV.
-      - name: Validate the version
+      # `latest` resolves to the highest released version (by semver, not date)
+      # rather than the image's `latest` tag, which a rebuild only moves on
+      # request — and a pinned version is what makes the revision traceable.
+      - name: Resolve the version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REQUESTED_VERSION: ${{ inputs.version }}
         run: |
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Version must be MAJOR.MINOR.PATCH, got: $VERSION" >&2
+          version="$REQUESTED_VERSION"
+          if [ "$version" = "latest" ]; then
+            version="$(gh release list --repo "$GITHUB_REPOSITORY" \
+              --exclude-drafts --exclude-pre-releases --limit 1000 \
+              --json tagName --jq '.[].tagName' \
+              | grep -E "^$COMPONENT@[0-9]+\.[0-9]+\.[0-9]+$" \
+              | cut -d@ -f2 | sort -V | tail -n 1)"
+            if [ -z "$version" ]; then
+              echo "No $COMPONENT release found." >&2
+              exit 1
+            fi
+            echo "Latest $COMPONENT release: $version"
+          fi
+          # The version reaches a release tag, an image reference and GITHUB_ENV.
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version must be MAJOR.MINOR.PATCH or latest, got: $version" >&2
             exit 1
           fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Verify release exists
         env:
@@ -53,7 +74,11 @@ jobs:
       - name: Verify the released image exists
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}/$COMPONENT:$VERSION"
-          digest="$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')"
+          # Likeliest straight after a release merge, while its image still builds.
+          if ! digest="$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')"; then
+            echo "$image is not in GHCR. Wait for Publish GitHub Releases to push it, or run Rebuild Release Image if that build failed." >&2
+            exit 1
+          fi
           echo "IMAGE=$image" >> "$GITHUB_ENV"
           echo "DIGEST=$digest" >> "$GITHUB_ENV"
 
