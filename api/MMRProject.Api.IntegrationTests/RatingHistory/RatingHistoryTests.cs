@@ -229,8 +229,7 @@ public class RatingHistoryTests(PostgresFixture postgres) : IntegrationTestBase(
         var first = await SubmitMatch(org.Id, league.Id, (p1.Id, p2.Id), (p3.Id, p4.Id), 5);
         var second = await SubmitMatch(org.Id, league.Id, (p1.Id, p2.Id), (p3.Id, p4.Id), 6);
         var late = await SubmitMatch(org.Id, league.Id, (p1.Id, p2.Id), (p3.Id, p4.Id), 7);
-        var playedAt = first.PlayedAt.AddMinutes(-1);
-        await SetPlayedAt(late.Id, playedAt);
+        var playedAt = await SetPlayedAt(late.Id, first.PlayedAt.AddMinutes(-1));
 
         foreach (var query in new[] { "", $"?seasonId={season.Id}" })
         {
@@ -258,8 +257,7 @@ public class RatingHistoryTests(PostgresFixture postgres) : IntegrationTestBase(
         for (var i = 0; i < 10; i++)
             matches.Add(await SubmitMatch(org.Id, league.Id, (p1.Id, p2.Id), (p3.Id, p4.Id), i));
         var late = matches[^1];
-        var playedAt = matches[0].PlayedAt.AddMinutes(-1);
-        await SetPlayedAt(late.Id, playedAt);
+        var playedAt = await SetPlayedAt(late.Id, matches[0].PlayedAt.AddMinutes(-1));
 
         var response = await Client.GetAsync(
             $"api/v3/organizations/{org.Id}/leagues/{league.Id}/rating-history");
@@ -324,12 +322,16 @@ public class RatingHistoryTests(PostgresFixture postgres) : IntegrationTestBase(
         return (await ReadJsonAsync<MatchResponse>(response))!;
     }
 
-    private async Task SetPlayedAt(Guid matchId, DateTimeOffset playedAt)
+    // Whole seconds, so the value reads back unchanged: Postgres keeps microseconds,
+    // .NET on Linux has 100 ns ticks.
+    private async Task<DateTimeOffset> SetPlayedAt(Guid matchId, DateTimeOffset playedAt)
     {
+        playedAt = playedAt.AddTicks(-(playedAt.Ticks % TimeSpan.TicksPerSecond));
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
         await db.V3Matches
             .Where(m => m.Id == matchId)
             .ExecuteUpdateAsync(u => u.SetProperty(m => m.PlayedAt, playedAt));
+        return playedAt;
     }
 }
