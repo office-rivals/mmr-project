@@ -897,6 +897,43 @@ namespace MMRProject.Api.Data.Migrations
                     b.ToTable("organization_memberships", (string)null);
                 });
 
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.PairingCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("used_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "Code" }, "ix_pairing_codes_code");
+
+                    b.HasIndex(new[] { "UserId" }, "ix_pairing_codes_user");
+
+                    b.ToTable("pairing_codes", (string)null);
+                });
+
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.PendingMatchAcceptance", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1083,6 +1120,36 @@ namespace MMRProject.Api.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("rating_histories", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.RfidTag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("RfidUid")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("rfid_uid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "RfidUid" }, "ix_rfid_tags_rfid_uid")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "UserId" }, "ix_rfid_tags_user");
+
+                    b.ToTable("rfid_tags", (string)null);
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.User", b =>
@@ -1732,6 +1799,18 @@ namespace MMRProject.Api.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.PairingCode", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_pairing_codes_user");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.PendingMatchAcceptance", b =>
                 {
                     b.HasOne("MMRProject.Api.Data.Entities.V3.LeaguePlayer", "LeaguePlayer")
@@ -1826,6 +1905,18 @@ namespace MMRProject.Api.Data.Migrations
                     b.Navigation("LeaguePlayer");
 
                     b.Navigation("Match");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.RfidTag", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_rfid_tags_user");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.V3ActiveMatch", b =>

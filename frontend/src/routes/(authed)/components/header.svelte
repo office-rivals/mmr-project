@@ -7,6 +7,7 @@
     ChevronDown,
     KeyRound,
     LogOut,
+    Radio,
     Settings,
     Shield,
     Trophy,
@@ -243,6 +244,10 @@
         </div>
 
         <div class="p-1">
+          <DropdownMenu.Item onSelect={() => goto('/settings#pairing')}>
+            <Radio class="h-4 w-4 text-muted-foreground" />
+            RFID pairing
+          </DropdownMenu.Item>
           <DropdownMenu.Item onSelect={() => goto('/settings')}>
             <KeyRound class="h-4 w-4 text-muted-foreground" />
             Personal Access Tokens
