@@ -8,7 +8,31 @@
 // no shared shape: SvelteKit posts to the form action `?/edit` and reloads via
 // `__data.json`, while TanStack Start routes both through its server-fn RPC
 // endpoint. These helpers keep that difference in one place.
+import { readFileSync } from 'node:fs';
+
 export const IS_BETA = process.env.E2E_FRONTEND_DIR === 'frontend-beta';
+
+// Production RPC IDs are hashes; resolve them from the build being exercised.
+const productionFunctions =
+  process.env.E2E_BETA_PRODUCTION === 'true'
+    ? new Map(
+        [
+          ...readFileSync(
+            new URL(
+              '../../frontend-beta/dist/server/server.js',
+              import.meta.url
+            ),
+            'utf8'
+          ).matchAll(/"([a-f0-9]{64})":\s*\{\s*functionName: "([^"]+)"/g),
+        ].map((match) => [match[1], match[2]])
+      )
+    : undefined;
+
+if (productionFunctions?.size === 0) {
+  throw new Error(
+    'No production server functions found; build frontend-beta before testing'
+  );
+}
 
 // TanStack Start identifies a server function with a base64url-encoded JSON
 // blob as the final path segment, e.g.
@@ -16,6 +40,7 @@ export const IS_BETA = process.env.E2E_FRONTEND_DIR === 'frontend-beta';
 // so the function name never appears literally in the URL.
 function serverFnExport(pathname: string): string {
   const id = pathname.split('/').pop() ?? '';
+  if (productionFunctions) return productionFunctions.get(id) ?? '';
   try {
     const decoded = JSON.parse(
       Buffer.from(id, 'base64url').toString('utf8')

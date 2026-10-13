@@ -13,7 +13,7 @@
     "test": "vitest run",
     "e2e": "cd ../frontend && E2E_FRONTEND_DIR=frontend-beta npx playwright test",
     "e2e:ui": "cd ../frontend && E2E_FRONTEND_DIR=frontend-beta npx playwright test --ui",
-    "generate-api-v3": "openapi-generator-cli generate -i http://localhost:8081/swagger/v3/swagger.json -g typescript-fetch -o src/api-v3 --additional-properties=supportsES6=true --skip-validate-spec",
+    "e2e:production": "E2E_FRONTEND_DIR=frontend-beta E2E_BETA_PRODUCTION=true ../frontend/node_modules/.bin/playwright test --config parity/production.config.ts",
     "parity:visual": "../frontend/node_modules/.bin/playwright test --config parity/playwright.config.ts",
     "e2e:regressions": "../frontend/node_modules/.bin/playwright test --config parity/functional.config.ts",
     "parity:behavior": "../frontend/node_modules/.bin/playwright test --config parity/behavior.config.ts"
@@ -37,7 +37,6 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@openapitools/openapi-generator-cli": "^2.41.0",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query-devtools": "^5.104.0",

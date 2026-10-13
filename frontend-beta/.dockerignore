@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.*
+.git
+.tanstack
+test-results
+playwright-report
+parity
+README.md
+**/*.test.*
