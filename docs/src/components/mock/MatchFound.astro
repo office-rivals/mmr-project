@@ -1,0 +1,116 @@
+---
+type Status = 'accepted' | 'declined' | 'pending';
+
+interface Props {
+  secondsRemaining: number;
+  teams: { name: string; status: Status }[][];
+}
+const { secondsRemaining, teams } = Astro.props;
+const label: Record<Status, string> = {
+  accepted: '✅ accepted',
+  declined: '❌ declined',
+  pending: '⌛ pending',
+};
+---
+
+<div class="dialog" role="img" aria-label="Match found dialog with both teams, each player's acceptance, and Accept and Decline buttons">
+  <div class="head">
+    <p class="title">Match found!</p>
+    <p class="desc">Accept within {secondsRemaining}s</p>
+  </div>
+  <div class="teams">
+    {
+      teams.map((team, i) => (
+        <div class="team">
+          <p class="team-label">Team {i + 1}</p>
+          {team.map((p) => (
+            <div class="row">
+              <span>{p.name}</span>
+              <span class="status">{label[p.status]}</span>
+            </div>
+          ))}
+        </div>
+      ))
+    }
+  </div>
+  <div class="actions">
+    <span class="btn accept">Accept</span>
+    <span class="btn decline">Decline</span>
+  </div>
+</div>
+
+<style>
+  .dialog {
+    width: min(28rem, 100%);
+    margin: 0 auto;
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--background);
+    color: var(--foreground);
+    box-shadow: var(--shadow-lg);
+  }
+  p {
+    margin: 0;
+  }
+  .head {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .title {
+    font: 600 18px/1 var(--font-sans);
+    letter-spacing: -0.025em;
+  }
+  .desc,
+  .team-label,
+  .status {
+    color: var(--muted-foreground);
+  }
+  .desc,
+  .team-label,
+  .row {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .teams {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .team {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+  }
+  .status {
+    font-size: 12px;
+  }
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    border-radius: var(--radius-md);
+    font: 500 14px/20px var(--font-sans);
+  }
+  .accept {
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+  .decline {
+    background: var(--destructive);
+    color: var(--primary-foreground);
+  }
+</style>

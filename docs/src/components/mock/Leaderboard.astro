@@ -1,0 +1,125 @@
+---
+export interface LeaderboardRow {
+  rank: number | null;
+  name: string;
+  wins: number;
+  losses: number;
+  score: number | null;
+  me?: boolean;
+  winStreak?: boolean;
+  lossStreak?: 'rain' | 'storm';
+}
+
+interface Props {
+  rows: LeaderboardRow[];
+  title?: string;
+}
+const { rows, title } = Astro.props;
+const ranked = rows.filter((r) => r.score !== null);
+const unranked = rows.filter((r) => r.score === null);
+const lossGlyph = { rain: '🌧️', storm: '⛈️' } as const;
+---
+
+<div class="leaderboard">
+  {title && <h3 class="title">{title}</h3>}
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Player</th><th>W</th><th>L</th><th class="r">Score</th></tr>
+      </thead>
+      <tbody>
+        {
+          ranked.map((r) => (
+            <tr class:list={{ me: r.me }}>
+              <td class="n">{r.rank}</td>
+              <td>{r.name}</td>
+              <td>
+                {r.wins}
+                {r.winStreak && <small title="Winning streak"> 🔥</small>}
+              </td>
+              <td>
+                {r.losses}
+                {r.lossStreak && <small title="Losing streak"> {lossGlyph[r.lossStreak]}</small>}
+              </td>
+              <td class="r">{r.score}</td>
+            </tr>
+          ))
+        }
+        {unranked.length > 0 && (
+          <tr>
+            <td colspan="5" class="divider">Unranked</td>
+          </tr>
+        )}
+        {
+          unranked.map((r) => (
+            <tr class:list={{ me: r.me }}>
+              <td class="n">•</td>
+              <td>{r.name}</td>
+              <td>{r.wins}</td>
+              <td>{r.losses}</td>
+              <td class="r" title="Unranked">🐣</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  .title {
+    margin: 0 0 10px;
+    font: 400 22px/30px var(--font-sans);
+    color: var(--foreground);
+  }
+  .card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+    padding: 2px 4px;
+  }
+  table {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--foreground);
+  }
+  th {
+    height: 34px;
+    padding: 0 6px;
+    text-align: left;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    border-bottom: 1px solid var(--border);
+    background: none;
+  }
+  td {
+    padding: 8px 6px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:last-child td {
+    border-bottom: 0;
+  }
+  .r {
+    text-align: right;
+  }
+  .n {
+    width: 2ch;
+    font-weight: 700;
+  }
+  .me {
+    color: var(--primary);
+  }
+  .divider {
+    text-align: center;
+    color: var(--muted-foreground);
+  }
+  small {
+    font-size: 11px;
+  }
+</style>

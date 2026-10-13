@@ -1,0 +1,61 @@
+---
+import { House, Play, Plus, Shuffle, User } from '@lucide/astro';
+
+interface Props {
+  queueCount?: number;
+}
+const { queueCount } = Astro.props;
+---
+
+<div class="app-nav" aria-hidden="true">
+  <span class="on"><House /></span>
+  <span>
+    <Play />
+    {queueCount ? <b class="count">{queueCount}</b> : null}
+  </span>
+  <span class="add"><Plus /></span>
+  <span><Shuffle /></span>
+  <span><User /></span>
+</div>
+
+<style>
+  .app-nav {
+    display: flex;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .app-nav span {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    color: var(--foreground);
+  }
+  .app-nav .on {
+    color: var(--primary);
+  }
+  .app-nav .add {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-radius: var(--radius-md);
+    margin: 4px;
+  }
+  .count {
+    position: absolute;
+    top: 8px;
+    left: calc(50% + 6px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 18px;
+    min-width: 18px;
+    padding: 0 5px;
+    border-radius: 9999px;
+    background: var(--primary);
+    color: var(--white);
+    font-size: 0.65rem;
+    font-weight: 400;
+  }
+</style>

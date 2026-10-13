@@ -1,0 +1,138 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font: 16px/1.5 var(--font-sans);
+  overflow-x: hidden;
+}
+a {
+  color: inherit;
+}
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--muted);
+  border-radius: var(--radius-sm);
+  padding: 0.1em 0.35em;
+}
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+@media (min-width: 768px) {
+  .wrap {
+    padding: 0 32px;
+  }
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  font: 500 14px/20px var(--font-sans);
+  height: 40px;
+  padding: 0 16px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+/* White on primary misses 4.5:1 at 14px, so primary buttons go large and bold. */
+.btn-lg {
+  height: 48px;
+  padding: 0 24px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.btn-outline {
+  border-color: var(--input);
+  background: var(--background);
+  color: var(--foreground);
+}
+@media (hover: hover) {
+  .btn-primary:hover {
+    background: hsl(20.5 90.2% 48.2% / 0.9);
+  }
+  .btn-outline:hover {
+    background: var(--accent);
+  }
+}
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid rgb(249 115 22 / 0.3);
+  background: rgb(249 115 22 / 0.2);
+  color: var(--orange-400);
+  font: 600 12px/16px var(--font-sans);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+.eyebrow {
+  margin: 0 0 12px;
+  font: 600 12px/16px var(--font-sans);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.muted {
+  color: var(--muted-foreground);
+}
+.section {
+  padding-top: 72px;
+  padding-bottom: 72px;
+  border-top: 1px solid var(--border);
+}
+.h2 {
+  margin: 0;
+  font: 400 clamp(28px, 4vw, 36px) / 1.15 var(--font-sans);
+}
+.section-lede {
+  margin: 12px 0 0;
+  color: var(--muted-foreground);
+  max-width: 40em;
+}
+.arrow-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+  color: var(--primary);
+  font-weight: 500;
+  text-decoration: none;
+}
+@media (hover: hover) {
+  .arrow-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+}

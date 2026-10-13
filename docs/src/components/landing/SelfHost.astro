@@ -1,0 +1,147 @@
+---
+import { ArrowRight } from '@lucide/astro';
+import { withBase } from '../../lib/url';
+---
+
+<section class="wrap section">
+  <p class="eyebrow">Self-hosting</p>
+  <h2 class="h2">Run it on your own infrastructure</h2>
+  <p class="section-lede">Three services and PostgreSQL, each service with its own Dockerfile. Clerk handles sign-in.</p>
+  <div class="grid">
+    <div
+      class="arch"
+      role="img"
+      aria-label="Architecture: the browser talks to frontend-beta, which calls the API; the API uses the MMR API and PostgreSQL; Clerk handles sign-in"
+    >
+      <div class="node"><b>Browser or installed app</b><span>Phone-first, works as a PWA</span></div>
+      <div class="link">HTTPS</div>
+      <div class="row2">
+        <div class="node beta"><b>frontend-beta <span class="pill">Beta</span></b><span>React 19 · TanStack Start · Node</span></div>
+        <div class="node"><b>Clerk</b><span>sign-in</span></div>
+      </div>
+      <div class="link">API_BASE_PATH</div>
+      <div class="node"><b>api</b><span>ASP.NET Core · v3 API · matchmaking worker</span></div>
+      <div class="link"></div>
+      <div class="pair">
+        <div class="node"><b>mmr-api</b><span>Go · OpenSkill</span></div>
+        <div class="node"><b>PostgreSQL</b><span>EF Core migrations</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="term">
+        <div class="term-head"><span>Local development</span><span>bash</span></div>
+        <pre><span class="p">$ </span>git clone https://github.com/office-rivals/mmr-project
+<span class="p">$ </span>cd mmr-project
+<span class="p">$ </span>dotnet run --project local-dev/MMRProject.AppHost
+<span class="c"># in a second terminal</span>
+<span class="p">$ </span>cd frontend-beta && cp .env.example .env
+<span class="p">$ </span>npm ci && npm run dev</pre>
+      </div>
+      <p class="note">
+        The Aspire AppHost starts PostgreSQL and both APIs. The beta runs beside it, pointed at the API through
+        <code>API_BASE_PATH</code>.
+      </p>
+      <a class="arrow-link" href={withBase('/quick-start/')}>Read the quick start <ArrowRight size={16} /></a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .grid {
+    display: grid;
+    gap: 40px;
+    margin-top: 36px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 960px) {
+    .grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+  .arch {
+    display: flex;
+    flex-direction: column;
+  }
+  .node {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    background: var(--card);
+  }
+  .node b {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font: 600 15px/20px var(--font-sans);
+  }
+  .node > span {
+    font-size: 13px;
+    color: var(--muted-foreground);
+  }
+  .node.beta {
+    border-color: var(--primary);
+  }
+  .node .pill {
+    font-size: 11px;
+    padding: 1px 8px;
+  }
+  .link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    padding-left: 22px;
+    font: 12px/16px var(--font-mono);
+    color: var(--muted-foreground);
+  }
+  .link::before {
+    content: '';
+    width: 1px;
+    height: 100%;
+    background: var(--muted-foreground);
+    opacity: 0.6;
+  }
+  .row2 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+  }
+  .pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+  }
+  .term {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .term-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted-foreground);
+  }
+  pre {
+    margin: 0;
+    padding: 14px 14px 16px;
+    overflow-x: auto;
+    font: 13px/22px var(--font-mono);
+  }
+  .p,
+  .c {
+    color: var(--muted-foreground);
+  }
+  .p {
+    user-select: none;
+  }
+  .note {
+    margin: 12px 0 0;
+    font-size: 14px;
+    color: var(--muted-foreground);
+  }
+</style>

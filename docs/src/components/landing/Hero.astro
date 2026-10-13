@@ -1,0 +1,138 @@
+---
+import { ArrowRight, Check } from '@lucide/astro';
+import Phone from '../mock/Phone.astro';
+import AppHeader from '../mock/AppHeader.astro';
+import Leaderboard from '../mock/Leaderboard.astro';
+import MatchCard from '../mock/MatchCard.astro';
+import AppNavbar from '../mock/AppNavbar.astro';
+import FoosballArt from './FoosballArt.astro';
+import { withBase } from '../../lib/url';
+---
+
+<section class="wrap hero">
+  <div>
+    <p class="eyebrow">Matchmaking and ratings for the office league</p>
+    <h1>Settle it at the table.</h1>
+    <p class="lede">
+      Queue up from your phone, get balanced teams, report the score and watch your <b>MMR</b> move.
+      Self-hosted and open source, for everyone around the foosball table.
+    </p>
+    <div class="ctas">
+      <a class="btn btn-primary btn-lg" href={withBase('/quick-start/')}>Get started <ArrowRight size={16} /></a>
+      <a class="btn btn-outline btn-lg" href="https://github.com/office-rivals/mmr-project">View on GitHub</a>
+    </div>
+    <ul class="facts">
+      <li><Check size={16} />Self-hosted</li>
+      <li><Check size={16} />MIT licensed</li>
+      <li><Check size={16} />OpenSkill ratings</li>
+      <li><Check size={16} />Installable on your phone</li>
+    </ul>
+  </div>
+
+  <div class="art">
+    <FoosballArt />
+    <Phone label="The beta app's league page on a phone: leaderboard and a recent match">
+      <AppHeader org="Acme Office" league="Friday Foosball" />
+      <div class="app-main">
+        <Leaderboard
+          title="Leaderboard"
+          rows={[
+            { rank: 1, name: 'riley', wins: 42, losses: 18, score: 1611, winStreak: true },
+            { rank: 2, name: 'alex', wins: 37, losses: 21, score: 1544, me: true },
+            { rank: 3, name: 'samlee', wins: 30, losses: 29, score: 1482 },
+            { rank: 4, name: 'jordan', wins: 12, losses: 25, score: 1290, lossStreak: 'storm' },
+          ]}
+        />
+        <div class="date-h">Today</div>
+        <MatchCard
+          time="14:32"
+          team1={{ score: 10, players: [{ name: 'alex', delta: 12 }, { name: 'samlee', delta: 9 }] }}
+          team2={{ score: 7, players: [{ name: 'riley', delta: -11 }, { name: 'jordan', delta: -10 }] }}
+        />
+      </div>
+      <AppNavbar queueCount={3} />
+    </Phone>
+    <p class="caption">The beta app · mock-up with illustrative data</p>
+  </div>
+</section>
+
+<style>
+  .hero {
+    display: grid;
+    gap: 48px;
+    padding-top: 56px;
+    padding-bottom: 72px;
+    align-items: center;
+  }
+  @media (min-width: 960px) {
+    .hero {
+      grid-template-columns: 1.05fr 1fr;
+      padding-top: 80px;
+      padding-bottom: 96px;
+    }
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(40px, 7vw, 64px);
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .lede {
+    margin: 20px 0 0;
+    font-size: 18px;
+    line-height: 28px;
+    color: var(--muted-foreground);
+    max-width: 34em;
+  }
+  .lede b {
+    color: var(--foreground);
+    font-weight: 600;
+  }
+  .ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 32px;
+  }
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin: 28px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 14px;
+    color: var(--muted-foreground);
+  }
+  .facts li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .art {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 36px;
+  }
+  .app-main {
+    padding: 14px 12px 10px;
+  }
+  .date-h {
+    padding: 12px 4px 4px;
+    font: 500 12px/16px var(--font-sans);
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .caption {
+    position: relative;
+    z-index: 1;
+    margin: 14px 0 0;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--muted-foreground);
+  }
+</style>

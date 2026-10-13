@@ -1,0 +1,102 @@
+---
+export interface Team {
+  score: number;
+  players: { name: string; delta?: number }[];
+}
+
+interface Props {
+  team1: Team;
+  team2: Team;
+  time: string;
+}
+const { team1, team2, time } = Astro.props;
+const team1Won = team1.score > team2.score;
+const delta = (d?: number) => (d === undefined ? '' : d > 0 ? `(+${d})` : `(${d})`);
+// A team that scored nothing gets an egg instead of a zero.
+const score = (s: number) => (s === 0 ? '🥚' : String(s));
+---
+
+<div class="match">
+  <div class:list={['side', { win: team1Won }]}>
+    <span class="score">{score(team1.score)}</span>
+    <span class="names">
+      {
+        team1.players.map((p) => (
+          <span>
+            {p.name} <small>{delta(p.delta)}</small>
+          </span>
+        ))
+      }
+    </span>
+  </div>
+  <div class="mid">vs.<span class="time">{time}</span></div>
+  <div class:list={['side', 'right', { win: !team1Won }]}>
+    <span class="score">{score(team2.score)}</span>
+    <span class="names">
+      {
+        team2.players.map((p) => (
+          <span>
+            <small>{delta(p.delta)}</small> {p.name}
+          </span>
+        ))
+      }
+    </span>
+  </div>
+</div>
+
+<style>
+  .match {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+    color: var(--foreground);
+  }
+  .side {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .side.right {
+    flex-direction: row-reverse;
+  }
+  .score {
+    min-width: 1.5ch;
+    font: 700 32px/36px var(--font-sans);
+  }
+  .names {
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+    line-height: 20px;
+    min-width: 0;
+  }
+  .right .names {
+    align-items: flex-end;
+  }
+  .names span {
+    white-space: nowrap;
+  }
+  small {
+    font-size: 11px;
+  }
+  .mid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .time {
+    color: var(--muted-foreground);
+  }
+  .win {
+    color: var(--primary);
+  }
+</style>
