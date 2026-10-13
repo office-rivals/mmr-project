@@ -1,5 +1,8 @@
 name: Deploy Release
+run-name: Deploy ${{ inputs.component }} ${{ inputs.version }}
 
+# Deploys the image publish-github-releases.yml pushed to GHCR for a release, so
+# what runs is the artifact that was released rather than a fresh build of it.
 on:
   workflow_dispatch:
     inputs:
@@ -9,11 +12,13 @@ on:
         type: choice
         options:
           - frontend
+          - frontend-beta
           - api
           - mmr-api
       version:
-        description: Released version to deploy
+        description: Released version to deploy (MAJOR.MINOR.PATCH), or latest for the newest release
         required: true
+        default: latest
         type: string
 
 permissions:
@@ -24,52 +29,168 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Its own job so the deploy job can be named after the resolved version: the
+  # run name is fixed at dispatch, while `latest` is still unresolved.
+  resolve:
+    name: Resolve ${{ inputs.component }} ${{ inputs.version }}
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      COMPONENT: ${{ inputs.component }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      image: ${{ steps.image.outputs.image }}
+      digest: ${{ steps.image.outputs.digest }}
     steps:
+      # `latest` resolves to the highest released version (by semver, not date)
+      # rather than the image's `latest` tag, which a rebuild only moves on
+      # request — and a pinned version is what makes the revision traceable.
+      - name: Resolve the version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          version="$REQUESTED_VERSION"
+          if [ "$version" = "latest" ]; then
+            version="$(gh release list --repo "$GITHUB_REPOSITORY" \
+              --exclude-drafts --exclude-pre-releases --limit 1000 \
+              --json tagName --jq '.[].tagName' \
+              | grep -E "^$COMPONENT@[0-9]+\.[0-9]+\.[0-9]+$" \
+              | cut -d@ -f2 | sort -V | tail -n 1)"
+            if [ -z "$version" ]; then
+              echo "No $COMPONENT release found." >&2
+              exit 1
+            fi
+            echo "Latest $COMPONENT release: $version"
+          fi
+          # The version reaches a release tag, an image reference and env/output files.
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version must be MAJOR.MINOR.PATCH or latest, got: $version" >&2
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Verify release exists
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ format('{0}@{1}', inputs.component, inputs.version) }}
-        run: gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+        run: gh release view "$COMPONENT@$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null
 
-      # refs/tags/ explicitly: an unqualified ref resolves a branch of the same
-      # name ahead of the tag, which would deploy a branch as a released version.
-      - uses: actions/checkout@v7
-        with:
-          ref: refs/tags/${{ format('{0}@{1}', inputs.component, inputs.version) }}
+      # Mirrors buildImagePlan in scripts/release/create-releases.mjs. The
+      # packages are public, so neither this check nor Azure's pull needs
+      # registry credentials.
+      - name: Verify the released image exists
+        id: image
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}/$COMPONENT:$VERSION"
+          # Likeliest straight after a release merge, while its image still builds.
+          if ! digest="$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')"; then
+            echo "$image is not in GHCR. Wait for Publish GitHub Releases to push it, or run Rebuild Release Image if that build failed." >&2
+            exit 1
+          fi
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy ${{ inputs.component }} ${{ needs.resolve.outputs.version }}
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPONENT: ${{ inputs.component }}
+      VERSION: ${{ needs.resolve.outputs.version }}
+      IMAGE: ${{ needs.resolve.outputs.image }}
+      DIGEST: ${{ needs.resolve.outputs.digest }}
+    steps:
+      - name: Resolve the Container App
+        env:
+          UI_APP: ${{ secrets.UI_CONTAINER_APP_NAME }}
+          BETA_UI_APP: ${{ secrets.BETA_UI_CONTAINER_APP_NAME }}
+          API_APP: ${{ secrets.API_CONTAINER_APP_NAME }}
+          MMR_API_APP: ${{ secrets.MMR_API_CONTAINER_APP_NAME }}
+        run: |
+          case "$COMPONENT" in
+            frontend) app="$UI_APP" ;;
+            frontend-beta) app="$BETA_UI_APP" ;;
+            api) app="$API_APP" ;;
+            mmr-api) app="$MMR_API_APP" ;;
+          esac
+          if [ -z "$app" ]; then
+            echo "No Container App is configured for $COMPONENT." >&2
+            exit 1
+          fi
+          # A beta release must never replace the stable frontend.
+          if [ "$COMPONENT" = "frontend-beta" ] && [ "$app" = "$UI_APP" ]; then
+            echo "BETA_UI_CONTAINER_APP_NAME must name a separate Container App." >&2
+            exit 1
+          fi
+          echo "CONTAINER_APP=$app" >> "$GITHUB_ENV"
 
       - name: Log in to Azure
-        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy frontend release
-        if: inputs.component == 'frontend'
-        uses: azure/container-apps-deploy-action@v2
-        with:
-          appSourcePath: ${{ github.workspace }}/frontend
-          acrName: ${{ secrets.ACR_NAME }}
-          containerAppName: ${{ secrets.UI_CONTAINER_APP_NAME }}
-          resourceGroup: ${{ secrets.RESOURCE_GROUP }}
-          targetPort: 3000
+      - name: Deploy the image
+        env:
+          RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
+        run: |
+          revision="$(az containerapp update \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$IMAGE" \
+            --query properties.latestRevisionName \
+            --output tsv)"
+          # An empty name would match an app with no ready revision and pass the wait.
+          if [ -z "$revision" ]; then
+            echo "az containerapp update returned no revision name." >&2
+            exit 1
+          fi
+          echo "REVISION=$revision" >> "$GITHUB_ENV"
 
-      - name: Deploy api release
-        if: inputs.component == 'api'
-        uses: azure/container-apps-deploy-action@v2
-        with:
-          appSourcePath: ${{ github.workspace }}/api/MMRProject.Api
-          acrName: ${{ secrets.ACR_NAME }}
-          containerAppName: ${{ secrets.API_CONTAINER_APP_NAME }}
-          resourceGroup: ${{ secrets.RESOURCE_GROUP }}
+      # The update returns once the revision is provisioned, not once it serves.
+      # In single-revision mode the previous revision keeps traffic until the new
+      # one is ready, so an image that cannot start fails here, not in production.
+      - name: Wait for the revision to become ready
+        env:
+          RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
+        run: |
+          for _ in $(seq 60); do
+            ready="$(az containerapp show \
+              --name "$CONTAINER_APP" \
+              --resource-group "$RESOURCE_GROUP" \
+              --query properties.latestReadyRevisionName \
+              --output tsv)"
+            if [ "$ready" = "$REVISION" ]; then
+              exit 0
+            fi
+            state="$(az containerapp revision show \
+              --name "$CONTAINER_APP" \
+              --resource-group "$RESOURCE_GROUP" \
+              --revision "$REVISION" \
+              --query properties.runningState \
+              --output tsv)"
+            if [ "$state" = "Failed" ]; then
+              break
+            fi
+            sleep 10
+          done
+          az containerapp revision show \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --revision "$REVISION" \
+            --query '{provisioning: properties.provisioningState, running: properties.runningState, health: properties.healthState}' \
+            --output table
+          echo "Revision $REVISION did not become ready." >&2
+          exit 1
 
-      - name: Deploy mmr-api release
-        if: inputs.component == 'mmr-api'
-        uses: azure/container-apps-deploy-action@v2
-        with:
-          appSourcePath: ${{ github.workspace }}/mmr-api
-          acrName: ${{ secrets.ACR_NAME }}
-          buildArguments: |
-            VERSION=${{ inputs.version }}
-          containerAppName: ${{ secrets.MMR_API_CONTAINER_APP_NAME }}
-          resourceGroup: ${{ secrets.RESOURCE_GROUP }}
+      - name: Record the deployment
+        run: |
+          {
+            echo "### Deployed $COMPONENT $VERSION"
+            echo
+            echo "- Image: \`$IMAGE\`"
+            echo "- Digest: \`$DIGEST\`"
+            echo "- Revision: \`$REVISION\`"
+          } >> "$GITHUB_STEP_SUMMARY"

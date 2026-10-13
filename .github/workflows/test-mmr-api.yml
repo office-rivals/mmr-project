@@ -28,6 +28,7 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: mmr-api/go.mod
+          cache-dependency-path: mmr-api/go.sum
 
       - name: Build
         working-directory: ./mmr-api
@@ -38,6 +39,6 @@ jobs:
         run: go test -v ./... -race -coverprofile=coverage.out -covermode=atomic
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v7.0.0
+        uses: codecov/codecov-action@v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

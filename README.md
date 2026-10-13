@@ -268,8 +268,8 @@ Use `/health` as the liveness probe and `/ready` as the readiness/traffic-gating
 
 - Releases are prepared through changeset files in `.changeset/` and collected in an automated release PR.
 - Merging the release PR creates per-component GitHub Releases such as `frontend@0.1.0`.
-- Azure deployment is manual and runs from an existing GitHub Release tag.
-- The deploy workflow still builds, pushes to ACR, and updates Azure Container Apps in one run.
+- Azure deployment is manual and deploys the image the release pushed to GHCR; nothing is rebuilt.
+- The deploy workflow takes a released version, or `latest` (the default) for the component's newest release.
 
 ### Release Flow
 
@@ -277,7 +277,7 @@ Use `/health` as the liveness probe and `/ready` as the readiness/traffic-gating
 2. Merge feature PRs into `main`.
 3. Let the `Release PR` workflow create or update the release PR.
 4. Merge the release PR when you want to publish GitHub Releases.
-5. Run `Deploy Release` manually for the component and version you want in Azure.
+5. Run `Deploy Release` manually for the component you want in Azure, leaving the version at `latest` or naming an older one to roll back.
 
 ## Database Management
 

@@ -12,6 +12,12 @@ updates:
     directory: "/frontend"
     schedule:
       interval: "weekly"
+    ignore:
+      # bits-ui 2 stops selecting an auto-focused field's value, so typing a
+      # new score appends to the old one. The SvelteKit app is being replaced
+      # by frontend-beta, so it stays on 1.x rather than adapting.
+      - dependency-name: "bits-ui"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "docker"
     directory: "/"
     schedule:

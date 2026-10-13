@@ -173,8 +173,10 @@ run, override `E2E_DB_NAME`, `E2E_MMR_API_PORT`, `E2E_API_PORT` and `E2E_PORT`.
 Releases use changeset files in `.changeset/`. A feature PR includes a changeset
 specifying per-component bump types; merging to main opens an automated release
 PR, and merging that PR creates per-component GitHub Releases. Deployment to
-Azure Container Apps is manual via the `Deploy Release` workflow (pick a
-component and version from an existing GitHub Release tag).
+Azure Container Apps is manual via the `Deploy Release` workflow: pick a
+component, and either keep the version at `latest` (its newest GitHub Release)
+or name an existing release version. It deploys the image the release pushed to
+GHCR rather than rebuilding it.
 
 **Do not manually bump component versions.** The release PR workflow
 (`scripts/release/apply-changesets.mjs`) owns the `version` field in each
