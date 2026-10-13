@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { HttpError } from '@/lib/http-error';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import { WEEK_MS } from '@/lib/player-stats';
 import { selectCurrentSeason } from '@/lib/util/season';
 import type {
   LeaderboardResponse,
@@ -52,12 +53,20 @@ export const getLeagueRatingHistoryFn = createServerFn({ method: 'GET' })
 
 export interface StandingsData extends SeasonScope {
   leaderboard: LeaderboardResponse;
-  /** Newest league matches in the season, for each player's recent form. */
+  /**
+   * Newest league matches in the season, for each player's recent form. In
+   * the current season it reaches back at least a week when it can.
+   */
   recentMatches: MatchResponse[];
+  /** False when the week's matches outnumber what was fetched. */
+  weekComplete: boolean;
+  now: number;
 }
 
 // Enough recent matches to give most active players five results.
 const FORM_WINDOW = 300;
+// Pages fetched at most while reaching back a week.
+const WEEK_PAGES = 5;
 
 export const getStandingsFn = createServerFn({ method: 'GET' })
   .validator((input: LeagueInput & { season?: string }) => input)
@@ -68,21 +77,49 @@ export const getStandingsFn = createServerFn({ method: 'GET' })
         await apiClientV3.seasonsApi.listSeasons(data.orgId, data.leagueId),
         data.season
       );
+      const now = Date.now();
+      const page = (offset: number) =>
+        apiClientV3.matchesApi.getMatches(data.orgId, data.leagueId, {
+          seasonId: scope.seasonId,
+          limit: FORM_WINDOW,
+          offset,
+        });
       const [leaderboard, recentMatches] = await Promise.all([
         apiClientV3.leaderboardApi.getLeaderboard(
           data.orgId,
           data.leagueId,
           scope.seasonId
         ),
-        apiClientV3.matchesApi
-          .getMatches(data.orgId, data.leagueId, {
-            seasonId: scope.seasonId,
-            limit: FORM_WINDOW,
-            offset: 0,
-          })
-          .catch((): MatchResponse[] => []),
+        page(0).catch((): MatchResponse[] => []),
       ]);
-      return { ...scope, leaderboard, recentMatches };
+
+      // Newest first: keep paging while the oldest match is still this week.
+      let weekComplete = true;
+      if (scope.isCurrentSeason) {
+        const since = now - WEEK_MS;
+        let pages = 1;
+        let last = recentMatches.length;
+        while (
+          last === FORM_WINDOW &&
+          Date.parse(recentMatches[recentMatches.length - 1].playedAt) >= since
+        ) {
+          if (pages === WEEK_PAGES) {
+            weekComplete = false;
+            break;
+          }
+          const next = await page(pages * FORM_WINDOW).catch(
+            (): MatchResponse[] | null => null
+          );
+          if (next == null) {
+            weekComplete = false;
+            break;
+          }
+          recentMatches.push(...next);
+          last = next.length;
+          pages += 1;
+        }
+      }
+      return { ...scope, leaderboard, recentMatches, weekComplete, now };
     } catch {
       throw new HttpError(500, 'Failed to load leaderboard');
     }

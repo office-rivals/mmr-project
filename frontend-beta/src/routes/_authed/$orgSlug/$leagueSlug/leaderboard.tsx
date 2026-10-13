@@ -9,15 +9,29 @@ import {
   StreaksCard,
   UnrankedList,
   YourPositionCard,
+  type StandingsMetric,
 } from '@/components/leaderboard/standings';
 import { PageTitle } from '@/components/page-title';
 import { SeasonPicker } from '@/components/season-picker';
 import { getLeagueRatingHistoryFn, getStandingsFn } from '@/lib/league-data';
-import { formByPlayer, winRate } from '@/lib/player-stats';
+import {
+  WEEK_MS,
+  changeSince,
+  formByPlayer,
+  formWins,
+  winRate,
+} from '@/lib/player-stats';
 import { cn, formatLeagueFormat } from '@/lib/utils';
 import type { LeagueRatingHistoryEntry, SeasonResponse } from '@/api-v3';
 
-type SortKey = 'mmr' | 'winrate';
+type SortKey = StandingsMetric;
+
+const SORTS: readonly (readonly [SortKey, string])[] = [
+  ['mmr', 'MMR'],
+  ['winrate', 'Win rate'],
+  ['form', 'Form'],
+  ['week', 'This week'],
+];
 
 interface StandingsSearch {
   season?: string;
@@ -31,7 +45,11 @@ export const Route = createFileRoute(
     ...(typeof search.season === 'string' && search.season
       ? { season: search.season }
       : {}),
-    ...(search.sort === 'winrate' ? { sort: 'winrate' as const } : {}),
+    ...(search.sort === 'winrate' ||
+    search.sort === 'form' ||
+    search.sort === 'week'
+      ? { sort: search.sort }
+      : {}),
   }),
   loaderDeps: ({ search }) => ({ season: search.season }),
   loader: async ({ context, deps }) => {
@@ -58,7 +76,11 @@ function StandingsPage() {
   const base = `/${league.orgSlug}/${league.leagueSlug}`;
   const playerHref = (id: string) => `${base}/player/${id}`;
   const me = league.leaguePlayerId;
-  const sort: SortKey = search.sort ?? 'mmr';
+  // The week only exists for the season in progress.
+  const sort: SortKey =
+    search.sort === 'week' && !data.isCurrentSeason
+      ? 'mmr'
+      : (search.sort ?? 'mmr');
 
   const [ratingHistory, setRatingHistory] = useState<
     LeagueRatingHistoryEntry[] | undefined
@@ -82,10 +104,27 @@ function StandingsPage() {
     () => formByPlayer(data.recentMatches),
     [data.recentMatches]
   );
-  const sorted =
-    sort === 'winrate'
-      ? [...ranked].sort((a, b) => winRate(b) - winRate(a) || b.wins - a.wins)
-      : ranked;
+  const week = useMemo(
+    () => changeSince(data.recentMatches, data.now - WEEK_MS),
+    [data.recentMatches, data.now]
+  );
+  // Each alternative sort falls back to the MMR order for ties.
+  const sorted = [...ranked];
+  if (sort === 'winrate') {
+    sorted.sort((a, b) => winRate(b) - winRate(a) || b.wins - a.wins);
+  } else if (sort === 'form') {
+    sorted.sort(
+      (a, b) =>
+        formWins(form.get(b.leaguePlayerId)) -
+        formWins(form.get(a.leaguePlayerId))
+    );
+  } else if (sort === 'week') {
+    const key = (id: string) => {
+      const change = week.get(id);
+      return change?.games ? (change.delta ?? 0) : -Infinity;
+    };
+    sorted.sort((a, b) => key(b.leaguePlayerId) - key(a.leaguePlayerId));
+  }
 
   const seasonIndex = data.seasons.findIndex((s) => s.id === data.seasonId);
   const eyebrow = [
@@ -120,11 +159,8 @@ function StandingsPage() {
             aria-label="Sort by"
             className="flex flex-1 rounded-full border bg-card p-1 sm:flex-none"
           >
-            {(
-              [
-                ['mmr', 'MMR'],
-                ['winrate', 'Win rate'],
-              ] as const
+            {SORTS.filter(
+              ([key]) => key !== 'week' || data.isCurrentSeason
             ).map(([key, label]) => (
               <AppLink
                 key={key}
@@ -136,7 +172,7 @@ function StandingsPage() {
                 replace
                 aria-current={sort === key ? 'true' : undefined}
                 className={cn(
-                  'flex-1 rounded-full px-4 py-1.5 text-center text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                  'flex-1 rounded-full px-2.5 py-1.5 text-center text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:px-4',
                   sort === key && 'bg-muted font-semibold text-foreground'
                 )}
               >
@@ -170,6 +206,15 @@ function StandingsPage() {
               <YourPositionCard ranked={ranked} me={myEntry} />
             </div>
           ) : null}
+          {ranked.length > 0 && (sort === 'form' || sort === 'week') ? (
+            <p className="-mb-3 text-xs text-muted-foreground">
+              {sort === 'form'
+                ? "Sorted by wins in each player's last 5 matches."
+                : data.weekComplete
+                  ? 'Sorted by rating change over the last 7 days.'
+                  : `Sorted by rating change over the last 7 days, counting the latest ${data.recentMatches.length} matches.`}
+            </p>
+          ) : null}
           {ranked.length > 0 ? (
             <StandingsTable
               key={sort}
@@ -178,6 +223,8 @@ function StandingsPage() {
               form={form}
               ratingHistory={ratingHistory}
               playerHref={playerHref}
+              metric={sort}
+              week={week}
             />
           ) : null}
           <UnrankedList entries={unranked} playerHref={playerHref} />

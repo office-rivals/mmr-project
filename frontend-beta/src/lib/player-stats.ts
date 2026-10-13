@@ -294,3 +294,39 @@ export function bestRatingDay(
   }
   return best;
 }
+
+export interface WeekChange {
+  /** Summed rating deltas; `null` when no played match carried one. */
+  delta: number | null;
+  games: number;
+}
+
+/** Every player's rating change and games played since `since`. */
+export function changeSince(
+  matches: readonly MatchResponse[],
+  since: number
+): Map<string, WeekChange> {
+  const changes = new Map<string, WeekChange>();
+  for (const match of matches) {
+    if (Date.parse(match.playedAt) < since) continue;
+    for (const team of match.teams) {
+      for (const player of team.players) {
+        const change = changes.get(player.leaguePlayerId) ?? {
+          delta: null,
+          games: 0,
+        };
+        change.games += 1;
+        if (player.ratingDelta != null) {
+          change.delta = (change.delta ?? 0) + player.ratingDelta;
+        }
+        changes.set(player.leaguePlayerId, change);
+      }
+    }
+  }
+  return changes;
+}
+
+/** Wins among a player's results, the leaderboard's "Form" sort key. */
+export function formWins(results: readonly Result[] | undefined): number {
+  return (results ?? []).filter((r) => r === 'W').length;
+}

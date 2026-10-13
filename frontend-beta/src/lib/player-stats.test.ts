@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   bestDuoAndNemesis,
   bestRatingDay,
+  changeSince,
   formByPlayer,
+  formWins,
   matchOutcome,
   median,
   peakRating,
@@ -211,5 +213,33 @@ describe('topPercent', () => {
   it('is null without a rank or ranked players', () => {
     expect(topPercent(0, 10)).toBeNull();
     expect(topPercent(3, 0)).toBeNull();
+  });
+});
+
+describe('changeSince', () => {
+  it('sums deltas and counts games from the cutoff on', () => {
+    const matches = [
+      match(['a', 'b'], ['c', 'd'], '2026-01-08T12:00:00Z', 12),
+      match(['c', 'a'], ['b', 'd'], '2026-01-07T12:00:00Z', 5),
+      match(['a', 'b'], ['c', 'd'], '2025-12-20T12:00:00Z', 30),
+    ];
+    const changes = changeSince(matches, Date.parse('2026-01-01T00:00:00Z'));
+    expect(changes.get('a')).toEqual({ delta: 17, games: 2 });
+    expect(changes.get('d')).toEqual({ delta: -17, games: 2 });
+    expect(changes.has('z')).toBe(false);
+  });
+
+  it('keeps the delta unknown when no match reported one', () => {
+    const m = match(['a'], ['b'], '2026-01-08T12:00:00Z');
+    for (const team of m.teams)
+      for (const p of team.players) p.ratingDelta = undefined;
+    expect(changeSince([m], 0).get('a')).toEqual({ delta: null, games: 1 });
+  });
+});
+
+describe('formWins', () => {
+  it('counts wins and treats missing form as none', () => {
+    expect(formWins(['W', 'L', 'W'])).toBe(2);
+    expect(formWins(undefined)).toBe(0);
   });
 });

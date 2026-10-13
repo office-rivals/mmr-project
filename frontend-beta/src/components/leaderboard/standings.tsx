@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { RANKED_MATCH_THRESHOLD, SHOW_STREAK_THRESHOLD } from '@/lib/constants';
-import { winRate, type Result } from '@/lib/player-stats';
+import { winRate, type Result, type WeekChange } from '@/lib/player-stats';
 import { cn, getPlayerDisplayName } from '@/lib/utils';
 import type {
   LeaderboardEntryResponse,
@@ -296,14 +296,50 @@ function FormSquares({ form }: { form: Result[] | undefined }) {
   );
 }
 
+export type StandingsMetric = 'mmr' | 'winrate' | 'form' | 'week';
+
 interface StandingsTableProps {
   entries: Entry[];
   me: string | null;
   form: Map<string, Result[]>;
   ratingHistory: LeagueRatingHistoryEntry[] | undefined;
   playerHref: (id: string) => string;
+  /** The sort in effect; its column stays visible on phones. */
+  metric?: StandingsMetric;
+  /** Rating change this week, shown in its own column for the week sort. */
+  week?: Map<string, WeekChange>;
   /** Rows shown before "Show all". */
   initialRows?: number;
+}
+
+function WeekDelta({ change }: { change: WeekChange | undefined }) {
+  if (!change || change.games === 0) {
+    return (
+      <span className="text-muted-foreground">
+        <span aria-hidden="true">—</span>
+        <span className="sr-only">No matches this week</span>
+      </span>
+    );
+  }
+  const games = `${change.games} ${change.games === 1 ? 'match' : 'matches'}`;
+  if (change.delta == null) {
+    return <span className="text-muted-foreground">{games}</span>;
+  }
+  return (
+    <span className="flex flex-col items-end leading-tight">
+      <span
+        className={cn(
+          'font-bold',
+          change.delta > 0 && 'text-green-400',
+          change.delta < 0 && 'text-red-400'
+        )}
+      >
+        {change.delta > 0 ? '+' : change.delta < 0 ? '−' : ''}
+        {Math.abs(change.delta)}
+      </span>
+      <span className="text-[10px] text-muted-foreground">{games}</span>
+    </span>
+  );
 }
 
 export function StandingsTable({
@@ -312,8 +348,13 @@ export function StandingsTable({
   form,
   ratingHistory,
   playerHref,
+  metric = 'mmr',
+  week,
   initialRows = 12,
 }: StandingsTableProps) {
+  // On phones the sort's own column replaces the trend sparkline.
+  const formOnPhone = metric === 'form';
+  const trendOnPhone = metric !== 'form' && metric !== 'week';
   const mmr = useMmr();
   const hydrated = useHydrated();
   const [expanded, setExpanded] = useState(false);
@@ -351,12 +392,27 @@ export function StandingsTable({
             >
               Win %
             </th>
-            <th scope="col" className={cn(head, 'hidden pl-4 lg:table-cell')}>
+            <th
+              scope="col"
+              className={cn(
+                head,
+                'pl-4',
+                formOnPhone ? 'table-cell' : 'hidden lg:table-cell'
+              )}
+            >
               Last 5
             </th>
-            <th scope="col" className={head}>
+            <th
+              scope="col"
+              className={cn(head, !trendOnPhone && 'hidden lg:table-cell')}
+            >
               Trend
             </th>
+            {metric === 'week' ? (
+              <th scope="col" className={cn(head, 'text-right')}>
+                This week
+              </th>
+            ) : null}
             <th scope="col" className={cn(head, 'pr-4 text-right')}>
               MMR
             </th>
@@ -436,14 +492,27 @@ export function StandingsTable({
                 >
                   {pct(winRate(entry))}
                 </td>
-                <td className={cn(cell, 'hidden pl-4 lg:table-cell')}>
+                <td
+                  className={cn(
+                    cell,
+                    'pl-4',
+                    formOnPhone ? 'table-cell' : 'hidden lg:table-cell'
+                  )}
+                >
                   <FormSquares form={form.get(entry.leaguePlayerId)} />
                 </td>
-                <td className={cell}>
+                <td
+                  className={cn(cell, !trendOnPhone && 'hidden lg:table-cell')}
+                >
                   <div className="pointer-events-none w-12 sm:w-16">
                     {history ? <Sparkline data={history} /> : null}
                   </div>
                 </td>
+                {metric === 'week' ? (
+                  <td className={cn(cell, 'text-right tabular-nums')}>
+                    <WeekDelta change={week?.get(entry.leaguePlayerId)} />
+                  </td>
+                ) : null}
                 <td
                   className={cn(
                     cell,
