@@ -52,6 +52,14 @@ dotnet ef migrations add <MigrationName> -o Data/Migrations -c ApiDbContext
 The frontend's v3 API client (`frontend/src/api-v3`) is hand-maintained — update
 it by hand when the v3 API changes (it is not generated).
 
+### Docs site
+
+`docs/` is the public landing page and documentation (Astro + Starlight),
+deployed to GitHub Pages from `main` by `.github/workflows/docs.yml`. It
+documents the beta frontend (`frontend-beta/`) — update it when a change alters
+setup, configuration or user-visible behaviour of the beta. Writing conventions
+are in [`docs/README.md`](docs/README.md).
+
 ### Database
 
 The AppHost provisions PostgreSQL (persisted in a Docker volume) and the API
