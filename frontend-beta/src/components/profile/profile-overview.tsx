@@ -474,10 +474,12 @@ const WEEKDAYS = [
   'Saturday',
   'Sunday',
 ];
+// The first step must stand clear of the empty cells, hence no faint tint.
 const LEVELS = [
   'bg-muted',
-  'bg-primary/35',
+  'bg-primary/45',
   'bg-primary/65',
+  'bg-primary/85',
   'bg-primary',
 ] as const;
 
@@ -520,8 +522,10 @@ export function ActivityCard({
     })
   );
   const busiest = Math.max(1, ...counts.values());
+  const steps = LEVELS.length - 1;
   const level = (count: number) =>
-    count === 0 ? 0 : Math.min(3, Math.ceil((count / busiest) * 3));
+    count === 0 ? 0 : Math.min(steps, Math.ceil((count / busiest) * steps));
+  const inWindow = weeks.flat().reduce<number>((sum, c) => sum + (c ?? 0), 0);
   const top = Math.max(...byWeekday);
   const favourite = top > 0 ? WEEKDAYS[byWeekday.indexOf(top)] : null;
 
@@ -547,6 +551,12 @@ export function ActivityCard({
           ) : null}
         </p>
       </div>
+      {hydrated ? (
+        <p className="sr-only">
+          {inWindow} {inWindow === 1 ? 'match' : 'matches'} in the last {WEEKS}{' '}
+          weeks.
+        </p>
+      ) : null}
       <div aria-hidden="true" className="flex gap-2">
         <div className="grid grid-rows-7 gap-1 text-[10px] leading-none text-muted-foreground">
           {WEEKDAYS.map((day, i) => (

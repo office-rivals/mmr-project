@@ -460,9 +460,17 @@ function LeagueHomePage() {
                 <ViewAll to={`${base}/matches`} label="matches" />
               </div>
             </div>
+            {(data.recentMatches ?? []).length === 0 ? (
+              <NoMatchesYet
+                base={base}
+                // A league without seasons is always "now".
+                current={data.isCurrentSeason || search.season == null}
+                canPlay={data.leaguePlayerId != null}
+              />
+            ) : null}
             {/* Cards are direct children: the e2e selector
                 `.flex.flex-1.flex-col.items-stretch > div.bg-card` resolves
-                to a card. There is no empty state. */}
+                to a card, so the empty state above sits outside it. */}
             <div className="flex flex-1 flex-col items-stretch gap-2">
               {(data.recentMatches ?? []).map((match) => (
                 <MatchCard
@@ -528,6 +536,52 @@ function LeagueHomePage() {
         />
       ) : null}
     </>
+  );
+}
+
+function NoMatchesYet({
+  base,
+  current,
+  canPlay,
+}: {
+  base: string;
+  current: boolean;
+  canPlay: boolean;
+}) {
+  const action =
+    'inline-flex h-11 items-center justify-center rounded-md px-4 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:h-10';
+  return (
+    <div className="flex flex-col items-center gap-4 rounded-lg border border-dashed p-6 text-center">
+      <div className="flex flex-col gap-1">
+        <p className="font-semibold">
+          {current ? 'No matches yet' : 'No matches this season'}
+        </p>
+        {current ? (
+          <p className="text-sm text-muted-foreground">
+            Played one? Submit it, or find a game in the queue.
+          </p>
+        ) : null}
+      </div>
+      {current && canPlay ? (
+        <div className="flex flex-wrap justify-center gap-2">
+          <AppLink
+            to={`${base}/submit`}
+            className={cn(
+              action,
+              'bg-primary-fill text-primary-foreground hover:bg-primary-fill/90'
+            )}
+          >
+            Submit match
+          </AppLink>
+          <AppLink
+            to={`${base}/matchmaking`}
+            className={cn(action, 'border hover:bg-muted')}
+          >
+            Join the queue
+          </AppLink>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

@@ -30,6 +30,17 @@ function AuthedLayout() {
 
   return (
     <>
+      {/* Handled in JS: a router hash navigation would reload the shell. */}
+      <a
+        href="#content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById('content')?.focus();
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-card focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:ring-2 focus:ring-ring focus:outline-none"
+      >
+        Skip to content
+      </a>
       <PullToRefresh />
       <Header
         organizations={shell.organizations}
@@ -42,7 +53,11 @@ function AuthedLayout() {
         defaultLeagueId={shell.defaultLeagueId}
         defaultLeaguePlayerId={shell.defaultLeaguePlayerId}
       />
-      <main className="overflow-auto lg:pl-60">
+      <main
+        id="content"
+        tabIndex={-1}
+        className="overflow-auto focus:outline-none lg:pl-60"
+      >
         <div
           className={cn(
             'mx-auto w-full max-w-screen-sm px-4 pt-[calc(env(safe-area-inset-top)+var(--header-height)+1rem)] pb-[calc(env(safe-area-inset-bottom)+11rem)] lg:pt-8 lg:pb-12',

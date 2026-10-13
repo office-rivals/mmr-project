@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { peakRating } from '@/lib/player-stats';
+import { cn } from '@/lib/utils';
 
 interface RatingPoint {
   mmr: number;
@@ -52,6 +53,10 @@ export function RatingTrend({ points, height = 200, label }: RatingTrendProps) {
     .join(' ');
   const area = `${line} L${WIDTH},${height} L0,${height} Z`;
   const peak = peakRating(points)!;
+  const peakIndex = points.indexOf(peak);
+  // Percentages map straight onto the stretched (non-uniform) viewBox.
+  const peakLeft = (x(peakIndex) / WIDTH) * 100;
+  const peakTop = (y(peak.mmr) / height) * 100;
   const last = points[points.length - 1];
   const fmt = (v: number) => formatNumber(v, { maximumFractionDigits: 0 });
   const day = (d: string) =>
@@ -59,56 +64,77 @@ export function RatingTrend({ points, height = 200, label }: RatingTrendProps) {
 
   return (
     <figure className="flex flex-col gap-2">
-      <svg
-        role="img"
-        aria-label={`${label}: from ${fmt(points[0].mmr)} to ${fmt(last.mmr)}, peak ${fmt(peak.mmr)}`}
-        viewBox={`0 0 ${WIDTH} ${height}`}
-        preserveAspectRatio="none"
-        className="w-full overflow-visible"
-        style={{ height }}
-      >
-        <defs>
-          <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-            <stop
-              offset="0%"
-              stopColor="hsl(var(--primary))"
-              stopOpacity="0.28"
+      {/* The top margin is headroom for the peak label. */}
+      <div className="relative mt-6">
+        <svg
+          role="img"
+          aria-label={`${label}: from ${fmt(points[0].mmr)} to ${fmt(last.mmr)}, peak ${fmt(peak.mmr)}`}
+          viewBox={`0 0 ${WIDTH} ${height}`}
+          preserveAspectRatio="none"
+          className="w-full overflow-visible"
+          style={{ height }}
+        >
+          <defs>
+            <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+              <stop
+                offset="0%"
+                stopColor="hsl(var(--primary))"
+                stopOpacity="0.28"
+              />
+              <stop
+                offset="100%"
+                stopColor="hsl(var(--primary))"
+                stopOpacity="0"
+              />
+            </linearGradient>
+          </defs>
+          {[0.25, 0.5, 0.75].map((f) => (
+            <line
+              key={f}
+              x1="0"
+              x2={WIDTH}
+              y1={height * f}
+              y2={height * f}
+              className="stroke-border"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
             />
-            <stop
-              offset="100%"
-              stopColor="hsl(var(--primary))"
-              stopOpacity="0"
-            />
-          </linearGradient>
-        </defs>
-        {[0.25, 0.5, 0.75].map((f) => (
-          <line
-            key={f}
-            x1="0"
-            x2={WIDTH}
-            y1={height * f}
-            y2={height * f}
-            className="stroke-border"
-            strokeWidth="1"
+          ))}
+          <path d={area} fill={`url(#${gradientId})`} />
+          <path
+            d={line}
+            fill="none"
+            className="stroke-primary"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
           />
-        ))}
-        <path d={area} fill={`url(#${gradientId})`} />
-        <path
-          d={line}
-          fill="none"
-          className="stroke-primary"
-          strokeWidth="2.5"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          vectorEffect="non-scaling-stroke"
+        </svg>
+        <span
+          aria-hidden="true"
+          className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-primary"
+          style={{ left: `${peakLeft}%`, top: `${peakTop}%` }}
         />
-      </svg>
-      <figcaption className="flex justify-between gap-2 text-xs text-muted-foreground">
-        <span>{day(points[0].playedAt)}</span>
-        <span>
+        {/* Sits on the peak, nudged inward near either edge; the chart's
+            label already names the peak for screen readers. */}
+        <span
+          aria-hidden="true"
+          className={cn(
+            'absolute -translate-y-[calc(100%+0.5rem)] text-xs whitespace-nowrap text-muted-foreground',
+            peakLeft < 15
+              ? 'translate-x-0'
+              : peakLeft > 85
+                ? '-translate-x-full'
+                : '-translate-x-1/2'
+          )}
+          style={{ left: `${peakLeft}%`, top: `${peakTop}%` }}
+        >
           Peak {fmt(peak.mmr)} · {day(peak.playedAt)}
         </span>
+      </div>
+      <figcaption className="flex justify-between gap-2 text-xs text-muted-foreground">
+        <span>{day(points[0].playedAt)}</span>
         <span>Now · {fmt(last.mmr)}</span>
       </figcaption>
     </figure>
