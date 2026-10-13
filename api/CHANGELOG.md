@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.0
+
+- Reject a manually submitted match as a duplicate (409) when an identical match — same league, same two teams and same scores, regardless of team or player order — was recorded within the last 10 minutes.
+- Order rating history and rating charts by when each match was played rather than when it was submitted, and return `playedAt` on rating-history entries.
+- Allow unscoped personal access tokens to use tenant endpoints wherever their owner has access, and enforce organization and league boundaries for scoped tokens and moderator routes.
+
 ## 1.5.0
 
 - Show admins a red badge wherever match flags are waiting to be resolved — the
