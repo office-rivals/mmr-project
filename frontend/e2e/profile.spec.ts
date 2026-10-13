@@ -30,6 +30,18 @@ test.describe('Player profile', () => {
     await expect(chart.locator('svg').first()).toBeVisible();
   });
 
+  test('rating-over-time chart plots a line from match times', async ({
+    page,
+  }) => {
+    await page.goto(PROFILE_URL);
+
+    // A missing date field still renders the SVG; only the line path shows it.
+    const line = page.locator('path.line').first();
+    await expect(line).toBeAttached({ timeout: 15_000 });
+    await expect(line).toHaveAttribute('d', /^M-?[\d.]+,-?[\d.]+/);
+    await expect(line).not.toHaveAttribute('d', /NaN/);
+  });
+
   test('shows opponents and teammates tables', async ({ page }) => {
     await page.goto(PROFILE_URL);
 

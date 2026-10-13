@@ -262,6 +262,7 @@ export interface RatingHistoryEntryResponse {
   mu: number;
   sigma: number;
   delta: number;
+  playedAt: string;
   recordedAt: string;
 }
 
@@ -273,6 +274,7 @@ export interface LeagueRatingHistoryEntry {
   leaguePlayerId: string;
   matchId: string;
   mmr: number;
+  playedAt: string;
   recordedAt: string;
 }
 
