@@ -15,12 +15,14 @@ import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { scrollToStep } from '@/lib/scroll-to-step';
 import type {
+  Rematch,
   SlotName,
   SubmitMatchInput,
 } from '@/components/play/submit-match-page';
 import type { LeagueContext } from './route';
 import type {
   LeaguePlayerResponse,
+  MatchResponse,
   OrganizationMemberResponse,
   SubmitMatchPlayerRequest,
 } from '@/api-v3';
@@ -30,18 +32,67 @@ const leagueRoute = getRouteApi('/_authed/$orgSlug/$leagueSlug');
 interface SubmitPageData {
   players: LeaguePlayerResponse[];
   members: OrganizationMemberResponse[];
+  /** The viewer's most recent match in this league, offered as a rematch. */
+  lastMatch: MatchResponse | null;
 }
 
 const getSubmitPageDataFn = createServerFn({ method: 'GET' })
-  .validator((input: { orgId: string; leagueId: string }) => input)
+  .validator(
+    (input: {
+      orgId: string;
+      leagueId: string;
+      leaguePlayerId: string | null;
+    }) => input
+  )
   .handler(async ({ data }): Promise<SubmitPageData> => {
     const apiClientV3 = await requireApiClientV3();
-    const [players, members] = await Promise.all([
+    const [players, members, lastMatch] = await Promise.all([
       apiClientV3.leaguePlayersApi.listPlayers(data.orgId, data.leagueId),
       apiClientV3.organizationMembersApi.listMembers(data.orgId),
+      // Optional: the form works without it.
+      data.leaguePlayerId
+        ? apiClientV3.matchesApi
+            .getMatches(data.orgId, data.leagueId, {
+              leaguePlayerId: data.leaguePlayerId,
+              limit: 1,
+              offset: 0,
+            })
+            .then((matches) => matches[0] ?? null)
+            .catch(() => null)
+        : null,
     ]);
-    return { players, members };
+    return { players, members, lastMatch };
   });
+
+/**
+ * The last match's line-up with the viewer first, or null when it no longer
+ * fits this league's format or one of its players has left.
+ */
+function rematchFrom(
+  match: MatchResponse | null,
+  me: string | null,
+  players: LeaguePlayerResponse[],
+  teamSize: number
+): Rematch | null {
+  if (!match || !me) return null;
+  const mine = match.teams.find((t) =>
+    t.players.some((p) => p.leaguePlayerId === me)
+  );
+  const theirs = match.teams.find((t) => t !== mine);
+  if (!mine || !theirs) return null;
+  const lineup = (ids: string[]) => {
+    const found = ids.map((id) => players.find((p) => p.id === id));
+    return found.length === teamSize && found.every((p) => p != null)
+      ? (found as LeaguePlayerResponse[])
+      : null;
+  };
+  const team1 = lineup([
+    me,
+    ...mine.players.map((p) => p.leaguePlayerId).filter((id) => id !== me),
+  ]);
+  const team2 = lineup(theirs.players.map((p) => p.leaguePlayerId));
+  return team1 && team2 ? { team1, team2 } : null;
+}
 
 type SubmitMatchResult =
   { status: 'error'; message: string } | { status: 'ok' };
@@ -167,9 +218,11 @@ const submitMatchFn = createServerFn({ method: 'POST' })
 
 export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/submit')({
   loader: async ({ context }) => {
-    const { orgId, leagueId } = context.league;
+    const { orgId, leagueId, leaguePlayerId } = context.league;
     try {
-      return await getSubmitPageDataFn({ data: { orgId, leagueId } });
+      return await getSubmitPageDataFn({
+        data: { orgId, leagueId, leaguePlayerId },
+      });
     } catch {
       throw new HttpError(500, 'Failed to load players');
     }
@@ -189,7 +242,7 @@ function SubmitRoute() {
 
 function LeagueSubmitRoute({
   league,
-  data: { players, members },
+  data: { players, members, lastMatch },
 }: {
   league: LeagueContext;
   data: SubmitPageData;
@@ -224,6 +277,12 @@ function LeagueSubmitRoute({
       leagueWinningScore={league.leagueWinningScore}
       players={players}
       members={members}
+      rematch={rematchFrom(
+        lastMatch,
+        league.leaguePlayerId,
+        players,
+        league.leagueTeamSize
+      )}
       formMessage={formMessage}
       submitting={submitMatch.isPending}
       onSubmit={(input) => submitMatch.mutate(input)}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import { MatchSource } from '@/api-v3';
 import { FreeFormScoreInputs } from '@/components/free-form-score-inputs';
 import { LoadingOverlay } from '@/components/loading-overlay';
@@ -12,6 +13,7 @@ import { StepHeading } from '@/components/play/step-heading';
 import { WinnerStep } from '@/components/play/winner-step';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useHydrated } from '@/hooks/use-hydrated';
 import {
   deriveLosingTeam,
   isScorePairComplete,
@@ -43,6 +45,12 @@ export interface SubmitMatchInput {
   team2Score: number;
 }
 
+/** A previous line-up; `team1[0]` is the viewer. */
+export interface Rematch {
+  team1: LeaguePlayerResponse[];
+  team2: LeaguePlayerResponse[];
+}
+
 interface SubmitMatchPageProps {
   orgId: string;
   leagueId: string;
@@ -50,6 +58,8 @@ interface SubmitMatchPageProps {
   leagueWinningScore: number | null;
   players: LeaguePlayerResponse[];
   members: OrganizationMemberResponse[];
+  /** Offered as a one-tap way to fill every slot. */
+  rematch?: Rematch | null;
   /** Server-action error, rendered as a persistent destructive alert. */
   formMessage: string | null;
   submitting: boolean;
@@ -117,12 +127,14 @@ export function SubmitMatchPage({
   leagueWinningScore,
   players,
   members,
+  rematch,
   formMessage,
   submitting,
   onSubmit,
   onGoToStep,
   banner,
 }: SubmitMatchPageProps) {
+  const hydrated = useHydrated();
   const teamSize = leagueTeamSize;
   // Fixed-target leagues (foosball: 10) use the "we won / they won" + loser
   // 0..N picker. Free-form leagues (winningScore === null) take two raw scores.
@@ -182,6 +194,20 @@ export function SubmitMatchPage({
 
   const setSlot = (slot: SlotName, value: SlotValue) =>
     setSlots((current) => ({ ...current, [slot]: value }));
+
+  const applyRematch = (lineup: Rematch) => {
+    const slot = (player?: LeaguePlayerResponse): SlotValue =>
+      player ? { kind: 'league', player } : null;
+    setSlots({
+      team1_player1: slot(lineup.team1[0]),
+      team1_player2: slot(lineup.team1[1]),
+      team2_player1: slot(lineup.team2[0]),
+      team2_player2: slot(lineup.team2[1]),
+    });
+    setTeam1Score(-1);
+    setTeam2Score(-1);
+    onGoToStep(isFreeForm ? 'free-form-score-step' : 'winner-step');
+  };
 
   const allFilled = SLOTS.every((s) => slots[s] !== null);
   const team1Filled = team1Slots.every((s) => slots[s] !== null);
@@ -420,6 +446,14 @@ export function SubmitMatchPage({
           <Alert variant="destructive">{formMessage}</Alert>
         ) : null}
 
+        {rematch ? (
+          <RematchCard
+            rematch={rematch}
+            disabled={!hydrated || submitting}
+            onUse={() => applyRematch(rematch)}
+          />
+        ) : null}
+
         <form
           onSubmit={handleSubmit}
           className="flex flex-col gap-8 lg:rounded-xl lg:border lg:bg-card lg:p-8"
@@ -501,5 +535,50 @@ export function SubmitMatchPage({
 
       <LoadingOverlay isLoading={submitting} message="Uploading match result" />
     </>
+  );
+}
+
+function RematchCard({
+  rematch,
+  disabled,
+  onUse,
+}: {
+  rematch: Rematch;
+  disabled: boolean;
+  onUse: () => void;
+}) {
+  const name = (p: LeaguePlayerResponse) =>
+    p.username ?? p.displayName ?? 'Unknown';
+  // One text node, so the line-up never reads as a separate "You" label.
+  const lineup = [
+    ['You', ...rematch.team1.slice(1).map(name)].join(' + '),
+    rematch.team2.map(name).join(' + '),
+  ].join(' vs ');
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-dashed p-3 pl-4">
+      <RotateCcw
+        aria-hidden="true"
+        className="size-4 shrink-0 text-muted-foreground"
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
+          Rematch
+        </p>
+        <p className="truncate text-sm font-semibold" title={lineup}>
+          {lineup}
+        </p>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-11 px-4 lg:h-9"
+        disabled={disabled}
+        aria-label="Use the teams from your last match"
+        onClick={onUse}
+      >
+        Use
+      </Button>
+    </div>
   );
 }
