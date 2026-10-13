@@ -9,7 +9,7 @@ export function PageTitle({ children, srOnly = false }: PageTitleProps) {
   return (
     <h1
       className={
-        srOnly ? 'sr-only' : 'text-center text-4xl font-extrabold md:text-6xl'
+        srOnly ? 'sr-only' : 'text-3xl font-bold tracking-tight lg:text-4xl'
       }
     >
       {children}

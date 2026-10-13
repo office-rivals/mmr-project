@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import {
-  AlertCircle,
-  Check,
-  CheckCircle,
-  ChevronRight,
-  Flag,
-} from 'lucide-react';
+import { Check, ChevronRight, Flag } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
 import { Eyebrow } from '@/components/eyebrow';
 import {
@@ -20,6 +14,7 @@ import {
   RatingCard,
   type HomeStanding,
 } from '@/components/home/home-overview';
+import { FlagResultAlert } from '@/components/flag-result-alert';
 import { HttpErrorView } from '@/components/http-error-view';
 import { Leaderboard } from '@/components/leaderboard';
 import { MatchCard } from '@/components/match-card';
@@ -27,17 +22,12 @@ import { PageTitle } from '@/components/page-title';
 import { ReportMatchModal } from '@/components/report-match-modal';
 import { SeasonPicker } from '@/components/season-picker';
 import { UserStatsModal } from '@/components/user-stats-modal';
-import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useHydrated } from '@/hooks/use-hydrated';
+import { useMatchFlagHandlers } from '@/hooks/use-match-flag-handlers';
 import { useShowMmr } from '@/hooks/use-show-mmr';
 import { HttpError } from '@/lib/http-error';
-import {
-  createMatchFlagFn,
-  deleteMatchFlagFn,
-  updateMatchFlagFn,
-} from '@/lib/match-flag-actions';
 import {
   WEEK_MS,
   bestDuoAndNemesis,
@@ -46,10 +36,10 @@ import {
   ratingChangeSince,
   recentForm,
 } from '@/lib/player-stats';
+import { getLeagueRatingHistoryFn } from '@/lib/league-data';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { cn, formatLeagueFormat } from '@/lib/utils';
 import { selectCurrentSeason } from '@/lib/util/season';
-import type { FlagActionResult } from '@/lib/match-flag-actions';
 import type {
   ActiveMatchResponse,
   LeaderboardEntryResponse,
@@ -165,24 +155,6 @@ const getLeagueHomeFn = createServerFn({ method: 'GET' })
     }
   });
 
-/**
- * Deliberately separate from the page load and never awaited by the loader:
- * the leaderboard renders immediately with placeholder sparklines and fills
- * them in when this resolves. A failure degrades to "no sparklines".
- */
-const getLeagueRatingHistoryFn = createServerFn({ method: 'GET' })
-  .validator(
-    (input: { orgId: string; leagueId: string; seasonId?: string }) => input
-  )
-  .handler(
-    async ({ data }): Promise<{ entries: LeagueRatingHistoryEntry[] }> => {
-      const apiClientV3 = await requireApiClientV3();
-      return apiClientV3.ratingHistoryApi
-        .getLeagueHistory(data.orgId, data.leagueId, data.seasonId)
-        .catch(() => ({ entries: [] }));
-    }
-  );
-
 export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/')({
   // Permissive on purpose: the Svelte page forwarded whatever `?season=` held
   // straight to the API. A stricter uuid check would turn a bad link into a
@@ -237,7 +209,6 @@ function LeagueHomePage() {
   const data = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
-  const router = useRouter();
   // The report trigger and the MMR toggle do nothing at all until React has
   // attached their handlers: the modal is client-only and the toggle writes to
   // localStorage. The SSR'd markup paints (and is clickable) well before
@@ -256,7 +227,6 @@ function LeagueHomePage() {
   const [ratingHistory, setRatingHistory] = useState<
     LeagueRatingHistoryEntry[] | undefined
   >(undefined);
-  const [formResult, setFormResult] = useState<FlagActionResult | null>(null);
 
   const { ratingHistoryPromise } = data;
   useEffect(() => {
@@ -286,46 +256,13 @@ function LeagueHomePage() {
     [data.orgSlug, data.leagueSlug]
   );
 
-  /**
-   * Replaces `use:enhance` + `update()`: on success the page banner is set and
-   * every loader re-runs, so the feed and the user's flags are fresh by the
-   * time the dialog closes. A failure never touches the banner — it stays in
-   * the dialog, exactly like the Svelte failure branch (which skips `update()`).
-   */
-  const afterFlagAction = useCallback(
-    async (result: FlagActionResult): Promise<FlagActionResult> => {
-      if (result.success) {
-        setFormResult(result);
-        await router.invalidate({ sync: true });
-      }
-      return result;
-    },
-    [router]
-  );
-
-  const handleCreateFlag = useCallback(
-    (input: { matchId: string; reason: string }) =>
-      createMatchFlagFn({
-        data: { orgId: data.orgId, leagueId: data.leagueId, ...input },
-      }).then(afterFlagAction),
-    [data.orgId, data.leagueId, afterFlagAction]
-  );
-
-  const handleUpdateFlag = useCallback(
-    (input: { flagId: string; reason: string }) =>
-      updateMatchFlagFn({
-        data: { orgId: data.orgId, leagueId: data.leagueId, ...input },
-      }).then(afterFlagAction),
-    [data.orgId, data.leagueId, afterFlagAction]
-  );
-
-  const handleDeleteFlag = useCallback(
-    (input: { flagId: string }) =>
-      deleteMatchFlagFn({
-        data: { orgId: data.orgId, leagueId: data.leagueId, ...input },
-      }).then(afterFlagAction),
-    [data.orgId, data.leagueId, afterFlagAction]
-  );
+  const {
+    result: formResult,
+    setResult: setFormResult,
+    onCreateFlag: handleCreateFlag,
+    onUpdateFlag: handleUpdateFlag,
+    onDeleteFlag: handleDeleteFlag,
+  } = useMatchFlagHandlers(data.orgId, data.leagueId);
 
   const handleSeasonChange = (season: SeasonResponse) => {
     const isCurrent = season.id === data.currentSeason?.id;
@@ -429,21 +366,7 @@ function LeagueHomePage() {
           </div>
         </div>
 
-        {formResult?.success && formResult.message ? (
-          <Alert variant="default">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              <span className="font-medium">{formResult.message}</span>
-            </div>
-          </Alert>
-        ) : formResult?.success === false ? (
-          <Alert variant="destructive">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              <span className="font-medium">{formResult?.message}</span>
-            </div>
-          </Alert>
-        ) : null}
+        <FlagResultAlert result={formResult} />
 
         {standing ? (
           <>

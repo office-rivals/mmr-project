@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   bestDuoAndNemesis,
+  formByPlayer,
   matchOutcome,
   median,
   peakRating,
@@ -137,5 +138,19 @@ describe('rating helpers', () => {
   it('finds the peak', () => {
     expect(peakRating(points)?.mmr).toBe(1100);
     expect(peakRating([])).toBeNull();
+  });
+});
+
+describe('formByPlayer', () => {
+  it("keeps each player's newest results, oldest first", () => {
+    const newestFirst = [
+      match(['a'], ['b']),
+      match(['b'], ['a']),
+      match(['b'], ['c']),
+    ];
+    const form = formByPlayer(newestFirst, 2);
+    expect(form.get('a')).toEqual(['L', 'W']);
+    expect(form.get('b')).toEqual(['W', 'L']);
+    expect(form.get('c')).toEqual(['L']);
   });
 });

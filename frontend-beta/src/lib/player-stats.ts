@@ -192,3 +192,22 @@ export function matchesSince(
 ): number {
   return matches.filter((m) => Date.parse(m.playedAt) >= since).length;
 }
+
+/** Every player's newest `count` results, oldest first. Input is newest first. */
+export function formByPlayer(
+  matches: readonly MatchResponse[],
+  count = 5
+): Map<string, Result[]> {
+  const form = new Map<string, Result[]>();
+  for (const match of matches) {
+    for (const team of match.teams) {
+      for (const player of team.players) {
+        const results = form.get(player.leaguePlayerId) ?? [];
+        if (results.length < count) results.push(team.isWinner ? 'W' : 'L');
+        form.set(player.leaguePlayerId, results);
+      }
+    }
+  }
+  for (const results of form.values()) results.reverse();
+  return form;
+}

@@ -63,7 +63,7 @@ export function Header({
               />
             )}
           </div>
-          <div className="lg:absolute lg:right-3 lg:top-[calc(env(safe-area-inset-top)+1rem)]">
+          <div className="lg:absolute lg:top-[calc(env(safe-area-inset-top)+1rem)] lg:right-3">
             <SettingsMenu
               organizations={organizations}
               menuOrg={menuOrg}
