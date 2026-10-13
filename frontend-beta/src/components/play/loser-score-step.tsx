@@ -37,7 +37,7 @@ export function LoserScoreStep({
             className={cn(
               'flex h-14 items-center justify-center rounded-md border text-xl font-semibold tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
               selected === score
-                ? 'border-primary bg-primary text-primary-foreground'
+                ? 'border-primary-fill bg-primary-fill text-primary-foreground'
                 : 'bg-card hover:border-primary/60'
             )}
           >

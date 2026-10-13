@@ -69,7 +69,7 @@ export function LiveStatus({
   const textLink =
     'flex min-w-0 flex-1 basis-0 items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:basis-auto';
   const cta =
-    'inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:opacity-60';
+    'inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary-fill px-4 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-fill/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:opacity-60';
   const errorText = error ? (
     <p role="alert" className="w-full text-xs text-red-400">
       {error}

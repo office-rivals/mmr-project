@@ -471,7 +471,7 @@ function MatchFlagsPage() {
                 search={{ status: tab.value }}
                 className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
                   isActive
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-primary-fill text-primary-foreground'
                     : 'bg-muted hover:bg-accent'
                 }`}
               >

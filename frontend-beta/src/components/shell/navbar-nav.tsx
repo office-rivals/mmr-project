@@ -44,7 +44,7 @@ export function NavbarNav({
         {hasBadge ? (
           <span
             aria-hidden="true"
-            className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] leading-none font-bold tracking-normal text-primary-foreground lg:hidden"
+            className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-fill px-1 text-[10px] leading-none font-bold tracking-normal text-primary-foreground lg:hidden"
           >
             {badge}
           </span>
@@ -56,7 +56,7 @@ export function NavbarNav({
         <>
           <span
             aria-hidden="true"
-            className="ml-auto hidden h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground lg:inline-flex"
+            className="ml-auto hidden h-5 min-w-5 items-center justify-center rounded-full bg-primary-fill px-1.5 text-[11px] font-bold text-primary-foreground lg:inline-flex"
           >
             {badge}
           </span>
@@ -75,7 +75,7 @@ export function NavbarSubmit({ path }: { path: string }) {
       activeOptions={{ exact: true, includeSearch: false }}
       className="group flex h-16 min-w-16 flex-1 flex-col items-center justify-end gap-1 pb-1.5 text-[10px] font-semibold tracking-[0.1em] text-foreground uppercase focus-visible:outline-none lg:hidden"
     >
-      <span className="-mt-7 flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-[0_0_0_5px_hsl(var(--background))] transition-colors group-hover:bg-primary/90 group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-background">
+      <span className="-mt-7 flex size-14 items-center justify-center rounded-2xl bg-primary-fill text-primary-foreground shadow-[0_0_0_5px_hsl(var(--background))] transition-colors group-hover:bg-primary/90 group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-background">
         <Plus aria-hidden="true" className="size-7" strokeWidth={2.5} />
       </span>
       <span className="group-data-[status=active]:text-primary">Submit</span>

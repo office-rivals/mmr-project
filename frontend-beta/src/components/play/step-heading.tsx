@@ -13,7 +13,7 @@ export function StepHeading({
       {step != null ? (
         <span
           aria-hidden="true"
-          className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground"
+          className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-fill text-xs font-bold text-primary-foreground"
         >
           {step}
         </span>

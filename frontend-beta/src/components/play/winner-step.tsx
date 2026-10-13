@@ -39,7 +39,7 @@ export function WinnerStep({
           className={cn(
             choice,
             weDisabled
-              ? 'border-primary bg-primary text-primary-foreground'
+              ? 'border-primary-fill bg-primary-fill text-primary-foreground'
               : 'bg-card hover:border-primary/60'
           )}
         >
@@ -53,7 +53,7 @@ export function WinnerStep({
           className={cn(
             choice,
             theyDisabled
-              ? 'border-primary bg-primary text-primary-foreground'
+              ? 'border-primary-fill bg-primary-fill text-primary-foreground'
               : 'bg-card hover:border-primary/60'
           )}
         >

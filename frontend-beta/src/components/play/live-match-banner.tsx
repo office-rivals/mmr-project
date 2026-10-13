@@ -59,7 +59,7 @@ export function LiveMatchBanner({
       </p>
       <AppLink
         to={`${base}/active-match/${match.id}`}
-        className="flex h-11 items-center justify-center rounded-md bg-primary font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+        className="flex h-11 items-center justify-center rounded-md bg-primary-fill font-bold text-primary-foreground transition-colors hover:bg-primary-fill/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
       >
         Report this match
       </AppLink>

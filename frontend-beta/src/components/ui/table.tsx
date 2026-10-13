@@ -50,7 +50,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     data-slot="table-footer"
     ref={ref}
-    className={cn('bg-primary text-primary-foreground font-medium', className)}
+    className={cn('bg-primary-fill text-primary-foreground font-medium', className)}
     {...props}
   />
 ));

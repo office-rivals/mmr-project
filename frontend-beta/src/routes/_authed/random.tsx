@@ -767,7 +767,7 @@ function TouchRandomizerSurface({
       {showingResult ? (
         <button
           type="button"
-          className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg"
+          className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-primary-fill px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg"
           onClick={onGoAgain}
         >
           <RotateCcw className="h-4 w-4" />

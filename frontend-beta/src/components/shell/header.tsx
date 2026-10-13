@@ -77,7 +77,7 @@ export function Header({
         {links.base ? (
           <AppLink
             to={`${links.base}/submit`}
-            className="hidden min-h-12 items-center justify-center gap-2 rounded-md bg-primary text-base font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none lg:flex"
+            className="hidden min-h-12 items-center justify-center gap-2 rounded-md bg-primary-fill text-base font-bold text-primary-foreground transition-colors hover:bg-primary-fill/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none lg:flex"
           >
             <Plus aria-hidden="true" className="size-5" />
             Submit match
