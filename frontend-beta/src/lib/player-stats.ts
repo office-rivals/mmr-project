@@ -330,3 +330,61 @@ export function changeSince(
 export function formWins(results: readonly Result[] | undefined): number {
   return (results ?? []).filter((r) => r === 'W').length;
 }
+
+export interface PartnerOption {
+  leaguePlayerId: string;
+  name: string;
+  games: number;
+}
+
+/** Who the player has played with and against, most frequent first. */
+export function partnerOptions(
+  matches: readonly MatchResponse[],
+  leaguePlayerId: string
+): { teammates: PartnerOption[]; opponents: PartnerOption[] } {
+  const tally = (
+    acc: Map<string, PartnerOption>,
+    p: MatchTeamPlayerResponse
+  ) => {
+    const option = acc.get(p.leaguePlayerId) ?? {
+      leaguePlayerId: p.leaguePlayerId,
+      name: p.username ?? p.displayName ?? 'Unknown',
+      games: 0,
+    };
+    option.games += 1;
+    acc.set(p.leaguePlayerId, option);
+  };
+  const teammates = new Map<string, PartnerOption>();
+  const opponents = new Map<string, PartnerOption>();
+  for (const match of matches) {
+    const outcome = matchOutcome(match, leaguePlayerId);
+    if (!outcome) continue;
+    for (const p of outcome.myTeam.players) {
+      if (p.leaguePlayerId !== leaguePlayerId) tally(teammates, p);
+    }
+    for (const p of outcome.otherTeam.players) tally(opponents, p);
+  }
+  const order = (acc: Map<string, PartnerOption>) =>
+    [...acc.values()].sort(
+      (a, b) => b.games - a.games || a.name.localeCompare(b.name)
+    );
+  return { teammates: order(teammates), opponents: order(opponents) };
+}
+
+/** The player's matches alongside `withId` and against `againstId`. */
+export function filterByPartners(
+  matches: readonly MatchResponse[],
+  leaguePlayerId: string,
+  { withId, againstId }: { withId?: string; againstId?: string }
+): MatchResponse[] {
+  return matches.filter((match) => {
+    const outcome = matchOutcome(match, leaguePlayerId);
+    if (!outcome) return false;
+    const has = (team: MatchTeamResponse, id: string) =>
+      team.players.some((p) => p.leaguePlayerId === id);
+    return (
+      (!withId || has(outcome.myTeam, withId)) &&
+      (!againstId || has(outcome.otherTeam, againstId))
+    );
+  });
+}

@@ -16,6 +16,10 @@ import {
   WeekSummaryCard,
   WeekSummaryCompact,
 } from '@/components/matches/match-summary';
+import {
+  PartnerFilters,
+  type PartnerSelection,
+} from '@/components/matches/partner-filters';
 import { PageTitle } from '@/components/page-title';
 import { FlagDialogs } from '@/components/profile/flag-dialogs';
 import { ReportMatchModal } from '@/components/report-match-modal';
@@ -25,15 +29,23 @@ import { useHydrated } from '@/hooks/use-hydrated';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { useMatchFlagHandlers } from '@/hooks/use-match-flag-handlers';
 import { useShowMmr } from '@/hooks/use-show-mmr';
-import { getMatchFeedFn, getMatchesPageFn } from '@/lib/league-data';
+import {
+  MATCHES_PAGE_SIZE,
+  getMatchFeedFn,
+  getMatchesPageFn,
+} from '@/lib/league-data';
+import { partnerOptions, type PartnerOption } from '@/lib/player-stats';
 import { cn } from '@/lib/utils';
 import type { FlagActionResult } from '@/lib/match-flag-actions';
 import type { MatchFlagResponse, MatchResponse } from '@/api-v3';
 
-interface MatchesSearch {
+interface MatchesSearch extends PartnerSelection {
   season?: string;
   view?: 'everyone';
 }
+
+const optionalId = (value: unknown) =>
+  typeof value === 'string' && value ? value : undefined;
 
 export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/matches')({
   validateSearch: (search: Record<string, unknown>): MatchesSearch => ({
@@ -41,8 +53,17 @@ export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/matches')({
       ? { season: search.season }
       : {}),
     ...(search.view === 'everyone' ? { view: 'everyone' as const } : {}),
+    ...(optionalId(search.with) ? { with: optionalId(search.with) } : {}),
+    ...(optionalId(search.against)
+      ? { against: optionalId(search.against) }
+      : {}),
   }),
-  loaderDeps: ({ search }) => ({ season: search.season, view: search.view }),
+  loaderDeps: ({ search }) => ({
+    season: search.season,
+    view: search.view,
+    with: search.with,
+    against: search.against,
+  }),
   loader: async ({ context, deps }) => {
     const { orgId, leagueId, leaguePlayerId } = context.league;
     const page = await getMatchesPageFn({
@@ -52,6 +73,8 @@ export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/matches')({
         leaguePlayerId,
         season: deps.season,
         mine: deps.view !== 'everyone',
+        withId: deps.with,
+        againstId: deps.against,
       },
     });
     return { ...page, league: context.league };
@@ -67,7 +90,13 @@ function MatchesRoute() {
   // A new filter or season starts a fresh feed rather than appending to it.
   return (
     <MatchesPage
-      key={`${data.league.leagueId}:${data.seasonId}:${search.view ?? 'mine'}`}
+      key={[
+        data.league.leagueId,
+        data.seasonId,
+        search.view ?? 'mine',
+        search.with,
+        search.against,
+      ].join(':')}
     />
   );
 }
@@ -75,6 +104,7 @@ function MatchesRoute() {
 function MatchesPage() {
   const data = Route.useLoaderData();
   const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const hydrated = useHydrated();
   const [showMmr, setShowMmr] = useShowMmr();
   const { formatMatchDay, formatDate } = useLocaleFormatters();
@@ -125,7 +155,16 @@ function MatchesPage() {
     },
   });
 
-  const matches = [...data.feed.matches, ...older];
+  // A partner filter loads every match it finds, so paging is local.
+  const [shown, setShown] = useState(MATCHES_PAGE_SIZE);
+  const filtered = data.filtered != null;
+  const matches = filtered
+    ? data.feed.matches.slice(0, shown)
+    : [...data.feed.matches, ...older];
+  const moreAvailable = filtered ? shown < data.feed.matches.length : hasMore;
+  const partners = mine
+    ? partnerOptions(data.myMatches, me)
+    : { teammates: [], opponents: [] };
   const groups: { label: string; matches: MatchResponse[] }[] = [];
   for (const match of matches) {
     const date = formatDate(match.playedAt, '', {
@@ -186,7 +225,7 @@ function MatchesPage() {
                   <AppLink
                     key={label}
                     to="."
-                    search={{ ...search, view }}
+                    search={{ season: search.season, view }}
                     replace
                     aria-current={active ? 'true' : undefined}
                     className={cn(
@@ -202,7 +241,29 @@ function MatchesPage() {
           ) : (
             <span />
           )}
-          <label className="flex items-center gap-3 text-sm">
+          {mine ? (
+            <PartnerFilters
+              teammates={withSelected(partners.teammates, search.with, matches)}
+              opponents={withSelected(
+                partners.opponents,
+                search.against,
+                matches
+              )}
+              value={{ with: search.with, against: search.against }}
+              disabled={!hydrated}
+              onChange={(next) =>
+                navigate({
+                  search: (prev) => ({
+                    ...prev,
+                    with: next.with,
+                    against: next.against,
+                  }),
+                  replace: true,
+                })
+              }
+            />
+          ) : null}
+          <label className="flex items-center gap-3 text-sm lg:ml-auto">
             MMR changes
             <button
               type="button"
@@ -237,11 +298,22 @@ function MatchesPage() {
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
           <section aria-label="Match feed" className="flex flex-col gap-2">
+            {filtered && data.feed.matches.length > 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {data.feed.matches.length}{' '}
+                {data.feed.matches.length === 1 ? 'match' : 'matches'}
+                {data.filtered?.truncated
+                  ? ' among your latest this season'
+                  : ' this season'}
+              </p>
+            ) : null}
             {groups.length === 0 ? (
               <p className="rounded-lg border bg-card p-6 text-center text-muted-foreground">
-                {mine
-                  ? 'You have not played a match this season.'
-                  : 'No matches this season.'}
+                {filtered
+                  ? 'No matches with these filters.'
+                  : mine
+                    ? 'You have not played a match this season.'
+                    : 'No matches this season.'}
               </p>
             ) : null}
             {groups.map((group) => (
@@ -290,12 +362,16 @@ function MatchesPage() {
             {loadOlder.isError ? (
               <Alert variant="destructive">Failed to load older matches</Alert>
             ) : null}
-            {hasMore ? (
+            {moreAvailable ? (
               <Button
                 variant="outline"
                 className="mt-2 h-12"
                 disabled={!hydrated || loadOlder.isPending}
-                onClick={() => loadOlder.mutate()}
+                onClick={() =>
+                  filtered
+                    ? setShown((n) => n + MATCHES_PAGE_SIZE)
+                    : loadOlder.mutate()
+                }
               >
                 {loadOlder.isPending ? (
                   <LoaderCircle className="mr-2 size-4 animate-spin" />
@@ -364,4 +440,29 @@ function MatchesPage() {
       ) : null}
     </>
   );
+}
+
+/**
+ * Keeps a filter that came in through the URL selectable even when that player
+ * is outside the matches the options were built from.
+ */
+function withSelected(
+  options: PartnerOption[],
+  selected: string | undefined,
+  matches: MatchResponse[]
+): PartnerOption[] {
+  if (!selected || options.some((o) => o.leaguePlayerId === selected)) {
+    return options;
+  }
+  const player = matches
+    .flatMap((m) => m.teams.flatMap((t) => t.players))
+    .find((p) => p.leaguePlayerId === selected);
+  return [
+    {
+      leaguePlayerId: selected,
+      name: player?.username ?? player?.displayName ?? 'Unknown player',
+      games: 0,
+    },
+    ...options,
+  ];
 }

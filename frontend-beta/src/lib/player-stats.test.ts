@@ -3,10 +3,12 @@ import {
   bestDuoAndNemesis,
   bestRatingDay,
   changeSince,
+  filterByPartners,
   formByPlayer,
   formWins,
   matchOutcome,
   median,
+  partnerOptions,
   peakRating,
   profileRecords,
   ratingChangeSince,
@@ -241,5 +243,49 @@ describe('formWins', () => {
   it('counts wins and treats missing form as none', () => {
     expect(formWins(['W', 'L', 'W'])).toBe(2);
     expect(formWins(undefined)).toBe(0);
+  });
+});
+
+describe('partnerOptions', () => {
+  it('counts teammates and opponents separately, most frequent first', () => {
+    const matches = [
+      match(['a', 'b'], ['c', 'd']),
+      match(['c', 'd'], ['a', 'b']),
+      match(['a', 'c'], ['b', 'd']),
+    ];
+    const { teammates, opponents } = partnerOptions(matches, 'a');
+    expect(teammates.map((t) => [t.leaguePlayerId, t.games])).toEqual([
+      ['b', 2],
+      ['c', 1],
+    ]);
+    expect(opponents.map((o) => [o.leaguePlayerId, o.games])).toEqual([
+      ['d', 3],
+      ['c', 2],
+      ['b', 1],
+    ]);
+  });
+});
+
+describe('filterByPartners', () => {
+  const matches = [
+    match(['a', 'b'], ['c', 'd']),
+    match(['a', 'c'], ['b', 'd']),
+    match(['b', 'c'], ['d', 'e']),
+  ];
+
+  it("keeps matches with the teammate on the player's side", () => {
+    expect(filterByPartners(matches, 'a', { withId: 'b' })).toEqual([
+      matches[0],
+    ]);
+  });
+
+  it('combines the teammate and the opponent', () => {
+    expect(
+      filterByPartners(matches, 'a', { withId: 'c', againstId: 'b' })
+    ).toEqual([matches[1]]);
+    expect(filterByPartners(matches, 'a', { againstId: 'd' })).toEqual([
+      matches[0],
+      matches[1],
+    ]);
   });
 });

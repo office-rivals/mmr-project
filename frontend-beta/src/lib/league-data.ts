@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { HttpError } from '@/lib/http-error';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
-import { WEEK_MS } from '@/lib/player-stats';
+import { WEEK_MS, filterByPartners } from '@/lib/player-stats';
 import { selectCurrentSeason } from '@/lib/util/season';
 import type {
   LeaderboardResponse,
@@ -164,11 +164,21 @@ export const getMatchFeedFn = createServerFn({ method: 'GET' })
 
 export interface MatchesPageData extends SeasonScope {
   feed: MatchFeedPage;
+  /**
+   * Set when a teammate or opponent filter applies: the feed then holds every
+   * matching match at once, and `truncated` says the scan hit its cap.
+   */
+  filtered: { truncated: boolean } | null;
   /** The viewer's matches this season, for the weekly summary. */
   myMatches: MatchResponse[];
   myFlags: MatchFlagResponse[];
   now: number;
 }
+
+// The API filters by one player only, so partner filters scan the viewer's
+// season page by page, up to this many matches.
+const FILTER_PAGE = 200;
+const FILTER_PAGES = 5;
 
 export const getMatchesPageFn = createServerFn({ method: 'GET' })
   .validator(
@@ -177,6 +187,8 @@ export const getMatchesPageFn = createServerFn({ method: 'GET' })
         season?: string;
         leaguePlayerId: string | null;
         mine: boolean;
+        withId?: string;
+        againstId?: string;
       }
     ) => input
   )
@@ -188,6 +200,43 @@ export const getMatchesPageFn = createServerFn({ method: 'GET' })
         data.season
       );
       const mine = data.mine && data.leaguePlayerId != null;
+      if (mine && (data.withId || data.againstId)) {
+        const me = data.leaguePlayerId!;
+        const all: MatchResponse[] = [];
+        let truncated = false;
+        for (let i = 0; ; i++) {
+          if (i === FILTER_PAGES) {
+            truncated = true;
+            break;
+          }
+          const next = await apiClientV3.matchesApi.getMatches(
+            data.orgId,
+            data.leagueId,
+            {
+              seasonId: scope.seasonId,
+              leaguePlayerId: me,
+              limit: FILTER_PAGE,
+              offset: i * FILTER_PAGE,
+            }
+          );
+          all.push(...next);
+          if (next.length < FILTER_PAGE) break;
+        }
+        const myFlags = await apiClientV3.matchFlagsApi
+          .getMyFlags(data.orgId, data.leagueId)
+          .catch((): MatchFlagResponse[] => []);
+        return {
+          ...scope,
+          myFlags,
+          feed: {
+            matches: filterByPartners(all, me, data),
+            hasMore: false,
+          },
+          filtered: { truncated },
+          myMatches: all.slice(0, FILTER_PAGE),
+          now: Date.now(),
+        };
+      }
       const [page, myMatches, myFlags] = await Promise.all([
         apiClientV3.matchesApi.getMatches(data.orgId, data.leagueId, {
           seasonId: scope.seasonId,
@@ -200,7 +249,7 @@ export const getMatchesPageFn = createServerFn({ method: 'GET' })
               .getMatches(data.orgId, data.leagueId, {
                 seasonId: scope.seasonId,
                 leaguePlayerId: data.leaguePlayerId,
-                limit: 200,
+                limit: FILTER_PAGE,
                 offset: 0,
               })
               .catch((): MatchResponse[] => [])
@@ -216,6 +265,7 @@ export const getMatchesPageFn = createServerFn({ method: 'GET' })
           matches: page.slice(0, MATCHES_PAGE_SIZE),
           hasMore: page.length > MATCHES_PAGE_SIZE,
         },
+        filtered: null,
         myMatches,
         now: Date.now(),
       };
