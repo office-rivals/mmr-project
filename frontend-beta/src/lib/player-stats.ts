@@ -211,3 +211,80 @@ export function formByPlayer(
   for (const results of form.values()) results.reverse();
   return form;
 }
+
+export interface ProfileRecords {
+  /** Longest run of consecutive wins and the match that ended it. */
+  longestWinStreak: { length: number; lastMatch: MatchResponse } | null;
+  /** The win with the widest score margin. */
+  biggestWin: { match: MatchResponse; for: number; against: number } | null;
+  goalsFor: number | null;
+  goalsAgainst: number | null;
+  /** Wins where the other side did not score. */
+  shutouts: number;
+}
+
+/** Score-based records for one player. Input is newest first. */
+export function profileRecords(
+  matches: readonly MatchResponse[],
+  leaguePlayerId: string
+): ProfileRecords {
+  let longest: ProfileRecords['longestWinStreak'] = null;
+  let run = 0;
+  let biggest: ProfileRecords['biggestWin'] = null;
+  let scored = 0;
+  let conceded = 0;
+  let played = 0;
+  let shutouts = 0;
+  for (const match of [...matches].reverse()) {
+    const outcome = matchOutcome(match, leaguePlayerId);
+    if (!outcome) continue;
+    const { myTeam, otherTeam } = outcome;
+    played += 1;
+    scored += myTeam.score;
+    conceded += otherTeam.score;
+    if (!outcome.won) {
+      run = 0;
+      continue;
+    }
+    run += 1;
+    if (!longest || run > longest.length) {
+      longest = { length: run, lastMatch: match };
+    }
+    if (otherTeam.score === 0) shutouts += 1;
+    const margin = myTeam.score - otherTeam.score;
+    if (!biggest || margin > biggest.for - biggest.against) {
+      biggest = { match, for: myTeam.score, against: otherTeam.score };
+    }
+  }
+  return {
+    longestWinStreak: longest,
+    biggestWin: biggest,
+    goalsFor: played > 0 ? scored / played : null,
+    goalsAgainst: played > 0 ? conceded / played : null,
+    shutouts,
+  };
+}
+
+/** The day with the largest summed rating gain, keyed by `dayKey`. */
+export function bestRatingDay(
+  matches: readonly MatchResponse[],
+  leaguePlayerId: string,
+  dayKey: (playedAt: string) => string
+): { key: string; playedAt: string; delta: number } | null {
+  const days = new Map<string, { playedAt: string; delta: number }>();
+  for (const match of matches) {
+    const delta = matchOutcome(match, leaguePlayerId)?.delta;
+    if (delta == null) continue;
+    const key = dayKey(match.playedAt);
+    const day = days.get(key) ?? { playedAt: match.playedAt, delta: 0 };
+    day.delta += delta;
+    days.set(key, day);
+  }
+  let best: { key: string; playedAt: string; delta: number } | null = null;
+  for (const [key, day] of days) {
+    if (day.delta > 0 && (!best || day.delta > best.delta)) {
+      best = { key, ...day };
+    }
+  }
+  return best;
+}

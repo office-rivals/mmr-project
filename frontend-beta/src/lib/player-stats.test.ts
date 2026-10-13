@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   bestDuoAndNemesis,
+  bestRatingDay,
   formByPlayer,
   matchOutcome,
   median,
   peakRating,
+  profileRecords,
   ratingChangeSince,
   recentForm,
   shareBeaten,
@@ -152,5 +154,48 @@ describe('formByPlayer', () => {
     expect(form.get('a')).toEqual(['L', 'W']);
     expect(form.get('b')).toEqual(['W', 'L']);
     expect(form.get('c')).toEqual(['L']);
+  });
+});
+
+describe('profileRecords', () => {
+  it('finds the longest win run, the widest win and per-match scoring', () => {
+    const oldestFirst = [
+      match(['a', 'b'], ['c', 'd']),
+      match(['a', 'b'], ['c', 'd']),
+      match(['c', 'd'], ['a', 'b']),
+      match(['a', 'c'], ['b', 'd']),
+    ];
+    oldestFirst[1].teams[1].score = 0;
+    const records = profileRecords([...oldestFirst].reverse(), 'a');
+    expect(records.longestWinStreak).toMatchObject({
+      length: 2,
+      lastMatch: oldestFirst[1],
+    });
+    expect(records.biggestWin).toMatchObject({ for: 10, against: 0 });
+    expect(records.shutouts).toBe(1);
+    expect(records.goalsFor).toBeCloseTo((10 + 10 + 5 + 10) / 4);
+    expect(records.goalsAgainst).toBeCloseTo((5 + 0 + 10 + 5) / 4);
+  });
+
+  it('is empty for a player without matches', () => {
+    expect(profileRecords([], 'a')).toMatchObject({
+      longestWinStreak: null,
+      biggestWin: null,
+      goalsFor: null,
+      shutouts: 0,
+    });
+  });
+});
+
+describe('bestRatingDay', () => {
+  it('sums the deltas per day and keeps the best gain', () => {
+    const matches = [
+      match(['a'], ['b'], '2026-01-02T10:00:00Z', 8),
+      match(['a'], ['b'], '2026-01-02T12:00:00Z', 9),
+      match(['a'], ['b'], '2026-01-01T12:00:00Z', 15),
+      match(['b'], ['a'], '2026-01-03T12:00:00Z', 30),
+    ];
+    const best = bestRatingDay(matches, 'a', (at) => at.slice(0, 10));
+    expect(best).toMatchObject({ key: '2026-01-02', delta: 17 });
   });
 });
