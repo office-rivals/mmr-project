@@ -7,7 +7,7 @@ import { useHydrated } from '@/hooks/use-hydrated';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { cn, getPlayerDisplayName } from '@/lib/utils';
 import type { OpponentEntry, PlayerProfileStats } from '@/lib/server/profile';
-import type { ProfileRecords } from '@/lib/player-stats';
+import { topPercent, type ProfileRecords } from '@/lib/player-stats';
 import type { MatchResponse } from '@/api-v3';
 
 const card = 'rounded-lg border bg-card';
@@ -56,6 +56,7 @@ export function ProfileHeader({
   const { formatNumber, formatDate } = useLocaleFormatters();
   const number = (v: number) => formatNumber(v, { maximumFractionDigits: 0 });
   const ranked = stats.rank != null && stats.rank > 0;
+  const top = ranked ? topPercent(stats.rank!, stats.rankedCount) : null;
 
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-8 lg:rounded-xl lg:border lg:border-primary/50 lg:bg-gradient-to-br lg:from-primary/15 lg:via-primary/5 lg:to-transparent lg:p-8">
@@ -94,7 +95,9 @@ export function ProfileHeader({
           <dd className="text-3xl leading-none font-bold text-primary lg:text-5xl">
             {ranked ? `#${stats.rank}` : '—'}
           </dd>
-          {!ranked ? (
+          {top != null ? (
+            <dd className="text-xs text-muted-foreground">Top {top}%</dd>
+          ) : !ranked ? (
             <dd className="text-xs text-muted-foreground">Unranked</dd>
           ) : null}
         </div>

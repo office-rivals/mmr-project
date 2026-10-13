@@ -7,6 +7,7 @@ import {
   partnerWinRate,
   shareBeaten,
   streakLabel,
+  topPercent,
   winRate,
   type PartnerRecord,
   type Result,
@@ -128,10 +129,7 @@ export function HomeRankCard({ standing }: { standing: HomeStanding }) {
   const above = index > 0 ? ranked[index - 1] : null;
   const below = index >= 0 ? (ranked[index + 1] ?? null) : null;
   const wins = form.filter((r) => r === 'W').length;
-  const topShare =
-    index >= 0
-      ? Math.max(1, Math.round((entry.rank / ranked.length) * 100))
-      : null;
+  const topShare = index >= 0 ? topPercent(entry.rank, ranked.length) : null;
 
   let progress: number | null = null;
   if (entry.mmr != null && above?.mmr != null && below?.mmr != null) {

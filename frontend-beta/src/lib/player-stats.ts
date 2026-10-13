@@ -184,6 +184,12 @@ export function peakRating<T extends RatingPoint>(
   return peak;
 }
 
+/** The share of ranked players at or above `rank`, as a whole percent. */
+export function topPercent(rank: number, rankedCount: number): number | null {
+  if (rank < 1 || rankedCount < 1) return null;
+  return Math.max(1, Math.round((rank / rankedCount) * 100));
+}
+
 export const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function matchesSince(

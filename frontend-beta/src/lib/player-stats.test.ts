@@ -11,6 +11,7 @@ import {
   recentForm,
   shareBeaten,
   streakLabel,
+  topPercent,
 } from './player-stats';
 import type { MatchResponse } from '@/api-v3';
 
@@ -197,5 +198,18 @@ describe('bestRatingDay', () => {
     ];
     const best = bestRatingDay(matches, 'a', (at) => at.slice(0, 10));
     expect(best).toMatchObject({ key: '2026-01-02', delta: 17 });
+  });
+});
+
+describe('topPercent', () => {
+  it('rounds to a whole percent with a floor of one', () => {
+    expect(topPercent(4, 24)).toBe(17);
+    expect(topPercent(1, 500)).toBe(1);
+    expect(topPercent(10, 10)).toBe(100);
+  });
+
+  it('is null without a rank or ranked players', () => {
+    expect(topPercent(0, 10)).toBeNull();
+    expect(topPercent(3, 0)).toBeNull();
   });
 });

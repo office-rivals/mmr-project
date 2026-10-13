@@ -23,6 +23,8 @@ export interface OpponentEntry {
 export interface PlayerProfileStats {
   mmr: number | null;
   rank: number | null;
+  /** Players with a rating on the leaderboard, for the "Top N%" share. */
+  rankedCount: number;
   totalMatches: number;
   wins: number;
   lost: number;
@@ -212,6 +214,8 @@ export async function loadPlayerProfile(
       stats: {
         mmr,
         rank: playerEntry?.rank ?? null,
+        rankedCount: (leaderboard.entries ?? []).filter((e) => e.mmr != null)
+          .length,
         totalMatches,
         wins,
         lost,
