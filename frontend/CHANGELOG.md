@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.3
+
+- Select the pre-filled value when a dialog focuses a field again, so typing a new match score replaces the old one instead of appending to it.
+
 ## 1.6.2
 
 - chore(deps): bump shell-quote and concurrently in /frontend
