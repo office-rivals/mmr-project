@@ -425,11 +425,20 @@ function PlayerProfilePage() {
           bestDay={bestDay}
           className="lg:order-last"
         />
-        {data.teammates.length > 0 ? (
-          <TeammatesCard rows={data.teammates} playerHref={playerHref} />
+        {data.partners.teammates.length > 0 ? (
+          <TeammatesCard
+            rows={data.partners.teammates}
+            duo={data.partners.duo}
+            playerHref={playerHref}
+          />
         ) : null}
-        {data.opponents.length > 0 ? (
-          <RivalsCard rows={data.opponents} playerHref={playerHref} />
+        {data.partners.opponents.length > 0 ? (
+          <RivalsCard
+            rows={data.partners.opponents}
+            nemesis={data.partners.nemesis}
+            favourite={data.partners.favourite}
+            playerHref={playerHref}
+          />
         ) : null}
       </div>
 

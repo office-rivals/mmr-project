@@ -6,8 +6,13 @@ import { PlayerAvatar } from '@/components/player-avatar';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { cn, getPlayerDisplayName } from '@/lib/utils';
-import type { OpponentEntry, PlayerProfileStats } from '@/lib/server/profile';
-import { topPercent, type ProfileRecords } from '@/lib/player-stats';
+import type { PlayerProfileStats } from '@/lib/server/profile';
+import {
+  partnerWinRate,
+  topPercent,
+  type PartnerRecord,
+  type ProfileRecords,
+} from '@/lib/player-stats';
 import type { MatchResponse } from '@/api-v3';
 
 const card = 'rounded-lg border bg-card';
@@ -310,8 +315,8 @@ export function RecordsCard({
   );
 }
 
-function rate(row: OpponentEntry) {
-  return row.total > 0 ? row.wins / row.total : 0;
+function rate(row: PartnerRecord) {
+  return partnerWinRate(row);
 }
 
 function RecordRows({
@@ -319,7 +324,7 @@ function RecordRows({
   playerHref,
   tag,
 }: {
-  rows: OpponentEntry[];
+  rows: PartnerRecord[];
   playerHref: (leaguePlayerId: string) => string;
   tag?: { id: string; label: string };
 }) {
@@ -362,19 +367,15 @@ function RecordRows({
   );
 }
 
-// Fewer games than this says more about luck than about the pairing.
-const MIN_PAIR_GAMES = 3;
-
 export function TeammatesCard({
   rows,
+  duo,
   playerHref,
 }: {
-  rows: OpponentEntry[];
+  rows: PartnerRecord[];
+  duo: PartnerRecord | null;
   playerHref: (leaguePlayerId: string) => string;
 }) {
-  const duo = [...rows]
-    .filter((r) => r.total >= MIN_PAIR_GAMES)
-    .sort((a, b) => rate(b) - rate(a))[0];
   return (
     <section
       aria-labelledby="profile-teammates-heading"
@@ -399,19 +400,17 @@ export function TeammatesCard({
 
 export function RivalsCard({
   rows,
+  nemesis,
+  favourite,
   playerHref,
 }: {
-  rows: OpponentEntry[];
+  rows: PartnerRecord[];
+  nemesis: PartnerRecord | null;
+  favourite: PartnerRecord | null;
   playerHref: (leaguePlayerId: string) => string;
 }) {
-  const eligible = [...rows]
-    .filter((r) => r.total >= MIN_PAIR_GAMES)
-    .sort((a, b) => rate(a) - rate(b));
-  const nemesis = eligible[0];
-  const favourite =
-    eligible.length > 1 ? eligible[eligible.length - 1] : undefined;
   const callout = (
-    row: OpponentEntry,
+    row: PartnerRecord,
     label: string,
     tone: 'warm' | 'green'
   ) => (
@@ -452,10 +451,10 @@ export function RivalsCard({
         </h2>
         <p className="text-xs text-muted-foreground">Most common opponents</p>
       </div>
-      {nemesis && favourite && rate(favourite) > rate(nemesis) ? (
+      {nemesis || favourite ? (
         <div className="grid grid-cols-2 gap-2 border-b p-4">
-          {callout(nemesis, 'Nemesis', 'warm')}
-          {callout(favourite, 'Favourite matchup', 'green')}
+          {nemesis ? callout(nemesis, 'Nemesis', 'warm') : null}
+          {favourite ? callout(favourite, 'Favourite matchup', 'green') : null}
         </div>
       ) : null}
       <RecordRows rows={rows} playerHref={playerHref} />

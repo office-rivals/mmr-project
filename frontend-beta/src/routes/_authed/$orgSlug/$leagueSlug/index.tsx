@@ -30,14 +30,16 @@ import { useShowMmr } from '@/hooks/use-show-mmr';
 import { HttpError } from '@/lib/http-error';
 import {
   WEEK_MS,
-  bestDuoAndNemesis,
   matchesSince,
+  partnerSummary,
   peakRating,
   ratingChangeSince,
   recentForm,
+  type PartnerSummary,
 } from '@/lib/player-stats';
 import { getLeagueRatingHistoryFn } from '@/lib/league-data';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import { fetchPlayerSeasonMatches } from '@/lib/server/player-matches';
 import { cn, formatLeagueFormat } from '@/lib/utils';
 import { selectCurrentSeason } from '@/lib/util/season';
 import type {
@@ -68,8 +70,10 @@ interface LeagueHomeData {
    */
   seasonId: string | undefined;
   myFlags: MatchFlagResponse[];
-  /** The viewer's matches this season, newest first, for the overview. */
+  /** The viewer's latest matches this season, newest first. */
   myMatches: MatchResponse[];
+  /** Null without a league player. */
+  partners: PartnerSummary | null;
   activeMatches: ActiveMatchResponse[];
   /**
    * Server-pinned clock shipped with the payload so the match-feed date
@@ -79,6 +83,9 @@ interface LeagueHomeData {
    */
   now: number;
 }
+
+// Enough for the form and this-week cards; the rest stays on the server.
+const MY_MATCHES_SHIPPED = 200;
 
 const getLeagueHomeFn = createServerFn({ method: 'GET' })
   .validator(
@@ -124,14 +131,13 @@ const getLeagueHomeFn = createServerFn({ method: 'GET' })
             .catch((): MatchFlagResponse[] => []),
           // The overview cards are extras: their failures degrade to empty.
           data.leaguePlayerId
-            ? apiClientV3.matchesApi
-                .getMatches(data.orgId, data.leagueId, {
-                  seasonId,
-                  leaguePlayerId: data.leaguePlayerId,
-                  limit: 200,
-                  offset: 0,
-                })
-                .catch((): MatchResponse[] => [])
+            ? fetchPlayerSeasonMatches(
+                apiClientV3,
+                data.orgId,
+                data.leagueId,
+                seasonId,
+                data.leaguePlayerId
+              ).catch((): MatchResponse[] => [])
             : Promise.resolve([] as MatchResponse[]),
           apiClientV3.activeMatchesApi
             .listActiveMatches(data.orgId, data.leagueId)
@@ -146,7 +152,12 @@ const getLeagueHomeFn = createServerFn({ method: 'GET' })
         isCurrentSeason,
         seasonId,
         myFlags,
-        myMatches,
+        // The cards below only need the recent end; the partner callouts
+        // summarise the whole window, exactly as the profile does.
+        myMatches: myMatches.slice(0, MY_MATCHES_SHIPPED),
+        partners: data.leaguePlayerId
+          ? partnerSummary(myMatches, data.leaguePlayerId)
+          : null,
         activeMatches,
         now: Date.now(),
       };
@@ -294,13 +305,7 @@ function LeagueHomePage() {
         : undefined,
     [ratingHistory, data.leaguePlayerId]
   );
-  const partners = useMemo(
-    () =>
-      data.leaguePlayerId
-        ? bestDuoAndNemesis(data.myMatches, data.leaguePlayerId)
-        : { duo: null, nemesis: null },
-    [data.myMatches, data.leaguePlayerId]
-  );
+  const partners = data.partners ?? { duo: null, nemesis: null };
   const weekStart = data.now - WEEK_MS;
   const standing: HomeStanding | null = myEntry
     ? {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  bestDuoAndNemesis,
+  MIN_PAIR_GAMES,
+  TOP_PARTNERS,
   bestRatingDay,
   changeSince,
   filterByPartners,
@@ -9,6 +10,7 @@ import {
   matchOutcome,
   median,
   partnerOptions,
+  partnerSummary,
   peakRating,
   profileRecords,
   ratingChangeSince,
@@ -83,8 +85,9 @@ describe('streakLabel', () => {
   });
 });
 
-describe('bestDuoAndNemesis', () => {
-  it('needs a minimum sample and a winning or losing record', () => {
+describe('partnerSummary', () => {
+  it('needs MIN_PAIR_GAMES together and a winning or losing record', () => {
+    expect(MIN_PAIR_GAMES).toBe(3);
     const matches = [
       match(['a', 'b'], ['c', 'd']),
       match(['a', 'b'], ['c', 'e']),
@@ -93,18 +96,45 @@ describe('bestDuoAndNemesis', () => {
       match(['c', 'd'], ['a', 'f']),
       match(['a', 'f'], ['d', 'e']),
     ];
-    const { duo, nemesis } = bestDuoAndNemesis(matches, 'a');
+    const { duo, nemesis, favourite } = partnerSummary(matches, 'a');
     expect(duo).toMatchObject({ leaguePlayerId: 'b', wins: 2, losses: 1 });
     expect(nemesis).toMatchObject({ leaguePlayerId: 'c', wins: 2, losses: 3 });
+    expect(favourite).toMatchObject({
+      leaguePlayerId: 'e',
+      wins: 2,
+      losses: 1,
+    });
   });
 
   it('returns nothing below the sample size', () => {
-    const { duo, nemesis } = bestDuoAndNemesis(
-      [match(['a', 'b'], ['c', 'd'])],
-      'a'
-    );
-    expect(duo).toBeNull();
+    const summary = partnerSummary([match(['a', 'b'], ['c', 'd'])], 'a');
+    expect(summary.duo).toBeNull();
+    expect(summary.nemesis).toBeNull();
+    expect(summary.favourite).toBeNull();
+    expect(summary.teammates).toHaveLength(1);
+    expect(summary.opponents).toHaveLength(2);
+  });
+
+  it('picks only among the most frequent partners', () => {
+    expect(TOP_PARTNERS).toBe(5);
+    const matches = [
+      // Five frequent opponents, each beaten 4–0...
+      ...['p', 'q', 'r', 's', 't'].flatMap((id) =>
+        Array.from({ length: 4 }, () => match(['a'], [id]))
+      ),
+      // ...and a sixth met less often, lost to 0–3.
+      ...Array.from({ length: 3 }, () => match(['z'], ['a'])),
+    ];
+    const { opponents, nemesis, favourite } = partnerSummary(matches, 'a');
+    expect(opponents.map((o) => o.leaguePlayerId)).toEqual([
+      'p',
+      'q',
+      'r',
+      's',
+      't',
+    ]);
     expect(nemesis).toBeNull();
+    expect(favourite).toMatchObject({ leaguePlayerId: 'p', wins: 4 });
   });
 });
 

@@ -73,15 +73,33 @@ export function partnerWinRate(record: PartnerRecord): number {
   return total > 0 ? record.wins / total : 0;
 }
 
+/** Fewer games than this says more about luck than about the pairing. */
+export const MIN_PAIR_GAMES = 3;
+/** Callouts are picked among this many most frequent teammates/opponents. */
+export const TOP_PARTNERS = 5;
+
+export interface PartnerSummary {
+  /** Most frequent first (ties: most recent first), at most TOP_PARTNERS. */
+  teammates: PartnerRecord[];
+  opponents: PartnerRecord[];
+  /** Best win rate together, with a winning record. */
+  duo: PartnerRecord | null;
+  /** Worst win rate against, with a losing record. */
+  nemesis: PartnerRecord | null;
+  /** Best win rate against, with a winning record. */
+  favourite: PartnerRecord | null;
+}
+
 /**
- * Teammate the player wins most with and opponent they lose most to, among
- * people they have met at least `minGames` times. Ties go to the larger sample.
+ * The one definition of a player's frequent partners and of their best duo,
+ * nemesis and favourite matchup, so every page that names them agrees. Picks
+ * need MIN_PAIR_GAMES together and come from the listed TOP_PARTNERS, so a
+ * callout always names someone in the list beside it.
  */
-export function bestDuoAndNemesis(
+export function partnerSummary(
   matches: readonly MatchResponse[],
-  leaguePlayerId: string,
-  minGames = 3
-): { duo: PartnerRecord | null; nemesis: PartnerRecord | null } {
+  leaguePlayerId: string
+): PartnerSummary {
   const teammates = new Map<string, PartnerRecord>();
   const opponents = new Map<string, PartnerRecord>();
   const tally = (
@@ -110,22 +128,32 @@ export function bestDuoAndNemesis(
     for (const p of outcome.otherTeam.players) tally(opponents, p, outcome.won);
   }
 
-  const eligible = (acc: Map<string, PartnerRecord>) =>
-    [...acc.values()].filter((r) => r.wins + r.losses >= minGames);
   const games = (r: PartnerRecord) => r.wins + r.losses;
+  // Stable sort: equal counts keep first-seen order, i.e. most recent first.
+  const top = (acc: Map<string, PartnerRecord>) =>
+    [...acc.values()]
+      .sort((a, b) => games(b) - games(a))
+      .slice(0, TOP_PARTNERS);
+  const pick = (rows: PartnerRecord[], dir: 1 | -1) =>
+    rows
+      .filter((r) => games(r) >= MIN_PAIR_GAMES)
+      .sort(
+        (a, b) =>
+          dir * (partnerWinRate(b) - partnerWinRate(a)) || games(b) - games(a)
+      )[0] ?? null;
 
-  const duo =
-    eligible(teammates).sort(
-      (a, b) => partnerWinRate(b) - partnerWinRate(a) || games(b) - games(a)
-    )[0] ?? null;
-  const nemesis =
-    eligible(opponents).sort(
-      (a, b) => partnerWinRate(a) - partnerWinRate(b) || games(b) - games(a)
-    )[0] ?? null;
-
+  const topTeammates = top(teammates);
+  const topOpponents = top(opponents);
+  const duo = pick(topTeammates, 1);
+  const nemesis = pick(topOpponents, -1);
+  const favourite = pick(topOpponents, 1);
   return {
-    duo: duo && duo.wins > 0 ? duo : null,
+    teammates: topTeammates,
+    opponents: topOpponents,
+    duo: duo && duo.wins > duo.losses ? duo : null,
     nemesis: nemesis && nemesis.losses > nemesis.wins ? nemesis : null,
+    favourite:
+      favourite && favourite.wins > favourite.losses ? favourite : null,
   };
 }
 
