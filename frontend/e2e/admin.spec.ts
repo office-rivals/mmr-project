@@ -180,6 +180,22 @@ test.describe('League admin', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 
+  test('typing into the focused score replaces it', async ({ page }) => {
+    await page.goto(`${LEAGUE_ADMIN}/matches`);
+    const dialog = await openEditDialog(page);
+    const score = dialog.locator('input[type="number"]').first();
+
+    // The dialog focuses this field on open. Unless its value is selected too,
+    // typing a new score appends to the old one (10 becomes 109).
+    await expect(score).toBeFocused();
+    expect(await score.inputValue()).not.toBe('');
+    await page.keyboard.press('9');
+    await expect(score).toHaveValue('9');
+
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
   test('double-clicking Save submits the edit only once', async ({ page }) => {
     // Concurrent PATCHes for one match fail server-side for an edit that landed.
     const edits = countEditSubmissions(page);
