@@ -24,7 +24,7 @@ export function FormChips({
             'flex size-5 items-center justify-center rounded-[3px] text-[9px] font-bold',
             result === 'W'
               ? 'bg-primary text-primary-foreground'
-              : 'border border-muted-foreground/40 text-muted-foreground',
+              : 'border border-muted-foreground/60 text-muted-foreground',
             i === form.length - 1 &&
               'ring-1 ring-primary ring-offset-1 ring-offset-background'
           )}

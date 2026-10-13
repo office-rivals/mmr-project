@@ -16,3 +16,4 @@ export const LineChart = clientChart<LineChartProps>(
 export const Heatmap = clientChart<HeatmapProps>(
   () => import('./heatmap.impl')
 );
+export { TrendLine } from './trend-line';

@@ -199,10 +199,11 @@ function StandingsPage() {
         <Podium top={ranked.slice(0, 3)} me={me} playerHref={playerHref} />
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      {/* The side rail waits for xl: at lg it would squeeze the table. */}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
         <div className="flex flex-col gap-6">
           {myEntry ? (
-            <div className="lg:hidden">
+            <div className="xl:hidden">
               <YourPositionCard ranked={ranked} me={myEntry} />
             </div>
           ) : null}
@@ -225,11 +226,12 @@ function StandingsPage() {
               playerHref={playerHref}
               metric={sort}
               week={week}
+              podium={sort === 'mmr' && ranked.length >= 3}
             />
           ) : null}
           <UnrankedList entries={unranked} playerHref={playerHref} />
         </div>
-        <aside className="hidden flex-col gap-6 lg:flex">
+        <aside className="hidden flex-col gap-6 xl:flex">
           {myEntry ? <YourPositionCard ranked={ranked} me={myEntry} /> : null}
           <StreaksCard entries={ranked} me={me} />
         </aside>

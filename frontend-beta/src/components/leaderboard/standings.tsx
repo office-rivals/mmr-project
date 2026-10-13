@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Crown } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
-import { Sparkline } from '@/components/charts';
+import { TrendLine } from '@/components/charts';
 import { Eyebrow } from '@/components/eyebrow';
 import { PlayerAvatar } from '@/components/player-avatar';
 import { Button } from '@/components/ui/button';
@@ -48,7 +48,10 @@ interface PodiumProps {
   playerHref: (id: string) => string;
 }
 
-/** Top three, with first place raised in the middle. */
+/**
+ * Top three, with first place raised in the middle: stepped plinths on phones,
+ * cards from `lg` up.
+ */
 export function Podium({ top, me, playerHref }: PodiumProps) {
   const mmr = useMmr();
   if (top.length < 3) return null;
@@ -58,51 +61,59 @@ export function Podium({ top, me, playerHref }: PodiumProps) {
   const card = (entry: Entry, place: 1 | 2 | 3) => {
     const isMe = entry.leaguePlayerId === me;
     const gap = lead - (entry.mmr ?? 0);
+    const rankClass = place === 1 ? 'text-primary' : 'text-muted-foreground';
     return (
       <li
         key={entry.leaguePlayerId}
         className={cn(
-          'flex flex-col gap-3 rounded-lg border p-4 lg:p-5',
+          'flex min-w-0 flex-col items-center gap-2 lg:items-stretch lg:gap-3 lg:rounded-lg lg:border lg:p-5',
           place === 1
-            ? 'order-2 border-primary/50 bg-gradient-to-b from-primary/15 to-primary/5 lg:pb-6'
-            : 'mt-6 bg-card lg:mt-10',
+            ? 'order-2 lg:border-primary/50 lg:bg-gradient-to-b lg:from-primary/15 lg:to-primary/5 lg:pb-6'
+            : 'lg:mt-10 lg:bg-card',
           place === 2 && 'order-1',
           place === 3 && 'order-3'
         )}
       >
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-col items-center gap-1 lg:flex-row-reverse lg:items-start lg:justify-between lg:gap-2">
+          {place === 1 ? (
+            <Crown
+              aria-hidden="true"
+              className="size-5 text-primary lg:hidden"
+            />
+          ) : null}
+          <PlayerAvatar
+            name={getPlayerDisplayName(entry)}
+            highlight={place === 1 || isMe}
+            className={
+              place === 1
+                ? 'size-14 text-sm lg:size-16 lg:text-base'
+                : 'size-12 text-sm'
+            }
+          />
           <span
             className={cn(
-              'flex items-start gap-1 text-4xl leading-none font-bold lg:text-6xl',
-              place === 1 ? 'text-primary' : 'text-muted-foreground'
+              'hidden items-start gap-1 text-6xl leading-none font-bold lg:flex',
+              rankClass
             )}
           >
             {entry.rank}
             {place === 1 ? (
-              <Crown aria-hidden="true" className="size-4 lg:size-6" />
+              <Crown aria-hidden="true" className="size-6" />
             ) : null}
           </span>
-          <PlayerAvatar
-            name={getPlayerDisplayName(entry)}
-            highlight={place === 1 || isMe}
-            className={cn(
-              'hidden lg:flex',
-              place === 1 ? 'size-16 text-base' : 'size-12 text-sm'
-            )}
-          />
         </div>
-        <div className="flex min-w-0 flex-col gap-0.5">
+        <div className="flex w-full min-w-0 flex-col items-center gap-0.5 text-center lg:items-start lg:text-left">
           <AppLink
             to={playerHref(entry.leaguePlayerId)}
             className={cn(
-              'flex min-w-0 items-center gap-1 truncate text-base font-bold hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:text-xl',
+              'flex max-w-full min-w-0 items-center gap-1 text-base font-bold hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:text-xl',
               isMe && 'text-primary'
             )}
           >
             <span className="truncate">{handle(entry)}</span>
             <StreakIcon entry={entry} />
           </AppLink>
-          <span className="truncate text-xs text-muted-foreground">
+          <span className="max-w-full truncate text-xs text-muted-foreground">
             <span className="hidden lg:inline">
               {entry.displayName ? `${entry.displayName} · ` : null}
             </span>
@@ -110,17 +121,34 @@ export function Podium({ top, me, playerHref }: PodiumProps) {
             <span className="hidden lg:inline"> · {pct(winRate(entry))}</span>
           </span>
         </div>
-        <div className="mt-auto flex flex-wrap items-end justify-between gap-x-2">
+        <div
+          className={cn(
+            'flex w-full flex-col items-center justify-center gap-1 rounded-lg border lg:hidden',
+            place === 1
+              ? 'h-28 border-primary/50 bg-gradient-to-b from-primary/15 to-primary/5'
+              : 'bg-card',
+            place === 2 && 'h-20',
+            place === 3 && 'h-16'
+          )}
+        >
+          <span className={cn('text-3xl leading-none font-bold', rankClass)}>
+            {entry.rank}
+          </span>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {mmr(entry.mmr)}
+          </span>
+        </div>
+        <div className="mt-auto hidden flex-wrap items-end justify-between gap-x-2 lg:flex">
           <span
             className={cn(
               'leading-none font-bold tabular-nums',
-              place === 1 ? 'text-2xl lg:text-4xl' : 'text-xl lg:text-3xl'
+              place === 1 ? 'text-4xl' : 'text-3xl'
             )}
           >
             {mmr(entry.mmr)}
           </span>
           {place !== 1 && gap > 0 ? (
-            <span className="hidden text-xs text-muted-foreground lg:inline">
+            <span className="text-xs text-muted-foreground">
               {mmr(gap)} behind #1
             </span>
           ) : null}
@@ -132,7 +160,7 @@ export function Podium({ top, me, playerHref }: PodiumProps) {
   return (
     <ol
       aria-label="Top three"
-      className="grid grid-cols-3 items-start gap-2 lg:gap-4"
+      className="grid grid-cols-3 items-end gap-2 lg:items-start lg:gap-4"
     >
       {card(first, 1)}
       {card(second, 2)}
@@ -287,7 +315,7 @@ function FormSquares({ form }: { form: Result[] | undefined }) {
             r === 'W'
               ? 'bg-primary'
               : r === 'L'
-                ? 'border border-muted-foreground/50'
+                ? 'border border-muted-foreground/60'
                 : 'bg-muted/50'
           )}
         />
@@ -310,6 +338,8 @@ interface StandingsTableProps {
   week?: Map<string, WeekChange>;
   /** Rows shown before "Show all". */
   initialRows?: number;
+  /** The podium above shows the first three, so phones skip their rows. */
+  podium?: boolean;
 }
 
 function WeekDelta({ change }: { change: WeekChange | undefined }) {
@@ -351,6 +381,7 @@ export function StandingsTable({
   metric = 'mmr',
   week,
   initialRows = 12,
+  podium = false,
 }: StandingsTableProps) {
   // On phones the sort's own column replaces the trend sparkline.
   const formOnPhone = metric === 'form';
@@ -364,7 +395,8 @@ export function StandingsTable({
   const cell = 'px-2 py-2.5 align-middle';
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
+    // Scrolls rather than clips if a column set ever outgrows its breakpoint.
+    <div className="overflow-x-auto rounded-lg border bg-card">
       <table className="w-full text-sm">
         <thead className="border-b">
           <tr>
@@ -388,7 +420,7 @@ export function StandingsTable({
             </th>
             <th
               scope="col"
-              className={cn(head, 'hidden text-right xl:table-cell')}
+              className={cn(head, 'hidden text-right 2xl:table-cell')}
             >
               Win %
             </th>
@@ -419,18 +451,19 @@ export function StandingsTable({
           </tr>
         </thead>
         <tbody>
-          {visible.map((entry) => {
+          {visible.map((entry, index) => {
             const isMe = entry.leaguePlayerId === me;
             const history = ratingHistory
               ?.filter((h) => h.leaguePlayerId === entry.leaguePlayerId)
-              .map((h) => ({ date: h.playedAt, rating: h.mmr }));
+              .map((h) => h.mmr);
             return (
               <tr
                 key={entry.leaguePlayerId}
                 aria-current={isMe ? 'true' : undefined}
                 className={cn(
                   'border-b last:border-b-0',
-                  isMe && 'bg-primary/10 text-primary'
+                  isMe && 'bg-primary/10 text-primary',
+                  podium && index < 3 && 'hidden lg:table-row'
                 )}
               >
                 <td
@@ -487,7 +520,7 @@ export function StandingsTable({
                 <td
                   className={cn(
                     cell,
-                    'hidden text-right tabular-nums xl:table-cell'
+                    'hidden text-right tabular-nums 2xl:table-cell'
                   )}
                 >
                   {pct(winRate(entry))}
@@ -504,8 +537,11 @@ export function StandingsTable({
                 <td
                   className={cn(cell, !trendOnPhone && 'hidden lg:table-cell')}
                 >
-                  <div className="pointer-events-none w-12 sm:w-16">
-                    {history ? <Sparkline data={history} /> : null}
+                  {/* Sized up front: the history streams in after the table. */}
+                  <div className="h-5 w-12 sm:w-16">
+                    {history ? (
+                      <TrendLine values={history} highlight={isMe} />
+                    ) : null}
                   </div>
                 </td>
                 {metric === 'week' ? (
