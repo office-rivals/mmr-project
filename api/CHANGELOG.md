@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.1
+
+- Update the OpenAPI dependency to a patched release that prevents process termination when parsing circular schema references.
+
 ## 1.6.0
 
 - Reject a manually submitted match as a duplicate (409) when an identical match — same league, same two teams and same scores, regardless of team or player order — was recorded within the last 10 minutes.
