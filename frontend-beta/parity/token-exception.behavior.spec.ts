@@ -10,7 +10,7 @@ const { test, expect } =
 // A successful create exposes the secret once; never retain it in a failure artifact.
 test.use({ trace: 'off', screenshot: 'off', video: 'off' });
 
-test.describe('documented token-scope difference', () => {
+test.describe('personal token lifecycle', () => {
   const openSettings = async (
     browser: Browser,
     info: TestInfo,
@@ -32,7 +32,7 @@ test.describe('documented token-scope difference', () => {
     ['reference', process.env.E2E_PORT ?? '5180'],
     ['beta', process.env.PARITY_BETA_PORT ?? '5181'],
   ] as const) {
-    test(`${app}: token creation retains its documented scope behavior`, async ({
+    test(`${app}: token creation and revocation use the supported scope`, async ({
       browser,
     }, info) => {
       const { context, page } = await openSettings(browser, info, port);
@@ -42,22 +42,17 @@ test.describe('documented token-scope difference', () => {
       await page.getByLabel('Token Name').fill(tokenName);
       await page.getByRole('button', { name: 'Create Token' }).click();
 
-      if (app === 'reference') {
-        await expect(page.getByText('Failed to create token')).toBeVisible();
-        await expect(page.getByText('Save your token now!')).toHaveCount(0);
-      } else {
-        await expect(page.getByText('Save your token now!')).toBeVisible();
-        await expect(page.getByText('Failed to create token')).toHaveCount(0);
+      await expect(page.getByText('Save your token now!')).toBeVisible();
+      await expect(page.getByText('Failed to create token')).toHaveCount(0);
 
-        page.once('dialog', (dialog) => void dialog.accept());
-        await page
-          .getByRole('row', { name: new RegExp(tokenName) })
-          .getByRole('button', { name: 'Revoke' })
-          .click();
-        await expect(
-          page.getByRole('row', { name: new RegExp(tokenName) })
-        ).toHaveCount(0);
-      }
+      page.once('dialog', (dialog) => void dialog.accept());
+      await page
+        .getByRole('row', { name: new RegExp(tokenName) })
+        .getByRole('button', { name: 'Revoke' })
+        .click();
+      await expect(
+        page.getByRole('row', { name: new RegExp(tokenName) })
+      ).toHaveCount(0);
 
       await context.close();
     });
