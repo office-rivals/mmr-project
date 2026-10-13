@@ -52,23 +52,26 @@ export function LiveStatus({
   const myEntry = queued.find((p) => p.leaguePlayerId === leaguePlayerId);
   const now = useNow(myEntry != null || data?.activeMatch != null);
 
-  // The play pages already show this state in full.
+  // The play pages already show this state in full; Submit has its own
+  // live-match banner.
   const onPlayPage =
     pathname.startsWith(`${base}/matchmaking`) ||
-    pathname.startsWith(`${base}/active-match`);
+    pathname.startsWith(`${base}/active-match`) ||
+    pathname.startsWith(`${base}/submit`);
   if (!hydrated || !leaguePlayerId || !data || onPlayPage) return null;
 
+  // From sm the bar keeps to the content column instead of the viewport.
   const shell = cn(
-    'fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-20 flex items-center gap-3 rounded-lg border bg-card p-2.5 pl-3 shadow-lg',
-    'lg:static lg:inset-auto lg:flex-col lg:items-stretch lg:gap-3 lg:p-3 lg:shadow-none',
+    'fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-20 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border bg-card p-2.5 pl-3 shadow-lg sm:inset-x-0 sm:mx-auto sm:max-w-[39rem]',
+    'lg:static lg:inset-auto lg:mx-0 lg:max-w-none lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-3 lg:p-3 lg:shadow-none',
     className
   );
   const textLink =
-    'flex min-w-0 flex-1 items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+    'flex min-w-0 flex-1 basis-0 items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:basis-auto';
   const cta =
     'inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:opacity-60';
   const errorText = error ? (
-    <p role="alert" className="sr-only">
+    <p role="alert" className="w-full text-xs text-red-400">
       {error}
     </p>
   ) : null;
@@ -112,7 +115,7 @@ export function LiveStatus({
         aria-label="Match found"
         className={cn(shell, 'border-primary/50')}
       >
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex min-w-0 flex-1 basis-0 flex-col gap-0.5 lg:basis-auto">
           <span className="text-[10px] font-bold tracking-[0.14em] text-primary uppercase">
             Match found
           </span>

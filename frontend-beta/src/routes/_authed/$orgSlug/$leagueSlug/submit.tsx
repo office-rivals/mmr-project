@@ -10,6 +10,7 @@ import { HttpErrorView } from '@/components/http-error-view';
 import { LiveMatchBanner } from '@/components/play/live-match-banner';
 import { SubmitMatchPage } from '@/components/play/submit-match-page';
 import { HttpError } from '@/lib/http-error';
+import { prefetchQueueStatus } from '@/lib/queue-actions';
 import { failServerAction } from '@/lib/server/action-result';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
@@ -219,13 +220,17 @@ const submitMatchFn = createServerFn({ method: 'POST' })
 export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/submit')({
   loader: async ({ context }) => {
     const { orgId, leagueId, leaguePlayerId } = context.league;
-    try {
-      return await getSubmitPageDataFn({
+    const [data] = await Promise.all([
+      getSubmitPageDataFn({
         data: { orgId, leagueId, leaguePlayerId },
-      });
-    } catch {
-      throw new HttpError(500, 'Failed to load players');
-    }
+      }).catch(() => {
+        throw new HttpError(500, 'Failed to load players');
+      }),
+      // The live-match banner sits above the form; without this it would
+      // appear after hydration and push the form down.
+      prefetchQueueStatus(context.queryClient, orgId, leagueId),
+    ]);
+    return data;
   },
   errorComponent: HttpErrorView,
   component: SubmitRoute,

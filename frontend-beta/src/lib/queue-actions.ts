@@ -1,7 +1,10 @@
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start';
+import { queueQueryKey } from '@/components/shell/use-queue-status';
 import { failServerAction } from '@/lib/server/action-result';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import type { QueryClient } from '@tanstack/react-query';
+import type { QueueStatusResponse } from '@/api-v3';
 
 export type QueueActionResult =
   { status: 'error'; message: string } | { status: 'ok' };
@@ -78,3 +81,27 @@ export const queueAction = createServerOnlyFn(async function queueAction(
 export const queueActionFn = createServerFn({ method: 'POST' })
   .validator((input: QueueActionInput) => input)
   .handler(({ data }): Promise<QueueActionResult> => queueAction(data));
+
+const getQueueStatusFn = createServerFn({ method: 'GET' })
+  .validator((input: { orgId: string; leagueId: string }) => input)
+  .handler(async ({ data }): Promise<QueueStatusResponse> => {
+    const apiClientV3 = await requireApiClientV3();
+    return apiClientV3.queueApi.getQueueStatus(data.orgId, data.leagueId);
+  });
+
+/**
+ * Seeds the shared queue query from a loader, so queue-driven UI renders on
+ * the server instead of appearing after hydration. Best effort.
+ */
+export async function prefetchQueueStatus(
+  queryClient: QueryClient,
+  orgId: string,
+  leagueId: string
+): Promise<void> {
+  await queryClient
+    .ensureQueryData({
+      queryKey: queueQueryKey(orgId, leagueId),
+      queryFn: () => getQueueStatusFn({ data: { orgId, leagueId } }),
+    })
+    .catch(() => undefined);
+}

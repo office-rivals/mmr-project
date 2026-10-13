@@ -1,6 +1,5 @@
 import { AppLink } from '@/components/app-link';
 import { useQueueStatus } from '@/components/shell/use-queue-status';
-import { useHydrated } from '@/hooks/use-hydrated';
 import { getPlayerDisplayName } from '@/lib/utils';
 import type { PendingMatchTeamResponse } from '@/api-v3';
 
@@ -18,10 +17,10 @@ export function LiveMatchBanner({
   leagueId,
   leaguePlayerId,
 }: LiveMatchBannerProps) {
-  const hydrated = useHydrated();
+  // The route's loader seeds this query, so it renders on the server too.
   const { data } = useQueueStatus(orgId, leagueId);
   const match = data?.activeMatch;
-  if (!hydrated || !match || !leaguePlayerId) return null;
+  if (!match || !leaguePlayerId) return null;
 
   const isMine = (team: PendingMatchTeamResponse) =>
     team.players.some((p) => p.leaguePlayerId === leaguePlayerId);
