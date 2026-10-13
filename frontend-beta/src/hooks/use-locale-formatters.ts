@@ -3,6 +3,7 @@ import {
   formatDate,
   formatDateTime,
   groupMatchesByDate,
+  matchDateGroupKey,
   type DatePresentation,
 } from '@/lib/utils';
 
@@ -32,6 +33,18 @@ function createFormatters(presentation?: DatePresentation) {
         value,
         unit
       ),
+    /** `Today`, `Yesterday` or a short weekday date, for match headers. */
+    formatMatchDay: (value: string, now: number) => {
+      const key = matchDateGroupKey(value, now, presentation);
+      if (key === 'today') return 'Today';
+      if (key === 'yesterday') return 'Yesterday';
+      return new Date(value).toLocaleDateString(presentation?.locale, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        timeZone: presentation?.timeZone,
+      });
+    },
     groupMatchesByDate: <T extends { id: string; playedAt: string }>(
       matches: readonly T[],
       now: number

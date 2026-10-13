@@ -1,10 +1,28 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import { AlertCircle, Check, CheckCircle, Flag } from 'lucide-react';
+import {
+  AlertCircle,
+  Check,
+  CheckCircle,
+  ChevronRight,
+  Flag,
+} from 'lucide-react';
+import { AppLink } from '@/components/app-link';
+import { Eyebrow } from '@/components/eyebrow';
+import {
+  HomeHeroCompact,
+  HomeKpiTiles,
+  HomeRankCard,
+  LeagueStandingCard,
+  LiveNowCard,
+  PartnerCards,
+  RatingCard,
+  type HomeStanding,
+} from '@/components/home/home-overview';
 import { HttpErrorView } from '@/components/http-error-view';
 import { Leaderboard } from '@/components/leaderboard';
-import { MatchCard, MatchDateHeader } from '@/components/match-card';
+import { MatchCard } from '@/components/match-card';
 import { PageTitle } from '@/components/page-title';
 import { ReportMatchModal } from '@/components/report-match-modal';
 import { SeasonPicker } from '@/components/season-picker';
@@ -20,11 +38,20 @@ import {
   deleteMatchFlagFn,
   updateMatchFlagFn,
 } from '@/lib/match-flag-actions';
+import {
+  WEEK_MS,
+  bestDuoAndNemesis,
+  matchesSince,
+  peakRating,
+  ratingChangeSince,
+  recentForm,
+} from '@/lib/player-stats';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import { cn, formatLeagueFormat } from '@/lib/utils';
 import { selectCurrentSeason } from '@/lib/util/season';
-import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import type { FlagActionResult } from '@/lib/match-flag-actions';
 import type {
+  ActiveMatchResponse,
   LeaderboardEntryResponse,
   LeaderboardResponse,
   LeagueRatingHistoryEntry,
@@ -51,6 +78,9 @@ interface LeagueHomeData {
    */
   seasonId: string | undefined;
   myFlags: MatchFlagResponse[];
+  /** The viewer's matches this season, newest first, for the overview. */
+  myMatches: MatchResponse[];
+  activeMatches: ActiveMatchResponse[];
   /**
    * Server-pinned clock shipped with the payload so the match-feed date
    * buckets are identical during SSR and hydration. A page served at 23:59:59
@@ -62,7 +92,12 @@ interface LeagueHomeData {
 
 const getLeagueHomeFn = createServerFn({ method: 'GET' })
   .validator(
-    (input: { orgId: string; leagueId: string; season?: string }) => input
+    (input: {
+      orgId: string;
+      leagueId: string;
+      leaguePlayerId: string | null;
+      season?: string;
+    }) => input
   )
   .handler(async ({ data }): Promise<LeagueHomeData> => {
     const apiClientV3 = await requireApiClientV3();
@@ -80,23 +115,38 @@ const getLeagueHomeFn = createServerFn({ method: 'GET' })
         currentSeason != null &&
         (data.season == null || data.season === currentSeason.id);
 
-      const [leaderboard, recentMatches, myFlags] = await Promise.all([
-        apiClientV3.leaderboardApi.getLeaderboard(
-          data.orgId,
-          data.leagueId,
-          seasonId
-        ),
-        apiClientV3.matchesApi.getMatches(data.orgId, data.leagueId, {
-          seasonId,
-          limit: 5,
-          offset: 0,
-        }),
-        // Individually caught: a flag-service blip degrades to "no flags", it
-        // does not error the page.
-        apiClientV3.matchFlagsApi
-          .getMyFlags(data.orgId, data.leagueId)
-          .catch((): MatchFlagResponse[] => []),
-      ]);
+      const [leaderboard, recentMatches, myFlags, myMatches, activeMatches] =
+        await Promise.all([
+          apiClientV3.leaderboardApi.getLeaderboard(
+            data.orgId,
+            data.leagueId,
+            seasonId
+          ),
+          apiClientV3.matchesApi.getMatches(data.orgId, data.leagueId, {
+            seasonId,
+            limit: 5,
+            offset: 0,
+          }),
+          // Individually caught: a flag-service blip degrades to "no flags", it
+          // does not error the page.
+          apiClientV3.matchFlagsApi
+            .getMyFlags(data.orgId, data.leagueId)
+            .catch((): MatchFlagResponse[] => []),
+          // The overview cards are extras: their failures degrade to empty.
+          data.leaguePlayerId
+            ? apiClientV3.matchesApi
+                .getMatches(data.orgId, data.leagueId, {
+                  seasonId,
+                  leaguePlayerId: data.leaguePlayerId,
+                  limit: 200,
+                  offset: 0,
+                })
+                .catch((): MatchResponse[] => [])
+            : Promise.resolve([] as MatchResponse[]),
+          apiClientV3.activeMatchesApi
+            .listActiveMatches(data.orgId, data.leagueId)
+            .catch((): ActiveMatchResponse[] => []),
+        ]);
 
       return {
         leaderboard,
@@ -106,6 +156,8 @@ const getLeagueHomeFn = createServerFn({ method: 'GET' })
         isCurrentSeason,
         seasonId,
         myFlags,
+        myMatches,
+        activeMatches,
         now: Date.now(),
       };
     } catch {
@@ -146,7 +198,7 @@ export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/')({
     const { orgId, leagueId, leaguePlayerId } = context.league;
 
     const home = await getLeagueHomeFn({
-      data: { orgId, leagueId, season: deps.season },
+      data: { orgId, leagueId, leaguePlayerId, season: deps.season },
     });
 
     // Awaited never: the promise is streamed to the client, so the leaderboard
@@ -164,10 +216,14 @@ export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/')({
       orgId,
       leagueId,
       leaguePlayerId,
+      leagueTeamSize: context.league.leagueTeamSize,
+      displayName:
+        context.authedShell.displayName ?? context.authedShell.username,
       orgSlug: params.orgSlug,
       leagueSlug: params.leagueSlug,
     };
   },
+  staticData: { wide: true },
   errorComponent: HttpErrorView,
   component: LeagueHomeRoute,
 });
@@ -178,7 +234,6 @@ function LeagueHomeRoute() {
 }
 
 function LeagueHomePage() {
-  const { groupMatchesByDate } = useLocaleFormatters();
   const data = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -202,11 +257,6 @@ function LeagueHomePage() {
     LeagueRatingHistoryEntry[] | undefined
   >(undefined);
   const [formResult, setFormResult] = useState<FlagActionResult | null>(null);
-
-  const recentMatchGroups = groupMatchesByDate(
-    data.recentMatches ?? [],
-    data.now
-  );
 
   const { ratingHistoryPromise } = data;
   useEffect(() => {
@@ -292,11 +342,92 @@ function LeagueHomePage() {
   };
 
   const canReport = Boolean(data.leaguePlayerId && data.isCurrentSeason);
+  const base = `/${data.orgSlug}/${data.leagueSlug}`;
+  const entries = data.leaderboard?.entries ?? [];
+  const ranked = entries.filter((e) => e.mmr != null);
+  const myEntry = data.leaguePlayerId
+    ? (entries.find((e) => e.leaguePlayerId === data.leaguePlayerId) ?? null)
+    : null;
+  const myHistory = useMemo(
+    () =>
+      ratingHistory && data.leaguePlayerId
+        ? ratingHistory
+            .filter((h) => h.leaguePlayerId === data.leaguePlayerId)
+            .sort((a, b) => Date.parse(a.playedAt) - Date.parse(b.playedAt))
+        : undefined,
+    [ratingHistory, data.leaguePlayerId]
+  );
+  const partners = useMemo(
+    () =>
+      data.leaguePlayerId
+        ? bestDuoAndNemesis(data.myMatches, data.leaguePlayerId)
+        : { duo: null, nemesis: null },
+    [data.myMatches, data.leaguePlayerId]
+  );
+  const weekStart = data.now - WEEK_MS;
+  const standing: HomeStanding | null = myEntry
+    ? {
+        entry: myEntry,
+        ranked,
+        form: recentForm(data.myMatches, myEntry.leaguePlayerId),
+        // "This week" means nothing for a past season.
+        weekDelta: !data.isCurrentSeason
+          ? null
+          : myHistory && ratingChangeSince(myHistory, weekStart),
+      }
+    : null;
+  const liveMatch = data.isCurrentSeason ? data.activeMatches[0] : undefined;
+  const partnerCardCount = [partners.duo, partners.nemesis, liveMatch].filter(
+    Boolean
+  ).length;
+
+  const selectedSeasonId = search.season ?? data.currentSeason?.id;
+  const seasonIndex = data.seasons.findIndex((s) => s.id === selectedSeasonId);
+  const eyebrow = [
+    seasonIndex >= 0 ? `Season ${data.seasons.length - seasonIndex}` : null,
+    formatLeagueFormat(data.leagueTeamSize),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const firstName = data.displayName?.trim().split(/\s+/)[0];
 
   return (
     <>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6 lg:gap-8">
         <PageTitle srOnly>Leaderboard</PageTitle>
+
+        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <Eyebrow>{eyebrow}</Eyebrow>
+            <p className="truncate text-3xl font-bold tracking-tight lg:text-4xl">
+              {firstName ? `Hey ${firstName}` : 'Welcome back'}
+            </p>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            {canReport ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10"
+                disabled={!hydrated}
+                onClick={() => setReportModalOpen(true)}
+              >
+                <Flag className="mr-1.5 h-4 w-4" />
+                Report match
+              </Button>
+            ) : null}
+            {data.seasons != null &&
+            data.seasons.length > 1 &&
+            data.currentSeason ? (
+              <SeasonPicker
+                seasons={data.seasons}
+                currentSeason={data.currentSeason}
+                selectedSeasonId={search.season}
+                onSeasonChange={handleSeasonChange}
+              />
+            ) : null}
+          </div>
+        </div>
 
         {formResult?.success && formResult.message ? (
           <Alert variant="default">
@@ -314,81 +445,130 @@ function LeagueHomePage() {
           </Alert>
         ) : null}
 
-        {data.seasons != null &&
-        data.seasons.length > 1 &&
-        data.currentSeason ? (
-          <div className="self-end">
-            <SeasonPicker
-              seasons={data.seasons}
-              currentSeason={data.currentSeason}
-              selectedSeasonId={search.season}
-              onSeasonChange={handleSeasonChange}
+        {standing ? (
+          <>
+            <HomeHeroCompact standing={standing} />
+            <div className="hidden gap-4 lg:grid xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+              <HomeRankCard standing={standing} />
+              <HomeKpiTiles
+                standing={standing}
+                matchesThisWeek={
+                  data.isCurrentSeason
+                    ? matchesSince(data.myMatches, weekStart)
+                    : null
+                }
+                peak={myHistory && peakRating(myHistory)}
+              />
+            </div>
+            <div className="hidden gap-4 lg:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+              <RatingCard points={myHistory} />
+              <LeagueStandingCard standing={standing} />
+            </div>
+          </>
+        ) : null}
+
+        {partnerCardCount > 0 ? (
+          <div
+            className={cn(
+              'hidden gap-4 lg:grid',
+              partnerCardCount === 1
+                ? 'lg:grid-cols-1'
+                : partnerCardCount === 2
+                  ? 'lg:grid-cols-2'
+                  : 'lg:grid-cols-3'
+            )}
+          >
+            <PartnerCards
+              duo={partners.duo}
+              nemesis={partners.nemesis}
+              profileBase={`${base}/player`}
             />
+            {liveMatch ? (
+              <LiveNowCard
+                match={liveMatch}
+                now={data.now}
+                href={`${base}/matchmaking`}
+              />
+            ) : null}
           </div>
         ) : null}
 
-        <div className="flex">
-          <div className="flex flex-1 items-center gap-3">
-            <h2 className="text-2xl md:text-4xl">Recent Matches</h2>
-            {canReport ? (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!hydrated}
-                onClick={() => setReportModalOpen(true)}
-              >
-                <Flag className="mr-1.5 h-4 w-4" />
-                Report match
-              </Button>
-            ) : null}
-          </div>
-          <div className="flex items-center space-x-3 self-center">
-            <Label id="show-mmr-label" htmlFor="show-mmr">
-              MMR:
-            </Label>
-            {/* Hand-rolled because the library ships no Checkbox: e2e clicks
-                `button[role=checkbox]#show-mmr` exactly. */}
-            <button
-              type="button"
-              id="show-mmr"
-              role="checkbox"
-              aria-checked={showMmr}
-              aria-labelledby="show-mmr-label"
-              data-state={showMmr ? 'checked' : 'unchecked'}
-              disabled={!hydrated}
-              onClick={() => setShowMmr(!showMmr)}
-              className="active:scale-98 data-[state=unchecked]:border-border-input data-[state=unchecked]:hover:border-dark-40 peer inline-flex size-[25px] items-center justify-center rounded-md border border-muted bg-primary transition-all duration-150 ease-in-out data-[state=unchecked]:bg-white"
-            >
-              {showMmr ? (
-                <Check className="size-[15px] font-bold text-primary-foreground" />
-              ) : null}
-            </button>
-          </div>
-        </div>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] xl:items-start">
+          <section
+            aria-labelledby="home-matches-heading"
+            className="flex flex-col gap-3 xl:col-start-2 xl:row-start-1"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="home-matches-heading" className="text-2xl">
+                Recent Matches
+              </h2>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Label
+                    id="show-mmr-label"
+                    htmlFor="show-mmr"
+                    className="text-xs tracking-[0.14em] text-muted-foreground uppercase"
+                  >
+                    MMR:
+                  </Label>
+                  {/* Hand-rolled because the library ships no Checkbox: e2e
+                      clicks `button[role=checkbox]#show-mmr` exactly. */}
+                  <button
+                    type="button"
+                    id="show-mmr"
+                    role="checkbox"
+                    aria-checked={showMmr}
+                    aria-labelledby="show-mmr-label"
+                    data-state={showMmr ? 'checked' : 'unchecked'}
+                    disabled={!hydrated}
+                    onClick={() => setShowMmr(!showMmr)}
+                    className="inline-flex size-5 items-center justify-center rounded border border-muted-foreground/60 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                  >
+                    {showMmr ? (
+                      <Check className="size-3.5 text-primary-foreground" />
+                    ) : null}
+                  </button>
+                </div>
+                <ViewAll to={`${base}/matches`} label="matches" />
+              </div>
+            </div>
+            {/* Cards are direct children: the e2e selector
+                `.flex.flex-1.flex-col.items-stretch > div.bg-card` resolves
+                to a card. There is no empty state. */}
+            <div className="flex flex-1 flex-col items-stretch gap-2">
+              {(data.recentMatches ?? []).map((match) => (
+                <MatchCard
+                  key={match.id}
+                  match={match}
+                  showMmr={showMmr}
+                  now={data.now}
+                  viewerId={data.leaguePlayerId}
+                />
+              ))}
+            </div>
+          </section>
 
-        {/* Flat list on purpose: date headers are plain siblings of the cards,
-            not wrappers, so `gap-2` spaces them identically and the e2e
-            selector `.flex.flex-1.flex-col.items-stretch > div.bg-card` still
-            resolves to a card. There is no empty state. */}
-        <div className="flex flex-1 flex-col items-stretch gap-2">
-          {recentMatchGroups.map((group) => (
-            <Fragment key={group.match.id}>
-              {group.label ? <MatchDateHeader label={group.label} /> : null}
-              <MatchCard match={group.match} showMmr={showMmr} />
-            </Fragment>
-          ))}
+          <section
+            aria-labelledby="home-leaderboard-heading"
+            className="flex flex-col gap-3 xl:col-start-1 xl:row-start-1"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="home-leaderboard-heading" className="text-2xl">
+                Leaderboard
+              </h2>
+              <ViewAll to={`${base}/leaderboard`} label="standings" />
+            </div>
+            <Leaderboard
+              entries={entries}
+              ratingHistory={ratingHistory}
+              onSelect={(entry) => {
+                setSelectedEntry(entry);
+                setStatsModalOpen(true);
+              }}
+              currentLeaguePlayerId={data.leaguePlayerId}
+            />
+          </section>
         </div>
-
-        <h2 className="text-2xl md:text-4xl">Leaderboard</h2>
-        <Leaderboard
-          entries={data.leaderboard?.entries ?? []}
-          ratingHistory={ratingHistory}
-          onSelect={(entry) => {
-            setSelectedEntry(entry);
-            setStatsModalOpen(true);
-          }}
-          currentLeaguePlayerId={data.leaguePlayerId}
-        />
       </div>
 
       {/* Stays mounted after close — `selectedEntry` is never cleared, so the
@@ -420,5 +600,17 @@ function LeagueHomePage() {
         />
       ) : null}
     </>
+  );
+}
+
+function ViewAll({ to, label }: { to: string; label: string }) {
+  return (
+    <AppLink
+      to={to}
+      className="inline-flex items-center gap-0.5 rounded-sm text-sm text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    >
+      View all<span className="sr-only"> {label}</span>
+      <ChevronRight aria-hidden="true" className="size-4" />
+    </AppLink>
   );
 }
