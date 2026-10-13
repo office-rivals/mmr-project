@@ -96,6 +96,11 @@ jobs:
             --image "$IMAGE" \
             --query properties.latestRevisionName \
             --output tsv)"
+          # An empty name would match an app with no ready revision and pass the wait.
+          if [ -z "$revision" ]; then
+            echo "az containerapp update returned no revision name." >&2
+            exit 1
+          fi
           echo "REVISION=$revision" >> "$GITHUB_ENV"
 
       # The update returns once the revision is provisioned, not once it serves.
