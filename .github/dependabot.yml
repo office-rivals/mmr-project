@@ -4,6 +4,8 @@ updates:
     directory: "/mmr-api"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     groups:
       opentelemetry:
         patterns:
@@ -12,29 +14,47 @@ updates:
     directory: "/frontend"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     ignore:
-      # bits-ui 2 stops selecting an auto-focused field's value, so typing a
-      # new score appends to the old one. The SvelteKit app is being replaced
-      # by frontend-beta, so it stays on 1.x rather than adapting.
-      - dependency-name: "bits-ui"
+      # The SvelteKit app is being replaced by frontend-beta, so it stays on its
+      # current majors rather than adapting to them (bits-ui 2, for one, stops
+      # selecting an auto-focused field's value). Security updates still arrive.
+      - dependency-name: "*"
         update-types: ["version-update:semver-major"]
   - package-ecosystem: "docker"
     directory: "/frontend-beta"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "npm"
     directory: "/frontend-beta"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
+    groups:
+      # react-query-devtools pins query-core to its own version, so bumping
+      # react-query alone installs a second query-core and breaks the types.
+      tanstack-query:
+        patterns:
+          - "@tanstack/react-query*"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "nuget"
     directory: "/api"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
