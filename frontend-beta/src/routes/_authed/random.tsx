@@ -232,13 +232,7 @@ function useTouchRandomizer(active: boolean) {
       node.removeEventListener('touchend', handleTouchEnd);
       node.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, [
-    active,
-    clearTimer,
-    publishCountdown,
-    publishTouches,
-    restartCountdown,
-  ]);
+  }, [active, clearTimer, publishCountdown, publishTouches, restartCountdown]);
 
   useEffect(() => clearTimer, [clearTimer]);
 
@@ -365,16 +359,12 @@ function RandomPage() {
   }
 
   return (
-    <div
-      className="fixed inset-x-0 z-20 flex flex-col bg-background"
-      style={{
-        top: 'calc(env(safe-area-inset-top) + var(--header-height))',
-        bottom: 'calc(env(safe-area-inset-bottom) + 64px)',
-      }}
-    >
+    // Fills the space between the phone header and bottom bar, or beside the
+    // desktop sidebar.
+    <div className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+var(--header-height))] bottom-[calc(env(safe-area-inset-bottom)+64px)] z-20 flex flex-col bg-background lg:top-0 lg:bottom-0 lg:left-60">
       <header className="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-4 py-3">
         <div className="flex min-w-0 flex-col">
-          <h1 className="text-lg font-bold leading-tight">Random Teams</h1>
+          <h1 className="text-lg leading-tight font-bold">Random Teams</h1>
           <p className="line-clamp-2 min-h-[2lh] text-xs leading-snug text-muted-foreground">
             {headerSubtitle}
           </p>
@@ -521,7 +511,7 @@ function TouchRandomizerSurface({
       ref={surfaceRef}
       role="application"
       aria-label="Touch randomizer surface"
-      className="relative flex-1 touch-none select-none overflow-hidden bg-muted"
+      className="relative flex-1 touch-none overflow-hidden bg-muted select-none"
       // The app-shell pull-to-refresh listens on `window` with `{ passive:
       // true }`, so this page's own preventDefault() cannot suppress it. The
       // shared component bails via `closest('[data-no-pull-to-refresh]')`,
@@ -535,10 +525,10 @@ function TouchRandomizerSurface({
           </div>
           <p className="text-2xl font-bold">Place your fingers</p>
           <p className="max-w-xs text-sm text-muted-foreground">
-            At least {MIN_TOUCHES}. After a {COUNTDOWN_SECONDS}-second countdown,
-            two random fingers become{' '}
-            <span className="font-semibold text-foreground">white team</span> and
-            two become{' '}
+            At least {MIN_TOUCHES}. After a {COUNTDOWN_SECONDS}-second
+            countdown, two random fingers become{' '}
+            <span className="font-semibold text-foreground">white team</span>{' '}
+            and two become{' '}
             <span className="font-semibold text-foreground">red team</span>.
           </p>
         </div>
@@ -546,7 +536,7 @@ function TouchRandomizerSurface({
 
       {isCountingDown ? (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-          <div className="animate-pulse text-[12rem] font-bold leading-none text-primary/80">
+          <div className="animate-pulse text-[12rem] leading-none font-bold text-primary/80">
             {countdown}
           </div>
         </div>
@@ -554,7 +544,7 @@ function TouchRandomizerSurface({
 
       {showingResult ? (
         <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-2 px-6 text-center">
-          <p className="text-sm uppercase tracking-widest text-muted-foreground">
+          <p className="text-sm tracking-widest text-muted-foreground uppercase">
             Teams
           </p>
           <div className="flex items-center gap-3 text-2xl font-bold">

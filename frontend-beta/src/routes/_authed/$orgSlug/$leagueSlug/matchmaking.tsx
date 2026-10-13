@@ -10,12 +10,16 @@ import { queueQueryKey } from '@/components/shell/matchmaking-button';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
-  failServerAction,
   nativeFormResponse,
   parseNativeFormData,
 } from '@/lib/server/action-result';
-import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import {
+  queueAction,
+  queueActionFn,
+  TRANSPORT_FALLBACKS,
+  type QueueActionName,
+} from '@/lib/queue-actions';
 import { formatLeagueFormat } from '@/lib/utils';
 import type { LeagueContext } from './route';
 import type { ActiveMatchResponse, QueueStatusResponse } from '@/api-v3';
@@ -61,77 +65,6 @@ const listActiveMatchesFn = createServerFn({ method: 'GET' })
       data.leagueId
     );
   });
-
-type QueueActionResult =
-  { status: 'error'; message: string } | { status: 'ok' };
-
-type QueueActionName = 'join' | 'leave' | 'accept' | 'decline';
-
-interface QueueActionInput extends OrgLeagueInput {
-  action: QueueActionName;
-  matchId?: string;
-}
-
-const TRANSPORT_FALLBACKS: Record<QueueActionName, string> = {
-  join: 'Failed to join queue',
-  leave: 'Failed to leave queue',
-  accept: 'Failed to accept match',
-  decline: 'Failed to decline match',
-};
-
-const queueActionFn = createServerFn({ method: 'POST' })
-  .validator((input: QueueActionInput) => input)
-  .handler(({ data }): Promise<QueueActionResult> => queueAction(data));
-
-async function queueAction(data: QueueActionInput): Promise<QueueActionResult> {
-  const needsMatchId = data.action === 'accept' || data.action === 'decline';
-  if (needsMatchId && !data.matchId) {
-    return failServerAction(400, {
-      status: 'error',
-      message: 'Match ID is required',
-    });
-  }
-  if (!data.orgId || !data.leagueId) {
-    return failServerAction(400, {
-      status: 'error',
-      message: 'Organization and league are required',
-    });
-  }
-
-  const apiClientV3 = await requireApiClientV3();
-  try {
-    switch (data.action) {
-      case 'join':
-        await apiClientV3.queueApi.joinQueue(data.orgId, data.leagueId);
-        break;
-      case 'leave':
-        await apiClientV3.queueApi.leaveQueue(data.orgId, data.leagueId);
-        break;
-      case 'accept':
-        await apiClientV3.pendingMatchesApi.acceptPendingMatch(
-          data.orgId,
-          data.leagueId,
-          data.matchId!
-        );
-        break;
-      case 'decline':
-        await apiClientV3.pendingMatchesApi.declinePendingMatch(
-          data.orgId,
-          data.leagueId,
-          data.matchId!
-        );
-        break;
-    }
-  } catch (error) {
-    const { status, message } = await getApiErrorDetails(
-      error,
-      TRANSPORT_FALLBACKS[data.action]
-    );
-    return failServerAction(status, { status: 'error', message });
-  }
-
-  return { status: 'ok' };
-}
 
 export const Route = createFileRoute(
   '/_authed/$orgSlug/$leagueSlug/matchmaking'

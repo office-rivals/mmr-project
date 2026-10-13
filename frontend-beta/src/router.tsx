@@ -27,4 +27,8 @@ declare module '@tanstack/react-router' {
   interface Register {
     router: ReturnType<typeof getRouter>;
   }
+  interface StaticDataRouteOption {
+    /** Lets the page use the full desktop content width. */
+    wide?: boolean;
+  }
 }

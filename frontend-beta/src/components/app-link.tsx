@@ -9,6 +9,8 @@ export interface AppLinkProps extends Omit<
   /** Use `search` for query parameters; `to` contains only the pathname. */
   search?: Record<string, unknown> | true;
   replace?: boolean;
+  /** Marks the link `data-status="active"` / `aria-current="page"` on match. */
+  activeOptions?: { exact?: boolean; includeSearch?: boolean };
   children?: ReactNode;
 }
 
