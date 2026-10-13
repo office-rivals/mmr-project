@@ -61,7 +61,7 @@
 
   const chartData = $derived(
     data.ratingHistory?.entries?.map((e) => ({
-      date: e.recordedAt,
+      date: e.playedAt,
       player: playerName,
       rating: e.mmr,
     })) ?? []

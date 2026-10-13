@@ -44,7 +44,7 @@ export const load: PageServerLoad = async ({
       (ph) =>
         ph?.entries.map((entry) => ({
           name: ph.name,
-          date: entry.recordedAt,
+          date: entry.playedAt,
           mmr: entry.mmr,
         })) ?? []
     );

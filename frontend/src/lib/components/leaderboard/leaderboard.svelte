@@ -101,7 +101,7 @@
                             (h) => h.leaguePlayerId === entry.leaguePlayerId
                           )
                           .map((h) => ({
-                            date: h.recordedAt,
+                            date: h.playedAt,
                             rating: h.mmr,
                           }))}
                       />
