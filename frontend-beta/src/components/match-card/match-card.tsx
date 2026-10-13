@@ -55,19 +55,22 @@ export function MatchCard({
     <Card className="flex flex-col gap-1.5 px-3 py-2.5 md:px-4 md:py-3">
       <div className="flex min-h-5 items-center justify-between gap-2">
         {match.playedAt ? (
-          <time
-            className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase"
-            dateTime={match.playedAt}
-            title={formatDate(match.playedAt, '—', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}
-          >
+          <p className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
             {now != null ? `${formatMatchDay(match.playedAt, now)} · ` : null}
-            {formatTime(match.playedAt)}
-          </time>
+            {/* Only the clock time sits in <time>, so its text stays a plain
+                localized time. */}
+            <time
+              dateTime={match.playedAt}
+              title={formatDate(match.playedAt, '—', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            >
+              {formatTime(match.playedAt)}
+            </time>
+          </p>
         ) : (
           <span />
         )}
