@@ -13,10 +13,8 @@
     "test": "vitest run",
     "e2e": "cd ../frontend && E2E_FRONTEND_DIR=frontend-beta npx playwright test",
     "e2e:ui": "cd ../frontend && E2E_FRONTEND_DIR=frontend-beta npx playwright test --ui",
-    "e2e:production": "E2E_FRONTEND_DIR=frontend-beta E2E_BETA_PRODUCTION=true ../frontend/node_modules/.bin/playwright test --config parity/production.config.ts",
-    "parity:visual": "../frontend/node_modules/.bin/playwright test --config parity/playwright.config.ts",
-    "e2e:regressions": "../frontend/node_modules/.bin/playwright test --config parity/functional.config.ts",
-    "parity:behavior": "../frontend/node_modules/.bin/playwright test --config parity/behavior.config.ts"
+    "e2e:production": "E2E_FRONTEND_DIR=frontend-beta E2E_BETA_PRODUCTION=true ../frontend/node_modules/.bin/playwright test --config e2e/production.config.ts",
+    "e2e:regressions": "../frontend/node_modules/.bin/playwright test --config e2e/functional.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

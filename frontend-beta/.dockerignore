@@ -6,6 +6,6 @@ dist
 .tanstack
 test-results
 playwright-report
-parity
+e2e
 README.md
 **/*.test.*

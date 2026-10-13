@@ -76,7 +76,7 @@ export default {
     {
       name: 'production-contract',
       dependencies: ['firefox-smoke'],
-      testDir: path.join(repo, 'frontend-beta/parity'),
+      testDir: path.join(repo, 'frontend-beta/e2e'),
       testMatch: /.*\.production\.spec\.ts/,
       use: { storageState: path.join(repo, 'frontend/e2e/.auth/user.json') },
     },

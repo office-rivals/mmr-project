@@ -2,10 +2,8 @@
 
 This supplement supersedes the rewrite specs wherever they describe stale query
 invalidation, successful HTTP envelopes for failed actions, JavaScript-only
-SSR forms, or accepted cosmetic drift. The Svelte application is the reference
-for appearance; `frontend-beta/parity/` measures both applications directly.
-Known reference bugs and older icon drawings need not be copied. The current
-approved differences are listed in `frontend-beta/parity/README.md`.
+SSR forms, or accepted cosmetic drift. Known reference bugs and older icon
+drawings need not be copied.
 
 ## Shell lifecycle
 
@@ -65,5 +63,5 @@ feedback semantics; native error presentation is therefore a separate document.
 Enhanced forms retain inline feedback and entered state. Dialogs and multi-step
 controls that require JavaScript to become available continue to require it.
 
-Regression coverage lives in `frontend-beta/parity/*.functional.spec.ts`; run
+Regression coverage lives in `frontend-beta/e2e/*.functional.spec.ts`; run
 `npm run e2e:regressions` in `frontend-beta`, separately from other seeded suites.

@@ -1,18 +1,10 @@
 import playwright from '../../frontend/node_modules/@playwright/test/index.js';
+import { gotoAuthed } from './helpers';
 const { test, expect } =
   playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
 
-const betaUrl = `http://localhost:${process.env.PARITY_BETA_PORT ?? '5181'}`;
-
-test('season picker supports keyboard selection', async ({
-  browser,
-}, testInfo) => {
-  const context = await browser.newContext({
-    ...testInfo.project.use,
-    storageState: testInfo.project.use.storageState,
-  });
-  const page = await context.newPage();
-  await page.goto(`${betaUrl}/test-org/test-league`);
+test('season picker supports keyboard selection', async ({ page }) => {
+  await gotoAuthed(page, '/test-org/test-league');
 
   const trigger = page.getByRole('button', { name: 'Select a season' });
   await expect(trigger).toBeEnabled();
@@ -61,5 +53,4 @@ test('season picker supports keyboard selection', async ({
   await trigger.press('ArrowUp');
   await expect(firstOption).toHaveAttribute('data-highlighted', '');
   await expect(trigger).toBeFocused();
-  await context.close();
 });
