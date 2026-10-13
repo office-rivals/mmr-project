@@ -522,6 +522,61 @@ namespace MMRProject.Api.Data.Migrations
                     b.ToTable("legacy_teams", (string)null);
                 });
 
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.Hardware", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("HardwareId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("hardware_id");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<string>("LocalIpAddress")
+                        .IsRequired()
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)")
+                        .HasColumnName("local_ip_address");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<byte[]>("SecretHash")
+                        .HasColumnType("bytea")
+                        .HasColumnName("secret_hash");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeagueId");
+
+                    b.HasIndex(new[] { "HardwareId" }, "ix_hardware_hardware_id")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "OrganizationId", "LeagueId" }, "ix_hardware_org_league");
+
+                    b.ToTable("hardware", (string)null);
+                });
+
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.League", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1539,6 +1594,27 @@ namespace MMRProject.Api.Data.Migrations
                     b.Navigation("PlayerOne");
 
                     b.Navigation("PlayerTwo");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.Hardware", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.League", "League")
+                        .WithMany()
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_hardware_league");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_hardware_organization");
+
+                    b.Navigation("League");
+
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.League", b =>

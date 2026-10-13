@@ -8,6 +8,7 @@ public static class BuilderExtensions
 {
     private const string JwtBearerScheme = JwtBearerDefaults.AuthenticationScheme;
     private const string PatScheme = "PersonalAccessToken";
+    private const string HardwareScheme = "HardwareSecret";
 
     public static WebApplicationBuilder AddAuth(this WebApplicationBuilder builder)
     {
@@ -21,6 +22,11 @@ public static class BuilderExtensions
                 options.ForwardDefaultSelector = context =>
                 {
                     var authHeader = context.Request.Headers.Authorization.ToString();
+                    if (authHeader.StartsWith("Bearer hw_", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return HardwareScheme;
+                    }
+
                     if (authHeader.StartsWith("Bearer pat_", StringComparison.OrdinalIgnoreCase))
                     {
                         return PatScheme;
@@ -47,7 +53,9 @@ public static class BuilderExtensions
                 o.Authority = issuer;
             })
             .AddScheme<PersonalAccessTokenAuthenticationOptions, PersonalAccessTokenAuthenticationHandler>(
-                PatScheme, options => { });
+                PatScheme, options => { })
+            .AddScheme<HardwareSecretAuthenticationOptions, HardwareSecretAuthenticationHandler>(
+                HardwareScheme, options => { });
 
         return builder;
     }

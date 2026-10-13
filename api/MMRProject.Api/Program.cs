@@ -60,12 +60,15 @@ builder.Services.AddAuthorization(options =>
         policy.Requirements.Add(new PatScopeRequirement(PatScopes.Write)));
     options.AddPolicy(V3AuthorizationPolicies.DenyPatAuthentication, policy =>
         policy.Requirements.Add(new DenyPatAuthenticationRequirement()));
+    options.AddPolicy(V3AuthorizationPolicies.RequireHardwareSecret, policy =>
+        policy.Requirements.Add(new HardwareAuthenticationRequirement()));
 });
 
 builder.Services.AddSingleton<IAuthorizationHandler, OrganizationRoleAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, LeagueAccessAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, PatAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, DenyPatAuthenticationHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, HardwareAuthorizationHandler>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddRateLimiter(options =>
@@ -114,6 +117,7 @@ builder.Services.AddScoped<IV3PendingMatchCoordinator, V3PendingMatchCoordinator
 builder.Services.AddScoped<IV3PersonalAccessTokenService, V3PersonalAccessTokenService>();
 builder.Services.AddScoped<IV3MatchFlagService, V3MatchFlagService>();
 builder.Services.AddScoped<IInviteLinkService, InviteLinkService>();
+builder.Services.AddScoped<IHardwareService, HardwareService>();
 
 builder.Services.AddHostedService<V3MatchMakingBackgroundService>();
 

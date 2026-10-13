@@ -30,6 +30,26 @@ public static class ClaimsPrincipalExtensions
         return GetGuidClaim(user, "pat_league_id");
     }
 
+    public static bool IsHardwareAuthentication(this ClaimsPrincipal user)
+    {
+        return user.FindFirstValue("auth_method") == "hardware";
+    }
+
+    public static Guid? GetHardwareId(this ClaimsPrincipal user)
+    {
+        return GetGuidClaim(user, "hardware_id");
+    }
+
+    public static Guid? GetHardwareOrganizationId(this ClaimsPrincipal user)
+    {
+        return GetGuidClaim(user, "hardware_org_id");
+    }
+
+    public static Guid? GetHardwareLeagueId(this ClaimsPrincipal user)
+    {
+        return GetGuidClaim(user, "hardware_league_id");
+    }
+
     private static Guid? GetGuidClaim(ClaimsPrincipal user, string claimType)
     {
         var value = user.FindFirstValue(claimType);
