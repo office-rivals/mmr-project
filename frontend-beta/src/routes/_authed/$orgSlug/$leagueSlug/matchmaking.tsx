@@ -2,10 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, getRouteApi } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import { LoaderCircle, Pause, Play } from 'lucide-react';
+import {
+  Bell,
+  ChevronRight,
+  Clock,
+  LoaderCircle,
+  Play,
+  Users,
+} from 'lucide-react';
 import { AppLink } from '@/components/app-link';
+import { Eyebrow } from '@/components/eyebrow';
 import { PageTitle } from '@/components/page-title';
 import { PendingMatchDialog } from '@/components/play/pending-match-dialog';
+import { PlayerAvatar } from '@/components/player-avatar';
 import { queueQueryKey } from '@/components/shell/matchmaking-button';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -20,9 +29,19 @@ import {
   TRANSPORT_FALLBACKS,
   type QueueActionName,
 } from '@/lib/queue-actions';
-import { formatLeagueFormat } from '@/lib/utils';
+import {
+  cn,
+  formatElapsed,
+  formatLeagueFormat,
+  getPlayerDisplayName,
+} from '@/lib/utils';
 import type { LeagueContext } from './route';
-import type { ActiveMatchResponse, QueueStatusResponse } from '@/api-v3';
+import type {
+  ActiveMatchResponse,
+  PendingMatchTeamResponse,
+  QueueStatusResponse,
+  QueuedPlayerResponse,
+} from '@/api-v3';
 
 const leagueRoute = getRouteApi('/_authed/$orgSlug/$leagueSlug');
 
@@ -93,6 +112,7 @@ export const Route = createFileRoute(
     const { orgId, leagueId } = context.league;
     return getMatchmakingDataFn({ data: { orgId, leagueId } });
   },
+  staticData: { wide: true },
   component: MatchmakingRoute,
 });
 
@@ -222,108 +242,182 @@ function MatchmakingPage({
       queueAction.mutate({ action, matchId });
     };
 
+  const myEntry = queueStatus?.queuedPlayers?.find(
+    (p) => p.leaguePlayerId === leaguePlayerId
+  );
+  const queuedSeconds = myEntry
+    ? Math.max(
+        0,
+        Math.floor((now - new Date(myEntry.joinedAt).getTime()) / 1000)
+      )
+    : 0;
+  const queued = [...(queueStatus?.queuedPlayers ?? [])].sort(
+    (a, b) =>
+      Number(b.leaguePlayerId === leaguePlayerId) -
+      Number(a.leaguePlayerId === leaguePlayerId)
+  );
+  const scoreLabel = league.leagueWinningScore
+    ? `First to ${league.leagueWinningScore}`
+    : 'Any score';
+  const queueForm = (action: 'join' | 'leave', button: React.ReactNode) => (
+    <form
+      method="post"
+      action={`/${orgSlug}/${leagueSlug}/matchmaking`}
+      onSubmit={submitAction(action)}
+    >
+      <input hidden type="hidden" name="_action" value={action} />
+      <input hidden type="hidden" name="orgId" value={orgId} />
+      <input hidden type="hidden" name="leagueId" value={leagueId} />
+      {button}
+    </form>
+  );
+
   return (
     <>
-      <PageTitle>Matchmaking</PageTitle>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1">
+          <Eyebrow>
+            {formatLabel} · {scoreLabel}
+          </Eyebrow>
+          <PageTitle>Matchmaking</PageTitle>
+          <p className="text-sm text-muted-foreground">
+            Queue up for a {formatLabel} game against others who are ready to
+            play.
+          </p>
+        </div>
 
-      {formMessage ? <Alert variant="destructive">{formMessage}</Alert> : null}
-
-      <div className="mt-6 flex flex-col gap-4">
-        <p>
-          Matchmaking is a feature where you queue up for a {formatLabel} game
-          against other people that are also ready for a game.
-        </p>
-        <p>
-          Once <strong>{playersRequiredForMatch} players</strong> are in the
-          queue, a match will be created and you will be notified.
-        </p>
-        <p>
-          If you do not accept the match within <strong>30 seconds</strong>, you
-          will be removed from the queue.
-        </p>
-        <p>A sound will play when a match is found.</p>
-
-        {!hasLeaguePlayer ? (
-          <p>You need to join this league before you can queue for matches.</p>
-        ) : isInQueue ? (
-          <>
-            <div className="flex gap-2">
-              <LoaderCircle className="animate-spin" />
-              <p>Waiting for a match...</p>
-            </div>
-            <p>Missing {remainingPlayers} more players</p>
-            <form
-              method="post"
-              action={`/${orgSlug}/${leagueSlug}/matchmaking`}
-              onSubmit={submitAction('leave')}
-            >
-              <input hidden type="hidden" name="_action" value="leave" />
-              <input hidden type="hidden" name="orgId" value={orgId} />
-              <input hidden type="hidden" name="leagueId" value={leagueId} />
-              <Button
-                variant="destructive"
-                type="submit"
-                className="w-full"
-                disabled={queueAction.isPending}
-              >
-                <Pause />
-                <span className="ml-2">Leave queue</span>
-              </Button>
-            </form>
-          </>
-        ) : (
-          <form
-            method="post"
-            action={`/${orgSlug}/${leagueSlug}/matchmaking`}
-            onSubmit={submitAction('join')}
-          >
-            <input hidden type="hidden" name="_action" value="join" />
-            <input hidden type="hidden" name="orgId" value={orgId} />
-            <input hidden type="hidden" name="leagueId" value={leagueId} />
-            <Button
-              size="lg"
-              className="w-full py-6"
-              type="submit"
-              disabled={queueAction.isPending}
-            >
-              <Play />
-              <span className="ml-2 text-xl">Queue up</span>
-            </Button>
-          </form>
-        )}
-
-        {activeMatches.length > 0 ? (
-          <>
-            <h2 className="mt-4 text-2xl">Active matches</h2>
-            {activeMatches.map((match) => (
-              <div className="rounded-lg border bg-card p-4" key={match.id}>
-                <div className="flex items-center justify-around gap-2">
-                  {(match.teams ?? []).map((team) => (
-                    <div
-                      className="flex flex-col items-center gap-1"
-                      key={team.index}
-                    >
-                      {(team.players ?? []).map((player) => (
-                        <span key={player.leaguePlayerId}>
-                          {player.displayName ?? player.username ?? 'Unknown'}
-                        </span>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-2 flex justify-center">
-                  <Button asChild variant="outline" size="sm">
-                    <AppLink
-                      to={`/${orgSlug}/${leagueSlug}/active-match/${match.id}`}
-                    >
-                      Submit Result
-                    </AppLink>
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </>
+        {formMessage ? (
+          <Alert variant="destructive">{formMessage}</Alert>
         ) : null}
+
+        <div
+          className={cn(
+            'grid gap-6 lg:items-start',
+            activeMatches.length > 0
+              ? 'lg:grid-cols-[minmax(0,1fr)_22rem]'
+              : 'lg:max-w-3xl'
+          )}
+        >
+          {/* From lg the card's contents and the how-it-works list share one bordered grid. */}
+          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-x-10 lg:gap-y-6 lg:rounded-xl lg:border lg:bg-card lg:p-8">
+            <section
+              aria-label="Queue"
+              className="flex flex-col items-center gap-6 rounded-xl border bg-card p-5 lg:contents"
+            >
+              <QueueRing
+                count={playersInQueue}
+                needed={playersRequiredForMatch}
+                className="lg:row-span-2 lg:self-center"
+              />
+              <div className="flex w-full flex-col gap-5">
+                <QueueSlots
+                  queued={queued}
+                  needed={playersRequiredForMatch}
+                  me={leaguePlayerId}
+                />
+                {!hasLeaguePlayer ? (
+                  <p className="text-center text-sm lg:text-left">
+                    You need to join this league before you can queue for
+                    matches.
+                  </p>
+                ) : isInQueue ? (
+                  <>
+                    <div className="flex flex-col items-center gap-0.5 text-center text-sm lg:items-start lg:text-left">
+                      <p className="flex items-center gap-2 font-semibold">
+                        <LoaderCircle
+                          aria-hidden="true"
+                          className="size-4 animate-spin text-primary"
+                        />
+                        Waiting for a match...
+                      </p>
+                      <p className="text-muted-foreground">
+                        {remainingPlayers > 0
+                          ? `${remainingPlayers} more ${remainingPlayers === 1 ? 'player' : 'players'} needed`
+                          : 'Making balanced teams'}
+                        {' · '}
+                        <span className="tabular-nums">
+                          {formatElapsed(queuedSeconds)}
+                        </span>
+                      </p>
+                    </div>
+                    {queueForm(
+                      'leave',
+                      <Button
+                        variant="outline"
+                        type="submit"
+                        className="h-12 w-full text-base font-semibold"
+                        disabled={queueAction.isPending}
+                      >
+                        Leave queue
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-center text-sm text-muted-foreground lg:text-left">
+                      {queued.length > 0
+                        ? `${namesLine(queued)} ${queued.length === 1 ? 'wants' : 'want'} a game.`
+                        : 'Nobody is queued yet. Be the first.'}
+                    </p>
+                    {queueForm(
+                      'join',
+                      <Button
+                        type="submit"
+                        className="h-12 w-full text-base font-bold"
+                        disabled={queueAction.isPending}
+                      >
+                        <Play aria-hidden="true" />
+                        <span className="ml-1">Queue up</span>
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            </section>
+            <ul className="flex flex-col gap-3 px-1 text-sm text-muted-foreground lg:col-start-2 lg:border-t lg:px-0 lg:pt-5">
+              <li className="flex gap-3">
+                <Users aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                <p>
+                  Once{' '}
+                  <strong className="text-foreground">
+                    {playersRequiredForMatch} players
+                  </strong>{' '}
+                  are in the queue, balanced teams are made and everyone is
+                  notified.
+                </p>
+              </li>
+              <li className="flex gap-3">
+                <Clock aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                <p>
+                  Accept within{' '}
+                  <strong className="text-foreground">30 seconds</strong> or you
+                  leave the queue.
+                </p>
+              </li>
+              <li className="flex gap-3">
+                <Bell aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                <p>A sound plays when a match is found.</p>
+              </li>
+            </ul>
+          </div>
+
+          {activeMatches.length > 0 ? (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-xl">Active matches</h2>
+              <div className="flex flex-col gap-3">
+                {activeMatches.map((match) => (
+                  <ActiveMatchCard
+                    key={match.id}
+                    match={match}
+                    now={now}
+                    me={leaguePlayerId}
+                    href={`/${orgSlug}/${leagueSlug}/active-match/${match.id}`}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </div>
       </div>
 
       <PendingMatchDialog
@@ -332,6 +426,8 @@ function MatchmakingPage({
         myAcceptance={myAcceptance}
         secondsRemaining={secondsRemaining}
         responding={queueAction.isPending}
+        leaguePlayerId={leaguePlayerId}
+        formatLabel={`${formatLabel} · ${scoreLabel}`}
         onAccept={() =>
           queueAction.mutate({ action: 'accept', matchId: pendingMatch?.id })
         }
@@ -340,5 +436,177 @@ function MatchmakingPage({
         }
       />
     </>
+  );
+}
+
+function namesLine(players: QueuedPlayerResponse[]) {
+  const names = players.slice(0, 2).map((p) => getPlayerDisplayName(p));
+  const others = players.length - names.length;
+  return others > 0
+    ? `${names.join(', ')} and ${others} more`
+    : names.join(' and ');
+}
+
+function QueueRing({
+  count,
+  needed,
+  className,
+}: {
+  count: number;
+  needed: number;
+  className?: string;
+}) {
+  const circumference = 2 * Math.PI * 44;
+  const share = Math.min(1, count / needed);
+  return (
+    <div className={cn('relative size-48 shrink-0 lg:size-56', className)}>
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 100 100"
+        className="size-full -rotate-90"
+      >
+        <circle
+          cx="50"
+          cy="50"
+          r="44"
+          fill="none"
+          strokeWidth="5"
+          className="stroke-muted"
+        />
+        {/* A round cap on an empty arc would still draw a dot. */}
+        {count > 0 ? (
+          <circle
+            cx="50"
+            cy="50"
+            r="44"
+            fill="none"
+            strokeWidth="5"
+            strokeLinecap="round"
+            strokeDasharray={`${share * circumference} ${circumference}`}
+            className="stroke-primary transition-[stroke-dasharray] duration-500"
+          />
+        ) : null}
+      </svg>
+      <p className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-6xl leading-none font-bold tabular-nums">
+          {count}
+          <span className="text-3xl text-muted-foreground">/{needed}</span>
+        </span>
+        <span className="mt-2 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
+          In queue
+        </span>
+      </p>
+    </div>
+  );
+}
+
+function QueueSlots({
+  queued,
+  needed,
+  me,
+}: {
+  queued: QueuedPlayerResponse[];
+  needed: number;
+  me: string | null;
+}) {
+  const open = Math.max(0, needed - queued.length);
+  const slot =
+    'flex w-16 flex-col items-center gap-1.5 text-center text-xs lg:w-20';
+  return (
+    <ul
+      aria-label="Queued players"
+      className="flex flex-wrap justify-center gap-x-2 gap-y-3 lg:justify-start"
+    >
+      {queued.map((player) => {
+        const isMe = player.leaguePlayerId === me;
+        const name = getPlayerDisplayName(player);
+        return (
+          <li key={player.leaguePlayerId} className={slot}>
+            <PlayerAvatar
+              name={name}
+              highlight={isMe}
+              className={cn(
+                'size-12 text-sm lg:size-14',
+                isMe && 'bg-primary/10'
+              )}
+            />
+            <span
+              className={cn(
+                'w-full truncate',
+                isMe && 'font-semibold text-primary'
+              )}
+            >
+              {isMe ? 'You' : name}
+            </span>
+          </li>
+        );
+      })}
+      {Array.from({ length: open }, (_, i) => (
+        <li key={`open-${i}`} className={cn(slot, 'text-muted-foreground')}>
+          <span
+            aria-hidden="true"
+            className="size-12 rounded-full border border-dashed border-muted-foreground/50 lg:size-14"
+          />
+          Open
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ActiveMatchCard({
+  match,
+  now,
+  me,
+  href,
+}: {
+  match: ActiveMatchResponse;
+  now: number;
+  me: string | null;
+  href: string;
+}) {
+  const minutes = Math.max(
+    0,
+    Math.floor((now - new Date(match.startedAt).getTime()) / 60_000)
+  );
+  const mine = (match.teams ?? []).some((t) =>
+    t.players.some((p) => p.leaguePlayerId === me)
+  );
+  const teamNames = (team: PendingMatchTeamResponse | undefined) =>
+    (team?.players ?? []).map((player) => (
+      <span key={player.leaguePlayerId} className="truncate">
+        {getPlayerDisplayName(player)}
+      </span>
+    ));
+  const [left, right] = match.teams ?? [];
+  return (
+    <div
+      className={cn(
+        'flex flex-col gap-3 rounded-lg border bg-card p-4',
+        mine && 'border-green-500/40'
+      )}
+    >
+      <p className="flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] text-green-400 uppercase">
+        <span
+          aria-hidden="true"
+          className="size-1.5 rounded-full bg-green-400 motion-safe:animate-pulse"
+        />
+        In progress · {minutes} min
+      </p>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-sm font-semibold">
+        <span className="flex min-w-0 flex-col">{teamNames(left)}</span>
+        <span className="text-xs font-normal text-muted-foreground">vs</span>
+        <span className="flex min-w-0 flex-col items-end text-right">
+          {teamNames(right)}
+        </span>
+      </div>
+      <AppLink
+        to={href}
+        className="inline-flex items-center gap-1 self-end rounded-sm text-sm font-semibold text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      >
+        Submit Result
+        <ChevronRight aria-hidden="true" className="size-4" />
+      </AppLink>
+    </div>
   );
 }

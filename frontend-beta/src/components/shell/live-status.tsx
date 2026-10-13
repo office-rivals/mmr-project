@@ -4,7 +4,7 @@ import { useRouterState } from '@tanstack/react-router';
 import { AppLink } from '@/components/app-link';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { queueActionFn, type QueueActionName } from '@/lib/queue-actions';
-import { cn, getPlayerDisplayName, initials } from '@/lib/utils';
+import { cn, formatElapsed, getPlayerDisplayName, initials } from '@/lib/utils';
 import { queueQueryKey, useQueueStatus } from './use-queue-status';
 import type { PendingMatchTeamResponse } from '@/api-v3';
 
@@ -269,12 +269,6 @@ function teamsLine(
         .join(' + ')
     )
     .join(' vs ');
-}
-
-function formatElapsed(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 function useNow(ticking: boolean): number {
