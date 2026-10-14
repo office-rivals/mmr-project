@@ -18,3 +18,36 @@ export function describeApiFailure(status: number, message: string): string {
   }
   return message;
 }
+
+const DECIDED_COPY: Record<string, string> = {
+  approved: 'A moderator already approved this claim request.',
+  rejected: 'A moderator already turned down this claim request.',
+  cancelled: 'This claim request was already cancelled.',
+};
+
+export interface ClaimFailure {
+  message: string;
+  /** The claim was decided elsewhere, so the page's copy of it is out of date. */
+  stale: boolean;
+}
+
+/** Rewrites the claim API's failures in the app's voice. */
+export function describeClaimFailure(message: string): ClaimFailure {
+  const decided = /already decided as (\w+)/i.exec(message)?.[1];
+  if (decided) {
+    return {
+      message:
+        DECIDED_COPY[decided.toLowerCase()] ??
+        'This claim request was already decided.',
+      stale: true,
+    };
+  }
+  if (/already has match activity/i.test(message)) {
+    return {
+      message:
+        "You've already played here, so this account can't take over another player. Ask a moderator to merge them.",
+      stale: false,
+    };
+  }
+  return { message, stale: false };
+}

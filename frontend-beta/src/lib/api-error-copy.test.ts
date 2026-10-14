@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { CONFLICT_COPY, describeApiFailure } from './api-error-copy';
+import {
+  CONFLICT_COPY,
+  describeApiFailure,
+  describeClaimFailure,
+} from './api-error-copy';
 
 describe('describeApiFailure', () => {
   it.each([
@@ -44,6 +48,41 @@ describe('describeApiFailure', () => {
     ).toBe("The slug 'submit' is reserved and cannot be used");
     expect(describeApiFailure(403, 'Only owners can change roles')).toBe(
       'Only owners can change roles'
+    );
+  });
+});
+
+describe('describeClaimFailure', () => {
+  it.each([
+    ['Approved', 'A moderator already approved this claim request.'],
+    ['Rejected', 'A moderator already turned down this claim request.'],
+    ['Cancelled', 'This claim request was already cancelled.'],
+  ])(
+    'says who decided a claim first, and marks it stale: %s',
+    (status, copy) => {
+      expect(
+        describeClaimFailure(
+          `This claim request was already decided as ${status}.`
+        )
+      ).toEqual({ message: copy, stale: true });
+    }
+  );
+
+  it('explains why an account with matches cannot claim', () => {
+    expect(
+      describeClaimFailure(
+        'This account already has match activity; ask about a merge instead.'
+      )
+    ).toEqual({
+      message:
+        "You've already played here, so this account can't take over another player. Ask a moderator to merge them.",
+      stale: false,
+    });
+  });
+
+  it('keeps every other message', () => {
+    expect(describeClaimFailure('This player is no longer claimable.')).toEqual(
+      { message: 'This player is no longer claimable.', stale: false }
     );
   });
 });

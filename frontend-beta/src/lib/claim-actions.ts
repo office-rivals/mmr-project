@@ -5,6 +5,7 @@ import {
   parseNativeFormData,
 } from '@/lib/server/action-result';
 import { resolveOrgIdBySlug } from '@/lib/server/admin';
+import { describeClaimFailure } from '@/lib/api-error-copy';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { loadOrgClaimStatus } from '@/lib/server/claims';
@@ -15,10 +16,18 @@ import type {
   MembershipClaimRequestResponse,
 } from '@/api-v3';
 
-export type ClaimActionResult = { error?: string; success?: string };
+export type ClaimActionResult = {
+  error?: string;
+  success?: string;
+  /** The claim was decided elsewhere; reload the page's copy of it. */
+  stale?: boolean;
+};
+
+export const NETWORK_FAILURE_COPY =
+  "Couldn't reach the server. Check your connection and try again.";
 
 export const CLAIM_SUCCESS_MESSAGES = {
-  'claim-submitted': 'Claim request submitted',
+  'claim-submitted': 'Claim request sent',
   'claim-cancelled': 'Claim request cancelled',
 } as const;
 
@@ -94,9 +103,13 @@ const submitClaim = createServerOnlyFn(async function submitClaim(
   } catch (error) {
     const { status, message } = await getApiErrorDetails(
       error,
-      'Failed to submit claim request'
+      'Failed to send claim request'
     );
-    return failServerAction(status, { error: message });
+    const failure = describeClaimFailure(message);
+    return failServerAction(status, {
+      error: failure.message,
+      stale: failure.stale,
+    });
   }
 });
 
@@ -128,7 +141,11 @@ const cancelClaim = createServerOnlyFn(async function cancelClaim(
       error,
       'Failed to cancel claim request'
     );
-    return failServerAction(status, { error: message });
+    const failure = describeClaimFailure(message);
+    return failServerAction(status, {
+      error: failure.message,
+      stale: failure.stale,
+    });
   }
 });
 
@@ -166,9 +183,7 @@ export const claimFormAction = createServerOnlyFn(
           return new Response('Unsupported form action', { status: 400 });
       }
     } catch {
-      result = failServerAction(500, {
-        error: 'Request failed. Please try again.',
-      });
+      result = failServerAction(500, { error: NETWORK_FAILURE_COPY });
     }
     return nativeFormResponse(request, result, { successQueryValue });
   }
