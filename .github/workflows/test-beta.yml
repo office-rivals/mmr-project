@@ -1,18 +1,54 @@
 name: Beta UI - build and test
 
+# Pull requests always run this workflow so its check reports and can be
+# required; the `changes` job decides whether the suite runs. The frontend's
+# manifests count because the type check uses its Playwright install.
 on:
   push:
     branches: [main]
-    paths: ['frontend-beta/**', '.github/workflows/test-beta.yml']
+    paths:
+      - 'frontend-beta/**'
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+      - '.github/workflows/test-beta.yml'
   pull_request:
     branches: [main]
-    paths: ['frontend-beta/**', '.github/workflows/test-beta.yml']
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+
+      - name: Detect relevant changes
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=true
+          # Pushes are already scoped by `paths`.
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            files="$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA")"
+            grep -qE '^(frontend-beta/|frontend/package(-lock)?\.json$|\.github/workflows/test-beta\.yml$)' <<< "$files" || changed=false
+          fi
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+
   build:
+    name: Beta UI
+    needs: changes
+    # A skipped job passes as a required check, so only an explicit "nothing
+    # changed" may skip the suite; a failed detection still runs it.
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
