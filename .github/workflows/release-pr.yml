@@ -6,9 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+# Pushes and opens the PR as the office-rivals-bot GitHub App: GitHub starts no
+# workflows for GITHUB_TOKEN activity, so the Release PR's checks would never run.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: release-pr
@@ -18,9 +19,16 @@ jobs:
   release-pr:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ vars.OFFICE_RIVALS_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.OFFICE_RIVALS_BOT_PRIVATE_KEY }}
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -40,10 +48,12 @@ jobs:
       - name: Apply changesets and create release PR
         if: steps.check.outputs.has_changesets == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          bot_id="$(gh api "/users/${APP_SLUG}[bot]" --jq .id)"
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com"
 
           # Captured before the release commit so the PR body diffs the new
           # versions against what main currently ships.
@@ -81,7 +91,7 @@ jobs:
       - name: Clean up stale release PR
         if: steps.check.outputs.has_changesets == 'false'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           BRANCH="changeset-release/main"
           existing_pr=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[0].number' || true)
