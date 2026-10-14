@@ -2,8 +2,8 @@ export const CONFLICT_COPY =
   'Someone else changed this while you were working. Reload and try again.';
 
 /**
- * Rewrites the API failures #419 introduced in the app's voice. Anything else
- * keeps the API's message.
+ * Rewrites the API's conflict, ambiguous-email and reserved-slug failures in
+ * the app's voice. Anything else keeps the API's message.
  */
 export function describeApiFailure(status: number, message: string): string {
   if (status === 409) return CONFLICT_COPY;

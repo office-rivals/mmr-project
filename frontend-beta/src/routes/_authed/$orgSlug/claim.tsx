@@ -340,7 +340,7 @@ function ChooseForm({
                     className="size-4 shrink-0 cursor-pointer appearance-none rounded-full border border-muted-foreground/50 transition-[border] checked:border-[5px] checked:border-primary focus-visible:outline-none motion-reduce:transition-none"
                   />
                 </span>
-                <span className="flex items-end gap-8">
+                <span className="mt-auto flex items-end gap-8">
                   <span className="flex flex-col gap-1">
                     <span className="text-3xl leading-none font-bold tabular-nums group-has-[:checked]:text-primary">
                       {player.matchCount}
