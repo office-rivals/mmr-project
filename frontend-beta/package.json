@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
-    "@carbon/charts-react": "^1.27.20",
+    "@carbon/charts-react": "^1.27.21",
     "@clerk/tanstack-react-start": "^1.7.1",
     "@tanstack/react-form": "^1.33.5",
     "@tanstack/react-query": "^5.104.1",
