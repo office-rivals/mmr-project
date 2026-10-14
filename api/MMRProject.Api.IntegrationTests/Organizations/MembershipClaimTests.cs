@@ -954,6 +954,43 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task RemovedMember_AmbiguousOtherInvitations_RejoinsOwnMembership()
+    {
+        var org = await CreateOrganization("Ambiguous Rejoin", "ambiguous-rejoin");
+        const string owner = "ambiguous-rejoin-owner";
+        const string email = "amb.user@test.com";
+        await SeedOrgMember(org.Id, owner, $"{owner}@test.com", OrganizationRole.Owner);
+        var (user, member) = await SeedOrgMember(org.Id, "ambiguous-rejoin-member", email);
+        var inviteLink = await CreateInviteLinkForAsync(org.Id, owner);
+
+        AuthenticateAs(owner);
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/members/{member.Id}")).StatusCode);
+        var invitationIds = new[]
+        {
+            (await SeedPlaceholder(org.Id, "First", "Amb.User@Test.com", MembershipStatus.Invited)).Id,
+            (await SeedPlaceholder(org.Id, "Second", "AMB.USER@test.com", MembershipStatus.Invited)).Id,
+        };
+
+        AuthenticateAs("ambiguous-rejoin-member", email: email);
+        var join = await Client.PostAsync($"api/v3/invites/{inviteLink.Code}/join", null);
+        Assert.Equal(HttpStatusCode.OK, join.StatusCode);
+        Assert.Equal(member.Id, (await ReadJsonAsync<JoinOrganizationResponse>(join))!.MembershipId);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var rejoined = await db.OrganizationMemberships.SingleAsync(m => m.Id == member.Id);
+        Assert.Equal(user.Id, rejoined.UserId);
+        Assert.Equal(MembershipStatus.Active, rejoined.Status);
+        foreach (var invitationId in invitationIds)
+        {
+            var invitation = await db.OrganizationMemberships.SingleAsync(m => m.Id == invitationId);
+            Assert.Null(invitation.UserId);
+            Assert.Equal(MembershipStatus.Invited, invitation.Status);
+        }
+    }
+
+    [Fact]
     public async Task AutoClaimInvites_JoinLinkingAnotherInvitationMeanwhile_KeepsMeWorking()
     {
         var org = await CreateOrganization("Late Join", "late-join");

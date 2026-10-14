@@ -127,14 +127,14 @@ public class InviteLinkService(
                         && m.InviteEmail.ToLower() == comparisonEmail.ToLower()
                         && m.Status == MembershipStatus.Invited)
             .ToListAsync();
-        var pendingInvite = pendingInviteMatches.Count == 0
-            ? null
-            : SelectInviteEmailMatch(pendingInviteMatches, comparisonEmail);
-
         // The (organization, user) key covers removed rows too, so a row this user already
-        // holds is the one to reactivate; linking a different invitation would collide with it.
-        if (ownMembership != null && pendingInvite?.Id != ownMembership.Id)
-            pendingInvite = null;
+        // holds is the one to reactivate; linking a different invitation would collide with it,
+        // and ambiguity among those other invitations must not block the rejoin.
+        var pendingInvite = ownMembership != null
+            ? pendingInviteMatches.FirstOrDefault(m => m.Id == ownMembership.Id)
+            : pendingInviteMatches.Count == 0
+                ? null
+                : SelectInviteEmailMatch(pendingInviteMatches, comparisonEmail);
 
         var previousMembership = ownMembership ?? await dbContext.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.OrganizationId == link.OrganizationId
