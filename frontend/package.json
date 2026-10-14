@@ -20,7 +20,7 @@
     "@openapitools/openapi-generator-cli": "^2.41.0",
     "@playwright/test": "^1.63.0",
     "@sveltejs/adapter-auto": "^7.0.1",
-    "@sveltejs/adapter-node": "^5.5.4",
+    "@sveltejs/adapter-node": "^5.5.7",
     "@sveltejs/kit": "^2.70.2",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "autoprefixer": "^10.6.1",
