@@ -19,8 +19,8 @@ CSS-first configuration in `src/app.css`.
 
 ## Development
 
-Use Node 24 LTS (see the repository `.nvmrc`). Install dependencies in both app
-directories with `npm ci`. Run this app with:
+Use Node 26 (see `frontend-beta/.nvmrc`, which the production image matches).
+Install dependencies in both app directories with `npm ci`. Run this app with:
 
 ```sh
 npm run dev

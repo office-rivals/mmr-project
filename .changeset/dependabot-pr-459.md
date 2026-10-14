@@ -2,4 +2,4 @@
 "frontend-beta": patch
 ---
 
-chore(deps): bump node from 24-bookworm-slim to 25-bookworm-slim in /frontend-beta
+Run the frontend-beta container on Node 26 (`node:26-bookworm-slim`) instead of Node 24.
