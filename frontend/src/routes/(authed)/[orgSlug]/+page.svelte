@@ -43,7 +43,7 @@
       <span>Player claim awaiting approval</span>
       <Badge variant="outline" class="ml-auto">Pending</Badge>
     </a>
-  {:else if data.claimable.requesterEligible}
+  {:else if data.claimable?.requesterEligible}
     <Card>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">

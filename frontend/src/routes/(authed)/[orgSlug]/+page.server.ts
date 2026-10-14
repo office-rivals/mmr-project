@@ -13,10 +13,14 @@ export const load: PageServerLoad = async ({
     throw error(404, `Organization '${params.orgSlug}' not found`);
   }
 
+  // The claim data only drives the claim card, so a failed claim request hides
+  // the card instead of failing the whole page.
   const [leagues, claimable, claimRequest] = await Promise.all([
     apiClientV3.leaguesApi.listLeagues(org.id),
-    apiClientV3.organizationMembersApi.listClaimable(org.id),
-    apiClientV3.organizationClaimRequestsApi.getMine(org.id),
+    apiClientV3.organizationMembersApi.listClaimable(org.id).catch(() => null),
+    apiClientV3.organizationClaimRequestsApi
+      .getMine(org.id)
+      .catch(() => undefined),
   ]);
   const joinedLeagueIds = new Set(
     (org.leagues ?? []).map((league) => league.id)
