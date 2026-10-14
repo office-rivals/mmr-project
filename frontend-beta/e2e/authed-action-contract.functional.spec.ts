@@ -92,7 +92,7 @@ test.describe('native authenticated forms', () => {
     await page.goto(ORG);
     const card = page
       .getByText('Native Fallback League', { exact: true })
-      .locator('xpath=ancestor::div[contains(@class, "rounded-lg")]');
+      .locator('xpath=ancestor::li[1]');
     const form = card
       .getByRole('button', { name: 'Join League' })
       .locator('xpath=ancestor::form');
