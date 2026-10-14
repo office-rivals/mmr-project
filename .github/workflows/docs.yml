@@ -1,16 +1,16 @@
 name: Docs - build and deploy
 
+# Pull requests always run this workflow so its check reports and can be
+# required; the `changes` job decides whether the build runs.
 on:
   push:
     branches: ["main"]
     paths:
       - "docs/**/*"
+      - ".nvmrc"
       - ".github/workflows/docs.yml"
   pull_request:
     branches: ["main"]
-    paths:
-      - "docs/**/*"
-      - ".github/workflows/docs.yml"
   workflow_dispatch:
 
 permissions:
@@ -22,7 +22,43 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+
+      - name: Detect relevant changes
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=true
+          # Pushes and manual runs are already scoped.
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            # --no-renames also lists a moved file's old path, and -z stops git
+            # quoting unusual names, which the anchors would then miss.
+            files="$RUNNER_TEMP/changed-files"
+            git diff --name-only -z --no-renames "$BASE_SHA"..."$HEAD_SHA" > "$files"
+            # Only "no match" may skip the suite; a grep error must not.
+            rc=0
+            grep -qzE '^(docs/|\.nvmrc$|\.github/workflows/docs\.yml$)' "$files" || rc=$?
+            if [ "$rc" -eq 1 ]; then changed=false; fi
+          fi
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+
   build:
+    name: Docs
+    needs: changes
+    # A skipped job passes as a required check, so only an explicit "nothing
+    # changed" may skip the build; a failed detection still runs it.
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -56,7 +92,8 @@ jobs:
           path: docs/dist
 
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # The implicit success() also requires `changes`, which build may run past.
+    if: ${{ !cancelled() && needs.build.result == 'success' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     needs: build
     runs-on: ubuntu-latest
     permissions:

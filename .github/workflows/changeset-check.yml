@@ -11,7 +11,8 @@ permissions:
 
 jobs:
   changeset-check:
-    if: github.event.pull_request.head.ref != 'changeset-release/main'
+    # Only the bot's own release branch may skip; a fork can reuse the name.
+    if: github.event.pull_request.head.ref != 'changeset-release/main' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
