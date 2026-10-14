@@ -18,6 +18,9 @@
 --     has no matches yet; its players start at the LeaguePlayerService
 --     defaults (mmr=1500, mu=25, sigma=8.333) so the test user can submit fresh 1v1
 --     matches and exercise the same code path as a brand-new join.
+--   - 3 open match flags on Test League matches (two current-season, one
+--     previous-season), so the admin match-flags page has data to view, edit,
+--     and resolve.
 --
 -- Variables (passed via `psql -v`):
 --   identity_user_id   Clerk identity_user_id of the test user
@@ -22821,6 +22824,29 @@ INSERT INTO leagues (id, organization_id, name, slug, team_size, winning_score, 
 INSERT INTO organization_memberships
   (id, organization_id, user_id, role, status, claimed_at, created_at, display_name, username) VALUES
   ('cccccccc-cccc-cccc-cccc-cccccccccc01', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '44444444-4444-4444-4444-444444444401', 2, 1, now(), now() - interval '1 year', 'Test User', 'tuser');
+
+-- Open match flags for the admin match-flags page. A and B are on current-season
+-- matches (viewable, editable, recalculable); C is on a previous-season match
+-- (viewable + resolvable only — the API rejects edits/recalc outside the current
+-- season). status 0 = Open (see MatchFlagStatus.cs).
+INSERT INTO match_flags
+  (id, organization_id, league_id, match_id, flagged_by_membership_id,
+   reason, status, created_at, updated_at) VALUES
+  ('f1a90000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+   '22222222-2222-2222-2222-222222222222', 'b9076ce9-287c-5362-bd7a-1a483d450ee7',
+   '89df9aac-861b-56ae-9a7e-fa8f7d372ded',
+   'Wrong score reported on this match (e2e A).', 0,
+   now() - interval '2 hours', now() - interval '2 hours'),
+  ('f1a90000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111',
+   '22222222-2222-2222-2222-222222222222', '7457ed7f-d6f9-5e7c-9562-4338887092b1',
+   'bbb2cc39-4662-5456-816c-e94352eb9e26',
+   'Possible duplicate match entry (e2e B).', 0,
+   now() - interval '1 hour', now() - interval '1 hour'),
+  ('f1a90000-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111',
+   '22222222-2222-2222-2222-222222222222', 'a12d78ce-2018-567d-aab9-bb1a1cd8af57',
+   '08b2f203-d868-56ba-bd20-376b67d31704',
+   'Match from a previous season (e2e C).', 0,
+   now() - interval '30 minutes', now() - interval '30 minutes');
 
 COMMIT;
 

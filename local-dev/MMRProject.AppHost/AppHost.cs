@@ -8,26 +8,28 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 // --- Parameters --------------------------------------------------------------
+//
+// Defaults live in appsettings.json under Parameters: (one-command first boot).
+// Override per-machine via `dotnet user-secrets set Parameters:<name> ...` in
+// this project dir or `Parameters__<name>` env vars; both win over the JSON via
+// normal config layering, and Aspire's own resolution treats empty-string as
+// unset, so an explicit-empty override surfaces as a dashboard prompt rather
+// than silently injecting ''.
 
-// The api and mmr-api authenticate with a SHARED secret. Injecting one parameter
-// into both (api's Admin:Secret + MMRCalculationAPI:ApiKey, mmr-api's ADMIN_SECRET)
-// makes it impossible for them to drift. Dev default keeps first run one command;
-// override via `dotnet user-secrets set Parameters:admin-secret <value>`.
-var adminSecret = builder.AddParameter("admin-secret", "super-secret-admin", secret: true);
+// Shared between the api (Admin:Secret + MMRCalculationAPI:ApiKey) and the
+// mmr-api (ADMIN_SECRET) so they cannot drift.
+var adminSecret = builder.AddParameter("admin-secret", secret: true);
 
-// Stable Postgres password so a persisted data volume keeps working across
-// restarts. Matches the repo's established local password (docker-compose.e2e.yml,
-// scripts/seed-local.sh) so the seed/inspect tooling works unchanged.
-var postgresPassword = builder.AddParameter("postgres-password", "this_is_a_hard_password1337", secret: true);
+// Stable so the persisted data volume keeps working across restarts. Matches
+// docker-compose.e2e.yml / scripts/seed-local.sh.
+var postgresPassword = builder.AddParameter("postgres-password", secret: true);
 
-// Clerk auth. Placeholders let the stack start; set real values via AppHost
-// user-secrets (Parameters:clerk-*) to actually sign in (see local-dev/README.md).
-// The publishable key is a valid-format placeholder (decodes to
+// Clerk. The publishable key is a valid-format placeholder (decodes to
 // example.clerk.accounts.dev) so Clerk's SDK parses it and SSR renders the
 // sign-in page rather than erroring.
-var clerkPublishableKey = builder.AddParameter("clerk-publishable-key", "pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk");
-var clerkSecretKey = builder.AddParameter("clerk-secret-key", "sk_test_placeholder", secret: true);
-var clerkIssuer = builder.AddParameter("clerk-issuer", "https://example.clerk.accounts.dev");
+var clerkPublishableKey = builder.AddParameter("clerk-publishable-key");
+var clerkSecretKey = builder.AddParameter("clerk-secret-key", secret: true);
+var clerkIssuer = builder.AddParameter("clerk-issuer");
 
 // --- Postgres ----------------------------------------------------------------
 

@@ -1,5 +1,164 @@
 # Changelog
 
+## 1.6.3
+
+- Select the pre-filled value when a dialog focuses a field again, so typing a new match score replaces the old one instead of appending to it.
+
+## 1.6.2
+
+- chore(deps): bump shell-quote and concurrently in /frontend
+- Fix the frontend container image build by returning `tailwind-variants` to 0.3, the version that matches the app's Tailwind CSS 3 and `tailwind-merge` 2.
+
+## 1.6.1
+
+- chore(deps): bump shell-quote and @openapitools/openapi-generator-cli in /frontend
+- chore(deps-dev): bump ip-address from 10.2.0 to 10.4.0 in /frontend
+- chore(deps-dev): bump @sveltejs/kit from 2.70.1 to 2.70.2 in /frontend
+- chore(deps): bump dompurify from 3.4.12 to 3.4.13 in /frontend
+- chore(deps-dev): bump postcss from 8.5.25 to 8.5.26 in /frontend
+- chore(deps): bump dotenv from 16.6.1 to 17.4.2 in /frontend
+- chore(deps-dev): bump autoprefixer from 10.5.0 to 10.5.4 in /frontend
+- chore(deps): bump tailwind-variants from 0.3.1 to 3.3.1 in /frontend
+- chore(deps-dev): bump eslint from 10.3.0 to 10.8.1 in /frontend
+- chore(deps-dev): bump svelte from 5.55.7 to 5.56.10 in /frontend
+- chore(deps): bump postcss-selector-parser in /frontend
+- chore(deps-dev): bump @openapitools/openapi-generator-cli from 2.40.1 to 2.41.0 in /frontend
+- chore(deps): bump @vitest/mocker and vitest in /frontend
+- chore(deps): bump joi from 17.13.4 to 17.13.7 in /frontend
+- chore(deps): bump devalue from 5.8.1 to 5.9.2 in /frontend
+- chore(deps-dev): bump @playwright/test from 1.60.0 to 1.63.0 in /frontend
+- chore(deps-dev): bump ip-address from 10.4.0 to 10.7.2 in /frontend
+- chore(deps): bump bits-ui from 1.8.0 to 2.19.4 in /frontend
+- chore(deps): bump devalue from 5.9.2 to 5.9.4 in /frontend
+- chore(deps): bump dompurify from 3.4.13 to 3.4.16 in /frontend
+- chore(deps-dev): bump brace-expansion from 5.0.7 to 5.0.12 in /frontend
+- chore(deps): bump joi from 17.13.7 to 17.13.8 in /frontend
+- chore(deps): bump source-map-js from 1.2.1 to 1.2.2 in /frontend
+- chore(deps-dev): bump typescript-eslint from 8.59.1 to 8.71.1 in /frontend
+- Fix creating a personal access token from Settings, which the API rejected with "Unsupported PAT scope".
+- Order rating history and rating charts by when each match was played rather than when it was submitted, and return `playedAt` on rating-history entries.
+
+## 1.6.0
+
+- Group the admin matches list under date headers, matching the player-facing
+  recent-matches and profile views. Grouping is per page (the list paginates).
+- Show admins a red badge wherever match flags are waiting to be resolved — the
+  account menu, the admin nav, and each affected organization and league — backed
+  by a new `GET /api/v3/me/badges`. The flagged-matches filter now defaults to
+  Open.
+- chore(deps-dev): bump typescript from 5.9.3 to 6.0.3 in /frontend
+- chore(deps-dev): bump svelte-check from 4.4.6 to 4.6.0 in /frontend
+- chore(deps): bump @carbon/charts-svelte from 1.27.8 to 1.27.17 in /frontend
+- chore(deps): bump zod from 3.25.76 to 4.4.3 in /frontend
+- chore(deps-dev): bump axios from 1.17.0 to 1.18.1 in /frontend
+- chore(deps-dev): bump brace-expansion from 5.0.5 to 5.0.7 in /frontend
+- chore(deps): bump dompurify from 3.4.11 to 3.4.12 in /frontend
+- chore(deps): bump valibot from 1.3.1 to 1.4.2 in /frontend
+- chore(deps-dev): bump @sveltejs/kit from 2.65.1 to 2.70.1 in /frontend
+- chore(deps-dev): bump postcss from 8.5.15 to 8.5.25 in /frontend
+- chore(deps): bump ts-deepmerge and sveltekit-superforms in /frontend
+- chore(deps): bump js-cookie and svelte-clerk in /frontend
+- Fix the admin match edit dialog flashing "Each player can only appear once
+  across both teams" over a save that succeeded. Resetting the form on success
+  dropped every player dropdown to its first option and blanked the scores, and
+  Svelte syncs bound state back from a reset form, so the dialog rendered that
+  bogus state until the follow-up data reload finished. The dialog owns those
+  values, so it no longer resets the form.
+  
+  Saving twice for the same match no longer sends two requests: Save is ignored
+  while one is in flight, and a response no longer closes or writes an error into
+  a dialog the admin cancelled and reopened while it was outstanding.
+  
+  Cancelling a save and reopening the same match no longer shows the scores from
+  before that save, which the next Save would then write back over the edit that
+  had just landed. The dialog re-reads the match from the reloaded data, as long
+  as nothing has been typed into it.
+  
+  A save the admin cancelled out of is still reported: a rejected edit in that
+  window used to be dropped silently, and a successful one left the previous
+  attempt's failure banner standing. An outstanding save also no longer disables
+  Save on a different match, and correcting a rejected edit clears the old error
+  as soon as the retry starts.
+  
+  A match that disappears from the list while it is open for editing — deleted by
+  someone else, or shifted off the page by a reload — now says so, instead of
+  reading "No match selected".
+- Player pickers can be driven from the keyboard: arrow keys move through the
+  suggestions, Enter picks one and Escape clears the filter. Enter in a player
+  filter no longer submits the match form with empty slots.
+- Remove the unused v1 API client. The frontend has fully migrated to the v3
+  client (`$api3`); the v1 client (`src/api`, `apiClient.ts`, the `$api` alias,
+  and the `locals.apiClient` injection) was still wired up but consumed by no
+  route, and the API no longer serves the `/swagger/v1/swagger.json` spec the
+  `generate-api` script targeted. Delete the dead client.
+  
+  Also remove the `generate-api` script: the v3 client (`src/api-v3`) is
+  hand-maintained, not generated, so running the generator would clobber it. The
+  client files now document this explicitly.
+  
+  Also convert the organization settings route to the typed v3 client
+  (`apiClientV3.meApi` / `organizationsApi`) instead of raw `fetch('/api/v3/...')`
+  calls, so the whole frontend goes through the typed client. No behavioural
+  change.
+
+## 1.5.0
+
+- Show the flagged match inline on the admin match-flags page and let moderators
+  edit (and recalculate) the match before resolving or dismissing the flag.
+- chore(deps-dev): bump prettier from 3.8.3 to 3.8.4 in /frontend
+- Harden the PWA pull-to-refresh gesture:
+  
+  - Ignore pulls that start on surfaces owning their own touch gestures (the
+    `/random` touch randomizer), so its multi-finger flow no longer triggers a
+    spurious refresh.
+  - Only attach the global touch listeners in standalone (installed) mode, and
+    resolve standalone status once instead of on every gesture.
+  - Handle `touchcancel` so an interrupted pull no longer leaves the spinner
+    stuck on screen.
+  - Restrict the gesture to a single finger and only commit once the last finger
+    lifts, fixing multi-touch origin/commit glitches.
+  - Surface a brief error state (instead of silently resetting) when the refresh
+    fails, and expose the refresh state to assistive tech via an `aria-live`
+    status region.
+  - Render the indicator beneath the app-shell header (`z-20`) so it emerges from
+    under the header as intended.
+
+## 1.4.1
+
+- chore(deps-dev): bump @sveltejs/kit from 2.61.1 to 2.65.1 in /frontend
+- chore(deps-dev): bump @sveltejs/vite-plugin-svelte from 7.0.0 to 7.1.2 in /frontend
+- chore(deps): bump dompurify from 3.4.1 to 3.4.10 in /frontend
+- chore(deps-dev): bump form-data from 4.0.5 to 4.0.6 in /frontend
+- chore(deps-dev): bump vite from 8.0.10 to 8.0.16 in /frontend
+- chore(deps): bump dompurify from 3.4.10 to 3.4.11 in /frontend
+- Hide not-yet-started seasons from members. `GET .../seasons` now returns only seasons that have already started, and a new moderator/owner-only `GET .../admin/seasons` returns the full list (including upcoming) for admin management. The frontend selects the current season defensively and the admin seasons page uses the new endpoint so upcoming seasons stay visible to admins.
+- Refactor date helpers in `src/lib/utils.ts` to remove duplication:
+  collapse the repeated null/empty/NaN guards behind a private
+  `parseLocalDate` helper, replace three local `formatDate`
+  redefinitions in `admin/members`, `admin/.../match-flags` and
+  `settings` with the shared one, and simplify the date-bucket boundary
+  check in `groupMatchesByDate`. Behaviour is unchanged except that the
+  admin match-flags page now formats dates in the user's locale instead
+  of forcing `en-US`.
+- Group matches in the recent-matches list on the league page and the match
+  history on the player page by date. A small uppercase header ("Yesterday" or
+  "Wednesday, Mar 5") appears above each new date bucket when the previous match
+  was either from today or from a different day, so users can scan older matches
+  without comparing per-row timestamps.
+- Force a clean Vite dependency pre-bundle (`optimizeDeps.force`) when the dev
+  server runs under the Aspire AppHost, so esbuild doesn't re-optimize dependencies
+  mid-request and crash with `write EPIPE` on the first page load. A standalone
+  `npm run dev` is unaffected and keeps its dependency cache.
+- Restore pull-to-refresh in the installed PWA. The gesture was silently dropped
+  during the v3 multi-tenancy migration, which rewrote the authenticated layout
+  and never re-mounted the `PullToRefresh` component. It is wired back into the
+  `(authed)` shell, and the refresh indicator now slides out from beneath the
+  fixed app-shell header instead of appearing behind it.
+- Hide the "Report match" affordance on a league with no active season (e.g. a
+  league whose only seasons are not yet started), and reuse the shared
+  `selectCurrentSeason` helper in the admin seasons page so current-season
+  selection has a single, order-independent definition.
+
 ## 1.4.0
 
 - chore(deps-dev): bump axios from 1.15.2 to 1.16.1 in /frontend

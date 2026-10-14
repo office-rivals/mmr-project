@@ -76,6 +76,19 @@ dotnet user-secrets set "Parameters:clerk-issuer" "https://your-app.clerk.accoun
 
 The issuer URL is in the Clerk Dashboard under **API Keys**.
 
+The API reads the user's email from the session token, so add both claims under
+**Configure → Sessions → Customize session token**:
+
+```json
+{
+  "email": "{{user.primary_email_address}}",
+  "email_verified": "{{user.email_verified}}"
+}
+```
+
+Without `email`, every `/me` call fails. Without `email_verified`, nothing
+errors, but members can't claim a player that has an email saved on it.
+
 ## Resetting the database
 
 Stop the AppHost and remove the Postgres data volume to start from a clean

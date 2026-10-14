@@ -1,0 +1,69 @@
+---
+title: Introduction
+description: What MMR Project is, the services it runs, and where to start.
+---
+
+import Figure from '../../components/mock/Figure.astro';
+import Phone from '../../components/mock/Phone.astro';
+import AppHeader from '../../components/mock/AppHeader.astro';
+import Leaderboard from '../../components/mock/Leaderboard.astro';
+import AppNavbar from '../../components/mock/AppNavbar.astro';
+
+:::caution[Based on the beta]
+These docs describe the beta frontend in `frontend-beta/`, the React 19 and TanStack Start rewrite. The SvelteKit app in `frontend/` still runs alongside it and isn't covered here.
+:::
+
+MMR Project is a self-hosted app for running competitive leagues around office games. Players report match results, the app rates them with OpenSkill, and a matchmaking queue splits the players waiting to play into teams balanced by rating. Leagues live inside organizations and run in seasons, with a leaderboard per season.
+
+You host every part of it yourself except sign-in, which uses [Clerk](https://clerk.com).
+
+<Figure caption="A league page">
+  <Phone label="The beta app's league page on a phone: leaderboard and a recent match">
+    <AppHeader org="Acme Office" league="Friday Foosball" />
+    <div style="padding:14px 12px 10px">
+      <Leaderboard
+        title="Leaderboard"
+        rows={[
+          { rank: 1, name: 'riley', wins: 42, losses: 18, score: 1611, winStreak: true },
+          { rank: 2, name: 'alex', wins: 37, losses: 21, score: 1544, me: true },
+          { rank: 3, name: 'samlee', wins: 30, losses: 29, score: 1482 },
+          { rank: 4, name: 'jordan', wins: 12, losses: 25, score: 1290, lossStreak: 'storm' },
+        ]}
+      />
+    </div>
+    <AppNavbar queueCount={3} />
+  </Phone>
+</Figure>
+
+## The services
+
+| Service | What it does | Source |
+| --- | --- | --- |
+| Frontend | React 19 and TanStack Start web app, served by a Node server | [`frontend-beta/`](https://github.com/office-rivals/mmr-project/tree/main/frontend-beta) |
+| API | ASP.NET Core API: business logic, data access and the background matchmaking worker | [`api/MMRProject.Api/`](https://github.com/office-rivals/mmr-project/tree/main/api/MMRProject.Api) |
+| MMR API | Go service that the API calls to calculate rating changes | [`mmr-api/`](https://github.com/office-rivals/mmr-project/tree/main/mmr-api) |
+| PostgreSQL | Stores all application data; the only stateful service | — |
+| Clerk | Hosted sign-in; the API validates the JWTs Clerk issues | External |
+
+The browser only talks to the frontend. The frontend's server calls the API with the signed-in user's Clerk token, and the API calls PostgreSQL and the MMR API.
+
+## About the frontend
+
+These docs are written for the beta frontend in `frontend-beta/` and call it "the frontend" throughout. The older SvelteKit app in [`frontend/`](https://github.com/office-rivals/mmr-project/tree/main/frontend) still exists alongside it and uses the same API, but its configuration differs and isn't covered here.
+
+## Core concepts
+
+- **Organization**: the top-level tenant. Each member has a role: owner, moderator or member.
+- **League**: a competitive space inside an organization, with a fixed team size such as 2v2.
+- **Season**: a period of play within a league. New matches are recorded in the current season.
+- **League player**: an organization member who plays in a specific league.
+- **Personal access token**: an API credential for scripts and integrations, optionally limited to one organization or league.
+
+## Where to go next
+
+1. [Quick start](/quick-start/): run the stack locally and sign in.
+2. [Self-hosting](/self-hosting/): the pieces you need in production.
+3. [Docker Compose](/self-hosting/docker-compose/): an example deployment.
+4. [Environment variables](/configuration/environment-variables/) and [Authentication](/configuration/authentication/): configure each service.
+5. [Backups and upgrades](/operations/backups-and-upgrades/): protect your data across upgrades.
+6. [Features](/features/): what the app does for players and admins.

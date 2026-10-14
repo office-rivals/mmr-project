@@ -5,6 +5,7 @@
   import type { Snippet } from 'svelte';
   import Header from './components/header.svelte';
   import Navbar from './components/navbar.svelte';
+  import PullToRefresh from '$lib/components/pull-to-refresh.svelte';
   import type { LayoutData } from './$types';
 
   interface Props {
@@ -32,11 +33,13 @@
   </style>
 </svelte:head>
 
+<PullToRefresh />
 <Header
   organizations={data.organizations}
   displayName={data.displayName}
   username={data.username}
   defaultOrgSlug={data.defaultOrgSlug}
+  openFlagCount={data.openFlagCount}
 />
 <main
   class="mx-auto max-w-screen-sm overflow-auto p-4 pb-24"

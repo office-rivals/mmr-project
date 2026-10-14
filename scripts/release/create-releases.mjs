@@ -4,6 +4,38 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { collectChangedComponents } from "./releases.mjs";
+import { components } from "./components.mjs";
+
+// One entry per released component that ships a container image. A component
+// without `imageContext` is not containerized and is simply absent here — its
+// GitHub release is unaffected.
+export function buildImagePlan(changed, repository) {
+  const repo = repository.toLowerCase();
+
+  return changed.flatMap(({ name, version }) => {
+    // A version reaches a docker tag list and GITHUB_OUTPUT lines, both of
+    // which split on separators. Guarded here so every caller inherits it.
+    if (!/^\d+\.\d+\.\d+$/.test(version)) {
+      throw new Error(`Version must be MAJOR.MINOR.PATCH, got: ${JSON.stringify(version)}`);
+    }
+
+    const component = components.find((candidate) => candidate.name === name);
+
+    if (!component?.imageContext) {
+      return [];
+    }
+
+    return [
+      {
+        name,
+        version,
+        context: component.imageContext,
+        image: `ghcr.io/${repo}/${name}`,
+        buildArgs: component.versionBuildArg ? `VERSION=${version}` : ""
+      }
+    ];
+  });
+}
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [baseSha, headSha] = process.argv.slice(2);
@@ -24,6 +56,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // whether the GitHub release already exists, so a workflow re-run still reports
   // them to downstream steps (e.g. image builds) after a transient failure.
   const changed = collectChangedComponents(repoRoot, baseSha);
+
+  // Built from the same versions the releases below are cut from, so the image
+  // tag and the release cannot drift apart.
+  const released = buildImagePlan(changed, process.env.GITHUB_REPOSITORY);
 
   for (const { name, version, notes } of changed) {
     const tag = `${name}@${version}`;
@@ -63,8 +99,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   if (process.env.GITHUB_OUTPUT) {
-    const releasedNames = changed.map(({ name }) => name);
-    fs.appendFileSync(process.env.GITHUB_OUTPUT, `released=${JSON.stringify(releasedNames)}\n`);
+    fs.appendFileSync(process.env.GITHUB_OUTPUT, `released=${JSON.stringify(released)}\n`);
   }
 
   function releaseExists(tag) {

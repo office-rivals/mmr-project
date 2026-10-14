@@ -32,7 +32,7 @@ public class OrganizationService(
     {
         "submit", "player", "admin", "statistics", "matchmaking",
         "random", "profile", "login", "api", "new-player", "active-match",
-        "join", "settings"
+        "join", "settings", "claim"
     };
 
     public async Task<OrganizationResponse> CreateOrganizationAsync(CreateOrganizationRequest request)
@@ -156,12 +156,16 @@ public class OrganizationService(
         if (existingByUser != null)
             throw new InvalidArgumentException($"A member with email '{request.Email}' already exists in this organization");
 
+        // A removed member keeps their row, and the (organization, user) key means it is the
+        // only one their account can be linked to again, so match it whatever the casing.
         var removedMembership = await dbContext.OrganizationMemberships
             .Include(m => m.User)
-            .FirstOrDefaultAsync(m => m.OrganizationId == orgId
-                                      && m.Status == MembershipStatus.Removed
-                                      && (m.InviteEmail == request.Email
-                                          || (m.User != null && m.User.Email == request.Email)));
+            .Where(m => m.OrganizationId == orgId
+                        && m.Status == MembershipStatus.Removed
+                        && ((m.InviteEmail != null && m.InviteEmail.ToLower() == request.Email.ToLower())
+                            || (m.User != null && m.User.Email.ToLower() == request.Email.ToLower())))
+            .OrderByDescending(m => m.UserId != null)
+            .FirstOrDefaultAsync();
 
         var displayName = string.IsNullOrWhiteSpace(request.DisplayName)
             ? null
@@ -172,6 +176,16 @@ public class OrganizationService(
 
         if (removedMembership != null)
         {
+            // An older removed invitation may still hold this address, and the invite-email
+            // index covers removed rows; the reused row takes it over.
+            await dbContext.OrganizationMemberships
+                .Where(m => m.OrganizationId == orgId
+                            && m.Status == MembershipStatus.Removed
+                            && m.Id != removedMembership.Id
+                            && m.InviteEmail != null
+                            && m.InviteEmail.ToLower() == request.Email.ToLower())
+                .ExecuteUpdateAsync(setters => setters.SetProperty(m => m.InviteEmail, (string?)null));
+
             removedMembership.InviteEmail = request.Email;
             removedMembership.Role = request.Role;
             removedMembership.Status = MembershipStatus.Invited;
@@ -203,6 +217,8 @@ public class OrganizationService(
     public async Task<OrganizationMemberResponse> UpdateMemberRoleAsync(
         Guid orgId, Guid membershipId, UpdateMemberRoleRequest request)
     {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        await dbContext.LockOrganizationClaimsAsync(orgId);
         var membership = await dbContext.OrganizationMemberships
             .Include(m => m.User)
             .FirstOrDefaultAsync(m => m.Id == membershipId
@@ -210,17 +226,11 @@ public class OrganizationService(
                                       && m.Status != MembershipStatus.Removed)
             ?? throw new NotFoundException($"Membership with ID '{membershipId}' not found");
 
-        var currentUserMembership = await GetMembershipForCurrentUserAsync(orgId)
-            ?? throw new ForbiddenException("You are not a member of this organization");
+        var currentUserMembership = await RequireCurrentOwnerAsync(orgId);
 
         if (membership.Role == OrganizationRole.Owner && request.Role != OrganizationRole.Owner)
         {
-            var hasOtherOwner = await dbContext.OrganizationMemberships
-                .AnyAsync(m => m.OrganizationId == orgId
-                               && m.Status == MembershipStatus.Active
-                               && m.Role == OrganizationRole.Owner
-                               && m.Id != membershipId);
-            if (!hasOtherOwner)
+            if (!await HasOtherSignedInOwnerAsync(orgId, membershipId))
                 throw new InvalidArgumentException("Cannot remove the last owner of the organization");
         }
 
@@ -229,6 +239,7 @@ public class OrganizationService(
         membership.RoleAssignedAt = DateTimeOffset.UtcNow;
 
         await dbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return MapToMemberResponse(membership);
     }
@@ -242,6 +253,12 @@ public class OrganizationService(
                                       && m.OrganizationId == orgId
                                       && m.Status != MembershipStatus.Removed)
             ?? throw new NotFoundException($"Membership with ID '{membershipId}' not found");
+
+        var currentUserMembership = await GetMembershipForCurrentUserAsync(orgId)
+            ?? throw new ForbiddenException("You are not a member of this organization");
+
+        if (membership.Role < currentUserMembership.Role)
+            throw new ForbiddenException("You cannot update a member who outranks you");
 
         if (request.DisplayName != null)
         {
@@ -265,6 +282,9 @@ public class OrganizationService(
 
             var trimmed = request.Email.Trim();
             membership.InviteEmail = trimmed.Length == 0 ? null : trimmed;
+            membership.Status = membership.InviteEmail == null
+                ? MembershipStatus.Active
+                : MembershipStatus.Invited;
         }
 
         await dbContext.SaveChangesAsync();
@@ -274,6 +294,9 @@ public class OrganizationService(
 
     public async Task RemoveMemberAsync(Guid orgId, Guid membershipId)
     {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        await dbContext.LockOrganizationClaimsAsync(orgId);
+        await RequireCurrentOwnerAsync(orgId);
         var membership = await dbContext.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.Id == membershipId
                                       && m.OrganizationId == orgId
@@ -282,18 +305,22 @@ public class OrganizationService(
 
         if (membership.Role == OrganizationRole.Owner)
         {
-            var hasOtherOwner = await dbContext.OrganizationMemberships
-                .AnyAsync(m => m.OrganizationId == orgId
-                               && m.Status == MembershipStatus.Active
-                               && m.Role == OrganizationRole.Owner
-                               && m.Id != membershipId);
-            if (!hasOtherOwner)
+            if (!await HasOtherSignedInOwnerAsync(orgId, membershipId))
                 throw new InvalidArgumentException("Cannot remove the last owner of the organization");
         }
 
         membership.Status = MembershipStatus.Removed;
 
+        await dbContext.MembershipClaimRequests
+            .Where(c => c.OrganizationId == orgId
+                        && c.Status == MembershipClaimStatus.Pending
+                        && (c.OrganizationMembershipId == membership.Id
+                            || (membership.UserId != null && c.UserId == membership.UserId)))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(c => c.Status, MembershipClaimStatus.Cancelled));
+
         await dbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     public async Task<OrganizationMembership?> GetMembershipForCurrentUserAsync(Guid orgId)
@@ -305,12 +332,33 @@ public class OrganizationService(
                                       && m.Status == MembershipStatus.Active);
     }
 
+    // The owner policy runs before the request waits for the organization lock, so a
+    // demotion committed in the meantime is only visible here.
+    private async Task<OrganizationMembership> RequireCurrentOwnerAsync(Guid orgId)
+    {
+        var membership = await GetMembershipForCurrentUserAsync(orgId)
+            ?? throw new ForbiddenException("You are not a member of this organization");
+        if (membership.Role != OrganizationRole.Owner)
+            throw new ForbiddenException("Only owners can change roles or remove members");
+        return membership;
+    }
+
     public async Task<Guid> GetCurrentMembershipIdAsync(Guid orgId)
     {
         var membership = await GetMembershipForCurrentUserAsync(orgId)
             ?? throw new NotFoundException("You are not a member of this organization");
         return membership.Id;
     }
+
+    // An Active Owner row without an account (an invitation whose email was cleared, or a
+    // promoted placeholder) can't sign in, so it doesn't keep the organization administrable.
+    private Task<bool> HasOtherSignedInOwnerAsync(Guid orgId, Guid membershipId) =>
+        dbContext.OrganizationMemberships
+            .AnyAsync(m => m.OrganizationId == orgId
+                           && m.Status == MembershipStatus.Active
+                           && m.Role == OrganizationRole.Owner
+                           && m.UserId != null
+                           && m.Id != membershipId);
 
     private static void ValidateSlug(string slug)
     {
@@ -320,6 +368,8 @@ public class OrganizationService(
         if (ReservedSlugs.Contains(slug))
             throw new InvalidArgumentException($"The slug '{slug}' is reserved and cannot be used");
     }
+
+    internal static bool IsReservedSlug(string slug) => ReservedSlugs.Contains(slug);
 
     private static OrganizationResponse MapToResponse(Organization org)
     {

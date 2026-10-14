@@ -1,0 +1,17 @@
+---
+import Default from '@astrojs/starlight/components/SiteTitle.astro';
+---
+
+<div class="site-title-with-pill">
+  <Default />
+  <span class="beta-pill" title="These docs describe the beta frontend (frontend-beta)">Beta</span>
+</div>
+
+<style>
+  .site-title-with-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+</style>

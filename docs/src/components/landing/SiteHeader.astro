@@ -1,0 +1,108 @@
+---
+import { ExternalLink } from '@lucide/astro';
+import crest from '../../assets/crest.png';
+import { Image } from 'astro:assets';
+import { withBase } from '../../lib/url';
+---
+
+<header class="site-nav">
+  <div class="wrap nav-row">
+    <a class="brand" href={withBase('/')}>
+      <Image src={crest} alt="" width={32} height={32} />
+      <span>MMR Project</span>
+      <span class="pill">Beta</span>
+    </a>
+    <nav class="links" aria-label="Site">
+      <a href={withBase('/introduction/')}>Docs</a>
+      <a href={withBase('/self-hosting/')} class="hide-sm">Self-hosting</a>
+      <a href="https://github.com/office-rivals/mmr-project">GitHub <ExternalLink size={16} /></a>
+    </nav>
+  </div>
+</header>
+
+<div class="beta-strip">
+  <div class="wrap">
+    <span class="pill">Beta</span>
+    <p>
+      <b>Built on the beta frontend.</b> Everything on this site shows and documents
+      <code>frontend-beta</code>, the React&nbsp;19 and TanStack Start rewrite. The SvelteKit app in
+      <code>frontend/</code> still runs alongside it.
+    </p>
+  </div>
+</div>
+
+<style>
+  .site-nav {
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+  }
+  .nav-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    gap: 12px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    min-width: 0;
+  }
+  .brand img {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    flex: none;
+  }
+  .links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted-foreground);
+  }
+  @media (hover: hover) {
+    .links a:hover {
+      background: var(--muted);
+      color: var(--foreground);
+    }
+  }
+  @media (max-width: 560px) {
+    .hide-sm {
+      display: none !important;
+    }
+  }
+  .beta-strip {
+    border-bottom: 1px solid var(--border);
+  }
+  .beta-strip .wrap {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .beta-strip p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--muted-foreground);
+  }
+  .beta-strip b {
+    color: var(--foreground);
+    font-weight: 600;
+  }
+</style>

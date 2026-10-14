@@ -12,8 +12,9 @@
   } from '$lib/components/ui/card';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
+  import OpenFlagBadge from '$lib/components/admin/open-flag-badge.svelte';
   import { Plus, Trophy } from 'lucide-svelte';
-  import { formatLeagueFormat } from '$lib/utils';
+  import { formatLeagueFormat, openFlagsForLeague } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -108,6 +109,7 @@
 
   <div class="grid gap-3">
     {#each data.leagues as league}
+      {@const openFlags = openFlagsForLeague(data.badges, league.id)}
       <a
         href={`/admin/${data.orgSlug}/leagues/${league.slug}`}
         class="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-accent/40"
@@ -119,7 +121,10 @@
             <p class="text-xs text-muted-foreground">{league.slug}</p>
           </div>
         </div>
-        <Badge variant="outline">{formatLeagueFormat(league.teamSize)}</Badge>
+        <div class="flex items-center gap-2">
+          <OpenFlagBadge count={openFlags} />
+          <Badge variant="outline">{formatLeagueFormat(league.teamSize)}</Badge>
+        </div>
       </a>
     {/each}
     {#if data.leagues.length === 0}

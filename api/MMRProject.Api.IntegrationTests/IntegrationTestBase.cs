@@ -25,6 +25,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
     };
 
     protected IntegrationTestFactory Factory { get; }
+    protected PostgresFixture PostgresFixture => _postgresFixture;
     protected HttpClient Client { get; private set; } = null!;
 
     protected IntegrationTestBase(PostgresFixture postgresFixture)
@@ -212,9 +213,17 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         return user;
     }
 
-    protected void AuthenticateAs(string identityUserId, OrganizationRole? orgRole = null, string? email = null)
+    protected void AuthenticateAs(
+        string identityUserId,
+        OrganizationRole? orgRole = null,
+        string? email = null,
+        bool emailVerified = false)
     {
         Factory.ClaimsProvider.SetUser(identityUserId, email ?? $"{identityUserId}@test.com");
+        if (emailVerified)
+        {
+            Factory.ClaimsProvider.AddClaim("email_verified", "true");
+        }
         if (orgRole.HasValue)
         {
             Factory.ClaimsProvider.AddClaim("org_role", orgRole.Value.ToString());

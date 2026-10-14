@@ -1,0 +1,46 @@
+---
+import '@fontsource/chakra-petch/400.css';
+import '@fontsource/chakra-petch/500.css';
+import '@fontsource/chakra-petch/600.css';
+import '@fontsource/chakra-petch/700.css';
+import '../styles/tokens.css';
+import '../styles/landing.css';
+import SiteHeader from '../components/landing/SiteHeader.astro';
+import Hero from '../components/landing/Hero.astro';
+import Steps from '../components/landing/Steps.astro';
+import Features from '../components/landing/Features.astro';
+import SelfHost from '../components/landing/SelfHost.astro';
+import SiteFooter from '../components/landing/SiteFooter.astro';
+import { withBase } from '../lib/url';
+
+const title = 'MMR Project: matchmaking and ratings for the office league';
+const description =
+  'Self-hosted matchmaking and OpenSkill ratings for office games. Queue up, get balanced teams, report the score and climb the leaderboard. Built on the beta frontend.';
+---
+
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#01182e" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/png" href={withBase('/favicon.png')} />
+    <link rel="apple-touch-icon" href={withBase('/apple-touch-icon.png')} />
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+  </head>
+  <body>
+    <SiteHeader />
+    <main>
+      <Hero />
+      <Steps />
+      <Features />
+      <SelfHost />
+    </main>
+    <SiteFooter />
+  </body>
+</html>

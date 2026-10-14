@@ -19,10 +19,15 @@
     Pencil,
     Plus,
     Trash2,
+    UserCheck,
     UserPlus,
   } from 'lucide-svelte';
   import { Alert } from '$lib/components/ui/alert';
-  import { getRoleBadgeVariant, isModeratorOrAbove } from '$lib/utils';
+  import {
+    formatDate,
+    getRoleBadgeVariant,
+    isModeratorOrAbove,
+  } from '$lib/utils';
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -49,11 +54,6 @@
       alert(`Invite link: ${url}`);
     }
   }
-
-  function formatDate(dateStr?: string): string {
-    if (!dateStr) return 'Never';
-    return new Date(dateStr).toLocaleDateString();
-  }
 </script>
 
 <div class="space-y-6">
@@ -72,6 +72,91 @@
   {/if}
 
   {#if canModerate}
+    {#if data.claimRequests.length > 0}
+      <Card>
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2">
+            <UserCheck class="h-5 w-5" />
+            Claim requests
+          </CardTitle>
+          <CardDescription>
+            Confirm which existing player belongs to each requester.
+          </CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          {#each data.claimRequests as claim (claim.id)}
+            <div class="space-y-3 rounded-lg border p-4">
+              <div
+                class="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:gap-2"
+              >
+                <span class="font-medium">
+                  {claim.requesterDisplayName ?? claim.requesterEmail}
+                </span>
+                <span class="text-muted-foreground">{claim.requesterEmail}</span
+                >
+                <span class="hidden text-muted-foreground sm:inline">→</span>
+                <span class="font-medium">
+                  {claim.target.displayName ??
+                    claim.target.username ??
+                    'Unnamed player'}
+                </span>
+                <Badge variant="outline">
+                  {claim.target.matchCount} match{claim.target.matchCount === 1
+                    ? ''
+                    : 'es'}
+                </Badge>
+              </div>
+              {#if claim.note}
+                <p class="text-sm text-muted-foreground">“{claim.note}”</p>
+              {/if}
+              <div class="flex flex-col gap-2 sm:flex-row">
+                <form method="POST" action="?/approveClaim" use:enhance>
+                  <input type="hidden" name="claimId" value={claim.id} />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    data-testid={`claim-approve-${claim.id}`}
+                    onclick={(event) => {
+                      const requester =
+                        claim.requesterDisplayName ?? claim.requesterEmail;
+                      const target =
+                        claim.target.displayName ??
+                        claim.target.username ??
+                        'this player';
+                      if (
+                        !confirm(`Approve ${requester} claiming ${target}?`)
+                      ) {
+                        event.preventDefault();
+                      }
+                    }}>Approve</Button
+                  >
+                </form>
+                <form
+                  method="POST"
+                  action="?/rejectClaim"
+                  use:enhance
+                  class="flex flex-1 gap-2"
+                >
+                  <input type="hidden" name="claimId" value={claim.id} />
+                  <Input
+                    name="reviewNote"
+                    placeholder="Reason (optional)"
+                    class="h-9 max-w-sm"
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="outline"
+                    data-testid={`claim-reject-${claim.id}`}>Reject</Button
+                  >
+                </form>
+              </div>
+            </div>
+          {/each}
+        </CardContent>
+      </Card>
+    {/if}
+
     <Card>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
@@ -113,7 +198,7 @@
                     <p class="text-xs text-muted-foreground">
                       {link.useCount}{link.maxUses ? `/${link.maxUses}` : ''} uses
                       {#if link.expiresAt}
-                        · Expires {formatDate(link.expiresAt)}
+                        · Expires {formatDate(link.expiresAt, 'Never')}
                       {/if}
                     </p>
                   </div>
@@ -319,6 +404,13 @@
                         value={member.email ?? ''}
                         placeholder="user@example.com"
                       />
+                      <p class="text-xs text-muted-foreground">
+                        Saving an email invites this player: they're linked the
+                        next time that person signs in, so there's no need to
+                        send a separate invite. If they're already a member here
+                        and haven't played yet, they can claim this player from
+                        the organization page instead.
+                      </p>
                     {/if}
                   </div>
                 </div>
@@ -355,6 +447,9 @@
                     <Badge variant={getStatusBadgeVariant(member.status)}>
                       {member.status}
                     </Badge>
+                    {#if !member.userId}
+                      <Badge variant="outline">Unclaimed</Badge>
+                    {/if}
                   </div>
                   {#if member.email}
                     <p class="truncate text-sm text-muted-foreground">

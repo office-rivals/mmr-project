@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { cn } from '$lib/utils';
+  import OpenFlagBadge from '$lib/components/admin/open-flag-badge.svelte';
+  import { cn, openFlagsForOrg } from '$lib/utils';
   import { LayoutDashboard, Trophy, Users } from 'lucide-svelte';
   import type { Snippet } from 'svelte';
   import type { LayoutData } from './$types';
@@ -15,9 +16,20 @@
 
   const base = $derived(`/admin/${data.orgSlug}`);
   const navItems = $derived([
-    { href: base, label: 'Overview', icon: LayoutDashboard, exact: true },
-    { href: `${base}/members`, label: 'Members', icon: Users },
-    { href: `${base}/leagues`, label: 'Leagues', icon: Trophy },
+    {
+      href: base,
+      label: 'Overview',
+      icon: LayoutDashboard,
+      exact: true,
+      badge: 0,
+    },
+    { href: `${base}/members`, label: 'Members', icon: Users, badge: 0 },
+    {
+      href: `${base}/leagues`,
+      label: 'Leagues',
+      icon: Trophy,
+      badge: openFlagsForOrg(data.badges, data.orgId),
+    },
   ]);
 
   function isActive(href: string, exact: boolean) {
@@ -42,6 +54,7 @@
         >
           <item.icon class="h-4 w-4" />
           <span>{item.label}</span>
+          <OpenFlagBadge count={item.badge} variant="count" class="ml-auto" />
         </a>
       {/each}
     </nav>

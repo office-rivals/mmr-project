@@ -14,6 +14,7 @@ public record RatingHistoryEntryResponse
     [Required] public required decimal Mu { get; init; }
     [Required] public required decimal Sigma { get; init; }
     [Required] public required long Delta { get; init; }
+    [Required] public required DateTimeOffset PlayedAt { get; init; }
     [Required] public required DateTimeOffset RecordedAt { get; init; }
 }
 
@@ -27,5 +28,6 @@ public record LeagueRatingHistoryEntry
     [Required] public required Guid LeaguePlayerId { get; init; }
     [Required] public required Guid MatchId { get; init; }
     [Required] public required long Mmr { get; init; }
+    [Required] public required DateTimeOffset PlayedAt { get; init; }
     [Required] public required DateTimeOffset RecordedAt { get; init; }
 }

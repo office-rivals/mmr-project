@@ -1,0 +1,36 @@
+name: Release scripts - test
+
+# The release scripts own version bumps, changelog generation and the image
+# build plan, and their test suite was never wired into CI.
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/release/**
+      - .nvmrc
+      - .github/workflows/test-release-scripts.yml
+  push:
+    branches:
+      - main
+    paths:
+      - scripts/release/**
+      - .nvmrc
+      - .github/workflows/test-release-scripts.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Run tests
+        run: node --test scripts/release/*.test.mjs

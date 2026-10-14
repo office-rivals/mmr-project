@@ -22,7 +22,8 @@ public class InviteLinkService(
     ApiDbContext dbContext,
     IUserContextResolver userContextResolver,
     IOrganizationService organizationService,
-    IV3UserService userService) : IInviteLinkService
+    IV3UserService userService,
+    ILogger<InviteLinkService> logger) : IInviteLinkService
 {
     private const string AllowedChars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     private const int CodeLength = 12;
@@ -109,47 +110,59 @@ public class InviteLinkService(
         var email = userContextResolver.GetEmail()
                     ?? throw new InvalidArgumentException("Email claim is required");
         var user = await userService.EnsureUserAsync(identityUserId, email, null, null);
+        var comparisonEmail = email.Trim();
 
-        var existingMembership = await dbContext.OrganizationMemberships
-            .FirstOrDefaultAsync(m => m.OrganizationId == link.OrganizationId
-                                      && m.UserId == user.Id
-                                      && m.Status == MembershipStatus.Active);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        await dbContext.LockOrganizationClaimsAsync(link.OrganizationId);
 
-        if (existingMembership != null)
+        var ownMembership = await dbContext.OrganizationMemberships
+            .FirstOrDefaultAsync(m => m.OrganizationId == link.OrganizationId && m.UserId == user.Id);
+
+        if (ownMembership?.Status == MembershipStatus.Active)
             throw new InvalidArgumentException("You are already a member of this organization");
 
-        // Check for pending email invite and claim it
-        var pendingInvite = await dbContext.OrganizationMemberships
-            .FirstOrDefaultAsync(m => m.OrganizationId == link.OrganizationId
-                                      && m.InviteEmail == email
-                                      && m.Status == MembershipStatus.Invited);
+        var pendingInviteMatches = await dbContext.OrganizationMemberships
+            .Where(m => m.OrganizationId == link.OrganizationId
+                        && m.InviteEmail != null
+                        && m.InviteEmail.ToLower() == comparisonEmail.ToLower()
+                        && m.Status == MembershipStatus.Invited)
+            .ToListAsync();
+        // The (organization, user) key covers removed rows too, so a row this user already
+        // holds is the one to reactivate; linking a different invitation would collide with it,
+        // and ambiguity among those other invitations must not block the rejoin.
+        var pendingInvite = ownMembership != null
+            ? pendingInviteMatches.FirstOrDefault(m => m.Id == ownMembership.Id)
+            : pendingInviteMatches.Count == 0
+                ? null
+                : SelectInviteEmailMatch(pendingInviteMatches, comparisonEmail);
 
-        var removedMembership = await dbContext.OrganizationMemberships
+        var previousMembership = ownMembership ?? await dbContext.OrganizationMemberships
             .FirstOrDefaultAsync(m => m.OrganizationId == link.OrganizationId
                                       && m.Status == MembershipStatus.Removed
-                                      && (m.UserId == user.Id || m.InviteEmail == email));
+                                      && m.InviteEmail == email);
 
         OrganizationMembership membership;
         if (pendingInvite != null)
         {
             pendingInvite.UserId = user.Id;
-            pendingInvite.DisplayName = user.DisplayName;
-            pendingInvite.Username = user.Username;
+            pendingInvite.DisplayName ??= user.DisplayName;
+            pendingInvite.Username ??= user.Username;
             pendingInvite.InviteEmail = null;
             pendingInvite.Status = MembershipStatus.Active;
             pendingInvite.ClaimedAt = DateTimeOffset.UtcNow;
             membership = pendingInvite;
         }
-        else if (removedMembership != null)
+        else if (previousMembership != null)
         {
-            removedMembership.UserId = user.Id;
-            removedMembership.DisplayName = user.DisplayName;
-            removedMembership.Username = user.Username;
-            removedMembership.InviteEmail = null;
-            removedMembership.Role = OrganizationRole.Member;
-            removedMembership.Status = MembershipStatus.Active;
-            removedMembership.ClaimedAt = DateTimeOffset.UtcNow;
-            membership = removedMembership;
+            previousMembership.UserId = user.Id;
+            previousMembership.DisplayName ??= user.DisplayName;
+            previousMembership.Username ??= user.Username;
+            previousMembership.InviteEmail = null;
+            if (previousMembership.Status == MembershipStatus.Removed)
+                previousMembership.Role = OrganizationRole.Member;
+            previousMembership.Status = MembershipStatus.Active;
+            previousMembership.ClaimedAt = DateTimeOffset.UtcNow;
+            membership = previousMembership;
         }
         else
         {
@@ -169,6 +182,10 @@ public class InviteLinkService(
         link.UseCount++;
         await dbContext.SaveChangesAsync();
 
+        if (pendingInvite != null)
+            await CancelPendingClaimRequestsForAsync(pendingInvite.Id);
+        await transaction.CommitAsync();
+
         return new JoinOrganizationResponse
         {
             OrganizationId = link.Organization.Id,
@@ -180,38 +197,122 @@ public class InviteLinkService(
 
     public async Task AutoClaimInvitesAsync(string email, Guid userId)
     {
-        var pendingInvites = await dbContext.OrganizationMemberships
-            .Where(m => m.InviteEmail == email && m.Status == MembershipStatus.Invited)
+        var comparisonEmail = email.Trim();
+        var pendingInviteMatches = await dbContext.OrganizationMemberships
+            .AsNoTracking()
+            .Where(m => m.InviteEmail != null
+                        && m.InviteEmail.ToLower() == comparisonEmail.ToLower()
+                        && m.Status == MembershipStatus.Invited)
             .ToListAsync();
 
-        if (pendingInvites.Count == 0)
+        if (pendingInviteMatches.Count == 0)
             return;
 
         var user = await dbContext.V3Users.FindAsync(userId);
         if (user == null)
             return;
 
-        var orgIds = pendingInvites.Select(i => i.OrganizationId).Distinct().ToList();
-        var existingOrgIds = (await dbContext.OrganizationMemberships
-            .Where(m => m.UserId == userId && orgIds.Contains(m.OrganizationId) && m.Status == MembershipStatus.Active)
-            .Select(m => m.OrganizationId)
+        var orgIds = pendingInviteMatches.Select(i => i.OrganizationId).Distinct().ToList();
+        var heldMemberships = (await dbContext.OrganizationMemberships
+            .AsNoTracking()
+            .Where(m => m.UserId == userId && orgIds.Contains(m.OrganizationId))
+            .Select(m => new { m.OrganizationId, m.Id, m.Status })
             .ToListAsync())
-            .ToHashSet();
+            .ToDictionary(m => m.OrganizationId);
 
-        foreach (var invite in pendingInvites)
+        foreach (var orgInvites in pendingInviteMatches.GroupBy(invite => invite.OrganizationId))
         {
-            if (existingOrgIds.Contains(invite.OrganizationId))
-                continue;
+            OrganizationMembership? invite;
+            if (heldMemberships.TryGetValue(orgInvites.Key, out var held))
+            {
+                // The (organization, user) key covers removed rows too, so only the user's own
+                // row can be linked here; any other invitation would collide with it.
+                invite = orgInvites.FirstOrDefault(i => i.Id == held.Id);
+                if (invite == null)
+                {
+                    if (held.Status != MembershipStatus.Active)
+                        logger.LogWarning(
+                            "Skipped invitation auto-claim in organization {OrganizationId}: the user still holds membership {MembershipId} there",
+                            orgInvites.Key, held.Id);
+                    continue;
+                }
+            }
+            else
+            {
+                // This runs on every /me, so ambiguity in one organization must not lock the
+                // user out of the others; the explicit join path still reports it.
+                invite = TrySelectInviteEmailMatch(orgInvites.ToList(), comparisonEmail);
+                if (invite == null)
+                {
+                    logger.LogWarning(
+                        "Skipped invitation auto-claim in organization {OrganizationId}: {MatchCount} invitations match the user's email",
+                        orgInvites.Key, orgInvites.Count());
+                    continue;
+                }
+            }
 
-            invite.UserId = userId;
-            invite.DisplayName = user.DisplayName;
-            invite.Username = user.Username;
-            invite.InviteEmail = null;
-            invite.Status = MembershipStatus.Active;
-            invite.ClaimedAt = DateTimeOffset.UtcNow;
+            await using var transaction = await dbContext.Database.BeginTransactionAsync();
+            await dbContext.LockOrganizationClaimsAsync(orgInvites.Key);
+
+            // Parallel /me requests race to claim the same invitation, and a join may link the
+            // user to another row after the reads above. The guarded update lets the loser match
+            // no row instead of failing the row version or the (organization, user) key.
+            var claimed = await dbContext.OrganizationMemberships
+                .Where(m => m.Id == invite.Id
+                            && m.Status == MembershipStatus.Invited
+                            && m.UserId == invite.UserId
+                            && m.InviteEmail == invite.InviteEmail
+                            && !dbContext.OrganizationMemberships.Any(other =>
+                                other.OrganizationId == m.OrganizationId
+                                && other.UserId == userId
+                                && other.Id != m.Id))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(m => m.UserId, userId)
+                    .SetProperty(m => m.DisplayName, m => m.DisplayName ?? user.DisplayName)
+                    .SetProperty(m => m.Username, m => m.Username ?? user.Username)
+                    .SetProperty(m => m.InviteEmail, (string?)null)
+                    .SetProperty(m => m.Status, MembershipStatus.Active)
+                    .SetProperty(m => m.ClaimedAt, DateTimeOffset.UtcNow));
+
+            if (claimed == 1)
+                await CancelPendingClaimRequestsForAsync(invite.Id);
+            await transaction.CommitAsync();
         }
+    }
 
-        await dbContext.SaveChangesAsync();
+    // A player linked to an account through its invitation is no longer claimable,
+    // so requests nominating it would otherwise stay pending with no way to approve.
+    private async Task CancelPendingClaimRequestsForAsync(Guid membershipId)
+    {
+        await dbContext.MembershipClaimRequests
+            .Where(c => c.OrganizationMembershipId == membershipId
+                        && c.Status == MembershipClaimStatus.Pending)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(c => c.Status, MembershipClaimStatus.Cancelled));
+    }
+
+    private static OrganizationMembership SelectInviteEmailMatch(
+        IReadOnlyCollection<OrganizationMembership> matches,
+        string email)
+    {
+        return TrySelectInviteEmailMatch(matches, email)
+               ?? throw new InvalidArgumentException(
+                   "Multiple invitations match this email. Ask a moderator to resolve the duplicate invitations.");
+    }
+
+    private static OrganizationMembership? TrySelectInviteEmailMatch(
+        IReadOnlyCollection<OrganizationMembership> matches,
+        string email)
+    {
+        var exactMatches = matches
+            .Where(m => string.Equals(m.InviteEmail, email, StringComparison.Ordinal))
+            .ToList();
+        if (exactMatches.Count == 1)
+            return exactMatches[0];
+        if (exactMatches.Count == 0 && matches.Count == 1)
+            return matches.First();
+
+        return null;
     }
 
     private async Task<string> GenerateUniqueCodeAsync()

@@ -1,0 +1,88 @@
+---
+title: Match submission
+description: Record a match with existing players, organization members or new players, using the league's scoring mode.
+---
+
+import Figure from '../../../components/mock/Figure.astro';
+import MatchCard from '../../../components/mock/MatchCard.astro';
+
+You record a match from the **+** button in the bottom navigation, which opens `/<org>/<league>/submit`. Matches found through the queue are submitted from their own page instead. See [Results from matchmaking](#results-from-matchmaking).
+
+## The submit flow
+
+1. **Pick the players.** Fill in Team 1 ("You" and, in 2v2, "Your teammate") and Team 2 ("Opponent" or "Opponent 1" and "Opponent 2"). The first slot is pre-filled with the first league player you entered last time in this league, and the picker lists up to 10 recent players. The app remembers both in your browser.
+2. **Enter the score.** How you enter it depends on the league's [scoring mode](#scoring-modes).
+3. **Check and submit.** A preview of the match card appears. Choose **Submit the match**, and the app returns to the league page.
+
+<Figure caption="The match card preview">
+  <MatchCard
+    time="14:32"
+    team1={{ score: 10, players: [{ name: 'alex' }, { name: 'samlee' }] }}
+    team2={{ score: 7, players: [{ name: 'riley' }, { name: 'jordan' }] }}
+  />
+</Figure>
+
+## Player sources
+
+Each slot can be filled with:
+
+- **a league player.** Search by display name or username.
+- **an organization member who isn't in the league yet.** These appear under "Org members not yet in league".
+- **a new player.** If the search finds nobody, choose **Add new player** to create one for this match.
+
+### Automatic league enrollment
+
+If you pick an organization member who hasn't joined the league, the submission adds them to the league. They start with the default rating, the same as a player who joins the league themselves.
+
+### New players
+
+The **Add new player** dialog asks for:
+
+- a display name (required)
+- a username (optional)
+- an email (optional)
+
+The API creates the organization membership and league player in the same request as the match. If you give an email:
+
+- and it matches an existing member or pending email invite in the organization, that membership is reused instead of creating a second person
+- and it belongs to a user who has signed in before, the new membership is linked to that user straight away
+- otherwise the membership waits as an email invite, and it's claimed when someone signs in with that address
+
+## Scoring modes
+
+An owner picks the league's scoring mode when creating it, by setting a winning score or leaving it blank.
+
+- **Fixed target** (for example foosball, 10 by default). Choose **We won** or **They won**, then pick the losing team's score from 0 (shown as 🥚) up to one below the target. The winning team's score is always exactly the target.
+- **Free-form** (no winning score, for example table tennis or badminton). Enter both teams' scores. They must differ, and the higher one wins.
+
+The scoring logic shared by the submit page and the active-match page is in [`frontend-beta/src/lib/scoring.ts`](https://github.com/office-rivals/mmr-project/blob/main/frontend-beta/src/lib/scoring.ts).
+
+## Rules the API enforces
+
+A submission is rejected unless:
+
+- the league has a current season
+- you have access to the league: you've joined it, or you're a moderator or owner
+- there are exactly two teams, each with exactly the league's team size (1 or 2)
+- each player slot names exactly one player reference
+- no player appears twice across the teams
+- scores are between 0 and 255 and not equal
+- in a fixed-target league, the winner scored exactly the target and the loser scored less
+
+The API also rejects a manual submission that's identical to one recorded in the same league less than 10 minutes earlier: same players on the same teams with the same scores. This stops a match from being recorded twice when two people submit it. If it really was a rematch with the same result, wait for the 10 minutes to pass and submit it again.
+
+Ratings are calculated when the match is saved.
+
+## Submission payload
+
+At the API level (`POST /api/v3/organizations/{orgId}/leagues/{leagueId}/matches`), each player in a team is exactly one of:
+
+- `leaguePlayerId`
+- `organizationMembershipId`
+- `newPlayer`, with `displayName` and optional `username` and `email`
+
+The API resolves the players and records the match in one transaction, so a failed submission doesn't leave half-created players behind.
+
+## Results from matchmaking
+
+When a queued match starts, any player in it opens it from the **Active matches** list on the matchmaking page and enters the result there. The score steps are the same as above. Moderators and owners can also submit the result. These results skip the 10-minute duplicate check, because each active match can only be submitted once. See [Matchmaking](/features/matchmaking/).

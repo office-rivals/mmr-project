@@ -6,6 +6,7 @@ using MMRProject.Api.Exceptions;
 using MMRProject.Api.Extensions;
 using MMRProject.Api.MMRCalculationApi;
 using MMRProject.Api.MMRCalculationApi.Models;
+using Npgsql;
 
 
 namespace MMRProject.Api.Services.V3;
@@ -42,6 +43,15 @@ public class V3MatchesService(
 
         var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
 
+        // Only manual entry can double-submit; matchmade results are tied to one
+        // active match. Lock before player resolution so concurrent enrolments
+        // cannot assign different player IDs to the same member and bypass detection.
+        if (source == MatchSource.Manual)
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtext({leagueId.ToString()}))");
+        }
+
         var resolvedTeams = await ResolveAndValidateTeamsAsync(orgId, leagueId, request);
         var leaguePlayers = resolvedTeams.SelectMany(t => t)
             .GroupBy(lp => lp.Id)
@@ -49,6 +59,12 @@ public class V3MatchesService(
             .ToList();
 
         var now = DateTimeOffset.UtcNow;
+
+        if (source == MatchSource.Manual)
+        {
+            await EnsureNotRecentlySubmittedAsync(leagueId, request, resolvedTeams, now);
+        }
+
         var match = new V3Match
         {
             OrganizationId = orgId,
@@ -66,13 +82,50 @@ public class V3MatchesService(
         }
 
         dbContext.Set<V3Match>().Add(match);
-        await dbContext.SaveChangesAsync();
+        await SaveMatchChangesAsync();
 
         await CalculateAndApplyMmr(orgId, match, leaguePlayers);
         await transaction.CommitAsync();
 
         return await LoadAndMapMatch(orgId, leagueId, match.Id);
     }
+
+    private static readonly TimeSpan DuplicateSubmissionWindow = TimeSpan.FromMinutes(10);
+
+    private async Task EnsureNotRecentlySubmittedAsync(
+        Guid leagueId,
+        SubmitMatchRequest request,
+        List<List<LeaguePlayer>> resolvedTeams,
+        DateTimeOffset now)
+    {
+        var submittedTeams = resolvedTeams
+            .Select((players, i) => TeamKey(players.Select(p => p.Id), request.Teams[i].Score))
+            .ToHashSet();
+
+        var since = now - DuplicateSubmissionWindow;
+        var recentMatches = await dbContext.V3Matches
+            .AsNoTracking()
+            .Where(m => m.LeagueId == leagueId && m.RecordedAt >= since)
+            .Select(m => m.Teams.Select(t => new
+            {
+                t.Score,
+                PlayerIds = t.Players.Select(p => p.LeaguePlayerId).ToList(),
+            }).ToList())
+            .ToListAsync();
+
+        var isDuplicate = recentMatches.Any(teams =>
+            teams.Count == submittedTeams.Count
+            && teams.Select(t => TeamKey(t.PlayerIds, t.Score)).ToHashSet().SetEquals(submittedTeams));
+
+        if (isDuplicate)
+        {
+            throw new ConflictException(
+                "An identical match was submitted less than 10 minutes ago. If this is a genuine rematch, wait before submitting it again.");
+        }
+    }
+
+    private static string TeamKey(IEnumerable<Guid> playerIds, int score) =>
+        $"{score}:{string.Join(",", playerIds.Order())}";
 
     private async Task<List<List<LeaguePlayer>>> ResolveAndValidateTeamsAsync(
         Guid orgId, Guid leagueId, SubmitMatchRequest request)
@@ -97,13 +150,25 @@ public class V3MatchesService(
                     $"Each team must have exactly {leagueConfig.TeamSize} {(leagueConfig.TeamSize == 1 ? "player" : "players")} for this league");
         }
 
+        var playerRequests = request.Teams.SelectMany(team => team.Players).ToList();
+        var referencedMembershipIds = await FindReferencedMembershipIdsAsync(
+            orgId, playerRequests);
+        var lockedMemberships = await dbContext.LockMembershipsInOrderAsync(
+            orgId, referencedMembershipIds.OfType<Guid>());
+
         var resolvedTeams = new List<List<LeaguePlayer>>();
+        var playerIndex = 0;
         foreach (var team in request.Teams)
         {
             var resolvedPlayers = new List<LeaguePlayer>();
             foreach (var player in team.Players)
             {
-                resolvedPlayers.Add(await ResolveLeaguePlayerAsync(orgId, leagueId, player));
+                var membershipId = referencedMembershipIds[playerIndex++];
+                OrganizationMembership? membership = null;
+                if (membershipId.HasValue)
+                    lockedMemberships.TryGetValue(membershipId.Value, out membership);
+                resolvedPlayers.Add(await ResolveLeaguePlayerAsync(
+                    orgId, leagueId, player, membership));
             }
 
             resolvedTeams.Add(resolvedPlayers);
@@ -114,6 +179,53 @@ public class V3MatchesService(
             throw new InvalidArgumentException("Players must be unique across all teams");
 
         return resolvedTeams;
+    }
+
+    private async Task<List<Guid?>> FindReferencedMembershipIdsAsync(
+        Guid orgId,
+        IReadOnlyCollection<SubmitMatchPlayerRequest> playerRequests)
+    {
+        var requestedEmails = playerRequests
+            .Where(player => player.NewPlayer is not null
+                             && !string.IsNullOrWhiteSpace(player.NewPlayer.Email))
+            .Select(player => player.NewPlayer!.Email!.Trim())
+            .ToList();
+        var comparisonEmails = requestedEmails
+            .Select(email => email.ToLowerInvariant())
+            .Distinct()
+            .ToList();
+        List<OrganizationMembership> emailMatches = comparisonEmails.Count == 0
+            ? []
+            : await dbContext.OrganizationMemberships
+                .AsNoTracking()
+                .Include(membership => membership.User)
+                .Where(membership => membership.OrganizationId == orgId
+                                     && membership.Status != MembershipStatus.Removed
+                                     && ((membership.InviteEmail != null
+                                          && comparisonEmails.Contains(membership.InviteEmail.ToLower()))
+                                         || (membership.User != null
+                                             && comparisonEmails.Contains(membership.User.Email.ToLower()))))
+                .ToListAsync();
+
+        return playerRequests.Select(player =>
+        {
+            if (player.LeaguePlayerId.HasValue)
+                return null;
+            if (player.OrganizationMembershipId.HasValue)
+                return player.OrganizationMembershipId;
+
+            var email = string.IsNullOrWhiteSpace(player.NewPlayer?.Email)
+                ? null
+                : player.NewPlayer.Email.Trim();
+            return email == null
+                ? null
+                : SelectEmailMembershipMatch(
+                    emailMatches.Where(membership =>
+                            string.Equals(membership.InviteEmail, email, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(membership.User?.Email, email, StringComparison.OrdinalIgnoreCase))
+                        .ToList(),
+                    email)?.Id;
+        }).ToList();
     }
 
     private static void ValidateScores(int team1Score, int team2Score, int? winningScore)
@@ -186,7 +298,8 @@ public class V3MatchesService(
     private async Task<LeaguePlayer> ResolveLeaguePlayerAsync(
         Guid orgId,
         Guid leagueId,
-        SubmitMatchPlayerRequest playerRequest)
+        SubmitMatchPlayerRequest playerRequest,
+        OrganizationMembership? referencedMembership)
     {
         var populatedReferenceCount =
             (playerRequest.LeaguePlayerId.HasValue ? 1 : 0)
@@ -210,23 +323,27 @@ public class V3MatchesService(
 
         if (playerRequest.OrganizationMembershipId.HasValue)
         {
-            var membership = await dbContext.OrganizationMemberships
-                .Include(m => m.User)
-                .FirstOrDefaultAsync(m => m.Id == playerRequest.OrganizationMembershipId.Value
-                                          && m.OrganizationId == orgId
-                                          && m.Status != MembershipStatus.Removed)
-                ?? throw new InvalidArgumentException("Organization member was not found");
+            var membership = referencedMembership;
+            if (membership == null
+                || membership.Id != playerRequest.OrganizationMembershipId.Value
+                || membership.OrganizationId != orgId
+                || membership.Status == MembershipStatus.Removed)
+            {
+                throw new InvalidArgumentException("Organization member was not found");
+            }
 
             return await GetOrCreateLeaguePlayerAsync(orgId, leagueId, membership);
         }
 
-        return await ResolveNewPlayerAsync(orgId, leagueId, playerRequest.NewPlayer!);
+        return await ResolveNewPlayerAsync(
+            orgId, leagueId, playerRequest.NewPlayer!, referencedMembership);
     }
 
     private async Task<LeaguePlayer> ResolveNewPlayerAsync(
         Guid orgId,
         Guid leagueId,
-        CreateMatchPlayerRequest newPlayer)
+        CreateMatchPlayerRequest newPlayer,
+        OrganizationMembership? membership)
     {
         if (string.IsNullOrWhiteSpace(newPlayer.DisplayName))
         {
@@ -240,18 +357,6 @@ public class V3MatchesService(
         var normalizedUsername = string.IsNullOrWhiteSpace(newPlayer.Username)
             ? null
             : newPlayer.Username.Trim();
-
-        OrganizationMembership? membership = null;
-
-        if (normalizedEmail != null)
-        {
-            membership = await dbContext.OrganizationMemberships
-                .Include(m => m.User)
-                .FirstOrDefaultAsync(m => m.OrganizationId == orgId
-                                          && m.Status != MembershipStatus.Removed
-                                          && (m.InviteEmail == normalizedEmail
-                                              || (m.User != null && m.User.Email == normalizedEmail)));
-        }
 
         if (membership == null)
         {
@@ -279,19 +384,39 @@ public class V3MatchesService(
             };
             dbContext.OrganizationMemberships.Add(membership);
         }
-        else
+
+        var leaguePlayer = await GetOrCreateLeaguePlayerAsync(orgId, leagueId, membership);
+
+        if (string.IsNullOrWhiteSpace(membership.DisplayName))
         {
-            if (string.IsNullOrWhiteSpace(membership.DisplayName))
-            {
-                membership.DisplayName = newPlayer.DisplayName.Trim();
-            }
-            if (string.IsNullOrWhiteSpace(membership.Username) && normalizedUsername != null)
-            {
-                membership.Username = normalizedUsername;
-            }
+            membership.DisplayName = newPlayer.DisplayName.Trim();
+        }
+        if (string.IsNullOrWhiteSpace(membership.Username) && normalizedUsername != null)
+        {
+            membership.Username = normalizedUsername;
         }
 
-        return await GetOrCreateLeaguePlayerAsync(orgId, leagueId, membership);
+        return leaguePlayer;
+    }
+
+    private static OrganizationMembership? SelectEmailMembershipMatch(
+        IReadOnlyCollection<OrganizationMembership> matches,
+        string email)
+    {
+        if (matches.Count == 0)
+            return null;
+
+        var exactMatches = matches
+            .Where(m => string.Equals(m.InviteEmail, email, StringComparison.Ordinal)
+                        || string.Equals(m.User?.Email, email, StringComparison.Ordinal))
+            .ToList();
+        if (exactMatches.Count == 1)
+            return exactMatches[0];
+        if (exactMatches.Count == 0 && matches.Count == 1)
+            return matches.First();
+
+        throw new InvalidArgumentException(
+            "Multiple organization members match this email. Select an existing player instead.");
     }
 
     private async Task<LeaguePlayer> GetOrCreateLeaguePlayerAsync(
@@ -299,6 +424,9 @@ public class V3MatchesService(
         Guid leagueId,
         OrganizationMembership membership)
     {
+        if (membership.OrganizationId != orgId || membership.Status == MembershipStatus.Removed)
+            throw new InvalidArgumentException("Organization member is no longer available");
+
         var existingPlayer = await dbContext.LeaguePlayers
             .FirstOrDefaultAsync(lp => lp.OrganizationId == orgId
                                        && lp.LeagueId == leagueId
@@ -377,10 +505,6 @@ public class V3MatchesService(
         if (match.SeasonId != currentSeason.Id)
             throw new InvalidArgumentException("Only matches in the current season can be edited");
 
-        // Validated before the transaction opens: this resolves one player per
-        // round trip, and a rejected edit should not take the lock at all.
-        var resolvedTeams = await ResolveAndValidateTeamsAsync(orgId, leagueId, request);
-
         await using var transaction = await dbContext.Database.BeginTransactionAsync();
 
         // Overlapping edits of one match must not interleave: each rebuilds the
@@ -392,6 +516,11 @@ public class V3MatchesService(
         // could not — it ran before the lock was granted.
         if (lockedMatch.SeasonId != currentSeason.Id)
             throw new InvalidArgumentException("Only matches in the current season can be edited");
+
+        // Resolved under the match lock, so an edit queued behind another finds
+        // the players that edit created instead of creating them again. The
+        // membership locks this takes only hold inside the transaction.
+        var resolvedTeams = await ResolveAndValidateTeamsAsync(orgId, leagueId, request);
 
         // Both deletes key off the match rather than a list of team ids read
         // earlier, so they cannot disagree about which teams they are clearing.
@@ -413,7 +542,7 @@ public class V3MatchesService(
         // orders both the match list and the recalc replay bound.
         lockedMatch.RecordedAt = DateTimeOffset.UtcNow;
 
-        await dbContext.SaveChangesAsync();
+        await SaveMatchChangesAsync();
 
         // Mapped under the lock so a PATCH always returns its own write rather
         // than whatever the next queued edit replaced it with.
@@ -443,6 +572,19 @@ public class V3MatchesService(
                 $"SELECT * FROM matches WHERE id = {matchId} AND organization_id = {orgId} AND league_id = {leagueId} FOR NO KEY UPDATE")
             .AsTracking()
             .FirstOrDefaultAsync();
+
+    private async Task SaveMatchChangesAsync()
+    {
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+                                           { SqlState: PostgresErrorCodes.ForeignKeyViolation })
+        {
+            throw new ConflictException("A player changed while the match was being saved. Reload and retry.");
+        }
+    }
 
     public async Task DeleteMatchAsync(Guid orgId, Guid leagueId, Guid matchId)
     {
@@ -486,6 +628,13 @@ public class V3MatchesService(
             .Where(rh => rh.MatchId == matchId)
             .ToListAsync();
         dbContext.RatingHistories.RemoveRange(ratingHistories);
+
+        // Flags reference the match with a restricted FK, so they must go before
+        // the match itself or Postgres rejects the delete (fk_match_flags_match).
+        var matchFlags = await dbContext.V3MatchFlags
+            .Where(f => f.MatchId == matchId)
+            .ToListAsync();
+        dbContext.V3MatchFlags.RemoveRange(matchFlags);
 
         foreach (var team in match.Teams)
         {

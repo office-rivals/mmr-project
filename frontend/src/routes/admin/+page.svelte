@@ -9,8 +9,13 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
+  import OpenFlagBadge from '$lib/components/admin/open-flag-badge.svelte';
   import { ArrowRight, Building2, ShieldAlert } from 'lucide-svelte';
-  import { getRoleBadgeVariant, isModeratorOrAbove } from '$lib/utils';
+  import {
+    getRoleBadgeVariant,
+    isModeratorOrAbove,
+    openFlagsForOrg,
+  } from '$lib/utils';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -53,6 +58,7 @@
     {:else}
       <div class="grid gap-3 sm:grid-cols-2">
         {#each adminableOrgs as org}
+          {@const openFlags = openFlagsForOrg(data.badges, org.id)}
           <a href={`/admin/${org.slug}`} class="block">
             <Card class="h-full transition-colors hover:bg-accent/40">
               <CardHeader>
@@ -62,11 +68,14 @@
                 </CardTitle>
                 <CardDescription>{org.slug}</CardDescription>
               </CardHeader>
-              <CardContent class="flex items-center justify-between">
+              <CardContent class="flex items-center justify-between gap-2">
                 <Badge variant={getRoleBadgeVariant(org.role)}>
                   {org.role}
                 </Badge>
-                <ArrowRight class="h-4 w-4 text-muted-foreground" />
+                <div class="flex items-center gap-2">
+                  <OpenFlagBadge count={openFlags} />
+                  <ArrowRight class="h-4 w-4 text-muted-foreground" />
+                </div>
               </CardContent>
             </Card>
           </a>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { cn } from '$lib/utils';
+  import OpenFlagBadge from '$lib/components/admin/open-flag-badge.svelte';
+  import { cn, openFlagsForLeague } from '$lib/utils';
   import {
     CalendarDays,
     ClipboardList,
@@ -20,10 +21,31 @@
 
   const base = $derived(data.leagueAdminBase);
   const subnav = $derived([
-    { href: base, label: 'Overview', icon: LayoutDashboard, exact: true },
-    { href: `${base}/matches`, label: 'Matches', icon: ClipboardList },
-    { href: `${base}/match-flags`, label: 'Flags', icon: Flag },
-    { href: `${base}/seasons`, label: 'Seasons', icon: CalendarDays },
+    {
+      href: base,
+      label: 'Overview',
+      icon: LayoutDashboard,
+      exact: true,
+      badge: 0,
+    },
+    {
+      href: `${base}/matches`,
+      label: 'Matches',
+      icon: ClipboardList,
+      badge: 0,
+    },
+    {
+      href: `${base}/match-flags`,
+      label: 'Flags',
+      icon: Flag,
+      badge: openFlagsForLeague(data.badges, data.leagueId),
+    },
+    {
+      href: `${base}/seasons`,
+      label: 'Seasons',
+      icon: CalendarDays,
+      badge: 0,
+    },
   ]);
 
   function isActive(href: string, exact: boolean) {
@@ -54,6 +76,7 @@
       >
         <item.icon class="h-4 w-4" />
         <span>{item.label}</span>
+        <OpenFlagBadge count={item.badge} variant="count" />
       </a>
     {/each}
   </nav>

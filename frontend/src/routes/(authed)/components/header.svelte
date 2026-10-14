@@ -30,10 +30,16 @@
     displayName: string | null;
     username: string | null;
     defaultOrgSlug: string | null;
+    openFlagCount: number;
   }
 
-  let { organizations, displayName, username, defaultOrgSlug }: Props =
-    $props();
+  let {
+    organizations,
+    displayName,
+    username,
+    defaultOrgSlug,
+    openFlagCount,
+  }: Props = $props();
 
   const orgSlug = $derived(page.params.orgSlug ?? defaultOrgSlug);
   const currentOrg = $derived(organizations.find((o) => o.slug === orgSlug));
@@ -67,6 +73,12 @@
       ? `/admin/${menuOrg.slug}`
       : '/admin'
   );
+
+  // Only alert when the user can actually act on it. The count and the
+  // organizations list come from separate requests, so a profile failure can
+  // leave a non-zero count with no Admin entry to reach — don't paint a red
+  // dot the user has no way to resolve.
+  const showFlagDot = $derived(hasAdminAccess && openFlagCount > 0);
 
   // Sub-routes whose path is identical across leagues (no league-scoped IDs),
   // so they can be carried over when switching. Anything else —
@@ -190,10 +202,18 @@
 
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
-        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label="Settings menu"
+        class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={showFlagDot
+          ? 'Settings menu — unresolved match flags need attention'
+          : 'Settings menu'}
       >
         <Settings class="h-5 w-5" />
+        {#if showFlagDot}
+          <span
+            class="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card"
+            aria-hidden="true"
+          ></span>
+        {/if}
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Content
@@ -231,6 +251,15 @@
             <DropdownMenu.Item onSelect={() => goto(adminHref)}>
               <Shield class="h-4 w-4 text-muted-foreground" />
               Admin
+              {#if openFlagCount > 0}
+                <Badge
+                  variant="destructive"
+                  class="ml-auto"
+                  aria-label={`${openFlagCount} unresolved match flags`}
+                >
+                  {openFlagCount}
+                </Badge>
+              {/if}
             </DropdownMenu.Item>
           {/if}
         </div>

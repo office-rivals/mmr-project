@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
-// Placeholder types matching v3 DTOs - will be replaced by generated code
+// Hand-maintained types mirroring the v3 API DTOs. Update by hand when the
+// v3 API changes (this client is not generated). See ../index.ts.
 
 // Enums
 export enum OrganizationRole {
@@ -12,6 +13,14 @@ export enum OrganizationRole {
 export enum MembershipStatus {
   Invited = 'Invited',
   Active = 'Active',
+  Removed = 'Removed',
+}
+
+export enum MembershipClaimStatus {
+  Pending = 'Pending',
+  Approved = 'Approved',
+  Rejected = 'Rejected',
+  Cancelled = 'Cancelled',
 }
 
 export enum MatchSource {
@@ -40,6 +49,17 @@ export interface MeResponse {
   username?: string;
   displayName?: string;
   organizations: MeOrganizationResponse[];
+}
+
+// Counts that drive the nav "needs attention" badges (GET /api/v3/me/badges).
+export interface BadgesResponse {
+  openMatchFlags: OpenMatchFlagSummary;
+}
+
+export interface OpenMatchFlagSummary {
+  total: number;
+  byOrganization: Record<string, number>;
+  byLeague: Record<string, number>;
 }
 
 export interface MeOrganizationResponse {
@@ -104,6 +124,53 @@ export interface UpdateMemberProfileRequest {
   displayName?: string;
   username?: string;
   email?: string;
+}
+
+export interface ClaimableMembershipsResponse {
+  requesterEligible: boolean;
+  memberships: ClaimableMembershipResponse[];
+}
+
+export interface ClaimableMembershipResponse {
+  organizationMembershipId: string;
+  displayName?: string;
+  username?: string;
+  matchCount: number;
+  lastPlayedAt?: string;
+  leagues: ClaimableMembershipLeagueStatsResponse[];
+}
+
+export interface ClaimableMembershipLeagueStatsResponse {
+  leagueId: string;
+  leagueName: string;
+  matchCount: number;
+  lastPlayedAt?: string;
+}
+
+export interface CreateMembershipClaimRequest {
+  organizationMembershipId: string;
+  note?: string;
+}
+
+export interface ReviewMembershipClaimRequest {
+  reviewNote?: string;
+}
+
+export interface MembershipClaimRequestResponse {
+  id: string;
+  organizationId: string;
+  organizationMembershipId: string;
+  userId: string;
+  requesterDisplayName?: string;
+  requesterEmail: string;
+  target: ClaimableMembershipResponse;
+  status: MembershipClaimStatus;
+  note?: string;
+  reviewNote?: string;
+  reviewedByMembershipId?: string;
+  reviewedAt?: string;
+  retiredMembershipId?: string;
+  createdAt: string;
 }
 
 // League DTOs
@@ -250,6 +317,7 @@ export interface RatingHistoryEntryResponse {
   mu: number;
   sigma: number;
   delta: number;
+  playedAt: string;
   recordedAt: string;
 }
 
@@ -261,6 +329,7 @@ export interface LeagueRatingHistoryEntry {
   leaguePlayerId: string;
   matchId: string;
   mmr: number;
+  playedAt: string;
   recordedAt: string;
 }
 
@@ -415,7 +484,7 @@ export interface CreateTokenResponse {
   tokenDetails: TokenResponse;
 }
 
-// JSON conversion helpers (placeholder - will be generated)
+// JSON conversion helpers (hand-maintained pass-throughs)
 export function MeResponseFromJSON(json: any): MeResponse {
   return json;
 }

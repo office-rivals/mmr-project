@@ -1,0 +1,411 @@
+import { useEffect, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute, getRouteApi } from '@tanstack/react-router';
+import { createServerFn } from '@tanstack/react-start';
+import { LoaderCircle, Pause, Play } from 'lucide-react';
+import { AppLink } from '@/components/app-link';
+import { PageTitle } from '@/components/page-title';
+import { PendingMatchDialog } from '@/components/play/pending-match-dialog';
+import { queueQueryKey } from '@/components/shell/matchmaking-button';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+  failServerAction,
+  nativeFormResponse,
+  parseNativeFormData,
+} from '@/lib/server/action-result';
+import { getApiErrorDetails } from '@/lib/server/apiError';
+import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import { formatLeagueFormat } from '@/lib/utils';
+import type { LeagueContext } from './route';
+import type { ActiveMatchResponse, QueueStatusResponse } from '@/api-v3';
+
+const leagueRoute = getRouteApi('/_authed/$orgSlug/$leagueSlug');
+
+const activeMatchesQueryKey = (orgId: string, leagueId: string) =>
+  ['league', orgId, leagueId, 'activeMatches'] as const;
+
+interface OrgLeagueInput {
+  orgId: string;
+  leagueId: string;
+}
+
+interface MatchmakingPageData {
+  now: number;
+  queueStatus: QueueStatusResponse | null;
+  activeMatches: ActiveMatchResponse[];
+}
+
+// Keep the page available when either optional status call fails.
+const getMatchmakingDataFn = createServerFn({ method: 'GET' })
+  .validator((input: OrgLeagueInput) => input)
+  .handler(async ({ data }): Promise<MatchmakingPageData> => {
+    const apiClientV3 = await requireApiClientV3();
+    const [queueStatus, activeMatches] = await Promise.all([
+      apiClientV3.queueApi
+        .getQueueStatus(data.orgId, data.leagueId)
+        .catch(() => null),
+      apiClientV3.activeMatchesApi
+        .listActiveMatches(data.orgId, data.leagueId)
+        .catch(() => [] as ActiveMatchResponse[]),
+    ]);
+    return { queueStatus, activeMatches, now: Date.now() };
+  });
+
+const listActiveMatchesFn = createServerFn({ method: 'GET' })
+  .validator((input: OrgLeagueInput) => input)
+  .handler(async ({ data }): Promise<ActiveMatchResponse[]> => {
+    const apiClientV3 = await requireApiClientV3();
+    return apiClientV3.activeMatchesApi.listActiveMatches(
+      data.orgId,
+      data.leagueId
+    );
+  });
+
+type QueueActionResult =
+  { status: 'error'; message: string } | { status: 'ok' };
+
+type QueueActionName = 'join' | 'leave' | 'accept' | 'decline';
+
+interface QueueActionInput extends OrgLeagueInput {
+  action: QueueActionName;
+  matchId?: string;
+}
+
+const TRANSPORT_FALLBACKS: Record<QueueActionName, string> = {
+  join: 'Failed to join queue',
+  leave: 'Failed to leave queue',
+  accept: 'Failed to accept match',
+  decline: 'Failed to decline match',
+};
+
+const queueActionFn = createServerFn({ method: 'POST' })
+  .validator((input: QueueActionInput) => input)
+  .handler(({ data }): Promise<QueueActionResult> => queueAction(data));
+
+async function queueAction(data: QueueActionInput): Promise<QueueActionResult> {
+  const needsMatchId = data.action === 'accept' || data.action === 'decline';
+  if (needsMatchId && !data.matchId) {
+    return failServerAction(400, {
+      status: 'error',
+      message: 'Match ID is required',
+    });
+  }
+  if (!data.orgId || !data.leagueId) {
+    return failServerAction(400, {
+      status: 'error',
+      message: 'Organization and league are required',
+    });
+  }
+
+  const apiClientV3 = await requireApiClientV3();
+  try {
+    switch (data.action) {
+      case 'join':
+        await apiClientV3.queueApi.joinQueue(data.orgId, data.leagueId);
+        break;
+      case 'leave':
+        await apiClientV3.queueApi.leaveQueue(data.orgId, data.leagueId);
+        break;
+      case 'accept':
+        await apiClientV3.pendingMatchesApi.acceptPendingMatch(
+          data.orgId,
+          data.leagueId,
+          data.matchId!
+        );
+        break;
+      case 'decline':
+        await apiClientV3.pendingMatchesApi.declinePendingMatch(
+          data.orgId,
+          data.leagueId,
+          data.matchId!
+        );
+        break;
+    }
+  } catch (error) {
+    const { status, message } = await getApiErrorDetails(
+      error,
+      TRANSPORT_FALLBACKS[data.action]
+    );
+    return failServerAction(status, { status: 'error', message });
+  }
+
+  return { status: 'ok' };
+}
+
+export const Route = createFileRoute(
+  '/_authed/$orgSlug/$leagueSlug/matchmaking'
+)({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const formData = await parseNativeFormData(request);
+        const action = formData.get('_action');
+        if (action !== 'join' && action !== 'leave') {
+          return new Response('Unsupported form action', { status: 400 });
+        }
+        const result = await queueAction({
+          action,
+          orgId: String(formData.get('orgId') ?? ''),
+          leagueId: String(formData.get('leagueId') ?? ''),
+        });
+        return nativeFormResponse(request, {
+          ...result,
+          success: result.status === 'ok',
+        });
+      },
+    },
+  },
+  loader: ({ context }) => {
+    const { orgId, leagueId } = context.league;
+    return getMatchmakingDataFn({ data: { orgId, leagueId } });
+  },
+  component: MatchmakingRoute,
+});
+
+function MatchmakingRoute() {
+  const league = leagueRoute.useLoaderData();
+  const seed = Route.useLoaderData();
+
+  return <MatchmakingPage key={league.leagueId} league={league} seed={seed} />;
+}
+
+function MatchmakingPage({
+  league,
+  seed,
+}: {
+  league: LeagueContext;
+  seed: MatchmakingPageData;
+}) {
+  const { orgId, leagueId, leaguePlayerId, orgSlug, leagueSlug } = league;
+  const queryClient = useQueryClient();
+  const [formMessage, setFormMessage] = useState<string | null>(null);
+
+  const playersRequiredForMatch = league.leagueTeamSize * 2;
+  const formatLabel = formatLeagueFormat(league.leagueTeamSize);
+  const hasLeaguePlayer = !!leaguePlayerId;
+
+  // Share the navbar cache entry, with faster polling for match discovery.
+  const queueQuery = useQuery({
+    queryKey: queueQueryKey(orgId, leagueId),
+    queryFn: async (): Promise<QueueStatusResponse> => {
+      const res = await fetch(
+        `/api/v3/organizations/${orgId}/leagues/${leagueId}/queue`
+      );
+      if (!res.ok) throw new Error(`Queue request failed: ${res.status}`);
+      return res.json() as Promise<QueueStatusResponse>;
+    },
+    initialData: seed.queueStatus ?? undefined,
+    refetchInterval: 2000,
+    staleTime: 0,
+    retry: false,
+  });
+  const queueStatus = queueQuery.data;
+
+  const activeMatchesQuery = useQuery({
+    queryKey: activeMatchesQueryKey(orgId, leagueId),
+    queryFn: () => listActiveMatchesFn({ data: { orgId, leagueId } }),
+    initialData: seed.activeMatches,
+    refetchInterval: 2000,
+    staleTime: 0,
+    retry: false,
+  });
+  const activeMatches = activeMatchesQuery.data ?? [];
+
+  const isInQueue = (queueStatus?.queuedPlayers ?? []).some(
+    (p) => p.leaguePlayerId === leaguePlayerId
+  );
+  const playersInQueue = queueStatus?.queuedPlayers?.length ?? 0;
+  const remainingPlayers = Math.max(
+    playersRequiredForMatch - playersInQueue,
+    0
+  );
+
+  const pendingMatch = queueStatus?.pendingMatch;
+  const pendingForMe =
+    !!pendingMatch &&
+    pendingMatch.teams.some((t) =>
+      t.players.some((p) => p.leaguePlayerId === leaguePlayerId)
+    );
+  const myAcceptance = pendingMatch?.acceptances.find(
+    (a) => a.leaguePlayerId === leaguePlayerId
+  );
+
+  // 250 ms tick for the countdown only — deliberately not a 4 Hz refetch.
+  const [now, setNow] = useState(seed.now);
+  useEffect(() => {
+    const ticker = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(ticker);
+  }, []);
+  const secondsRemaining = pendingMatch
+    ? Math.max(
+        0,
+        Math.ceil((new Date(pendingMatch.expiresAt).getTime() - now) / 1000)
+      )
+    : 0;
+
+  // Seed from loader data so an existing pending match stays silent on mount.
+  const lastPendingMatchId = useRef<string | null>(
+    seed.queueStatus?.pendingMatch?.id ?? null
+  );
+  useEffect(() => {
+    const id = pendingMatch?.id ?? null;
+    if (id && id !== lastPendingMatchId.current && pendingForMe) {
+      try {
+        void new Audio('/sounds/match-found.mp3').play().catch(() => {});
+      } catch {
+        // Audio playback is optional.
+      }
+    }
+    lastPendingMatchId.current = id;
+  }, [pendingMatch?.id, pendingForMe]);
+
+  const queueAction = useMutation({
+    mutationFn: (input: { action: QueueActionName; matchId?: string }) =>
+      queueActionFn({ data: { ...input, orgId, leagueId } }),
+    onSuccess: (result) => {
+      setFormMessage(result.status === 'error' ? result.message : null);
+    },
+    // API failures resolve as action data; this handles RPC transport failures.
+    onError: (_error, variables) =>
+      setFormMessage(TRANSPORT_FALLBACKS[variables.action]),
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queueQueryKey(orgId, leagueId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: activeMatchesQueryKey(orgId, leagueId),
+        }),
+      ]);
+    },
+  });
+
+  const submitAction =
+    (action: QueueActionName, matchId?: string) =>
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (queueAction.isPending) return;
+      queueAction.mutate({ action, matchId });
+    };
+
+  return (
+    <>
+      <PageTitle>Matchmaking</PageTitle>
+
+      {formMessage ? <Alert variant="destructive">{formMessage}</Alert> : null}
+
+      <div className="mt-6 flex flex-col gap-4">
+        <p>
+          Matchmaking is a feature where you queue up for a {formatLabel} game
+          against other people that are also ready for a game.
+        </p>
+        <p>
+          Once <strong>{playersRequiredForMatch} players</strong> are in the
+          queue, a match will be created and you will be notified.
+        </p>
+        <p>
+          If you do not accept the match within <strong>30 seconds</strong>, you
+          will be removed from the queue.
+        </p>
+        <p>A sound will play when a match is found.</p>
+
+        {!hasLeaguePlayer ? (
+          <p>You need to join this league before you can queue for matches.</p>
+        ) : isInQueue ? (
+          <>
+            <div className="flex gap-2">
+              <LoaderCircle className="animate-spin" />
+              <p>Waiting for a match...</p>
+            </div>
+            <p>Missing {remainingPlayers} more players</p>
+            <form
+              method="post"
+              action={`/${orgSlug}/${leagueSlug}/matchmaking`}
+              onSubmit={submitAction('leave')}
+            >
+              <input hidden type="hidden" name="_action" value="leave" />
+              <input hidden type="hidden" name="orgId" value={orgId} />
+              <input hidden type="hidden" name="leagueId" value={leagueId} />
+              <Button
+                variant="destructive"
+                type="submit"
+                className="w-full"
+                disabled={queueAction.isPending}
+              >
+                <Pause />
+                <span className="ml-2">Leave queue</span>
+              </Button>
+            </form>
+          </>
+        ) : (
+          <form
+            method="post"
+            action={`/${orgSlug}/${leagueSlug}/matchmaking`}
+            onSubmit={submitAction('join')}
+          >
+            <input hidden type="hidden" name="_action" value="join" />
+            <input hidden type="hidden" name="orgId" value={orgId} />
+            <input hidden type="hidden" name="leagueId" value={leagueId} />
+            <Button
+              size="lg"
+              className="w-full py-6"
+              type="submit"
+              disabled={queueAction.isPending}
+            >
+              <Play />
+              <span className="ml-2 text-xl">Queue up</span>
+            </Button>
+          </form>
+        )}
+
+        {activeMatches.length > 0 ? (
+          <>
+            <h2 className="mt-4 text-2xl">Active matches</h2>
+            {activeMatches.map((match) => (
+              <div className="rounded-lg border bg-card p-4" key={match.id}>
+                <div className="flex items-center justify-around gap-2">
+                  {(match.teams ?? []).map((team) => (
+                    <div
+                      className="flex flex-col items-center gap-1"
+                      key={team.index}
+                    >
+                      {(team.players ?? []).map((player) => (
+                        <span key={player.leaguePlayerId}>
+                          {player.displayName ?? player.username ?? 'Unknown'}
+                        </span>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 flex justify-center">
+                  <Button asChild variant="outline" size="sm">
+                    <AppLink
+                      to={`/${orgSlug}/${leagueSlug}/active-match/${match.id}`}
+                    >
+                      Submit Result
+                    </AppLink>
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </>
+        ) : null}
+      </div>
+
+      <PendingMatchDialog
+        open={pendingForMe}
+        pendingMatch={pendingMatch}
+        myAcceptance={myAcceptance}
+        secondsRemaining={secondsRemaining}
+        responding={queueAction.isPending}
+        onAccept={() =>
+          queueAction.mutate({ action: 'accept', matchId: pendingMatch?.id })
+        }
+        onDecline={() =>
+          queueAction.mutate({ action: 'decline', matchId: pendingMatch?.id })
+        }
+      />
+    </>
+  );
+}

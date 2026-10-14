@@ -46,6 +46,7 @@ export const load: PageServerLoad = async ({
       players,
       queueStatus,
       myFlags,
+      now: Date.now(),
     };
   } catch {
     throw error(500, 'Failed to load leaderboard');

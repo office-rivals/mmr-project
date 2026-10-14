@@ -1,4 +1,7 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
@@ -196,7 +199,7 @@ public class RatingHistoryTests(PostgresFixture postgres) : IntegrationTestBase(
                     Teams =
                     [
                         new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
-                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = i % 9 }
+                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = i }
                     ]
                 });
         }
@@ -211,5 +214,124 @@ public class RatingHistoryTests(PostgresFixture postgres) : IntegrationTestBase(
         var p1Entries = history.Entries.Where(e => e.LeaguePlayerId == p1.Id).ToList();
         Assert.Equal(10, p1Entries.Count);
         Assert.All(p1Entries, e => Assert.True(e.Mmr > 0));
+    }
+
+    [Fact]
+    public async Task GetRatingHistory_OrdersByPlayedAt()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        var season = await CreateSeason(org.Id, league.Id);
+        var (p1, p2, p3, p4) = await SeedFourPlayers(org.Id, league.Id);
+
+        AuthenticateAs("p1");
+
+        var first = await SubmitMatch(org.Id, league.Id, (p1.Id, p2.Id), (p3.Id, p4.Id), 5);
+        var second = await SubmitMatch(org.Id, league.Id, (p1.Id, p2.Id), (p3.Id, p4.Id), 6);
+        var late = await SubmitMatch(org.Id, league.Id, (p1.Id, p2.Id), (p3.Id, p4.Id), 7);
+        var playedAt = await SetPlayedAt(late.Id, first.PlayedAt.AddMinutes(-1));
+
+        foreach (var query in new[] { "", $"?seasonId={season.Id}" })
+        {
+            var response = await Client.GetAsync(
+                $"api/v3/organizations/{org.Id}/leagues/{league.Id}/rating-history/{p1.Id}{query}");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var history = await ReadJsonAsync<RatingHistoryResponse>(response);
+
+            Assert.Equal([late.Id, first.Id, second.Id], history!.Entries.Select(e => e.MatchId));
+            Assert.Equal(playedAt, history.Entries[0].PlayedAt);
+        }
+    }
+
+    [Fact]
+    public async Task GetLeagueRatingHistory_OrdersByPlayedAt()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+        var (p1, p2, p3, p4) = await SeedFourPlayers(org.Id, league.Id);
+
+        AuthenticateAs("p1");
+
+        var matches = new List<MatchResponse>();
+        for (var i = 0; i < 10; i++)
+            matches.Add(await SubmitMatch(org.Id, league.Id, (p1.Id, p2.Id), (p3.Id, p4.Id), i));
+        var late = matches[^1];
+        var playedAt = await SetPlayedAt(late.Id, matches[0].PlayedAt.AddMinutes(-1));
+
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/rating-history");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var history = await ReadJsonAsync<LeagueRatingHistoryResponse>(response);
+
+        var p1Entries = history!.Entries.Where(e => e.LeaguePlayerId == p1.Id).ToList();
+        Assert.Equal(matches.Take(9).Select(m => m.Id).Prepend(late.Id), p1Entries.Select(e => e.MatchId));
+        Assert.Equal(playedAt, p1Entries[0].PlayedAt);
+    }
+
+    [Fact]
+    public async Task GetRatingHistory_WithoutSeason_OrdersEarlierSeasonFirst()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id, DateTimeOffset.UtcNow.AddDays(-10));
+        var (p1, p2, p3, p4) = await SeedFourPlayers(org.Id, league.Id);
+
+        AuthenticateAs("p1");
+
+        var seasonOneMatch = await SubmitMatch(org.Id, league.Id, (p1.Id, p2.Id), (p3.Id, p4.Id), 5);
+
+        // A backdated season can start before the previous season's last match. A match
+        // moved into that overlap still rates after every earlier-season match.
+        await CreateSeason(org.Id, league.Id, seasonOneMatch.PlayedAt.AddHours(-1));
+        var seasonTwoMatch = await SubmitMatch(org.Id, league.Id, (p1.Id, p2.Id), (p3.Id, p4.Id), 6);
+        await SetPlayedAt(seasonTwoMatch.Id, seasonOneMatch.PlayedAt.AddMinutes(-30));
+
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/rating-history/{p1.Id}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var history = await ReadJsonAsync<RatingHistoryResponse>(response);
+
+        Assert.Equal([seasonOneMatch.Id, seasonTwoMatch.Id], history!.Entries.Select(e => e.MatchId));
+    }
+
+    private async Task<(LeaguePlayer P1, LeaguePlayer P2, LeaguePlayer P3, LeaguePlayer P4)> SeedFourPlayers(
+        Guid orgId, Guid leagueId)
+    {
+        var (_, _, p1) = await SeedTestUser(orgId, leagueId, "p1", "p1@test.com", OrganizationRole.Owner);
+        var (_, _, p2) = await SeedTestUser(orgId, leagueId, "p2", "p2@test.com");
+        var (_, _, p3) = await SeedTestUser(orgId, leagueId, "p3", "p3@test.com");
+        var (_, _, p4) = await SeedTestUser(orgId, leagueId, "p4", "p4@test.com");
+        return (p1, p2, p3, p4);
+    }
+
+    private async Task<MatchResponse> SubmitMatch(Guid orgId, Guid leagueId,
+        (Guid, Guid) winners, (Guid, Guid) losers, int loserScore)
+    {
+        var response = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{orgId}/leagues/{leagueId}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [winners.Item1, winners.Item2], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [losers.Item1, losers.Item2], Score = loserScore }
+                ]
+            });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return (await ReadJsonAsync<MatchResponse>(response))!;
+    }
+
+    // Whole seconds, so the value reads back unchanged: Postgres keeps microseconds,
+    // .NET on Linux has 100 ns ticks.
+    private async Task<DateTimeOffset> SetPlayedAt(Guid matchId, DateTimeOffset playedAt)
+    {
+        playedAt = playedAt.AddTicks(-(playedAt.Ticks % TimeSpan.TicksPerSecond));
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        await db.V3Matches
+            .Where(m => m.Id == matchId)
+            .ExecuteUpdateAsync(u => u.SetProperty(m => m.PlayedAt, playedAt));
+        return playedAt;
     }
 }

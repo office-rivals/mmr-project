@@ -1,0 +1,80 @@
+---
+import { Image } from 'astro:assets';
+import crest from '../../assets/crest.png';
+import { withBase } from '../../lib/url';
+---
+
+<div class="wrap">
+  <div class="card cta">
+    <h2>Ready to settle it?</h2>
+    <p>The docs walk you through every service, from the first clone to the first match.</p>
+    <a class="btn btn-primary btn-lg" href={withBase('/introduction/')}>Read the docs</a>
+  </div>
+</div>
+
+<footer class="foot">
+  <div class="wrap row">
+    <a class="brand" href={withBase('/')}><Image src={crest} alt="" width={24} height={24} /><span>MMR Project</span></a>
+    <nav aria-label="Footer">
+      <a href={withBase('/introduction/')}>Docs</a>
+      <a href="https://github.com/office-rivals/mmr-project">GitHub</a>
+      <a href="https://github.com/office-rivals/mmr-project/releases">Releases</a>
+      <a href="https://github.com/office-rivals/mmr-project/blob/main/LICENSE">MIT License</a>
+    </nav>
+    <span>Built on the beta frontend (<code>frontend-beta</code>)</span>
+  </div>
+</footer>
+
+<style>
+  .cta {
+    margin: 0 auto 72px;
+    padding: 40px 24px;
+    text-align: center;
+  }
+  .cta h2 {
+    margin: 0 0 8px;
+    font: 700 clamp(28px, 4vw, 36px) / 1.1 var(--font-sans);
+  }
+  .cta p {
+    margin: 0 auto 24px;
+    color: var(--muted-foreground);
+    max-width: 32em;
+  }
+  .foot {
+    border-top: 1px solid var(--border);
+    padding: 28px 0 40px;
+    font-size: 14px;
+    color: var(--muted-foreground);
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: var(--foreground);
+    text-decoration: none;
+  }
+  .brand img {
+    border-radius: var(--radius-sm);
+  }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+  }
+  a {
+    text-decoration: none;
+  }
+  @media (hover: hover) {
+    nav a:hover {
+      color: var(--foreground);
+    }
+  }
+</style>

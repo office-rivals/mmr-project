@@ -1,0 +1,163 @@
+import playwright, {
+  type CDPSession,
+  type Page,
+} from '../../frontend/node_modules/@playwright/test/index.js';
+import { execFileSync } from 'node:child_process';
+import { gotoAuthed } from './helpers';
+
+const { expect, test } =
+  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
+
+const LEAGUE_ID = 'eeeeeeee-1000-0000-0000-000000000005';
+const LATE_LEAGUE_ID = 'eeeeeeee-1000-0000-0000-000000000006';
+
+test.use({ hasTouch: true });
+
+function runSql(input: string) {
+  execFileSync(
+    'psql',
+    [
+      '-h',
+      process.env.E2E_DB_HOST ?? 'localhost',
+      '-p',
+      process.env.E2E_DB_PORT ?? '5433',
+      '-U',
+      process.env.E2E_DB_USER ?? 'postgres',
+      '-d',
+      process.env.E2E_DB_NAME ?? 'mmr_project',
+      '-v',
+      'ON_ERROR_STOP=1',
+    ],
+    {
+      env: {
+        ...process.env,
+        PGPASSWORD: process.env.E2E_DB_PASS ?? 'this_is_a_hard_password1337',
+      },
+      input,
+    }
+  );
+}
+
+test.beforeAll(() => {
+  runSql(`
+    INSERT INTO leagues (id, organization_id, name, slug, team_size, winning_score, created_at)
+    VALUES ('${LEAGUE_ID}', '11111111-1111-1111-1111-111111111111', 'Hydrated Fresh League', 'hydrated-fresh-league', 1, 10, '2026-01-01')
+    ON CONFLICT (id) DO NOTHING;
+  `);
+});
+
+test('hydrated league join replaces the inactive shell cache before navigation', async ({
+  page,
+}) => {
+  await gotoAuthed(page, '/test-org');
+  const form = page.locator('form').filter({
+    has: page.locator(`input[name="leagueId"][value="${LEAGUE_ID}"]`),
+  });
+
+  const enhancedPost = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname.startsWith('/_serverFn/')
+  );
+  await form.getByRole('button', { name: 'Join League' }).click();
+  expect((await enhancedPost).status()).toBeLessThan(400);
+
+  await expect(page).toHaveURL('/test-org/hydrated-fresh-league');
+  await expect(page.getByText(/League not found/i)).toHaveCount(0);
+});
+
+test('revisiting a warmed organization refetches its league list', async ({
+  page,
+}) => {
+  runSql(`DELETE FROM leagues WHERE id = '${LATE_LEAGUE_ID}';`);
+  await gotoAuthed(page, '/test-org');
+  await expect(
+    page.getByText('League Added After Load', { exact: true })
+  ).toHaveCount(0);
+
+  runSql(`
+    INSERT INTO leagues (id, organization_id, name, slug, team_size, winning_score, created_at)
+    VALUES ('${LATE_LEAGUE_ID}', '11111111-1111-1111-1111-111111111111', 'League Added After Load', 'league-added-after-load', 1, 10, '2026-01-01');
+  `);
+  await page.getByRole('link', { name: 'Open League' }).first().click();
+  await expect(page).toHaveURL(/\/test-org\/[^/]+$/);
+  await page.goBack();
+
+  await expect(page).toHaveURL('/test-org');
+  await expect(
+    page.getByText('League Added After Load', { exact: true })
+  ).toBeVisible();
+});
+
+async function markStandalone(page: Page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'standalone', {
+      value: true,
+      configurable: true,
+    });
+  });
+}
+
+async function pull(client: CDPSession) {
+  await client.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: 180, y: 90 }],
+  });
+  for (let step = 1; step <= 14; step++) {
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: 180, y: 90 + Math.round((290 * step) / 14) }],
+    });
+  }
+  await client.send('Input.dispatchTouchEvent', {
+    type: 'touchEnd',
+    touchPoints: [],
+  });
+}
+
+test('pull-to-refresh reports a failed refetch', async ({ page }) => {
+  await markStandalone(page);
+  const client = await page.context().newCDPSession(page);
+  await client.send('Emulation.setEmulatedMedia', {
+    features: [
+      { name: 'hover', value: 'none' },
+      { name: 'pointer', value: 'coarse' },
+    ],
+  });
+  await gotoAuthed(page, '/test-org/test-league');
+  await expect(page.getByLabel('Settings menu')).toBeVisible();
+  await page.waitForTimeout(400);
+
+  let abortedRpc = false;
+  await page.route(
+    (url) => url.pathname.startsWith('/_serverFn/'),
+    (route) => {
+      abortedRpc = true;
+      return route.abort();
+    }
+  );
+  await pull(client);
+
+  await expect(page.locator('[role="status"].fixed')).toContainText(
+    'Refresh failed'
+  );
+  expect(abortedRpc).toBe(true);
+});
+
+test('pull-to-refresh redirects when the session has expired', async ({
+  page,
+}) => {
+  await markStandalone(page);
+  const client = await page.context().newCDPSession(page);
+  await gotoAuthed(page, '/test-org/test-league');
+  await expect(page.getByLabel('Settings menu')).toBeVisible();
+  await page.waitForTimeout(400);
+  await page.context().clearCookies();
+
+  await pull(client);
+
+  await expect(page).toHaveURL('/login');
+  await expect(page.getByText('Refresh failed', { exact: true })).toHaveCount(
+    0
+  );
+});

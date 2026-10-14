@@ -3,7 +3,35 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { syncCsprojVersion } from "./version.mjs";
+import { alignedMajorVersions, syncCsprojVersion, syncPackageLockVersion } from "./version.mjs";
+
+it("allows an independent beta major while retaining stable-component alignment", () => {
+  const versions = [
+    { name: "frontend", version: "1.6.0" },
+    { name: "api", version: "1.5.0" },
+    { name: "frontend-beta", version: "0.1.0", independentMajor: true }
+  ];
+  assert.equal(alignedMajorVersions(versions).size, 1);
+  assert.equal(alignedMajorVersions([...versions, { name: "mmr-api", version: "2.0.0" }]).size, 2);
+});
+
+it("updates release metadata in the component lockfile without changing dependency versions", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "release-lock-test-"));
+  try {
+    const lockPath = path.join(dir, "package-lock.json");
+    fs.writeFileSync(lockPath, JSON.stringify({ version: "0.0.0", packages: {
+      "": { name: "frontend-beta", version: "0.0.0" },
+      "node_modules/react": { version: "19.3.0" }
+    } }));
+    syncPackageLockVersion(path.join(dir, "package.json"), "0.1.0");
+    const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+    assert.equal(lock.version, "0.1.0");
+    assert.equal(lock.packages[""].version, "0.1.0");
+    assert.equal(lock.packages["node_modules/react"].version, "19.3.0");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 describe("syncCsprojVersion", () => {
   let tmpDir;

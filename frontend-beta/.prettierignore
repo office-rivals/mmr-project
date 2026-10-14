@@ -1,0 +1,6 @@
+node_modules
+dist
+public
+src/api-v3
+src/routeTree.gen.ts
+package-lock.json

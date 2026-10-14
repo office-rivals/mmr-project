@@ -409,6 +409,53 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
     }
 
     [Fact]
+    public async Task DeleteMatch_WithFlag_RemovesMatchAndFlag()
+    {
+        // A flag references the match via a restricted FK (fk_match_flags_match).
+        // Deleting a flagged match must clean up the flag first, otherwise the
+        // delete fails with a foreign key violation.
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, player3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, player4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        var submitResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                ]
+            });
+        submitResponse.EnsureSuccessStatusCode();
+        var match = await ReadJsonAsync<MatchResponse>(submitResponse);
+
+        var flagResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/match-flags",
+            new CreateMatchFlagRequest { MatchId = match!.Id, Reason = "Wrong score" });
+        flagResponse.EnsureSuccessStatusCode();
+
+        var deleteResponse = await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{match.Id}");
+
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.Null(await dbContext.V3Matches.FirstOrDefaultAsync(m => m.Id == match.Id));
+        Assert.False(await dbContext.V3MatchFlags.AnyAsync(f => f.MatchId == match.Id));
+    }
+
+    [Fact]
     public async Task DeleteMatch_MostRecentMatch_RestoresPreviousRatings()
     {
         var org = await CreateOrganization();
@@ -889,7 +936,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                     Teams =
                     [
                         new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
-                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 + i }
                     ]
                 });
         }
@@ -1362,7 +1409,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                 Teams =
                 [
                     new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
-                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 6 }
                 ]
             });
         secondResponse.EnsureSuccessStatusCode();
@@ -1443,7 +1490,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                     Teams =
                     [
                         new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
-                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 + i }
                     ]
                 });
             response.EnsureSuccessStatusCode();
@@ -1518,7 +1565,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                 Teams =
                 [
                     new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
-                    new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 5 }
+                    new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 6 }
                 ]
             });
         firstResponse.EnsureSuccessStatusCode();
@@ -1564,7 +1611,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                 Teams =
                 [
                     new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
-                    new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 5 }
+                    new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 7 }
                 ]
             });
         secondResponse.EnsureSuccessStatusCode();
@@ -1639,7 +1686,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                     Teams =
                     [
                         new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
-                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 5 }
+                        new SubmitMatchTeamRequest { Players = [p3.Id, p4.Id], Score = 6 + i }
                     ]
                 });
             response.EnsureSuccessStatusCode();
@@ -1721,7 +1768,7 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                     Teams =
                     [
                         new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
-                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                        new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 + i }
                     ]
                 });
             response.EnsureSuccessStatusCode();

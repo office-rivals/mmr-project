@@ -95,6 +95,17 @@ builder.Services.AddRateLimiter(options =>
                 PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(1),
             }));
+
+    options.AddPolicy(RateLimitPolicies.ClaimRequestCreate, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.User.GetUserId()
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "anonymous",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromHours(1),
+            }));
 });
 
 builder.Services.AddUserContextResolver();
@@ -114,6 +125,7 @@ builder.Services.AddScoped<IV3PendingMatchCoordinator, V3PendingMatchCoordinator
 builder.Services.AddScoped<IV3PersonalAccessTokenService, V3PersonalAccessTokenService>();
 builder.Services.AddScoped<IV3MatchFlagService, V3MatchFlagService>();
 builder.Services.AddScoped<IInviteLinkService, InviteLinkService>();
+builder.Services.AddScoped<IMembershipClaimService, MembershipClaimService>();
 
 builder.Services.AddHostedService<V3MatchMakingBackgroundService>();
 
