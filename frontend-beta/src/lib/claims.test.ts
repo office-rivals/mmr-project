@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MembershipClaimStatus } from '@/api-v3';
 import {
-  formatChoiceCount,
-  formatMatchCount,
+  formatChoiceNames,
   getClaimablePlayerName,
   getClaimState,
 } from './claims';
@@ -168,11 +167,14 @@ describe('claim display text', () => {
     );
   });
 
-  it('counts matches and choices', () => {
-    expect(formatMatchCount(1)).toBe('1 match');
-    expect(formatMatchCount(0)).toBe('0 matches');
-    expect(formatMatchCount(37)).toBe('37 matches');
-    expect(formatChoiceCount(1)).toBe('1 player');
-    expect(formatChoiceCount(2)).toBe('2 players to choose from');
+  it('names one, two, or the first two of many choices', () => {
+    expect(formatChoiceNames(['Zed'])).toBe('Zed');
+    expect(formatChoiceNames(['Zed', 'Sam'])).toBe('Zed or Sam');
+    expect(formatChoiceNames(['Zed', 'Sam', 'Alex'])).toBe(
+      'Zed, Sam and 1 more'
+    );
+    expect(formatChoiceNames(['Zed', 'Sam', 'Alex', 'Kim'])).toBe(
+      'Zed, Sam and 2 more'
+    );
   });
 });

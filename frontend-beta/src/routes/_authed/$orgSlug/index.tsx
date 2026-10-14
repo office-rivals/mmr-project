@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, CircleAlert } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { PlayerAvatar } from '@/components/player-avatar';
 import { HttpErrorView } from '@/components/http-error-view';
 import { fetchOrgClaimStatus } from '@/lib/claim-actions';
 import {
-  formatChoiceCount,
+  formatChoiceNames,
   getClaimablePlayerName,
   getClaimState,
 } from '@/lib/claims';
@@ -172,6 +172,8 @@ function OrgHomePageContent() {
   const [formError, setFormError] = useState<string | null>(null);
   const claim = getClaimState(claimStatus);
   const claimHref = `/${org.slug}/claim`;
+  const joinedCount = leagues.filter((l) => l.isJoined).length;
+  const rejectedClaim = claim.status === 'rejected' ? claim.claim : undefined;
 
   const joinLeague = useMutation({
     mutationFn: (input: { leagueId: string; leagueSlug: string }) =>
@@ -190,27 +192,43 @@ function OrgHomePageContent() {
   return (
     <div className="flex flex-col gap-6 lg:gap-8">
       <div className="flex min-w-0 flex-col gap-1">
-        <Eyebrow>
-          {leagues.length} {leagues.length === 1 ? 'league' : 'leagues'}
-        </Eyebrow>
+        {leagues.length > 0 ? (
+          <Eyebrow>
+            Joined {joinedCount} of {leagues.length}{' '}
+            {leagues.length === 1 ? 'league' : 'leagues'}
+          </Eyebrow>
+        ) : null}
         <PageTitle>{org.name}</PageTitle>
       </div>
 
       {formError && <Alert variant="destructive">{formError}</Alert>}
 
-      {claim.status === 'eligible' && claimStatus.claimable ? (
+      {claim.canRequest && claimStatus.claimable ? (
         <ClaimBanner
           players={claimStatus.claimable.memberships}
+          rejectedClaim={rejectedClaim}
           href={claimHref}
         />
+      ) : rejectedClaim ? (
+        <section
+          className={cn(
+            plainCard,
+            'flex flex-wrap items-center justify-between gap-x-4 gap-y-3 p-5'
+          )}
+        >
+          <RejectedLine claim={rejectedClaim} />
+          <Button asChild variant="outline" className="h-11 lg:h-10">
+            <AppLink to={claimHref}>See why</AppLink>
+          </Button>
+        </section>
       ) : null}
       {claim.status === 'pending' && claim.claim ? (
         <PendingClaimCard claim={claim.claim} href={claimHref} />
       ) : null}
       {claim.status === 'unknown' && leagues.some((l) => !l.isJoined) ? (
         <Alert data-testid="league-join-unavailable">
-          Joining leagues is unavailable until your player claim status loads.
-          Reload the page to try again.
+          Couldn&apos;t check for a player to claim, so joining leagues is
+          paused. Reload to try again.
         </Alert>
       ) : null}
 
@@ -236,7 +254,11 @@ function OrgHomePageContent() {
                   <span className="truncate font-semibold">{league.name}</span>
                   <span className="text-xs text-muted-foreground">
                     {formatLeagueFormat(league.teamSize)}
-                    {league.isJoined ? ' · Joined' : null}
+                    {league.isJoined
+                      ? ' · Joined'
+                      : claim.status === 'pending'
+                        ? ' · Join once your claim is decided'
+                        : null}
                   </span>
                 </div>
 
@@ -276,14 +298,15 @@ function OrgHomePageContent() {
                       name="leagueSlug"
                       value={league.slug}
                     />
-                    <Button type="submit" className="h-11 lg:h-10">
+                    {/* While a claim is open, claiming is the one primary. */}
+                    <Button
+                      type="submit"
+                      variant={claim.canRequest ? 'outline' : 'default'}
+                      className="h-11 lg:h-10"
+                    >
                       Join League
                     </Button>
                   </form>
-                ) : claim.status === 'pending' ? (
-                  <span className="text-sm text-muted-foreground">
-                    Available after your claim
-                  </span>
                 ) : null}
               </li>
             ))}
@@ -294,40 +317,60 @@ function OrgHomePageContent() {
   );
 }
 
+function RejectedLine({ claim }: { claim: MembershipClaimRequestResponse }) {
+  return (
+    <p className="flex items-start gap-2 text-sm font-semibold">
+      <CircleAlert
+        aria-hidden="true"
+        className="mt-0.5 size-4 shrink-0 text-destructive"
+      />
+      <span>
+        A moderator turned down your claim request for{' '}
+        {getClaimablePlayerName(claim.target)}.
+      </span>
+    </p>
+  );
+}
+
 function ClaimBanner({
   players,
+  rejectedClaim,
   href,
 }: {
   players: ClaimableMembershipResponse[];
+  rejectedClaim?: MembershipClaimRequestResponse;
   href: string;
 }) {
+  const names = players.map(getClaimablePlayerName);
   return (
     <section
       aria-labelledby="org-claim-heading"
       className={cn(featuredCard, 'flex flex-col gap-4 p-5 lg:p-6')}
     >
+      {rejectedClaim ? <RejectedLine claim={rejectedClaim} /> : null}
       <div className="flex flex-col gap-1.5">
-        <h2 id="org-claim-heading" className="text-lg font-semibold">
+        <h2 id="org-claim-heading" className="text-lg font-bold text-balance">
           Played here before you had an account?
         </h2>
-        <p className="text-sm text-muted-foreground">
-          Your matches may be recorded under a player without an account. Claim
-          it to bring its matches and rating here.
+        <p className="max-w-prose text-sm text-muted-foreground">
+          Your earlier matches may be recorded under a player without an
+          account. Claim it before you play your first match here; after that,
+          only a moderator can merge them.
         </p>
       </div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex gap-1.5">
-            {players.slice(0, 3).map((player) => (
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex shrink-0 gap-1.5">
+            {names.slice(0, 3).map((name, index) => (
               <PlayerAvatar
-                key={player.organizationMembershipId}
-                name={getClaimablePlayerName(player)}
+                key={players[index].organizationMembershipId}
+                name={name}
                 dashed
               />
             ))}
           </div>
-          <span className="text-sm text-muted-foreground">
-            {formatChoiceCount(players.length)}
+          <span className="min-w-0 text-sm font-medium">
+            {formatChoiceNames(names)}
           </span>
         </div>
         <Button asChild className="h-11 w-full sm:w-auto lg:h-10">
@@ -346,22 +389,34 @@ function PendingClaimCard({
   href: string;
 }) {
   const name = getClaimablePlayerName(claim.target);
+  // The link's ::after stretches over the card, so the whole card is the target.
   return (
-    <section className={cn(plainCard, 'flex items-start gap-4 p-5')}>
-      <PlayerAvatar name={name} dashed />
+    <section
+      className={cn(
+        plainCard,
+        'relative flex items-start gap-4 p-5 transition-colors hover:bg-muted/40',
+        'has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-offset-2 has-[a:focus-visible]:ring-offset-background'
+      )}
+    >
+      <PlayerAvatar name={name} dashed highlight />
       <div className="flex min-w-0 flex-col gap-1">
         <AppLink
           to={href}
-          className="inline-flex items-center gap-1 self-start rounded-sm font-semibold underline decoration-muted-foreground/50 underline-offset-4 transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+          className="self-start font-bold after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none"
         >
           Player claim awaiting approval
-          <ChevronRight aria-hidden="true" className="size-4" />
         </AppLink>
         <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{name}</span> · A
-          moderator is checking it. You can join leagues once it&apos;s decided.
+          You asked to claim{' '}
+          <strong className="font-semibold text-foreground">{name}</strong>. A
+          moderator is checking it, and you can join leagues once it&apos;s
+          decided.
         </p>
       </div>
+      <ChevronRight
+        aria-hidden="true"
+        className="ml-auto size-5 shrink-0 self-center text-muted-foreground"
+      />
     </section>
   );
 }

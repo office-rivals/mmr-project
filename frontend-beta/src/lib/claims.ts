@@ -81,8 +81,9 @@ export const getClaimablePlayerName = (player: ClaimableMembershipResponse) =>
 export const matchesLabel = (count: number) =>
   count === 1 ? 'match' : 'matches';
 
-export const formatMatchCount = (count: number) =>
-  `${count} ${matchesLabel(count)}`;
-
-export const formatChoiceCount = (count: number) =>
-  count === 1 ? '1 player' : `${count} players to choose from`;
+/** "A", "A or B", or "A, B and 3 more". */
+export function formatChoiceNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  if (names.length === 2) return `${names[0]} or ${names[1]}`;
+  return `${names[0]}, ${names[1]} and ${names.length - 2} more`;
+}
