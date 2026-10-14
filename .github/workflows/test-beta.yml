@@ -1,8 +1,9 @@
 name: Beta UI - build and test
 
 # Pull requests always run this workflow so its check reports and can be
-# required; the `changes` job decides whether the suite runs. The frontend's
-# manifests count because the type check uses its Playwright install.
+# required; the `changes` job decides whether the suite runs. A few frontend
+# files count because the job installs the frontend's Playwright and the type
+# check imports its Playwright config.
 on:
   push:
     branches: [main]
@@ -10,6 +11,8 @@ on:
       - 'frontend-beta/**'
       - 'frontend/package.json'
       - 'frontend/package-lock.json'
+      - 'frontend/.npmrc'
+      - 'frontend/playwright.config.ts'
       - '.github/workflows/test-beta.yml'
   pull_request:
     branches: [main]
@@ -38,8 +41,14 @@ jobs:
           changed=true
           # Pushes are already scoped by `paths`.
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
-            files="$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA")"
-            grep -qE '^(frontend-beta/|frontend/package(-lock)?\.json$|\.github/workflows/test-beta\.yml$)' <<< "$files" || changed=false
+            # --no-renames also lists a moved file's old path, and -z stops git
+            # quoting unusual names, which the anchors would then miss.
+            files="$RUNNER_TEMP/changed-files"
+            git diff --name-only -z --no-renames "$BASE_SHA"..."$HEAD_SHA" > "$files"
+            # Only "no match" may skip the suite; a grep error must not.
+            rc=0
+            grep -qzE '^(frontend-beta/|frontend/(package(-lock)?\.json|\.npmrc|playwright\.config\.ts)$|\.github/workflows/test-beta\.yml$)' "$files" || rc=$?
+            if [ "$rc" -eq 1 ]; then changed=false; fi
           fi
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
 

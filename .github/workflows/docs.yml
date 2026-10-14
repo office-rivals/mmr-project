@@ -42,8 +42,14 @@ jobs:
           changed=true
           # Pushes and manual runs are already scoped.
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
-            files="$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA")"
-            grep -qE '^(docs/|\.nvmrc$|\.github/workflows/docs\.yml$)' <<< "$files" || changed=false
+            # --no-renames also lists a moved file's old path, and -z stops git
+            # quoting unusual names, which the anchors would then miss.
+            files="$RUNNER_TEMP/changed-files"
+            git diff --name-only -z --no-renames "$BASE_SHA"..."$HEAD_SHA" > "$files"
+            # Only "no match" may skip the suite; a grep error must not.
+            rc=0
+            grep -qzE '^(docs/|\.nvmrc$|\.github/workflows/docs\.yml$)' "$files" || rc=$?
+            if [ "$rc" -eq 1 ]; then changed=false; fi
           fi
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
@@ -86,7 +92,8 @@ jobs:
           path: docs/dist
 
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # The implicit success() also requires `changes`, which build may run past.
+    if: ${{ !cancelled() && needs.build.result == 'success' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     needs: build
     runs-on: ubuntu-latest
     permissions:
