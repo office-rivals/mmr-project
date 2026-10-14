@@ -1201,6 +1201,80 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
     }
 
     [Fact]
+    public async Task UpdateMatch_OverlappingEditsAddingOneNewPlayer_CreateItOnce()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, player1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, player2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, player3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, player4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+
+        AuthenticateAs("p1");
+
+        var submitResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 5 }
+                ]
+            });
+        var match = await ReadJsonAsync<MatchResponse>(submitResponse);
+        Assert.NotNull(match);
+
+        var url = $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches/{match.Id}";
+
+        // Each attempt names a guest nobody has recorded yet. The queued edit
+        // must find the guest the other one created, not insert it again.
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            var email = $"late-guest-{attempt}@test.com";
+            SubmitMatchRequest Edit(int score) => new()
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
+                    new SubmitMatchTeamRequest
+                    {
+                        Players =
+                        [
+                            player3.Id,
+                            new SubmitMatchPlayerRequest
+                            {
+                                NewPlayer = new CreateMatchPlayerRequest
+                                {
+                                    DisplayName = "Late Guest",
+                                    Email = email,
+                                },
+                            },
+                        ],
+                        Score = score,
+                    },
+                ]
+            };
+
+            var responses = await Task.WhenAll(
+                Client.PatchAsJsonAsync(url, Edit(4)),
+                Client.PatchAsJsonAsync(url, Edit(6)));
+
+            Assert.All(responses, r =>
+                Assert.True(r.StatusCode == HttpStatusCode.OK,
+                    $"attempt {attempt}: concurrent edit returned {(int)r.StatusCode}"));
+
+            using var scope = Factory.Services.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+            Assert.Equal(1, await dbContext.OrganizationMemberships
+                .CountAsync(m => m.OrganizationId == org.Id && m.InviteEmail == email));
+        }
+    }
+
+    [Fact]
     public async Task UpdateAndDeleteSameMatchConcurrently_NeitherFailsWithServerError()
     {
         var org = await CreateOrganization();
