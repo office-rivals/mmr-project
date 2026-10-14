@@ -35,18 +35,21 @@ public class MembershipClaimService(
     public async Task<ClaimableMembershipsResponse> GetClaimableMembershipsAsync(Guid orgId)
     {
         var (user, requesterMembership) = await GetCurrentRequesterAsync(orgId);
-        var verifiedEmail = GetVerifiedEmail();
-        var targets = await LoadClaimableTargetsAsync(orgId, verifiedEmail);
         var hasExistingClaim = await dbContext.MembershipClaimRequests
             .AnyAsync(c => c.OrganizationId == orgId
                            && c.UserId == user.Id
                            && (c.Status == MembershipClaimStatus.Pending
                                || c.Status == MembershipClaimStatus.Approved));
-        var hasActivity = await HasActivityAsync(requesterMembership.Id);
 
+        // Every organization page asks, and most members can't claim, so they skip the
+        // candidate list and its match statistics.
+        if (hasExistingClaim || await HasActivityAsync(requesterMembership.Id))
+            return new ClaimableMembershipsResponse { RequesterEligible = false, Memberships = [] };
+
+        var targets = await LoadClaimableTargetsAsync(orgId, GetVerifiedEmail());
         return new ClaimableMembershipsResponse
         {
-            RequesterEligible = targets.Count > 0 && !hasExistingClaim && !hasActivity,
+            RequesterEligible = targets.Count > 0,
             Memberships = await MapTargetsAsync(targets),
         };
     }
