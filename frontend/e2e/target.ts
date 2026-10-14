@@ -78,3 +78,9 @@ export const isDataReloadRoute = (url: URL) =>
 export const DELETE_FORM_SELECTOR = IS_BETA
   ? 'form[data-delete-match]'
   : 'form[action="?/delete"]';
+
+// The org page's join-league form. SvelteKit posts to its `?/joinLeague`
+// action; the beta posts to the page with a hidden `_action` field.
+export const JOIN_LEAGUE_FORM_SELECTOR = IS_BETA
+  ? 'form:has(input[name="_action"][value="joinLeague"])'
+  : 'form[action="?/joinLeague"]';

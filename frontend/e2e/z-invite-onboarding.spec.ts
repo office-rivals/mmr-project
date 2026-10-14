@@ -20,6 +20,7 @@
 // ---------------------------------------------------------------------------
 import { execFileSync } from 'node:child_process';
 import { test, expect, type Page } from '@playwright/test';
+import { JOIN_LEAGUE_FORM_SELECTOR } from './target';
 
 // Fixture ids from scripts/seed-data.sql.
 const ORG_ID = '11111111-1111-1111-1111-111111111111';
@@ -279,7 +280,7 @@ test.describe.serial('Invite onboarding claims a name-only player', () => {
       await signInAndJoinOrganization(page, user2Email, user2Password);
 
       const joinLeague = page
-        .locator('form[action="?/joinLeague"]')
+        .locator(JOIN_LEAGUE_FORM_SELECTOR)
         .filter({
           has: page.locator('input[name="leagueSlug"][value="test-league"]'),
         })
