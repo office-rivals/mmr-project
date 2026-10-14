@@ -696,6 +696,78 @@ namespace MMRProject.Api.Data.Migrations
                     b.ToTable("match_team_players", (string)null);
                 });
 
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.MembershipClaimRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("OrganizationMembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_membership_id");
+
+                    b.Property<string>("RequesterVerifiedEmail")
+                        .HasColumnType("text")
+                        .HasColumnName("requester_verified_email");
+
+                    b.Property<Guid?>("RetiredMembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("retired_membership_id");
+
+                    b.Property<string>("ReviewNote")
+                        .HasColumnType("text")
+                        .HasColumnName("review_note");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedByMembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by_membership_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RetiredMembershipId");
+
+                    b.HasIndex("ReviewedByMembershipId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex(new[] { "OrganizationId", "Status" }, "ix_membership_claim_requests_org_status");
+
+                    b.HasIndex(new[] { "OrganizationMembershipId" }, "ix_membership_claim_requests_pending_target")
+                        .IsUnique()
+                        .HasFilter("status = 0");
+
+                    b.HasIndex(new[] { "OrganizationId", "UserId" }, "ix_membership_claim_requests_pending_user")
+                        .IsUnique()
+                        .HasFilter("status = 0");
+
+                    b.ToTable("membership_claim_requests", (string)null);
+                });
+
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.Organization", b =>
                 {
                     b.Property<Guid>("Id")
@@ -824,6 +896,12 @@ namespace MMRProject.Api.Data.Migrations
                     b.Property<string>("Username")
                         .HasColumnType("text")
                         .HasColumnName("username");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -1605,6 +1683,52 @@ namespace MMRProject.Api.Data.Migrations
                     b.Navigation("LeaguePlayer");
 
                     b.Navigation("MatchTeam");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.MembershipClaimRequest", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_membership_claim_requests_organization");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.OrganizationMembership", "OrganizationMembership")
+                        .WithMany()
+                        .HasForeignKey("OrganizationMembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_membership_claim_requests_target_membership");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.OrganizationMembership", "RetiredMembership")
+                        .WithMany()
+                        .HasForeignKey("RetiredMembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_membership_claim_requests_retired_membership");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.OrganizationMembership", "ReviewedByMembership")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByMembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_membership_claim_requests_reviewed_by");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_membership_claim_requests_user");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("OrganizationMembership");
+
+                    b.Navigation("RetiredMembership");
+
+                    b.Navigation("ReviewedByMembership");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.OrganizationInviteLink", b =>

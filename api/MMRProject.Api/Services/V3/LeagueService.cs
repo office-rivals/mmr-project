@@ -19,6 +19,8 @@ public class LeagueService(ApiDbContext dbContext, IV3SeasonService seasonServic
 {
     public async Task<LeagueResponse> CreateLeagueAsync(Guid orgId, CreateLeagueRequest request)
     {
+        ValidateSlug(request.Slug);
+
         var existingLeague = await dbContext.Leagues
             .FirstOrDefaultAsync(l => l.OrganizationId == orgId && l.Slug == request.Slug);
 
@@ -85,8 +87,7 @@ public class LeagueService(ApiDbContext dbContext, IV3SeasonService seasonServic
 
         if (request.Slug != null)
         {
-            if (string.IsNullOrWhiteSpace(request.Slug))
-                throw new InvalidArgumentException("Slug cannot be empty");
+            ValidateSlug(request.Slug);
 
             var existingLeague = await dbContext.Leagues
                 .FirstOrDefaultAsync(l => l.OrganizationId == orgId && l.Slug == request.Slug && l.Id != leagueId);
@@ -135,6 +136,15 @@ public class LeagueService(ApiDbContext dbContext, IV3SeasonService seasonServic
     // Capped at the submit form's current 1v1/2v2 support. Lift this when the
     // submit form learns to render >2 player slots per team.
     private const int MaxSupportedTeamSize = 2;
+
+    private static void ValidateSlug(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+            throw new InvalidArgumentException("Slug cannot be empty");
+
+        if (OrganizationService.IsReservedSlug(slug))
+            throw new InvalidArgumentException($"The slug '{slug}' is reserved and cannot be used");
+    }
 
     private static void ValidateTeamSize(int teamSize)
     {

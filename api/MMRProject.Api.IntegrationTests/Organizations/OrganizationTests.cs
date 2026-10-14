@@ -168,6 +168,34 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
         Assert.True(response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict);
     }
 
+    [Theory]
+    [InlineData("demote")]
+    [InlineData("remove")]
+    public async Task LastOwner_CannotStepDownLeavingOnlyAnAccountlessOwner(string action)
+    {
+        var org = await CreateOrganization("Ghost Owner Org", "ghost-owner-org");
+        var (_, ownerMembership) = await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("owner-1");
+
+        var inviteResponse = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "second-owner@test.com", Role = OrganizationRole.Owner });
+        inviteResponse.EnsureSuccessStatusCode();
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
+        var clearEmail = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members/{invited!.Id}/profile",
+            new UpdateMemberProfileRequest { Email = "" });
+        Assert.Equal(MembershipStatus.Active,
+            (await ReadJsonAsync<OrganizationMemberResponse>(clearEmail))!.Status);
+
+        var response = action == "demote"
+            ? await Client.PatchAsJsonAsync(
+                $"api/v3/organizations/{org.Id}/members/{ownerMembership.Id}",
+                new UpdateMemberRoleRequest { Role = OrganizationRole.Member })
+            : await Client.DeleteAsync($"api/v3/organizations/{org.Id}/members/{ownerMembership.Id}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task RemoveMember_PreservesLeagueHistoryAndHidesMembership()
     {
@@ -234,6 +262,107 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
     }
 
     [Fact]
+    public async Task ReinviteRemovedMember_WithDifferentEmailCasing_ReusesTheirMembershipAndRole()
+    {
+        var org = await CreateOrganization("Recase Org", "recase-org");
+        await SeedOrgMember(org.Id, "recase-owner", "recase-owner@test.com", OrganizationRole.Owner);
+        var (_, membership) = await SeedOrgMember(org.Id, "recase-member", "recase-member@test.com");
+
+        AuthenticateAs("recase-owner");
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/members/{membership.Id}")).StatusCode);
+        var inviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "Recase-Member@Test.com", Role = OrganizationRole.Moderator });
+        Assert.Equal(HttpStatusCode.OK, inviteResponse.StatusCode);
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
+        Assert.NotNull(invited);
+        Assert.Equal(membership.Id, invited.Id);
+
+        AuthenticateAs("recase-member", email: "recase-member@test.com");
+        var meResponse = await Client.GetAsync("api/v3/me");
+        Assert.Equal(HttpStatusCode.OK, meResponse.StatusCode);
+        var me = await ReadJsonAsync<MeResponse>(meResponse);
+        Assert.NotNull(me);
+        Assert.Equal(org.Id, Assert.Single(me.Organizations).Id);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var rejoined = await dbContext.OrganizationMemberships.SingleAsync(m => m.Id == membership.Id);
+        Assert.Equal(MembershipStatus.Active, rejoined.Status);
+        Assert.Equal(OrganizationRole.Moderator, rejoined.Role);
+    }
+
+    [Fact]
+    public async Task ReinviteRemovedMember_WithAnOlderRemovedInvite_ReusesTheirMembership()
+    {
+        var org = await CreateOrganization("Stale Invite Org", "stale-invite-org");
+        await SeedOrgMember(org.Id, "stale-owner", "stale-owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("stale-owner");
+        var firstInviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "returner@test.com", Role = OrganizationRole.Member });
+        var firstInvite = await ReadJsonAsync<OrganizationMemberResponse>(firstInviteResponse);
+        Assert.NotNull(firstInvite);
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/members/{firstInvite.Id}")).StatusCode);
+
+        // The person later joined on a separate row, which was removed too.
+        var (_, joined) = await SeedOrgMember(org.Id, "returner", "returner@test.com");
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/members/{joined.Id}")).StatusCode);
+
+        var inviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "returner@test.com", Role = OrganizationRole.Member });
+        Assert.Equal(HttpStatusCode.OK, inviteResponse.StatusCode);
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
+        Assert.NotNull(invited);
+        Assert.Equal(joined.Id, invited.Id);
+
+        AuthenticateAs("returner", email: "returner@test.com");
+        Assert.Equal(HttpStatusCode.OK, (await Client.GetAsync("api/v3/me")).StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.Equal(MembershipStatus.Active,
+            (await dbContext.OrganizationMemberships.SingleAsync(m => m.Id == joined.Id)).Status);
+        var stale = await dbContext.OrganizationMemberships.SingleAsync(m => m.Id == firstInvite.Id);
+        Assert.Equal(MembershipStatus.Removed, stale.Status);
+        Assert.Null(stale.InviteEmail);
+    }
+
+    [Fact]
+    public async Task ReinviteRemovedInvitation_SameAddress_ReusesTheInvitation()
+    {
+        var org = await CreateOrganization("Reinvite Org", "reinvite-org");
+        await SeedOrgMember(org.Id, "reinvite-owner", "reinvite-owner@test.com", OrganizationRole.Owner);
+        AuthenticateAs("reinvite-owner");
+        var firstInviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "again@test.com", Role = OrganizationRole.Member });
+        var firstInvite = await ReadJsonAsync<OrganizationMemberResponse>(firstInviteResponse);
+        Assert.NotNull(firstInvite);
+        Assert.Equal(HttpStatusCode.NoContent, (await Client.DeleteAsync(
+            $"api/v3/organizations/{org.Id}/members/{firstInvite.Id}")).StatusCode);
+
+        // The reused row still holds the address, so clearing stale holders must skip it.
+        var inviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "again@test.com", Role = OrganizationRole.Member });
+        Assert.Equal(HttpStatusCode.OK, inviteResponse.StatusCode);
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
+        Assert.NotNull(invited);
+        Assert.Equal(firstInvite.Id, invited.Id);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var reused = await dbContext.OrganizationMemberships.SingleAsync(m => m.Id == firstInvite.Id);
+        Assert.Equal(MembershipStatus.Invited, reused.Status);
+        Assert.Equal("again@test.com", reused.InviteEmail);
+    }
+
+    [Fact]
     public async Task UpdateMemberProfile_AsModerator_UpdatesDisplayNameAndUsername()
     {
         var org = await CreateOrganization("Profile Org", "profile-org");
@@ -260,6 +389,35 @@ public class OrganizationTests(PostgresFixture postgres) : IntegrationTestBase(p
         var stored = await dbContext.OrganizationMemberships.FirstAsync(m => m.Id == target.Id);
         Assert.Equal("Display Updated", stored.DisplayName);
         Assert.Equal("displ", stored.Username);
+    }
+
+    [Fact]
+    public async Task UpdateMemberProfile_AsModerator_CannotChangeOwnerInviteEmail()
+    {
+        var org = await CreateOrganization("Protected Invite Org", "protected-invite-org");
+        await SeedOrgMember(org.Id, "owner-1", "owner@test.com", OrganizationRole.Owner);
+        await SeedOrgMember(org.Id, "mod-1", "mod@test.com", OrganizationRole.Moderator);
+
+        AuthenticateAs("owner-1");
+        var inviteResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members",
+            new InviteMemberRequest { Email = "owner2@example.com", Role = OrganizationRole.Owner });
+        inviteResponse.EnsureSuccessStatusCode();
+        var invited = await ReadJsonAsync<OrganizationMemberResponse>(inviteResponse);
+        Assert.NotNull(invited);
+
+        AuthenticateAs("mod-1");
+        var response = await Client.PatchAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/members/{invited.Id}/profile",
+            new UpdateMemberProfileRequest { Email = "attacker@example.com" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var stored = await dbContext.OrganizationMemberships.FirstAsync(m => m.Id == invited.Id);
+        Assert.Equal("owner2@example.com", stored.InviteEmail);
+        Assert.Equal(OrganizationRole.Owner, stored.Role);
     }
 
     [Fact]

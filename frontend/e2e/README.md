@@ -9,7 +9,9 @@ lifecycle so a single `npm run e2e` brings everything up from cold.
 - Docker (for Postgres). Anything else docker-compose-equivalent works.
 - The repo's existing dev toolchain: Node, .NET 10, Go.
 - A Clerk dev tenant configured in `.env.e2e` — copy `.env.e2e.example` and
-  fill in the test user's email, password, and identity_user_id.
+  fill in the test user's email, password, and identity_user_id. Its session
+  token needs the claims listed under "Clerk sign-in" in
+  [`local-dev/README.md`](../../local-dev/README.md#clerk-sign-in).
 
 ## Running
 

@@ -13,7 +13,11 @@ export const load: PageServerLoad = async ({
     throw error(404, `Organization '${params.orgSlug}' not found`);
   }
 
-  const leagues = await apiClientV3.leaguesApi.listLeagues(org.id);
+  const [leagues, claimable, claimRequest] = await Promise.all([
+    apiClientV3.leaguesApi.listLeagues(org.id),
+    apiClientV3.organizationMembersApi.listClaimable(org.id),
+    apiClientV3.organizationClaimRequestsApi.getMine(org.id),
+  ]);
   const joinedLeagueIds = new Set(
     (org.leagues ?? []).map((league) => league.id)
   );
@@ -24,6 +28,8 @@ export const load: PageServerLoad = async ({
       ...league,
       isJoined: joinedLeagueIds.has(league.id),
     })),
+    claimable,
+    claimRequest,
   };
 };
 
