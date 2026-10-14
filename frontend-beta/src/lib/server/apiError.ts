@@ -33,3 +33,16 @@ export async function getApiErrorDetails(
 
   return { status: 500, message: fallbackMessage };
 }
+
+/**
+ * A failed form action as both copies it needs. Native error documents render
+ * the fixed `error`, because API details can echo submitted fields such as an
+ * invited email; the page shows `detail`, so a conflict can say to reload.
+ */
+export async function getFormActionFailure(
+  error: unknown,
+  fallbackMessage: string
+): Promise<{ status: number; error: string; detail: string }> {
+  const { status, message } = await getApiErrorDetails(error, fallbackMessage);
+  return { status, error: fallbackMessage, detail: message };
+}
