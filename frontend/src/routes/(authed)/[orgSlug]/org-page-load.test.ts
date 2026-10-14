@@ -56,11 +56,18 @@ describe('organization page load — claim data is optional', () => {
   it('still lists the leagues when the own-claim request fails', async () => {
     const data = await run(makeLocals({ getMine: failing }));
 
-    expect(data.claimRequest).toBeUndefined();
+    // null, not undefined: the claim is unknown, not absent.
+    expect(data.claimRequest).toBeNull();
     expect(data.claimable).toEqual({
       requesterEligible: true,
       memberships: [],
     });
+  });
+
+  it('reports no claim as undefined', async () => {
+    const data = await run(makeLocals({}));
+
+    expect(data.claimRequest).toBeUndefined();
   });
 
   /* The leagues are the page itself, so their failure still surfaces. */

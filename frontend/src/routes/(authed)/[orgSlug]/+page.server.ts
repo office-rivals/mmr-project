@@ -13,14 +13,13 @@ export const load: PageServerLoad = async ({
     throw error(404, `Organization '${params.orgSlug}' not found`);
   }
 
-  // The claim data only drives the claim card, so a failed claim request hides
-  // the card instead of failing the whole page.
+  // A failed claim request degrades the claim UI instead of failing the page.
+  // `getMine` resolves undefined for "no claim", so its failure becomes null to
+  // stay distinguishable: an unknown claim may be pending.
   const [leagues, claimable, claimRequest] = await Promise.all([
     apiClientV3.leaguesApi.listLeagues(org.id),
     apiClientV3.organizationMembersApi.listClaimable(org.id).catch(() => null),
-    apiClientV3.organizationClaimRequestsApi
-      .getMine(org.id)
-      .catch(() => undefined),
+    apiClientV3.organizationClaimRequestsApi.getMine(org.id).catch(() => null),
   ]);
   const joinedLeagueIds = new Set(
     (org.leagues ?? []).map((league) => league.id)
