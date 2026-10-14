@@ -1404,6 +1404,30 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task EmailLessInvitedPlaceholder_IsClaimableAndActiveAfterApproval()
+    {
+        var org = await CreateOrganization();
+        await SeedOrgMember(org.Id, "owner", "owner@test.com", OrganizationRole.Owner);
+        var (requester, _) = await SeedOrgMember(org.Id, "requester", "requester@test.com");
+        var stuck = await SeedPlaceholder(org.Id, "Stuck Guest", status: MembershipStatus.Invited);
+
+        AuthenticateAs("requester");
+        var response = await Client.GetAsync($"api/v3/organizations/{org.Id}/members/claimable");
+        var result = await ReadJsonAsync<ClaimableMembershipsResponse>(response);
+        Assert.NotNull(result);
+        Assert.Equal(stuck.Id, Assert.Single(result.Memberships).OrganizationMembershipId);
+
+        var claim = await CreateClaimAsync(org.Id, stuck.Id, "requester");
+        await ApproveClaimAsync(org.Id, claim.Id, "owner");
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var claimed = await db.OrganizationMemberships.SingleAsync(m => m.Id == stuck.Id);
+        Assert.Equal(requester.Id, claimed.UserId);
+        Assert.Equal(MembershipStatus.Active, claimed.Status);
+    }
+
+    [Fact]
     public async Task MembershipWrites_RacingApprovalUseXminInsteadOfLosingUpdates()
     {
         var org = await CreateOrganization();

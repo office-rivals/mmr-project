@@ -399,12 +399,12 @@ public class MembershipClaimService(
     private static Expression<Func<OrganizationMembership, bool>> BuildClaimablePredicate(
         string? requesterVerifiedEmail)
     {
+        // An email-less row is name-only whatever its status: one left Invited after its email
+        // was cleared can't be reached by an invitation, and approval sets the target Active.
         return membership => membership.UserId == null
                              && membership.Status != MembershipStatus.Removed
-                             && ((membership.InviteEmail == null
-                                  && membership.Status == MembershipStatus.Active)
+                             && (membership.InviteEmail == null
                                  || (requesterVerifiedEmail != null
-                                     && membership.InviteEmail != null
                                      && membership.InviteEmail.ToLower() == requesterVerifiedEmail));
     }
 
