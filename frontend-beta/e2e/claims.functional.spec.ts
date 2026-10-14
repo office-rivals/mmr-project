@@ -93,7 +93,9 @@ test('a pending claim replaces joining with a link to the claim', async ({
   arrangeClaim(ClaimStatus.Pending);
 
   await gotoAuthed(page, ORG);
-  await expect(leagueRow(page)).toContainText('Available after your claim');
+  await expect(leagueRow(page)).toContainText(
+    'Join once your claim is decided'
+  );
   await expect(
     leagueRow(page).getByRole('button', { name: 'Join League' })
   ).toHaveCount(0);
@@ -108,6 +110,7 @@ test('a pending claim replaces joining with a link to the claim', async ({
   const pending = page.getByTestId('claim-pending');
   await expect(pending).toContainText(PLACEHOLDER_NAME);
   await expect(pending).toContainText('Pending');
+  await expect(pending).toContainText('“I used to play here”');
   await expect(pending).toContainText(
     "Don't play matches until this is decided."
   );
@@ -117,17 +120,22 @@ test('a pending claim replaces joining with a link to the claim', async ({
 test('a rejection reaches the member with its reason', async ({ page }) => {
   arrangeClaim(ClaimStatus.Rejected, 'Not the same person');
 
+  const turnedDown = `A moderator turned down your claim request for ${PLACEHOLDER_NAME}.`;
   await gotoAuthed(page, CLAIM);
-  await expect(
-    page.getByText('A moderator turned down your last claim.')
-  ).toBeVisible();
+  await expect(page.getByText(turnedDown)).toBeVisible();
   await expect(page.getByText('“Not the same person”')).toBeVisible();
   // The test user has match history, so there is nothing left to claim.
   await expect(
     page.getByText("There's no player to claim right now.", { exact: false })
   ).toBeVisible();
 
+  // Nothing left to claim, so the org page points back to the reason instead.
   await gotoAuthed(page, ORG);
+  await expect(page.getByText(turnedDown)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'See why' })).toHaveAttribute(
+    'href',
+    CLAIM
+  );
   await expect(
     leagueRow(page).getByRole('button', { name: 'Join League' })
   ).toBeVisible();
@@ -156,9 +164,13 @@ test('cancelling a claim decided meanwhile shows why it failed', async ({
   // A moderator decides the claim while this page is open.
   arrangeClaim(ClaimStatus.Rejected);
   await cancel.click();
-  await expect(
-    page.getByRole('alert').filter({ hasText: 'already decided' })
-  ).toHaveText('This claim request was already decided as Rejected.');
+  const alert = page
+    .getByRole('alert')
+    .filter({ hasText: 'A moderator already turned down this claim request.' });
+  await expect(alert).toBeVisible();
+  await expect(alert).toBeFocused();
+  // The page reloads the claim, so the stale pending card goes away.
+  await expect(page.getByTestId('claim-pending')).toHaveCount(0);
 });
 
 test.describe('native claim forms', () => {
@@ -197,6 +209,6 @@ test.describe('native claim forms', () => {
       maxRedirects: 0,
     });
     expect(response.status()).toBe(400);
-    expect(await response.text()).toContain('already has match activity');
+    expect(await response.text()).toContain('already played here');
   });
 });
