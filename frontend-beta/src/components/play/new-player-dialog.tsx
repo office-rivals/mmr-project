@@ -47,8 +47,9 @@ export function NewPlayerDialog({
         <DialogHeader>
           <DialogTitle>Add new player</DialogTitle>
           <DialogDescription>
-            Create a player for this match. If you add an email, the address can
-            be claimed later.
+            Create a player for this match. An email links this player to that
+            person&apos;s account later. Without one, they can claim the player
+            after joining the organization.
           </DialogDescription>
         </DialogHeader>
 
