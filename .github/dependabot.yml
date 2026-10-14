@@ -40,6 +40,12 @@ updates:
       tanstack-query:
         patterns:
           - "@tanstack/react-query*"
+      # react-start pins react-router to an exact version, so bumping either
+      # alone installs a second react-router and breaks Start's route types.
+      tanstack-router:
+        patterns:
+          - "@tanstack/react-router*"
+          - "@tanstack/react-start*"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
