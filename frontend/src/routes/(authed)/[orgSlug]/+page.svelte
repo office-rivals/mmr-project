@@ -14,10 +14,14 @@
   import { CircleUserRound, Clock3, Trophy, Users } from 'lucide-svelte';
   import { formatLeagueFormat } from '$lib/utils';
   import type { ActionData, PageData } from './$types';
+  import { getLeagueJoinState } from './league-join';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
-  const claimPending = $derived(data.claimRequest?.status === 'Pending');
+  const joinState = $derived(
+    getLeagueJoinState(data.claimRequest, data.claimable)
+  );
+  const claimPending = $derived(joinState === 'claimPending');
 </script>
 
 <div class="space-y-6">
@@ -43,7 +47,7 @@
       <span>Player claim awaiting approval</span>
       <Badge variant="outline" class="ml-auto">Pending</Badge>
     </a>
-  {:else if data.claimable.requesterEligible}
+  {:else if data.claimable?.requesterEligible}
     <Card>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
@@ -59,6 +63,11 @@
         <Button href={`/${data.org.slug}/claim`}>Claim your player</Button>
       </CardContent>
     </Card>
+  {:else if joinState === 'claimUnknown' && data.leagues.some((league) => !league.isJoined)}
+    <Alert data-testid="league-join-unavailable">
+      Joining leagues is unavailable until your player claim status loads.
+      Reload the page to try again.
+    </Alert>
   {/if}
 
   <div class="grid gap-4">
@@ -88,7 +97,7 @@
             <Button href={`/${data.org.slug}/${league.slug}`}>
               Open League
             </Button>
-          {:else if !claimPending}
+          {:else if joinState === 'available'}
             <form method="POST" action="?/joinLeague" use:enhance>
               <input type="hidden" name="leagueId" value={league.id} />
               <input type="hidden" name="leagueSlug" value={league.slug} />

@@ -46,6 +46,40 @@ public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task ClaimableList_ForMembersWhoCannotClaim_OmitsTheCandidates()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id, teamSize: 1);
+        await CreateSeason(org.Id, league.Id);
+        var (_, _, ownerPlayer) = await SeedTestUser(
+            org.Id, league.Id, "owner", "owner@test.com", OrganizationRole.Owner);
+        var (_, _, veteranPlayer) = await SeedTestUser(
+            org.Id, league.Id, "veteran", "veteran@test.com");
+        await SeedOrgMember(org.Id, "requester", "requester@test.com");
+        var guest = await SeedPlaceholder(org.Id, "Guest");
+        await SeedPlaceholder(org.Id, "Other Guest");
+        await CreateClaimAsync(org.Id, guest.Id, "requester");
+
+        AuthenticateAs("owner");
+        var matchResponse = await Client.PostAsJsonAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches",
+            OneVsOne(ownerPlayer.Id, veteranPlayer.Id));
+        Assert.Equal(HttpStatusCode.Created, matchResponse.StatusCode);
+
+        foreach (var member in new[] { "veteran", "requester" })
+        {
+            AuthenticateAs(member);
+            var response = await Client.GetAsync($"api/v3/organizations/{org.Id}/members/claimable");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var result = await ReadJsonAsync<ClaimableMembershipsResponse>(response);
+            Assert.NotNull(result);
+            Assert.False(result.RequesterEligible);
+            Assert.Empty(result.Memberships);
+        }
+    }
+
+    [Fact]
     public async Task Create_IsIdempotentAndMapsPendingConflicts()
     {
         var org = await CreateOrganization();
