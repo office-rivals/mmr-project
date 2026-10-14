@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
 
-/** The redesign's surface for the thing that is about the viewer. */
+/** The surface for the thing that is about the viewer. */
 export const featuredCard =
   'rounded-lg border border-primary/50 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent';
 export const plainCard = 'rounded-lg border bg-card';

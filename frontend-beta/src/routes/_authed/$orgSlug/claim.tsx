@@ -7,7 +7,7 @@ import {
   featuredCard,
   plainCard,
   StatusPill,
-} from '@/components/claims/claim-ui';
+} from '@/components/surfaces';
 import { Eyebrow } from '@/components/eyebrow';
 import { HttpErrorView } from '@/components/http-error-view';
 import { PageTitle } from '@/components/page-title';

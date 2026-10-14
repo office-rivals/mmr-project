@@ -6,7 +6,7 @@ import { ChevronRight } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { featuredCard, plainCard } from '@/components/claims/claim-ui';
+import { featuredCard, plainCard } from '@/components/surfaces';
 import { Eyebrow } from '@/components/eyebrow';
 import { PageTitle } from '@/components/page-title';
 import { PlayerAvatar } from '@/components/player-avatar';
