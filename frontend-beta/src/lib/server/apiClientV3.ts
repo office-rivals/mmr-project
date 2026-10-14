@@ -19,6 +19,7 @@ import {
   V3PersonalAccessTokensApi,
   OrganizationInviteLinksApi,
   InvitesApi,
+  OrganizationClaimRequestsApi,
 } from '@/api-v3';
 import { auth } from '@clerk/tanstack-react-start/server';
 
@@ -69,6 +70,9 @@ export const createApiClientV3 = (getToken: () => Promise<string | null>) => {
     personalAccessTokensApi: new V3PersonalAccessTokensApi(configuration),
     organizationInviteLinksApi: new OrganizationInviteLinksApi(configuration),
     invitesApi: new InvitesApi(configuration),
+    organizationClaimRequestsApi: new OrganizationClaimRequestsApi(
+      configuration
+    ),
   };
 };
 
