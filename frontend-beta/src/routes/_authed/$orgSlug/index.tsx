@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { HttpErrorView } from '@/components/http-error-view';
+import { fetchOrgClaimStatus } from '@/lib/claim-actions';
 import { HttpError } from '@/lib/http-error';
 import {
   failServerAction,
@@ -129,11 +130,15 @@ export const Route = createFileRoute('/_authed/$orgSlug/')({
     const shell = context.authedShell;
     const org = resolveOrg(shell, params.orgSlug);
 
-    const leagues = await context.queryClient.fetchQuery({
-      queryKey: ['org', org.id, 'leagues'],
-      queryFn: () => listLeaguesFn({ data: org.id }),
-      staleTime: 0,
-    });
+    // Claim data is optional: its failure degrades the claim UI, not the page.
+    const [leagues, claimStatus] = await Promise.all([
+      context.queryClient.fetchQuery({
+        queryKey: ['org', org.id, 'leagues'],
+        queryFn: () => listLeaguesFn({ data: org.id }),
+        staleTime: 0,
+      }),
+      fetchOrgClaimStatus(context.queryClient, org.id),
+    ]);
 
     const joinedLeagueIds = new Set((org.leagues ?? []).map((l) => l.id));
 
@@ -143,6 +148,7 @@ export const Route = createFileRoute('/_authed/$orgSlug/')({
         ...league,
         isJoined: joinedLeagueIds.has(league.id),
       })),
+      claimStatus,
     };
   },
   errorComponent: HttpErrorView,
