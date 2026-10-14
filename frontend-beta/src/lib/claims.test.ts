@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { MembershipClaimStatus } from '@/api-v3';
-import { getClaimState } from './claims';
+import {
+  formatChoiceCount,
+  formatMatchCount,
+  getClaimablePlayerName,
+  getClaimState,
+} from './claims';
 import type {
   ClaimableMembershipsResponse,
   MembershipClaimRequestResponse,
@@ -29,7 +34,14 @@ const claim = (
 
 const eligible: ClaimableMembershipsResponse = {
   requesterEligible: true,
-  memberships: [],
+  memberships: [
+    {
+      organizationMembershipId: 'membership-1',
+      displayName: 'Zed Guest',
+      matchCount: 3,
+      leagues: [],
+    },
+  ],
 };
 const ineligible: ClaimableMembershipsResponse = {
   requesterEligible: false,
@@ -56,6 +68,16 @@ describe('getClaimState', () => {
       canRequest: true,
       canJoinLeagues: true,
     });
+  });
+
+  it('is none when the member is eligible but there is no player to claim', () => {
+    expect(
+      state(undefined, { requesterEligible: true, memberships: [] })
+    ).toEqual({ status: 'none', canRequest: false, canJoinLeagues: true });
+    // Eligibility still rules out a pending claim behind a failed lookup.
+    expect(
+      state(null, { requesterEligible: true, memberships: [] }).canJoinLeagues
+    ).toBe(true);
   });
 
   it('is pending, and blocks joining, while a claim awaits review', () => {
@@ -130,5 +152,27 @@ describe('getClaimState', () => {
         canJoinLeagues: true,
       });
     });
+  });
+});
+
+describe('claim display text', () => {
+  const player = eligible.memberships[0];
+
+  it('names a player by display name, then username', () => {
+    expect(getClaimablePlayerName(player)).toBe('Zed Guest');
+    expect(
+      getClaimablePlayerName({ ...player, displayName: ' ', username: 'zed' })
+    ).toBe('zed');
+    expect(getClaimablePlayerName({ ...player, displayName: undefined })).toBe(
+      'Unnamed player'
+    );
+  });
+
+  it('counts matches and choices', () => {
+    expect(formatMatchCount(1)).toBe('1 match');
+    expect(formatMatchCount(0)).toBe('0 matches');
+    expect(formatMatchCount(37)).toBe('37 matches');
+    expect(formatChoiceCount(1)).toBe('1 player');
+    expect(formatChoiceCount(2)).toBe('2 players to choose from');
   });
 });

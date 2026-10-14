@@ -25,6 +25,7 @@ import { OpenFlagBadge } from '@/components/admin/open-flag-badge';
 import { failServerAction } from '@/lib/server/action-result';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { getApiErrorDetails } from '@/lib/server/apiError';
+import { describeApiFailure } from '@/lib/api-error-copy';
 import { requireAdminOrg, resolveOrgIdBySlug } from '@/lib/server/admin';
 import { refreshAuthedShellData } from '@/lib/shell';
 import { formatLeagueFormat, openFlagsForLeague } from '@/lib/utils';
@@ -93,7 +94,9 @@ const createLeagueFn = createServerFn({ method: 'POST' })
         err,
         'Failed to create league'
       );
-      return failServerAction(status, { error: message });
+      return failServerAction(status, {
+        error: describeApiFailure(status, message),
+      });
     }
   });
 
@@ -193,7 +196,7 @@ function AdminLeaguesPage() {
                   id="teamSize"
                   name="teamSize"
                   defaultValue="2"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   <option value="2">2v2</option>
                   <option value="1">1v1</option>

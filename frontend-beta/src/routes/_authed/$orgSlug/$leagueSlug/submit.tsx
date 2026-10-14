@@ -15,6 +15,7 @@ import { failServerAction } from '@/lib/server/action-result';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { scrollToStep } from '@/lib/scroll-to-step';
+import { describeApiFailure } from '@/lib/api-error-copy';
 import type {
   Rematch,
   SlotName,
@@ -211,7 +212,10 @@ const submitMatchFn = createServerFn({ method: 'POST' })
         error,
         'Failed to submit match'
       );
-      return failServerAction(status, { status: 'error', message });
+      return failServerAction(status, {
+        status: 'error',
+        message: describeApiFailure(status, message),
+      });
     }
 
     return { status: 'ok' };

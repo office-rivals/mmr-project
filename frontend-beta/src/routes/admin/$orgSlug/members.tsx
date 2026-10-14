@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HttpErrorView } from '@/components/http-error-view';
 import { parseActionSuccessKey } from '@/lib/action-feedback';
+import { describeApiFailure } from '@/lib/api-error-copy';
 import {
   failServerAction,
   nativeFormResponse,
@@ -48,8 +49,11 @@ async function failMemberAction(
   error: unknown,
   fallback: string
 ): Promise<ActionResult> {
-  const { status, ...result } = await getFormActionFailure(error, fallback);
-  return failServerAction(status, result);
+  const failure = await getFormActionFailure(error, fallback);
+  return failServerAction(failure.status, {
+    error: failure.error,
+    detail: describeApiFailure(failure.status, failure.detail),
+  });
 }
 
 const MEMBER_SUCCESS_MESSAGES = {

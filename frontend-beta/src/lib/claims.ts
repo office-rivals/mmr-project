@@ -1,5 +1,6 @@
 import { MembershipClaimStatus } from '@/api-v3';
 import type {
+  ClaimableMembershipResponse,
   ClaimableMembershipsResponse,
   MembershipClaimRequestResponse,
 } from '@/api-v3';
@@ -22,7 +23,10 @@ export type ClaimStatus =
 
 export interface ClaimState {
   status: ClaimStatus;
-  /** The member can request a player now, including again after a rejection. */
+  /**
+   * The member can request one of the players now, including again after a
+   * rejection.
+   */
   canRequest: boolean;
   /**
    * Match activity on the account can block a pending claim's approval, so
@@ -38,7 +42,8 @@ export function getClaimState({
   claimRequest,
 }: OrgClaimStatus): ClaimState {
   const claim = claimRequest ?? undefined;
-  const canRequest = claimable?.requesterEligible ?? false;
+  const eligible = claimable?.requesterEligible ?? false;
+  const canRequest = eligible && (claimable?.memberships.length ?? 0) > 0;
 
   switch (claim?.status) {
     case MembershipClaimStatus.Pending:
@@ -64,8 +69,20 @@ export function getClaimState({
   }
   // Eligibility already excludes a pending or approved claim, so only an
   // ineligible member's failed lookup stays unknown.
-  if (claimRequest === null) {
+  if (claimRequest === null && !eligible) {
     return { status: 'unknown', canRequest: false, canJoinLeagues: false };
   }
   return { status: 'none', canRequest: false, canJoinLeagues: true, claim };
 }
+
+export const getClaimablePlayerName = (player: ClaimableMembershipResponse) =>
+  player.displayName?.trim() || player.username?.trim() || 'Unnamed player';
+
+export const matchesLabel = (count: number) =>
+  count === 1 ? 'match' : 'matches';
+
+export const formatMatchCount = (count: number) =>
+  `${count} ${matchesLabel(count)}`;
+
+export const formatChoiceCount = (count: number) =>
+  count === 1 ? '1 player' : `${count} players to choose from`;
