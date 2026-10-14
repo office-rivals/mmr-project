@@ -1155,8 +1155,8 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
             {
                 Teams =
                 [
-                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 10 },
-                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 6 }
+                    new SubmitMatchTeamRequest { Players = [player1.Id, player2.Id], Score = 6 },
+                    new SubmitMatchTeamRequest { Players = [player3.Id, player4.Id], Score = 10 }
                 ]
             });
 
@@ -1166,16 +1166,21 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
                 Assert.True(r.StatusCode == HttpStatusCode.OK,
                     $"attempt {attempt}: concurrent edit returned {(int)r.StatusCode}"));
 
-            // Each response must describe one coherent match. Mapping the reply
-            // outside the row lock would let the other edit's teams arrive
-            // alongside this request's own, still-tracked ones.
-            foreach (var response in responses)
+            // Each response must describe its own edit as one coherent match.
+            // Mapping the reply after the commit would let the other edit's
+            // write arrive instead, or alongside this request's still-tracked
+            // teams. That only shows when the other edit commits in the gap, so
+            // this can miss such a regression on a given run.
+            (int Team0, int Team1)[] expectedScores = [(10, 4), (6, 10)];
+            for (var i = 0; i < responses.Length; i++)
             {
-                var body = await ReadJsonAsync<MatchResponse>(response);
+                var body = await ReadJsonAsync<MatchResponse>(responses[i]);
                 Assert.NotNull(body);
                 Assert.Equal(2, body.Teams.Count);
                 Assert.Equal([0, 1], body.Teams.Select(t => t.Index).Order());
                 Assert.All(body.Teams, t => Assert.Equal(2, t.Players.Count));
+                Assert.Equal(expectedScores[i],
+                    (body.Teams.Single(t => t.Index == 0).Score, body.Teams.Single(t => t.Index == 1).Score));
             }
         }
 
@@ -1191,13 +1196,13 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
         Assert.All(teams, t => Assert.Equal(2, t.Players.Count));
 
         // One edit must have won wholesale — a mix of both would also leave two
-        // teams of two, so the scores are what pin it.
-        var winner = teams.Single(t => t.Index == 0);
-        var loser = teams.Single(t => t.Index == 1);
-        Assert.Equal(10, winner.Score);
-        Assert.Contains(loser.Score, new[] { 4, 6 });
-        Assert.True(winner.IsWinner);
-        Assert.False(loser.IsWinner);
+        // teams of two, so the scores are what pin it. The edits differ on both
+        // teams for that reason.
+        var team0 = teams.Single(t => t.Index == 0);
+        var team1 = teams.Single(t => t.Index == 1);
+        Assert.Contains((team0.Score, team1.Score), new[] { (10, 4), (6, 10) });
+        Assert.Equal(team0.Score > team1.Score, team0.IsWinner);
+        Assert.Equal(team1.Score > team0.Score, team1.IsWinner);
     }
 
     [Fact]
