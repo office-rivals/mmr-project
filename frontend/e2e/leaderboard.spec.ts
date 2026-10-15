@@ -1,11 +1,10 @@
 import { test, expect } from '@playwright/test';
-import {
-  isRatingHistoryRoute,
-  SPARKLINE_LINE_SELECTOR,
-  SPARKLINE_SELECTOR,
-} from './target';
 
 const LEAGUE_URL = '/test-org/test-league';
+
+// A leaderboard row's sparkline (a Carbon chart) and the line drawn in it.
+const SPARKLINE_SELECTOR = '.cds--chart-holder';
+const SPARKLINE_LINE_SELECTOR = 'path.line';
 
 test.describe('Leaderboard page', () => {
   test('renders sections in the expected order', async ({ page }) => {
@@ -109,13 +108,8 @@ test.describe('Leaderboard page', () => {
 
   test('sparklines draw after navigating away and back', async ({ page }) => {
     // Regression: a sparkline that mounted while the history was still
-    // loading never drew its line. Holding the history back guarantees the
-    // leaderboard mounts first.
-    await page.route(isRatingHistoryRoute, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 1_000));
-      await route.continue();
-    });
-
+    // loading never drew its line. The history streams inside the page's
+    // `__data.json`, so there is no separate request to hold back.
     await page.goto(LEAGUE_URL);
     const sparklines = page
       .getByRole('table')
