@@ -5,9 +5,9 @@
     },
     "basePath": "/api",
     "paths": {
-        "/v1/admin/recalculate": {
+        "/v1/mmr-calculation": {
             "post": {
-                "description": "Start recalculating matches",
+                "description": "Submit two teams' details for MMR calculation",
                 "consumes": [
                     "application/json"
                 ],
@@ -15,423 +15,65 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Admin"
+                    "Calculation"
                 ],
-                "summary": "Recalculate matches",
-                "responses": {
-                    "200": {
-                        "description": "recalculation done",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/mmr/matches": {
-            "get": {
-                "description": "Get all matches",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Matches"
-                ],
-                "summary": "Get matches",
+                "summary": "Submit an MMR calculation request",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/view.MatchDetails"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Submit a match for MMR calculation",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Matches"
-                ],
-                "summary": "Submit a match",
-                "parameters": [
-                    {
-                        "description": "Match object",
-                        "name": "match",
+                        "description": "MMR Calculation Request",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/view.Match"
+                            "$ref": "#/definitions/view.MMRCalculationRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "match submitted",
+                        "description": "MMR calculation result",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/view.MMRCalculationResponse"
                         }
                     }
                 }
             }
         },
-        "/v1/profile": {
-            "get": {
-                "description": "Get profile details of the authenticated user",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Profile"
-                ],
-                "summary": "Get profile",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/view.ProfileDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/profile/claim": {
+        "/v1/mmr-calculation/batch": {
             "post": {
-                "description": "Claims a user by ID",
+                "description": "Submit multiple MMR calculation requests",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Profile"
+                    "Calculation"
                 ],
-                "summary": "Claim user",
+                "summary": "Submit multiple MMR calculation requests",
                 "parameters": [
                     {
-                        "description": "User to be claimed",
-                        "name": "user",
+                        "description": "MMR Calculation Requests",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/view.ClaimUser"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/view.ProfileDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/stats/leaderboard": {
-            "get": {
-                "description": "Get leaderboard stats including wins, loses, and MMR of users",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Leaderboard"
-                ],
-                "summary": "Get leaderboard stats",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/repos.LeaderboardEntry"
+                                "$ref": "#/definitions/view.MMRCalculationRequest"
                             }
                         }
                     }
-                }
-            }
-        },
-        "/v1/stats/player-history": {
-            "get": {
-                "description": "Get player history including MMR and date",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Statistics"
-                ],
-                "summary": "Get player history",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "User ID",
-                        "name": "userId",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Start date",
-                        "name": "start",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "End date",
-                        "name": "end",
-                        "in": "query"
-                    }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "MMR calculation results",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/view.PlayerHistoryDetails"
+                                "$ref": "#/definitions/view.MMRCalculationResponse"
                             }
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/stats/time-distribution": {
-            "get": {
-                "description": "Get number of matches for each day of week and hour of day",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Statistics"
-                ],
-                "summary": "Get match distribution over time",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/view.TimeStatisticsEntry"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/users": {
-            "get": {
-                "description": "Lists all users",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Users"
-                ],
-                "summary": "List users",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/view.UserDetails"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Creates a new user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Create user",
-                "parameters": [
-                    {
-                        "description": "User data",
-                        "name": "user",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/view.CreateUser"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/view.UserDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/users/search": {
-            "get": {
-                "description": "Searches users by name",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Search users",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Name to search for",
-                        "name": "query",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/view.UserDetails"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/users/{id}": {
-            "get": {
-                "description": "Get user by ID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Get user",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "User ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/view.UserDetails"
-                        }
-                    }
-                }
-            }
-        },
-        "/v2/mmr/matches": {
-            "get": {
-                "description": "Get all matches",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Matches"
-                ],
-                "summary": "Get matches",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "User ID",
-                        "name": "userId",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/view.MatchDetailsV2"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Submit a match for MMR calculation",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Matches"
-                ],
-                "summary": "Submit a match",
-                "parameters": [
-                    {
-                        "description": "Match object",
-                        "name": "match",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/view.MatchV2"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "match submitted",
-                        "schema": {
-                            "type": "string"
                         }
                     }
                 }
@@ -439,58 +81,29 @@
         }
     },
     "definitions": {
-        "repos.LeaderboardEntry": {
-            "type": "object",
-            "properties": {
-                "loses": {
-                    "type": "integer"
-                },
-                "losingStreak": {
-                    "type": "integer"
-                },
-                "mmr": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "integer"
-                },
-                "winningStreak": {
-                    "type": "integer"
-                },
-                "wins": {
-                    "type": "integer"
-                }
-            }
-        },
-        "view.ClaimUser": {
+        "view.MMRCalculationPlayerRating": {
             "type": "object",
             "required": [
-                "userId"
+                "id"
             ],
             "properties": {
-                "userId": {
+                "id": {
                     "type": "integer"
-                }
-            }
-        },
-        "view.CreateUser": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "displayName": {
-                    "type": "string"
                 },
-                "name": {
-                    "type": "string"
+                "isPreviousSeasonRating": {
+                    "type": "boolean"
+                },
+                "mu": {
+                    "description": "Use pointers to represent nullable values",
+                    "type": "number"
+                },
+                "sigma": {
+                    "description": "Use pointers to represent nullable values",
+                    "type": "number"
                 }
             }
         },
-        "view.Match": {
+        "view.MMRCalculationRequest": {
             "type": "object",
             "required": [
                 "team1",
@@ -498,58 +111,14 @@
             ],
             "properties": {
                 "team1": {
-                    "$ref": "#/definitions/view.MatchTeam"
+                    "$ref": "#/definitions/view.MMRCalculationTeam"
                 },
                 "team2": {
-                    "$ref": "#/definitions/view.MatchTeam"
+                    "$ref": "#/definitions/view.MMRCalculationTeam"
                 }
             }
         },
-        "view.MatchDetails": {
-            "type": "object",
-            "required": [
-                "date",
-                "team1",
-                "team2"
-            ],
-            "properties": {
-                "date": {
-                    "type": "string"
-                },
-                "mmrCalculations": {
-                    "$ref": "#/definitions/view.MatchMMRCalculationDetails"
-                },
-                "team1": {
-                    "$ref": "#/definitions/view.MatchTeam"
-                },
-                "team2": {
-                    "$ref": "#/definitions/view.MatchTeam"
-                }
-            }
-        },
-        "view.MatchDetailsV2": {
-            "type": "object",
-            "required": [
-                "date",
-                "team1",
-                "team2"
-            ],
-            "properties": {
-                "date": {
-                    "type": "string"
-                },
-                "mmrCalculations": {
-                    "$ref": "#/definitions/view.MatchMMRCalculationDetails"
-                },
-                "team1": {
-                    "$ref": "#/definitions/view.MatchTeamV2"
-                },
-                "team2": {
-                    "$ref": "#/definitions/view.MatchTeamV2"
-                }
-            }
-        },
-        "view.MatchMMRCalculationDetails": {
+        "view.MMRCalculationResponse": {
             "type": "object",
             "required": [
                 "team1",
@@ -557,148 +126,72 @@
             ],
             "properties": {
                 "team1": {
-                    "$ref": "#/definitions/view.MatchMMRCalculationTeam"
+                    "$ref": "#/definitions/view.MMRTeamResult"
                 },
                 "team2": {
-                    "$ref": "#/definitions/view.MatchMMRCalculationTeam"
+                    "$ref": "#/definitions/view.MMRTeamResult"
                 }
             }
         },
-        "view.MatchMMRCalculationTeam": {
+        "view.MMRCalculationTeam": {
             "type": "object",
             "required": [
-                "player1MMRDelta",
-                "player2MMRDelta"
-            ],
-            "properties": {
-                "player1MMRDelta": {
-                    "type": "integer"
-                },
-                "player2MMRDelta": {
-                    "type": "integer"
-                }
-            }
-        },
-        "view.MatchTeam": {
-            "type": "object",
-            "required": [
-                "member1",
-                "member2",
+                "players",
                 "score"
             ],
             "properties": {
-                "member1": {
-                    "type": "string"
-                },
-                "member2": {
-                    "type": "string"
+                "players": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/view.MMRCalculationPlayerRating"
+                    }
                 },
                 "score": {
                     "type": "integer"
                 }
             }
         },
-        "view.MatchTeamV2": {
+        "view.MMRTeamResult": {
             "type": "object",
             "required": [
-                "member1",
-                "member2",
+                "players",
                 "score"
             ],
             "properties": {
-                "member1": {
-                    "type": "integer"
-                },
-                "member2": {
-                    "type": "integer"
+                "players": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/view.PlayerMMRResult"
+                    }
                 },
                 "score": {
                     "type": "integer"
                 }
             }
         },
-        "view.MatchV2": {
+        "view.PlayerMMRResult": {
             "type": "object",
             "required": [
-                "team1",
-                "team2"
-            ],
-            "properties": {
-                "team1": {
-                    "$ref": "#/definitions/view.MatchTeamV2"
-                },
-                "team2": {
-                    "$ref": "#/definitions/view.MatchTeamV2"
-                }
-            }
-        },
-        "view.PlayerHistoryDetails": {
-            "type": "object",
-            "required": [
-                "date",
+                "id",
                 "mmr",
-                "name",
-                "userId"
+                "mu",
+                "sigma"
             ],
             "properties": {
-                "date": {
-                    "type": "string"
+                "id": {
+                    "type": "integer"
                 },
                 "mmr": {
+                    "description": "New field in the response",
                     "type": "integer"
                 },
-                "name": {
-                    "type": "string"
+                "mu": {
+                    "description": "Required in the response",
+                    "type": "number"
                 },
-                "userId": {
-                    "type": "integer"
-                }
-            }
-        },
-        "view.ProfileDetails": {
-            "type": "object",
-            "properties": {
-                "userId": {
-                    "type": "integer"
-                }
-            }
-        },
-        "view.TimeStatisticsEntry": {
-            "type": "object",
-            "required": [
-                "count",
-                "dayOfWeek",
-                "hourOfDay"
-            ],
-            "properties": {
-                "count": {
-                    "type": "integer"
-                },
-                "dayOfWeek": {
-                    "description": "0-6, 0 is Sunday",
-                    "type": "integer"
-                },
-                "hourOfDay": {
-                    "description": "0-23",
-                    "type": "integer"
-                }
-            }
-        },
-        "view.UserDetails": {
-            "type": "object",
-            "required": [
-                "name",
-                "userId"
-            ],
-            "properties": {
-                "displayName": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "integer"
+                "sigma": {
+                    "description": "Required in the response",
+                    "type": "number"
                 }
             }
         }
