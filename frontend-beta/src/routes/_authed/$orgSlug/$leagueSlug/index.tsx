@@ -87,6 +87,9 @@ interface LeagueHomeData {
 // Enough for the form and this-week cards; the rest stays on the server.
 const MY_MATCHES_SHIPPED = 200;
 
+// The top of the standings; phones show five of them.
+const HOME_LEADERBOARD_ROWS = 7;
+
 const getLeagueHomeFn = createServerFn({ method: 'GET' })
   .validator(
     (input: {
@@ -423,8 +426,39 @@ function LeagueHomePage() {
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] xl:items-start">
           <section
+            aria-labelledby="home-leaderboard-heading"
+            className="flex flex-col gap-3"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="home-leaderboard-heading" className="text-2xl">
+                Leaderboard
+              </h2>
+              <ViewAll
+                to={`${base}/leaderboard`}
+                label="standings"
+                count={ranked.length}
+              />
+            </div>
+            {ranked.length === 0 ? (
+              <p className="rounded-lg border bg-card p-6 text-center text-muted-foreground">
+                Nobody has placed yet this season.
+              </p>
+            ) : (
+              <Leaderboard
+                entries={ranked.slice(0, HOME_LEADERBOARD_ROWS)}
+                ratingHistory={ratingHistory}
+                onSelect={(entry) => {
+                  setSelectedEntry(entry);
+                  setStatsModalOpen(true);
+                }}
+                currentLeaguePlayerId={data.leaguePlayerId}
+              />
+            )}
+          </section>
+
+          <section
             aria-labelledby="home-matches-heading"
-            className="flex flex-col gap-3 xl:col-start-2 xl:row-start-1"
+            className="flex flex-col gap-3"
           >
             <div className="flex items-center justify-between gap-3">
               <h2 id="home-matches-heading" className="text-2xl">
@@ -482,27 +516,6 @@ function LeagueHomePage() {
                 />
               ))}
             </div>
-          </section>
-
-          <section
-            aria-labelledby="home-leaderboard-heading"
-            className="flex flex-col gap-3 xl:col-start-1 xl:row-start-1"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <h2 id="home-leaderboard-heading" className="text-2xl">
-                Leaderboard
-              </h2>
-              <ViewAll to={`${base}/leaderboard`} label="standings" />
-            </div>
-            <Leaderboard
-              entries={entries}
-              ratingHistory={ratingHistory}
-              onSelect={(entry) => {
-                setSelectedEntry(entry);
-                setStatsModalOpen(true);
-              }}
-              currentLeaguePlayerId={data.leaguePlayerId}
-            />
           </section>
         </div>
       </div>
@@ -585,13 +598,26 @@ function NoMatchesYet({
   );
 }
 
-function ViewAll({ to, label }: { to: string; label: string }) {
+function ViewAll({
+  to,
+  label,
+  count,
+}: {
+  to: string;
+  label: string;
+  /** Shown beside the link from `sm` up. */
+  count?: number;
+}) {
   return (
     <AppLink
       to={to}
       className="-my-3 inline-flex items-center gap-0.5 rounded-sm py-3 text-sm text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
-      View all<span className="sr-only"> {label}</span>
+      View all
+      {count != null ? (
+        <span className="hidden sm:inline">&nbsp;{count}</span>
+      ) : null}
+      <span className="sr-only"> {label}</span>
       <ChevronRight aria-hidden="true" className="size-4" />
     </AppLink>
   );

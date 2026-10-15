@@ -1,18 +1,12 @@
 name: Beta UI - build and test
 
 # Pull requests always run this workflow so its check reports and can be
-# required; the `changes` job decides whether the suite runs. A few frontend
-# files count because the job installs the frontend's Playwright and the type
-# check imports its Playwright config.
+# required; the `changes` job decides whether the suite runs.
 on:
   push:
     branches: [main]
     paths:
       - 'frontend-beta/**'
-      - 'frontend/package.json'
-      - 'frontend/package-lock.json'
-      - 'frontend/.npmrc'
-      - 'frontend/playwright.config.ts'
       - '.github/workflows/test-beta.yml'
   pull_request:
     branches: [main]
@@ -47,7 +41,7 @@ jobs:
             git diff --name-only -z --no-renames "$BASE_SHA"..."$HEAD_SHA" > "$files"
             # Only "no match" may skip the suite; a grep error must not.
             rc=0
-            grep -qzE '^(frontend-beta/|frontend/(package(-lock)?\.json|\.npmrc|playwright\.config\.ts)$|\.github/workflows/test-beta\.yml$)' "$files" || rc=$?
+            grep -qzE '^(frontend-beta/|\.github/workflows/test-beta\.yml$)' "$files" || rc=$?
             if [ "$rc" -eq 1 ]; then changed=false; fi
           fi
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
@@ -67,12 +61,7 @@ jobs:
           # The beta pins its own Node major so CI tests the runtime its image ships.
           node-version-file: frontend-beta/.nvmrc
           cache: npm
-          cache-dependency-path: |
-            frontend-beta/package-lock.json
-            frontend/package-lock.json
-      - name: Install shared browser test types
-        run: npm ci
-        working-directory: frontend
+          cache-dependency-path: frontend-beta/package-lock.json
       - name: Install
         run: npm ci
         working-directory: frontend-beta

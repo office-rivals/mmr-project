@@ -5,7 +5,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { AlertCircle, CheckCircle, X } from 'lucide-react';
 import { HttpErrorView } from '@/components/http-error-view';
 import { SeasonPicker } from '@/components/season-picker';
-import { LineChart } from '@/components/charts';
+import { RatingChart, RatingChartLegend } from '@/components/charts';
 import {
   MatchCard,
   MatchDateHeader,
@@ -180,11 +180,8 @@ function PlayerProfilePage() {
 
   const stats = data.stats;
 
-  // These three were `$derived` in Svelte and recomputed only when their inputs
-  // changed. `useMemo` restores that: without it, any unrelated page state
-  // change re-filters up to 1000 matches, re-runs `groupMatchesByDate` and — the
-  // expensive one — hands `LineChart` a fresh `data` array identity, which makes
-  // Carbon re-run its chart update.
+  // Memoised so unrelated page state (the flag dialog, the player filter's
+  // typing) doesn't re-filter up to 1000 matches or re-group them by date.
 
   // AND semantics: a match must contain EVERY selected player, on either team.
   // Client state only — never mirrored into the URL, and reset on navigation.
@@ -207,18 +204,6 @@ function PlayerProfilePage() {
     () => groupMatchesByDate(matches, data.now),
     [matches, data.now, groupMatchesByDate]
   );
-
-  const chartData = useMemo(() => {
-    const playerName =
-      data.player.displayName ?? data.player.username ?? 'Player';
-    return (
-      data.ratingHistory?.entries?.map((entry) => ({
-        date: entry.playedAt,
-        player: playerName,
-        rating: entry.mmr,
-      })) ?? []
-    );
-  }, [data.player, data.ratingHistory]);
 
   const myFlags = data.myFlags;
   const myFlagForMatch = useCallback(
@@ -405,15 +390,22 @@ function PlayerProfilePage() {
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
-        {chartData.length > 0 ? (
+        {history.length > 0 ? (
           <section
             aria-labelledby="profile-rating-heading"
-            className="flex min-w-0 flex-col gap-2 rounded-lg border bg-card p-4 lg:p-5 [&_.cds--chart-holder]:bg-transparent"
+            className="flex min-w-0 flex-col gap-3 rounded-lg border bg-card p-4 lg:p-5"
           >
-            <h2 id="profile-rating-heading" className="text-xl lg:text-2xl">
-              Rating over time
-            </h2>
-            <LineChart data={chartData} height={300} legend={false} />
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 id="profile-rating-heading" className="text-xl lg:text-2xl">
+                Rating over time
+              </h2>
+              <RatingChartLegend />
+            </div>
+            <RatingChart
+              points={history}
+              label="Rating over time"
+              current={isCurrentSeason}
+            />
           </section>
         ) : null}
         <ProfileKpis stats={stats} records={records} />

@@ -1,7 +1,4 @@
-import playwright from '../../frontend/node_modules/@playwright/test/index.js';
-
-const { test, expect } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
+import { expect, test } from '@playwright/test';
 
 test('production serves authenticated HTML without hydration and rejects forged form origins', async ({
   page,
@@ -27,7 +24,10 @@ test('production serves authenticated HTML without hydration and rejects forged 
         .getByRole('heading', { name: 'Leaderboard', exact: true })
         .first()
     ).toBeVisible();
-    await expect(nativePage.getByRole('table').first()).toContainText('tuser');
+    // Server-rendered rows: Home's table shows the top seven ranked players.
+    await expect(
+      nativePage.getByRole('table').first().locator('tbody tr')
+    ).toHaveCount(7);
     await nativePage.goto(new URL('/test-org/settings', page.url()).href);
     const saved = await nativePage.request.post(nativePage.url(), {
       headers: { origin: new URL(page.url()).origin },
@@ -87,7 +87,10 @@ for (const [locale, timezoneId] of [
   ['da-DK', 'Europe/Copenhagen'],
   ['en-US', 'Pacific/Kiritimati'],
 ]) {
-  test(`UTC server hydrates in ${locale} / ${timezoneId}`, async ({ browser, baseURL }, info) => {
+  test(`UTC server hydrates in ${locale} / ${timezoneId}`, async ({
+    browser,
+    baseURL,
+  }, info) => {
     const context = await browser.newContext({
       storageState: info.project.use.storageState,
       locale,
@@ -116,7 +119,11 @@ for (const [locale, timezoneId] of [
         if (await timestamp.count()) {
           const instant = await timestamp.getAttribute('datetime');
           await expect(timestamp).toHaveText(
-            new Intl.DateTimeFormat(locale, { timeZone: timezoneId, hour: '2-digit', minute: '2-digit' }).format(new Date(instant!))
+            new Intl.DateTimeFormat(locale, {
+              timeZone: timezoneId,
+              hour: '2-digit',
+              minute: '2-digit',
+            }).format(new Date(instant!))
           );
         }
       }

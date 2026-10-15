@@ -1,10 +1,11 @@
-import playwright from '../../frontend/node_modules/@playwright/test/index.js';
+import { expect, test } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { gotoAuthed } from './helpers';
-const { expect, test } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
 
-const MATCHMAKING = '/test-org/test-league/matchmaking';
+const LEAGUE = '/test-org/test-league';
+const MATCHMAKING = `${LEAGUE}/matchmaking`;
+// The signed-in test user's player in Test League (scripts/seed-data.sql).
+const VIEWER_ID = '66666666-6666-6666-6666-666666666601';
 const PENDING_MATCH_ID = 'eeeeeeee-3000-0000-0000-000000000001';
 const TEAM_ONE_ID = 'eeeeeeee-3000-0000-0000-000000000002';
 const TEAM_TWO_ID = 'eeeeeeee-3000-0000-0000-000000000003';
@@ -36,7 +37,9 @@ function runSql(sql: string) {
   );
 }
 
-function insertActiveMatch() {
+/** Four Test League players; `withViewer` puts the test user among them. */
+function insertActiveMatch({ withViewer = false } = {}) {
+  const order = withViewer ? `id = '${VIEWER_ID}' DESC, id` : 'id';
   runSql(`
     INSERT INTO pending_matches
       (id, organization_id, league_id, status, expires_at, created_at)
@@ -62,9 +65,10 @@ function insertActiveMatch() {
       (row_number - 1) % 2,
       now()
     FROM (
-      SELECT id, row_number() OVER (ORDER BY id)
+      SELECT id, row_number() OVER (ORDER BY ${order})
       FROM league_players
       WHERE league_id = '22222222-2222-2222-2222-222222222222'
+      ORDER BY ${order}
       LIMIT 4
     ) players;
 
@@ -115,7 +119,7 @@ test('an active match created after load appears through polling', async ({
   page,
 }) => {
   await gotoAuthed(page, MATCHMAKING);
-  const heading = page.getByRole('heading', { name: 'Active matches' });
+  const heading = page.getByRole('heading', { name: 'Live now' });
   await expect(heading).toHaveCount(0);
 
   try {
@@ -124,8 +128,24 @@ test('an active match created after load appears through polling', async ({
     await expect(heading).toBeVisible({ timeout: 10_000 });
     const card = heading.locator('xpath=following-sibling::div[1]');
     await expect(
-      card.getByRole('link', { name: 'Submit Result' })
+      card.getByRole('link', { name: 'Report result' })
     ).toBeVisible();
+  } finally {
+    removeActiveMatch();
+  }
+});
+
+test('the live bar offers to report your live match', async ({ page }) => {
+  try {
+    insertActiveMatch({ withViewer: true });
+    await gotoAuthed(page, LEAGUE);
+
+    const bar = page.getByRole('region', { name: 'Live match' });
+    await expect(bar).toBeVisible({ timeout: 10_000 });
+    await expect(bar).toContainText(/Live · \d+ min/);
+    await expect(
+      bar.getByRole('link', { name: 'Report result' })
+    ).toHaveAttribute('href', `${LEAGUE}/active-match/${ACTIVE_MATCH_ID}`);
   } finally {
     removeActiveMatch();
   }

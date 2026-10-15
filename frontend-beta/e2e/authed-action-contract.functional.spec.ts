@@ -1,9 +1,6 @@
-import playwright from '../../frontend/node_modules/@playwright/test/index.js';
+import { expect, test } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { gotoAuthed } from './helpers';
-
-const { expect, test } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
 
 const ORG = '/test-org';
 const LEAGUE = '/test-org/test-league';

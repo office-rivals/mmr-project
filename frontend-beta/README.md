@@ -44,16 +44,16 @@ random teams, invitations, personal tokens, and organization/league administrati
 Copy `.env.example` to `.env` and supply your own values. Never commit credentials
 or deployment identifiers.
 
-| Variable                     | Purpose                                         |
-| ---------------------------- | ----------------------------------------------- |
-| `API_BASE_PATH`              | Server-side API base URL, resolved per request  |
-| `CLERK_PUBLISHABLE_KEY` | Clerk public key, supplied to the browser during SSR |
-| `CLERK_SECRET_KEY`           | Server-only Clerk secret                        |
-| `CLERK_SIGN_IN_URL`          | `/login`                                        |
-| `CLERK_SIGN_UP_URL`          | `/sign-up`                                      |
-| `TRUST_PROXY`                | Forwarded-header trust policy; defaults false   |
-| `APP_ORIGIN`                 | Fixed public origin behind a TLS-terminating proxy |
-| `CLERK_AUTHORIZED_PARTIES`    | Comma-separated origins allowed to mint session tokens |
+| Variable                   | Purpose                                                |
+| -------------------------- | ------------------------------------------------------ |
+| `API_BASE_PATH`            | Server-side API base URL, resolved per request         |
+| `CLERK_PUBLISHABLE_KEY`    | Clerk public key, supplied to the browser during SSR   |
+| `CLERK_SECRET_KEY`         | Server-only Clerk secret                               |
+| `CLERK_SIGN_IN_URL`        | `/login`                                               |
+| `CLERK_SIGN_UP_URL`        | `/sign-up`                                             |
+| `TRUST_PROXY`              | Forwarded-header trust policy; defaults false          |
+| `APP_ORIGIN`               | Fixed public origin behind a TLS-terminating proxy     |
+| `CLERK_AUTHORIZED_PARTIES` | Comma-separated origins allowed to mint session tokens |
 
 The Clerk middleware reads the runtime public key and supplies it to the browser
 through its SSR initial state. No credentials are required to build the image.
@@ -80,34 +80,24 @@ API contract changes; do not overwrite custom client methods with generated code
 
 ## Verification
 
-The beta is verified by the e2e suite it shares with `../frontend`, plus two
-beta-only suites in `e2e/`:
+The beta has its own Playwright suites in `e2e/`:
 
 ```sh
-# Shared suite: boots beta and the isolated e2e backend stack
+# Main suite: boots the beta and the isolated e2e backend stack
 npm run e2e
 npm run e2e:ui
 
 # Beta-only native-form, transport, cache and keyboard regressions
 npm run e2e:regressions
 
-# The shared suite against the built Node server, plus WebKit/Firefox smoke
+# The main suite against the built Node server, plus WebKit/Firefox smoke
 # and production contracts
 npm run build && npm run e2e:production
 ```
 
-See `../frontend/e2e/README.md` for prerequisites. These tests reset the database;
-never run two suites concurrently. Ports 8090, 8091, and 5180 must be free.
-Postgres uses the dedicated e2e port 5433.
-
-For the production suite, install all three browser engines from `../frontend`
-with `npx playwright install chromium webkit firefox`. It repeats the full shared
-suite against the built Node server in Chromium, then checks sign-in, navigation,
-role restrictions and match submission in WebKit and Firefox. Each browser gets
-a fresh database seed. Final contracts check authenticated HTML without JavaScript,
-native POSTs, forged origins, public health/assets and sign-out. The server runs
-in UTC while browser checks cover multiple timezones and locales. WebKit coverage
-does not replace testing on a physical Safari device.
+See `e2e/README.md` for prerequisites, including the `.env.e2e` test account.
+These tests reset the database; never run two suites concurrently. Ports 8090,
+8091, and 5180 must be free. Postgres uses the dedicated e2e port 5433.
 
 ## Data and mutation lifecycle
 

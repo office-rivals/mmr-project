@@ -1,7 +1,8 @@
-import { Fragment, useMemo } from 'react';
+import { useMemo } from 'react';
 import { TrendLine } from '@/components/charts';
 import { Card, CardContent } from '@/components/ui/card';
 import { useHydrated } from '@/hooks/use-hydrated';
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import type {
 } from '@/api-v3/models';
 
 export interface LeaderboardProps {
+  /** The ranked rows to show, in the server's order. */
   entries: LeaderboardEntryResponse[];
   /** `undefined` while the streamed rating history is still in flight. */
   ratingHistory?: LeagueRatingHistoryEntry[];
@@ -26,11 +28,14 @@ export interface LeaderboardProps {
   currentLeaguePlayerId?: string | null;
 }
 
+/** Phones show fewer rows, as in the design; the rest wait on the full page. */
+const PHONE_ROWS = 5;
+
 /**
- * Renders `entries` in the order the server sent them. Ordering *and* ranking
- * are computed in SQL (`V3LeaderboardService`): ties share a rank and the next
- * rank skips, unranked players (`mmr === null`, <10 matches in scope) sort last
- * with `rank === 0`. Re-sorting or re-ranking here silently breaks all of that.
+ * Home's slice of the standings. Renders `entries` in the order the server
+ * sent them: ordering *and* ranking are computed in SQL
+ * (`V3LeaderboardService`), where ties share a rank and the next rank skips.
+ * Re-sorting or re-ranking here silently breaks that.
  */
 export function Leaderboard({
   entries,
@@ -45,12 +50,22 @@ export function Leaderboard({
   // is the same reasoning behind `disabled={!hydrated}` on the page's buttons.
   const hydrated = useHydrated();
   const interactive = hydrated && onSelect != null;
+  const { formatNumber } = useLocaleFormatters();
 
   const select = (entry: LeaderboardEntryResponse) => onSelect?.(entry);
   const trends = useMemo(
     () => (ratingHistory ? ratingsByPlayer(ratingHistory) : null),
     [ratingHistory]
   );
+  const winRate = (entry: LeaderboardEntryResponse) => {
+    const played = entry.wins + entry.losses;
+    return played > 0
+      ? formatNumber(entry.wins / played, {
+          style: 'percent',
+          maximumFractionDigits: 0,
+        })
+      : '—';
+  };
 
   return (
     <Card className="overflow-hidden">
@@ -61,126 +76,133 @@ export function Leaderboard({
               <TableHead className={cn(headClass, 'w-[3ch] pr-1 pl-4')}>
                 #
               </TableHead>
-              <TableHead className={cn(headClass, 'w-[230px]')}>
-                Player
+              <TableHead className={headClass}>Player</TableHead>
+              <TableHead className={cn(headClass, 'text-right sm:hidden')}>
+                W–L
               </TableHead>
-              <TableHead className={headClass}>
-                <span className="sm:hidden">W</span>
-                <span className="hidden sm:inline">Wins</span>
+              <TableHead className={cn(headClass, wide, 'text-right')}>
+                Wins
               </TableHead>
-              <TableHead className={headClass}>
-                <span className="sm:hidden">L</span>
-                <span className="hidden sm:inline">Losses</span>
+              <TableHead className={cn(headClass, wide, 'text-right')}>
+                Losses
+              </TableHead>
+              <TableHead className={cn(headClass, wide, 'text-right')}>
+                Win %
+              </TableHead>
+              <TableHead className={cn(headClass, 'hidden pl-6 md:table-cell')}>
+                Trend
               </TableHead>
               <TableHead className={cn(headClass, 'pr-4 text-right')}>
-                Score
+                MMR
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {entries.map((entry, index) => {
               const isMe = currentLeaguePlayerId === entry.leaguePlayerId;
+              const hot = entry.winningStreak >= SHOW_STREAK_THRESHOLD;
               return (
-                <Fragment key={entry.leaguePlayerId}>
-                  {/* Emitted exactly once, at the ranked/unranked boundary. */}
-                  {entry.mmr == null &&
-                  (index === 0 || entries[index - 1]?.mmr != null) ? (
-                    <TableRow className="hover:bg-transparent">
-                      <TableCell
-                        colSpan={5}
-                        className="bg-muted/30 py-2 text-center text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
-                      >
-                        Unranked
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                  <TableRow
+                <TableRow
+                  key={entry.leaguePlayerId}
+                  className={cn(
+                    'cursor-pointer focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
+                    !interactive && 'pointer-events-none',
+                    isMe && 'bg-primary/10 text-primary hover:bg-primary/15',
+                    index >= PHONE_ROWS && 'hidden sm:table-row'
+                  )}
+                  tabIndex={0}
+                  aria-current={isMe ? 'true' : undefined}
+                  onClick={() => select(entry)}
+                  onKeyDown={(event) => {
+                    if (!interactive) return;
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      select(entry);
+                    }
+                  }}
+                >
+                  <TableCell className="max-w-[3ch] py-3 pr-1 pl-4 font-bold tabular-nums">
+                    {entry.rank}
+                  </TableCell>
+                  <TableCell className="max-w-[230px] py-3">
+                    <div className="flex flex-col items-start leading-tight">
+                      {entry.displayName ? (
+                        <span
+                          className={cn(
+                            'hidden w-full truncate text-xs sm:block',
+                            !isMe && 'text-muted-foreground'
+                          )}
+                        >
+                          {entry.displayName}
+                        </span>
+                      ) : null}
+                      <span className="block font-semibold">
+                        {entry.username ?? entry.displayName ?? 'Unknown'}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell
                     className={cn(
-                      'cursor-pointer focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
-                      !interactive && 'pointer-events-none',
-                      isMe && 'bg-primary/10 text-primary hover:bg-primary/15'
+                      'py-3 text-right whitespace-nowrap tabular-nums sm:hidden',
+                      !isMe && 'text-muted-foreground'
                     )}
-                    tabIndex={0}
-                    aria-current={isMe ? 'true' : undefined}
-                    onClick={() => select(entry)}
-                    onKeyDown={(event) => {
-                      if (!interactive) return;
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        select(entry);
-                      }
-                    }}
                   >
-                    {/* `•`, never the server's `0`, for unranked players. */}
-                    <TableCell className="max-w-[3ch] py-3 pr-1 pl-4 font-bold tabular-nums">
-                      {entry.mmr != null ? entry.rank : '•'}
-                    </TableCell>
-                    <TableCell className="max-w-[230px] py-3">
-                      <div className="flex flex-col items-start leading-tight">
-                        {entry.displayName ? (
-                          <span
-                            className={cn(
-                              'hidden w-full truncate text-xs sm:block',
-                              !isMe && 'text-muted-foreground'
-                            )}
-                          >
-                            {entry.displayName}
-                          </span>
-                        ) : null}
-                        <span className="block font-semibold">
-                          {entry.username ?? entry.displayName ?? 'Unknown'}
+                    {entry.wins}–{entry.losses}
+                    {hot ? (
+                      <span className="ml-1" title="Winning streak">
+                        🔥
+                      </span>
+                    ) : null}
+                  </TableCell>
+                  <TableCell
+                    className={cn(wide, 'py-3 text-right tabular-nums')}
+                  >
+                    <div className="flex flex-row items-center justify-end gap-1.5">
+                      {entry.wins}
+                      {hot ? (
+                        <span
+                          className="text-xs text-nowrap"
+                          title="Winning streak"
+                        >
+                          {'🔥 '}
+                          {entry.winningStreak}
                         </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-3 tabular-nums">
-                      <div className="flex flex-row items-center gap-1.5">
-                        {entry.wins}
-                        {entry.winningStreak >= SHOW_STREAK_THRESHOLD ? (
-                          <span
-                            className="text-xs text-nowrap"
-                            title="Winning streak"
-                          >
-                            {'🔥 '}
-                            <span className="hidden sm:inline">
-                              {entry.winningStreak}
-                            </span>
-                          </span>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-3 tabular-nums">
-                      <div className="flex flex-row items-center gap-1.5">
-                        {entry.losses}
-                        {entry.losingStreak >= SHOW_STREAK_THRESHOLD ? (
-                          <span
-                            className="text-xs text-nowrap"
-                            title="Losing streak"
-                          >
-                            {entry.losingStreak >= 7 ? '⛈️' : '🌧️'}{' '}
-                            <span className="hidden sm:inline">
-                              {entry.losingStreak}
-                            </span>
-                          </span>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-3 pr-4">
-                      <div className="flex items-center justify-end gap-3">
-                        {entry.mmr != null ? (
-                          <div className="hidden h-5 w-14 md:block">
-                            <TrendLine
-                              values={trends?.get(entry.leaguePlayerId) ?? []}
-                              highlight={isMe}
-                            />
-                          </div>
-                        ) : null}
-                        <span className="min-w-[4ch] text-right font-bold tabular-nums">
-                          {entry.mmr ?? '🐣'}
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell
+                    className={cn(wide, 'py-3 text-right tabular-nums')}
+                  >
+                    <div className="flex flex-row items-center justify-end gap-1.5">
+                      {entry.losses}
+                      {entry.losingStreak >= SHOW_STREAK_THRESHOLD ? (
+                        <span
+                          className="text-xs text-nowrap"
+                          title="Losing streak"
+                        >
+                          {entry.losingStreak >= 7 ? '⛈️' : '🌧️'}{' '}
+                          {entry.losingStreak}
                         </span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                </Fragment>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell
+                    className={cn(wide, 'py-3 text-right tabular-nums')}
+                  >
+                    {winRate(entry)}
+                  </TableCell>
+                  <TableCell className="hidden py-3 pl-6 md:table-cell">
+                    <div className="h-5 w-14">
+                      <TrendLine
+                        values={trends?.get(entry.leaguePlayerId) ?? []}
+                        highlight={isMe}
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3 pr-4 text-right font-bold tabular-nums">
+                    {entry.mmr}
+                  </TableCell>
+                </TableRow>
               );
             })}
           </TableBody>
@@ -192,3 +214,5 @@ export function Leaderboard({
 
 const headClass =
   'h-10 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground';
+/** Columns that only fit beside the player from `sm` up. */
+const wide = 'hidden sm:table-cell';

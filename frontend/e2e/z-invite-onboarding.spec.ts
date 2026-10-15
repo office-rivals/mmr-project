@@ -20,7 +20,6 @@
 // ---------------------------------------------------------------------------
 import { execFileSync } from 'node:child_process';
 import { test, expect, type Page } from '@playwright/test';
-import { JOIN_LEAGUE_FORM_SELECTOR } from './target';
 
 // Fixture ids from scripts/seed-data.sql.
 const ORG_ID = '11111111-1111-1111-1111-111111111111';
@@ -33,6 +32,8 @@ const INVITE_CODE = 'E2EDUPEXYZ9';
 const GUEST_NAME = 'Zed Guest';
 
 const SUBMIT_URL = '/test-org/test-league/submit';
+// The org page's join-league form posts to its `?/joinLeague` action.
+const JOIN_LEAGUE_FORM_SELECTOR = 'form[action="?/joinLeague"]';
 
 const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
 

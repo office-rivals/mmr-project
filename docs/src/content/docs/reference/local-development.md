@@ -96,11 +96,13 @@ Clerk identity.
 
 ## End-to-end tests (Playwright)
 
-The e2e suite under `frontend/e2e/` drives Chromium against the full stack. It
-covers the leaderboard, profile, statistics, match submission (including
-singles and winning scores), matchmaking, the player picker, header and layout,
-pull-to-refresh, settings, match flags and the admin area, including role
-checks. The same specs run against either frontend.
+Each frontend has its own e2e suite that drives Chromium against the full
+stack: `frontend/e2e/` for the SvelteKit app and `frontend-beta/e2e/` for the
+beta. Both cover the leaderboard, profile, statistics, match submission
+(including singles and winning scores), matchmaking, the player picker, header
+and layout, pull-to-refresh, settings, match flags and the admin area,
+including role checks. The steps below use the SvelteKit suite; the beta's
+works the same way from its own directory.
 
 It is **not** part of the standard PR checks. Run it manually before each
 release, locally or via the `E2E` GitHub Actions workflow (`workflow_dispatch`
@@ -164,28 +166,28 @@ cd local-development
 docker compose -f docker-compose.e2e.yml down -v
 ```
 
-### Running against the beta frontend
+### Running the beta's suites
 
-Setting `E2E_FRONTEND_DIR=frontend-beta` makes Playwright start the beta's dev
-server instead of the SvelteKit one. The beta's scripts set it for you, and
-still run Playwright from `frontend/`, so do the one-time setup above first.
+The beta has its own Playwright install, config and test account file:
 
 ```bash
 cd frontend-beta
 npm ci
-cp .env.example .env    # then fill in your Clerk keys
-npm run e2e             # headless
-npm run e2e:ui          # Playwright UI mode
+npx playwright install chromium
+cp .env.example .env            # then fill in your Clerk keys
+cp .env.e2e.example .env.e2e    # then fill in the Clerk test account
+npm run e2e                     # headless
+npm run e2e:ui                  # Playwright UI mode
 ```
 
 The beta has two more suites:
 
 - `npm run e2e:regressions` covers beta-specific native-form, transport and
   cache regressions.
-- `npm run build && npm run e2e:production` runs the shared suite against the
+- `npm run build && npm run e2e:production` runs the beta's suite against the
   production build in Chromium, then checks key flows in WebKit and Firefox.
   Install those browsers first with
-  `npx playwright install chromium webkit firefox` in `frontend/`.
+  `npx playwright install chromium webkit firefox` in `frontend-beta/`.
 
 Every suite resets the same database, so never run two at once. See the
 [frontend-beta README](https://github.com/office-rivals/mmr-project/blob/main/frontend-beta/README.md)

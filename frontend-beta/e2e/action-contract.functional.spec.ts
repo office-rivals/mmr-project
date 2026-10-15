@@ -1,7 +1,5 @@
-import playwright from '../../frontend/node_modules/@playwright/test/index.js';
+import { expect, test } from '@playwright/test';
 import { gotoAuthed } from './helpers';
-const { expect, test } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
 
 const MEMBERS = '/admin/test-org/members';
 const MATCHES = '/admin/test-org/leagues/test-league/matches';

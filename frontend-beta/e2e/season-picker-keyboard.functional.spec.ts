@@ -1,7 +1,5 @@
-import playwright from '../../frontend/node_modules/@playwright/test/index.js';
+import { expect, test } from '@playwright/test';
 import { gotoAuthed } from './helpers';
-const { test, expect } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
 
 test('season picker supports keyboard selection', async ({ page }) => {
   await gotoAuthed(page, '/test-org/test-league');

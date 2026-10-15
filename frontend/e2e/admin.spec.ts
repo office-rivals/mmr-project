@@ -1,14 +1,17 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import {
-  DELETE_FORM_SELECTOR,
-  isDataReloadRoute,
-  isEditPostRoute,
-  isEditPostUrl,
-} from './target';
 
 const ADMIN_HOME = '/admin';
 const ORG_ADMIN = '/admin/test-org';
 const LEAGUE_ADMIN = '/admin/test-org/leagues/test-league';
+
+// The match-edit mutation: a POST to the `?/edit` form action.
+const isEditPostUrl = (url: string) => url.includes('?/edit');
+const isEditPostRoute = (url: URL) =>
+  url.pathname.endsWith('/matches') && url.search.includes('/edit');
+// The post-save data reload: SvelteKit's `__data.json` fetch.
+const isDataReloadRoute = (url: URL) => url.pathname.includes('__data.json');
+// The row's delete form, scripted directly when a modal covers the button.
+const DELETE_FORM_SELECTOR = 'form[action="?/delete"]';
 
 // Each spec assumes the Owner test user wired up by global.setup.ts. The seed
 // gives Test Org 2 leagues, 65 members and 15 current-season matches in
@@ -567,9 +570,8 @@ test.describe('League admin', () => {
 
     // Scripted because the modal overlay blocks the row's Delete button; this
     // is the reload a concurrent admin would cause.
-    // requestSubmit() bypasses the button, so SvelteKit sees no confirm() —
-    // the React port's form-level handler does raise one. Accepting is a no-op
-    // for the former and the equivalent of clicking through for the latter.
+    // requestSubmit() bypasses the button, so no confirm() is raised; the
+    // accept handler is a harmless guard.
     page.once('dialog', (d) => d.accept());
     await page.evaluate(
       ([id, selector]) => {

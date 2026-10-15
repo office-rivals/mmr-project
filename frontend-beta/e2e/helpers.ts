@@ -1,9 +1,4 @@
-import playwright, {
-  type Page,
-} from '../../frontend/node_modules/@playwright/test/index.js';
-
-const { expect } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
+import { expect, type Page } from '@playwright/test';
 
 export async function gotoAuthed(page: Page, path: string) {
   await page.goto(path);

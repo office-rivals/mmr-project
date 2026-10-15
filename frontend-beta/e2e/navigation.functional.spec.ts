@@ -1,10 +1,5 @@
-import playwright, {
-  type Page,
-} from '../../frontend/node_modules/@playwright/test/index.js';
+import { expect, test, type Page, type Response } from '@playwright/test';
 import { gotoAuthed } from './helpers';
-
-const { expect, test } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
 
 const SUBMIT = '/test-org/test-league/submit';
 
@@ -73,8 +68,7 @@ test('an expired session redirects a client navigation through server RPC', asyn
 }) => {
   await gotoAuthed(page, SUBMIT);
   await page.context().clearCookies();
-  const responses: import('../../frontend/node_modules/@playwright/test/index.js').Response[] =
-    [];
+  const responses: Response[] = [];
   page.on('response', (response) => {
     if (new URL(response.url()).pathname.startsWith('/_serverFn/')) {
       responses.push(response);
