@@ -95,6 +95,93 @@ func (m CalculationController) SubmitMMRCalculationsBatch(c *gin.Context) {
 	c.JSON(http.StatusOK, responses)
 }
 
+// PredictMatch godoc
+//
+//	@Summary		Predict an MMR calculation before the match is played
+//	@Description	Returns each team's chance of winning and each player's MMR if their team wins or loses, rated exactly as a submitted result would be
+//	@Tags 			Calculation
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		view.MMRPredictionRequest	true	"MMR Prediction Request"
+//	@Success		200		{object}	view.MMRPredictionResponse	"MMR prediction result"
+//	@Router			/v1/mmr-calculation/predict [post]
+func (m CalculationController) PredictMatch(c *gin.Context) {
+	var req view.MMRPredictionRequest
+	err := c.ShouldBindJSON(&req)
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	response, err := m.predictMatch(req)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	slog.InfoContext(c.Request.Context(), "mmr prediction",
+		"request", req,
+		"response", response,
+	)
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (m CalculationController) predictMatch(req view.MMRPredictionRequest) (view.MMRPredictionResponse, error) {
+	if err := ensureTeams(req.Team1.Players, req.Team2.Players); err != nil {
+		return view.MMRPredictionResponse{}, err
+	}
+
+	team1 := m.buildTeamPlayers(req.Team1.Players, nil)
+	team2 := m.buildTeamPlayers(req.Team2.Players, nil)
+	team1Chance, team2Chance := mmr.PredictWinV2(team1, team2)
+
+	team1Won, team2Lost, err := m.calculateOutcome(req, true)
+	if err != nil {
+		return view.MMRPredictionResponse{}, err
+	}
+	team1Lost, team2Won, err := m.calculateOutcome(req, false)
+	if err != nil {
+		return view.MMRPredictionResponse{}, err
+	}
+
+	return view.MMRPredictionResponse{
+		Team1: createTeamPrediction(team1Chance, team1, team1Won, team1Lost),
+		Team2: createTeamPrediction(team2Chance, team2, team2Won, team2Lost),
+	}, nil
+}
+
+// calculateOutcome runs the calculation a submitted result runs. OpenSkill uses
+// the scores only to rank the teams, so 1–0 stands in for any winning score.
+func (m CalculationController) calculateOutcome(req view.MMRPredictionRequest, team1Wins bool) (mmr.TeamV2, mmr.TeamV2, error) {
+	team1Score, team2Score := 0, 1
+	if team1Wins {
+		team1Score, team2Score = 1, 0
+	}
+	return m.calculateMatch(view.MMRCalculationRequest{
+		Team1: view.MMRCalculationTeam{Score: &team1Score, Players: req.Team1.Players},
+		Team2: view.MMRCalculationTeam{Score: &team2Score, Players: req.Team2.Players},
+	}, nil)
+}
+
+func createTeamPrediction(winChance float64, before []mmr.PlayerV2, won mmr.TeamV2, lost mmr.TeamV2) view.MMRTeamPrediction {
+	players := make([]view.PlayerMMRPrediction, len(before))
+	for i, player := range before {
+		players[i] = view.PlayerMMRPrediction{
+			Id:        player.Id,
+			MMR:       displayMMR(player.Player),
+			MMRIfWin:  displayMMR(won.Players[i].Player),
+			MMRIfLose: displayMMR(lost.Players[i].Player),
+		}
+	}
+	return view.MMRTeamPrediction{WinChance: winChance, Players: players}
+}
+
+func displayMMR(r types.Rating) int {
+	return int(mmr.RankingDisplayValue(r.Mu, r.Sigma))
+}
+
 func (m CalculationController) GenerateResponse(r view.MMRCalculationRequest, team1 mmr.TeamV2, team2 mmr.TeamV2) view.MMRCalculationResponse {
 	response := view.MMRCalculationResponse{
 		Team1: m.createTeamResult(*r.Team1.Score, team1),
@@ -132,16 +219,20 @@ func (m CalculationController) buildTeamPlayers(ratings []view.MMRCalculationPla
 }
 
 func ensurePlayers(req view.MMRCalculationRequest) error {
-	if len(req.Team1.Players) == 0 || len(req.Team2.Players) == 0 {
+	return ensureTeams(req.Team1.Players, req.Team2.Players)
+}
+
+func ensureTeams(team1 []view.MMRCalculationPlayerRating, team2 []view.MMRCalculationPlayerRating) error {
+	if len(team1) == 0 || len(team2) == 0 {
 		return fmt.Errorf("each team must have at least one player")
 	}
-	if len(req.Team1.Players) != len(req.Team2.Players) {
+	if len(team1) != len(team2) {
 		return fmt.Errorf("both teams must have the same number of players")
 	}
 
 	playerMap := make(map[int64]struct{})
-	for _, team := range []view.MMRCalculationTeam{req.Team1, req.Team2} {
-		for _, player := range team.Players {
+	for _, team := range [][]view.MMRCalculationPlayerRating{team1, team2} {
+		for _, player := range team {
 			if _, exists := playerMap[player.Id]; exists {
 				return fmt.Errorf("player ID %d is duplicated", player.Id)
 			}
@@ -186,7 +277,7 @@ func (m CalculationController) createTeamResult(score int, team mmr.TeamV2) view
 			Id:    player.Id, // Using Initials as the unique identifier
 			Mu:    player.Player.Mu,
 			Sigma: player.Player.Sigma,
-			MMR:   int(mmr.RankingDisplayValue(player.Player.Mu, player.Player.Sigma)),
+			MMR:   displayMMR(player.Player),
 		}
 	}
 

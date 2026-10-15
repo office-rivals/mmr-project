@@ -78,6 +78,40 @@
                     }
                 }
             }
+        },
+        "/v1/mmr-calculation/predict": {
+            "post": {
+                "description": "Returns each team's chance of winning and each player's MMR if their team wins or loses, rated exactly as a submitted result would be",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Calculation"
+                ],
+                "summary": "Predict an MMR calculation before the match is played",
+                "parameters": [
+                    {
+                        "description": "MMR Prediction Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/view.MMRPredictionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "MMR prediction result",
+                        "schema": {
+                            "$ref": "#/definitions/view.MMRPredictionResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -151,6 +185,69 @@
                 }
             }
         },
+        "view.MMRPredictionRequest": {
+            "type": "object",
+            "required": [
+                "team1",
+                "team2"
+            ],
+            "properties": {
+                "team1": {
+                    "$ref": "#/definitions/view.MMRPredictionTeam"
+                },
+                "team2": {
+                    "$ref": "#/definitions/view.MMRPredictionTeam"
+                }
+            }
+        },
+        "view.MMRPredictionResponse": {
+            "type": "object",
+            "required": [
+                "team1",
+                "team2"
+            ],
+            "properties": {
+                "team1": {
+                    "$ref": "#/definitions/view.MMRTeamPrediction"
+                },
+                "team2": {
+                    "$ref": "#/definitions/view.MMRTeamPrediction"
+                }
+            }
+        },
+        "view.MMRPredictionTeam": {
+            "type": "object",
+            "required": [
+                "players"
+            ],
+            "properties": {
+                "players": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/view.MMRCalculationPlayerRating"
+                    }
+                }
+            }
+        },
+        "view.MMRTeamPrediction": {
+            "type": "object",
+            "required": [
+                "players",
+                "winChance"
+            ],
+            "properties": {
+                "players": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/view.PlayerMMRPrediction"
+                    }
+                },
+                "winChance": {
+                    "description": "Probability from 0 to 1; the two teams' chances sum to 1.",
+                    "type": "number"
+                }
+            }
+        },
         "view.MMRTeamResult": {
             "type": "object",
             "required": [
@@ -165,6 +262,30 @@
                     }
                 },
                 "score": {
+                    "type": "integer"
+                }
+            }
+        },
+        "view.PlayerMMRPrediction": {
+            "type": "object",
+            "required": [
+                "id",
+                "mmr",
+                "mmrIfLose",
+                "mmrIfWin"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "mmr": {
+                    "description": "The MMR the player goes into the match with, after any season reset.",
+                    "type": "integer"
+                },
+                "mmrIfLose": {
+                    "type": "integer"
+                },
+                "mmrIfWin": {
                     "type": "integer"
                 }
             }
