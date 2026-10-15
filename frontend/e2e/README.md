@@ -4,6 +4,9 @@ Playwright drives Chromium against the full stack — Postgres + MMR API +
 .NET API + the SvelteKit dev server. The runner manages the service
 lifecycle so a single `npm run e2e` brings everything up from cold.
 
+This suite covers the SvelteKit app only. The beta frontend has its own
+suite in [`frontend-beta/e2e/`](../../frontend-beta/e2e/README.md).
+
 ## Prerequisites
 
 - Docker (for Postgres). Anything else docker-compose-equivalent works.

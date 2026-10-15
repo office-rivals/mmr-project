@@ -143,18 +143,21 @@ dotnet user-secrets set "Authorization:Issuer" "<clerk_issuer_url>"
 - **API**: Bruno collection in `api-collection/`.
 - **MMR API**: Go tests in `mmr-api/test/` (packages: api, custom, mmr, openskill).
 - **Frontend**: Vitest (configured, lightly used).
-- **End-to-end**: Playwright in `frontend/e2e/`, driving Chromium against the full
-  stack. See [`frontend/e2e/README.md`](frontend/e2e/README.md).
+- **End-to-end**: Playwright, one suite per app, driving Chromium against the
+  full stack: `frontend/e2e/` ([README](frontend/e2e/README.md)) and
+  `frontend-beta/e2e/` ([README](frontend-beta/e2e/README.md)), which adds the
+  beta's regression and production suites.
 
 ### Run e2e before shipping a frontend change
 
 `e2e.yml` is `workflow_dispatch` only — it does **not** run on pull requests.
 `test-ui.yml` covers lint, Vitest, build and `svelte-check`, so an entirely green
 PR still says nothing about whether the app works. Verify any change under
-`frontend/src/` locally:
+`frontend/src/` or `frontend-beta/src/` locally with that app's own suite:
 
 ```bash
-cd frontend && npm run e2e   # boots Postgres, both APIs and Vite on its own ports
+cd frontend && npm run e2e        # boots Postgres, both APIs and Vite on its own ports
+cd frontend-beta && npm run e2e   # the same for the beta
 ```
 
 - **Compare against the merge base.** Run the suite on `main` too, so a failure
@@ -170,11 +173,12 @@ cd frontend && npm run e2e   # boots Postgres, both APIs and Vite on its own por
   slot is `autofocus`). Use `pressSequentially()` when a component keys off
   those events.
 
-From a worktree: copy the gitignored `frontend/.env`, `frontend/.env.e2e` and
-`mmr-api/.env` from your main checkout, and use a real `npm ci` — a symlinked
-`node_modules` resolves outside the worktree root, Vite's `server.fs.allow`
-blocks the client entry, and the app never hydrates. To run beside another e2e
-run, override `E2E_DB_NAME`, `E2E_MMR_API_PORT`, `E2E_API_PORT` and `E2E_PORT`.
+From a worktree: copy the gitignored `.env` and `.env.e2e` of the app under test
+(`frontend/` or `frontend-beta/`) and `mmr-api/.env` from your main checkout,
+and use a real `npm ci` — a symlinked `node_modules` resolves outside the
+worktree root, Vite's `server.fs.allow` blocks the client entry, and the app
+never hydrates. To run beside another e2e run, override `E2E_DB_NAME`,
+`E2E_MMR_API_PORT`, `E2E_API_PORT` and `E2E_PORT`.
 
 ## Deployment
 
