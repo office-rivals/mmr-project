@@ -129,7 +129,7 @@ test.describe('1v1 league', () => {
     await page.locator('#team2-score-input').fill('19');
 
     // Submit. The action POSTs to the API and redirects to the league page.
-    await page.getByRole('button', { name: /Submit the match/ }).click();
+    await page.getByRole('button', { name: 'Submit result' }).click();
 
     await expect(page).toHaveURL(/\/test-org\/singles-league$/, {
       timeout: 15_000,

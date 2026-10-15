@@ -83,7 +83,7 @@ test.describe('Winning score — free-form league (singles-league, null)', () =>
 
     const team1Score = page.locator('#team1-score-input');
     const team2Score = page.locator('#team2-score-input');
-    const submit = page.getByRole('button', { name: 'Submit the match' });
+    const submit = page.getByRole('button', { name: 'Submit result' });
 
     // Default hint before any entry.
     await expect(

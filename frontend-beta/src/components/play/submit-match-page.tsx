@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
-import { MatchSource } from '@/api-v3';
 import { FreeFormScoreInputs } from '@/components/free-form-score-inputs';
 import { LoadingOverlay } from '@/components/loading-overlay';
-import { MatchCard } from '@/components/match-card';
 import { PageTitle } from '@/components/page-title';
 import { LoserScoreStep } from '@/components/play/loser-score-step';
 import { NewPlayerDialog } from '@/components/play/new-player-dialog';
+import { ResultPreview } from '@/components/play/result-preview';
 import { TeamMemberField } from '@/components/play/team-member-field';
 import type { SlotValue } from '@/components/play/team-member-field';
 import { StepHeading } from '@/components/play/step-heading';
@@ -24,7 +23,6 @@ import { formatLeagueFormat } from '@/lib/utils';
 import type { NewPlayerDraft } from '@/components/play/new-player-dialog';
 import type {
   LeaguePlayerResponse,
-  MatchResponse,
   OrganizationMemberResponse,
 } from '@/api-v3';
 
@@ -261,67 +259,19 @@ export function SubmitMatchPage({
     setDialogOpen(false);
   };
 
-  function previewMatch(): MatchResponse {
-    const playerNames = (
-      slot: SlotValue
-    ): { displayName?: string; username?: string } => {
-      if (slot === null) return { displayName: 'Unknown' };
-      if (slot.kind === 'league')
-        return {
-          displayName: slot.player.displayName,
-          username: slot.player.username,
-        };
-      if (slot.kind === 'member')
-        return {
-          displayName: slot.member.displayName,
-          username: slot.member.username,
-        };
-      return {
-        displayName: slot.displayName,
-        username: slot.username || undefined,
-      };
-    };
-
-    const safeT1 = team1Score === -1 ? 0 : team1Score;
-    const safeT2 = team2Score === -1 ? 0 : team2Score;
-    const now = new Date().toISOString();
-
-    return {
-      id: 'preview',
-      leagueId,
-      seasonId: '',
-      source: MatchSource.Manual,
-      playedAt: now,
-      recordedAt: now,
-      createdAt: now,
-      teams: [
-        {
-          id: 't1',
-          index: 0,
-          score: safeT1,
-          isWinner: safeT1 > safeT2,
-          players: team1Slots.map((s, i) => ({
-            id: `t1p${i}`,
-            leaguePlayerId: '',
-            ...playerNames(slots[s]),
-            index: i,
-          })),
-        },
-        {
-          id: 't2',
-          index: 1,
-          score: safeT2,
-          isWinner: safeT2 > safeT1,
-          players: team2Slots.map((s, i) => ({
-            id: `t2p${i}`,
-            leaguePlayerId: '',
-            ...playerNames(slots[s]),
-            index: i,
-          })),
-        },
-      ],
-    };
-  }
+  // Match cards prefer the shorter username; a new player may have none.
+  const previewName = (slot: SlotValue) => {
+    if (slot === null) return 'Unknown';
+    if (slot.kind === 'league')
+      return slot.player.username ?? slot.player.displayName ?? 'Unknown';
+    if (slot.kind === 'member')
+      return slot.member.username ?? slot.member.displayName ?? 'Unknown';
+    return slot.username || slot.displayName || 'Unknown';
+  };
+  const previewSide = (teamSlots: SlotName[], score: number) => ({
+    score: score === -1 ? 0 : score,
+    names: teamSlots.map((s) => previewName(slots[s])),
+  });
 
   const rememberPlayers = () => {
     const enteredIds = SLOTS.map((s) => {
@@ -504,19 +454,17 @@ export function SubmitMatchPage({
 
           {isPreviewVisible ? (
             <div id="submit-step" className="flex flex-col gap-4">
-              <StepHeading step={isFreeForm ? 3 : 4}>Submit?</StepHeading>
-              {/* Remounted per score change, matching the Svelte `{#key}`. */}
-              <MatchCard
-                key={`${team1Score}:${team2Score}`}
-                match={previewMatch()}
-                showMmr={false}
+              <StepHeading step={isFreeForm ? 3 : 4}>Looks right?</StepHeading>
+              <ResultPreview
+                team1={previewSide(team1Slots, team1Score)}
+                team2={previewSide(team2Slots, team2Score)}
               />
               <Button
                 type="submit"
                 disabled={submitting}
                 className="h-12 text-base font-bold"
               >
-                Submit the match
+                Submit result
               </Button>
               <p className="text-center text-xs text-muted-foreground">
                 Everyone in the match can flag it if something&apos;s off.

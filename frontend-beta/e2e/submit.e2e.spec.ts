@@ -68,14 +68,17 @@ test.describe('Submit match', () => {
     ).toBeVisible();
     await page.getByRole('button', { name: '5', exact: true }).click();
 
-    await expect(page.getByRole('heading', { name: 'Submit?' })).toBeVisible();
-    // MatchCard renders username (short handle) when present, not displayName —
-    // so seeded players Alice/Bob/Carol/Dave appear as alia/bobr/caca/dada.
+    await expect(
+      page.getByRole('heading', { name: 'Looks right?' })
+    ).toBeVisible();
+    // The preview names players by username (short handle) when present, so
+    // seeded players Alice/Bob/Carol/Dave appear as alia/bobr/caca/dada.
     const preview = page.locator('#submit-step');
-    await expect(preview.getByText('alia')).toBeVisible();
-    await expect(preview.getByText('dada')).toBeVisible();
+    for (const text of ['10', 'alia', 'bobr', 'vs', 'caca', 'dada', '5']) {
+      await expect(preview.getByText(text, { exact: true })).toBeVisible();
+    }
 
-    await page.getByRole('button', { name: 'Submit the match' }).click();
+    await page.getByRole('button', { name: 'Submit result' }).click();
 
     // Server-side action redirects to the league leaderboard on success. The
     // URL keeps a `#submit-step` fragment from earlier in-page anchor scrolls,

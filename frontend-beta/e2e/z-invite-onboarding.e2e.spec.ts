@@ -234,8 +234,10 @@ test.describe.serial('Invite onboarding claims a name-only player', () => {
       .getByRole('button', { name: '5', exact: true })
       .click();
 
-    await expect(page.getByRole('heading', { name: 'Submit?' })).toBeVisible();
-    await page.getByRole('button', { name: 'Submit the match' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Looks right?' })
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Submit result' }).click();
 
     // A successful submit redirects to the league leaderboard.
     await expect(
