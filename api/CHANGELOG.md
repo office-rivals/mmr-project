@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.1
+
+- Fix overlapping edits of the same match returning a 500 for an edit that had actually saved; edits of one match now apply one at a time.
+
 ## 1.7.0
 
 - Let members claim an existing player and keep its match history once a moderator approves, via the new `/api/v3/organizations/{orgId}/claim-requests` endpoints (create, list, `mine`, cancel, `approve`, `reject`) and `GET /api/v3/organizations/{orgId}/members/claimable`.
