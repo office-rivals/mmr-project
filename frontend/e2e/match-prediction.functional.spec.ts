@@ -1,11 +1,7 @@
-import playwright, {
-  type Page,
-} from '../../frontend/node_modules/@playwright/test/index.js';
+import { expect, test, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { gotoAuthed } from './helpers';
 import type { MatchPredictionResponse, QueueStatusResponse } from '@/api-v3';
-const { expect, test } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111';
 const LEAGUE_ID = '22222222-2222-2222-2222-222222222222';
@@ -192,7 +188,7 @@ test('a live match shows its odds on the match, on home, in the live bar and on 
 
   await gotoAuthed(page, MATCHMAKING);
   const card = page
-    .getByRole('heading', { name: 'Active matches' })
+    .getByRole('heading', { name: 'Live now', exact: true })
     .locator('xpath=following-sibling::div[1]');
   const cardOdds = card.getByTestId('win-chance');
   await expect(cardOdds).toContainText(expected.ours);
