@@ -97,3 +97,21 @@ test('an expired session redirects a client navigation through server RPC', asyn
     expect.objectContaining({ href: '/login', isSerializedRedirect: true })
   );
 });
+
+test('the bottom bar sits on its own, not inside the fixed top bar', async ({
+  page,
+}) => {
+  // A fixed element nested inside another fixed one can trail the scroll.
+  await gotoAuthed(page, '/test-org/test-league');
+  const nav = page.getByRole('navigation', { name: 'Primary' });
+  await expect(nav).toBeVisible();
+  const box = await nav.boundingBox();
+  expect(box && box.y + box.height).toBe(844);
+  const fixedAncestor = await nav.evaluate((element) => {
+    for (let node = element.parentElement; node; node = node.parentElement) {
+      if (getComputedStyle(node).position === 'fixed') return node.tagName;
+    }
+    return null;
+  });
+  expect(fixedAncestor).toBeNull();
+});
