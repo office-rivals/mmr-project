@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.0
+
+- Let members request an existing player from the organization page and let moderators approve or reject those claims from the members admin page.
+- Keep the organization page working when player-claim data can't be loaded, and return no candidates from `GET /api/v3/organizations/{orgId}/members/claimable` to members who can't claim.
+- chore(deps-dev): bump @sveltejs/vite-plugin-svelte from 7.1.2 to 7.3.1 in /frontend
+- chore(deps-dev): bump @sveltejs/adapter-node from 5.5.4 to 5.5.7 in /frontend
+- chore(deps-dev): bump autoprefixer from 10.5.4 to 10.6.1 in /frontend
+- chore(deps): bump sveltekit-superforms from 2.30.2 to 2.31.0 in /frontend
+- chore(deps-dev): bump prettier-plugin-tailwindcss from 0.8.0 to 0.8.1 in /frontend
+- Explain how an optional email links a new match player to an account and how name-only players can be claimed after joining.
+
 ## 1.6.3
 
 - Select the pre-filled value when a dialog focuses a field again, so typing a new match score replaces the old one instead of appending to it.

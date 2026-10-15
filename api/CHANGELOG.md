@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.0
+
+- Let members claim an existing player and keep its match history once a moderator approves, via the new `/api/v3/organizations/{orgId}/claim-requests` endpoints (create, list, `mine`, cancel, `approve`, `reject`) and `GET /api/v3/organizations/{orgId}/members/claimable`.
+- Keep the organization page working when player-claim data can't be loaded, and return no candidates from `GET /api/v3/organizations/{orgId}/members/claimable` to members who can't claim.
+- Preserve guest names when email invitations are claimed, and match invitation emails case-insensitively while rejecting ambiguous matches.
+- Prevent moderators from redirecting pending owner invitations, and return a retryable conflict when concurrent membership edits collide.
+
 ## 1.6.1
 
 - Update the OpenAPI dependency to a patched release that prevents process termination when parsing circular schema references.
