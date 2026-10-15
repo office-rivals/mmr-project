@@ -19,6 +19,7 @@ import {
   isScorePairComplete,
   loserScoreOptions,
 } from '@/lib/scoring';
+import { readStorage, writeStorage } from '@/lib/storage';
 import { formatLeagueFormat } from '@/lib/utils';
 import type { NewPlayerDraft } from '@/components/play/new-player-dialog';
 import type {
@@ -173,8 +174,8 @@ export function SubmitMatchPage({
   // per-league hydration the Svelte `$effect` performed.
   useEffect(() => {
     const primaryId =
-      window.localStorage.getItem(primaryPlayerKey(leagueId)) ??
-      window.localStorage.getItem(LEGACY_PRIMARY_PLAYER_KEY);
+      readStorage('local', primaryPlayerKey(leagueId)) ??
+      readStorage('local', LEGACY_PRIMARY_PLAYER_KEY);
     if (primaryId) {
       const player = players.find((p) => p.id === primaryId);
       if (player) {
@@ -186,8 +187,8 @@ export function SubmitMatchPage({
     }
 
     const stored =
-      window.localStorage.getItem(latestPlayersKey(leagueId)) ??
-      window.localStorage.getItem(LEGACY_LATEST_PLAYERS_KEY);
+      readStorage('local', latestPlayersKey(leagueId)) ??
+      readStorage('local', LEGACY_LATEST_PLAYERS_KEY);
     if (stored) setLatestPlayerIds(stored.split(',').filter(Boolean));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -329,13 +330,13 @@ export function SubmitMatchPage({
     }).filter((v): v is string => !!v);
 
     if (enteredIds[0]) {
-      window.localStorage.setItem(primaryPlayerKey(leagueId), enteredIds[0]);
+      writeStorage('local', primaryPlayerKey(leagueId), enteredIds[0]);
     }
     const merged = [
       ...enteredIds,
       ...latestPlayerIds.filter((id) => !enteredIds.includes(id)),
     ].slice(0, 10);
-    window.localStorage.setItem(latestPlayersKey(leagueId), merged.join(','));
+    writeStorage('local', latestPlayersKey(leagueId), merged.join(','));
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {

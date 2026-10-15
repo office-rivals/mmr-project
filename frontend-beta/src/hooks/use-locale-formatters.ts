@@ -1,9 +1,12 @@
 import { useSyncExternalStore } from 'react';
 import {
+  dateTimeFormat,
   formatDate,
   formatDateTime,
   groupMatchesByDate,
   matchDateGroupKey,
+  numberFormat,
+  relativeTimeFormat,
   type DatePresentation,
 } from '@/lib/utils';
 
@@ -17,33 +20,29 @@ function createFormatters(presentation?: DatePresentation) {
     formatDateTime: (value: string | null | undefined) =>
       formatDateTime(value, presentation),
     formatTime: (value: string) =>
-      new Date(value).toLocaleTimeString(presentation?.locale, {
+      dateTimeFormat(presentation?.locale, {
         hour: '2-digit',
         minute: '2-digit',
         timeZone: presentation?.timeZone,
-      }),
+      }).format(new Date(value)),
     formatNumber: (value: number, options: Intl.NumberFormatOptions) =>
-      new Intl.NumberFormat(presentation?.locale, options).format(value),
+      numberFormat(presentation?.locale, options).format(value),
     formatRelativeTime: (
       value: number,
       unit: Intl.RelativeTimeFormatUnit,
       options: Intl.RelativeTimeFormatOptions
-    ) =>
-      new Intl.RelativeTimeFormat(presentation?.locale, options).format(
-        value,
-        unit
-      ),
+    ) => relativeTimeFormat(presentation?.locale, options).format(value, unit),
     /** `Today`, `Yesterday` or a short weekday date, for match headers. */
     formatMatchDay: (value: string, now: number) => {
       const key = matchDateGroupKey(value, now, presentation);
       if (key === 'today') return 'Today';
       if (key === 'yesterday') return 'Yesterday';
-      return new Date(value).toLocaleDateString(presentation?.locale, {
+      return dateTimeFormat(presentation?.locale, {
         weekday: 'short',
         day: 'numeric',
         month: 'short',
         timeZone: presentation?.timeZone,
-      });
+      }).format(new Date(value));
     },
     groupMatchesByDate: <T extends { id: string; playedAt: string }>(
       matches: readonly T[],

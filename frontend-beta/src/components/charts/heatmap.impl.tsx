@@ -36,10 +36,7 @@ export default function HeatmapImpl({ data }: HeatmapProps) {
     const hourOfDayUTCToCurrentTimezone = (hour: number) => {
       const date = new Date();
       date.setUTCHours(hour);
-      return date.toLocaleTimeString(undefined, {
-        hour: 'numeric',
-        hour12: false,
-      });
+      return hourOfDayFormatter.format(date);
     };
 
     return {

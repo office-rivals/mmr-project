@@ -1,5 +1,5 @@
-import { Fragment } from 'react';
-import { Sparkline } from '@/components/charts';
+import { Fragment, useMemo } from 'react';
+import { TrendLine } from '@/components/charts';
 import { Card, CardContent } from '@/components/ui/card';
 import { useHydrated } from '@/hooks/use-hydrated';
 import {
@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SHOW_STREAK_THRESHOLD } from '@/lib/constants';
+import { ratingsByPlayer } from '@/lib/player-stats';
 import { cn } from '@/lib/utils';
 import type {
   LeaderboardEntryResponse,
@@ -46,6 +47,10 @@ export function Leaderboard({
   const interactive = hydrated && onSelect != null;
 
   const select = (entry: LeaderboardEntryResponse) => onSelect?.(entry);
+  const trends = useMemo(
+    () => (ratingHistory ? ratingsByPlayer(ratingHistory) : null),
+    [ratingHistory]
+  );
 
   return (
     <Card className="overflow-hidden">
@@ -162,23 +167,11 @@ export function Leaderboard({
                     <TableCell className="py-3 pr-4">
                       <div className="flex items-center justify-end gap-3">
                         {entry.mmr != null ? (
-                          <div className="pointer-events-none hidden w-14 md:block">
-                            {/* No loading placeholder: React would reuse its
-                                instance for the real chart, and Sparkline
-                                fixes its options on mount. */}
-                            {ratingHistory != null ? (
-                              <Sparkline
-                                data={ratingHistory
-                                  .filter(
-                                    (h) =>
-                                      h.leaguePlayerId === entry.leaguePlayerId
-                                  )
-                                  .map((h) => ({
-                                    date: h.playedAt,
-                                    rating: h.mmr,
-                                  }))}
-                              />
-                            ) : null}
+                          <div className="hidden h-5 w-14 md:block">
+                            <TrendLine
+                              values={trends?.get(entry.leaguePlayerId) ?? []}
+                              highlight={isMe}
+                            />
                           </div>
                         ) : null}
                         <span className="min-w-[4ch] text-right font-bold tabular-nums">

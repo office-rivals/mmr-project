@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { isRatingHistoryRoute } from './target';
+import {
+  isRatingHistoryRoute,
+  SPARKLINE_LINE_SELECTOR,
+  SPARKLINE_SELECTOR,
+} from './target';
 
 const LEAGUE_URL = '/test-org/test-league';
 
@@ -104,9 +108,9 @@ test.describe('Leaderboard page', () => {
   });
 
   test('sparklines draw after navigating away and back', async ({ page }) => {
-    // Regression: on the beta, a sparkline that mounted while the history
-    // was still loading kept Carbon's loading skeleton after the data landed.
-    // Holding the history back guarantees the leaderboard mounts first.
+    // Regression: a sparkline that mounted while the history was still
+    // loading never drew its line. Holding the history back guarantees the
+    // leaderboard mounts first.
     await page.route(isRatingHistoryRoute, async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1_000));
       await route.continue();
@@ -116,8 +120,9 @@ test.describe('Leaderboard page', () => {
     const sparklines = page
       .getByRole('table')
       .first()
-      .locator('.cds--chart-holder');
-    await expect(sparklines.locator('path.line').first()).toBeAttached();
+      .locator(SPARKLINE_SELECTOR);
+    const line = page.locator(SPARKLINE_LINE_SELECTOR);
+    await expect(sparklines.locator(line).first()).toBeAttached();
 
     await page.locator('nav a[href$="/matchmaking"]').click();
     await page.waitForURL(/\/matchmaking$/);
@@ -126,10 +131,8 @@ test.describe('Leaderboard page', () => {
     await page.goBack();
     await page.waitForURL(new RegExp(`${LEAGUE_URL}$`));
 
-    await expect(sparklines.locator('path.line').first()).toBeAttached();
-    await expect(
-      sparklines.filter({ hasNot: page.locator('path.line') })
-    ).toHaveCount(0);
+    await expect(sparklines.locator(line).first()).toBeAttached();
+    await expect(sparklines.filter({ hasNot: line })).toHaveCount(0);
   });
 
   test('opening the report-match modal loads recent matches', async ({

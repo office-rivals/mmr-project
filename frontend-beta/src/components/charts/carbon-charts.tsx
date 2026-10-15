@@ -2,7 +2,6 @@
 import '@carbon/charts-react/styles.css';
 
 export {
-  AreaChart,
   LineChart as CarbonLineChart,
   HeatmapChart,
   ScaleTypes,

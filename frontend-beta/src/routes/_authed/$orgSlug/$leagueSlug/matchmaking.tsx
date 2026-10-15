@@ -184,12 +184,23 @@ function MatchmakingPage({
     (a) => a.leaguePlayerId === leaguePlayerId
   );
 
-  // 250 ms tick for the countdown only — deliberately not a 4 Hz refetch.
+  // A clock for what is on screen, deliberately not a refetch: the accept
+  // countdown, your time in the queue, or the minutes on active matches. With
+  // none of them shown the page does not re-render.
+  const tickMs = pendingMatch
+    ? 250
+    : isInQueue
+      ? 1000
+      : activeMatches.length > 0
+        ? 60_000
+        : null;
   const [now, setNow] = useState(seed.now);
   useEffect(() => {
-    const ticker = setInterval(() => setNow(Date.now()), 250);
+    if (tickMs == null) return;
+    setNow(Date.now());
+    const ticker = setInterval(() => setNow(Date.now()), tickMs);
     return () => clearInterval(ticker);
-  }, []);
+  }, [tickMs]);
   const secondsRemaining = pendingMatch
     ? Math.max(
         0,

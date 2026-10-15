@@ -12,6 +12,54 @@ function parseLocalDate(d: string | null | undefined): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+// Building an Intl formatter costs far more than formatting with one, and match
+// lists format several dates per row on every render, so formatters are reused.
+const intlFormatters = new Map<string, object>();
+function reuse<T extends object>(key: string, create: () => T): T {
+  let formatter = intlFormatters.get(key) as T | undefined;
+  if (!formatter) {
+    formatter = create();
+    intlFormatters.set(key, formatter);
+  }
+  return formatter;
+}
+
+export const dateTimeFormat = (
+  locale: string | undefined,
+  options: Intl.DateTimeFormatOptions
+) =>
+  reuse(
+    `date|${locale}|${JSON.stringify(options)}`,
+    () => new Intl.DateTimeFormat(locale, options)
+  );
+
+export const numberFormat = (
+  locale: string | undefined,
+  options: Intl.NumberFormatOptions
+) =>
+  reuse(
+    `number|${locale}|${JSON.stringify(options)}`,
+    () => new Intl.NumberFormat(locale, options)
+  );
+
+export const relativeTimeFormat = (
+  locale: string | undefined,
+  options: Intl.RelativeTimeFormatOptions
+) =>
+  reuse(
+    `relative|${locale}|${JSON.stringify(options)}`,
+    () => new Intl.RelativeTimeFormat(locale, options)
+  );
+
+// `toLocaleDateString` adds a numeric date when the options name no date
+// field; a bare `Intl.DateTimeFormat` would not.
+const hasDateField = (o: Intl.DateTimeFormatOptions) =>
+  o.weekday != null ||
+  o.year != null ||
+  o.month != null ||
+  o.day != null ||
+  o.dateStyle != null;
+
 export function formatDate(
   d: string | null | undefined,
   fallback = '—',
@@ -20,10 +68,13 @@ export function formatDate(
 ): string {
   const date = parseLocalDate(d);
   if (!date) return fallback;
-  return date.toLocaleDateString(presentation?.locale, {
-    ...localeOptions,
-    timeZone: presentation?.timeZone,
-  });
+  const options = { ...localeOptions, timeZone: presentation?.timeZone };
+  return dateTimeFormat(
+    presentation?.locale,
+    hasDateField(options)
+      ? options
+      : { year: 'numeric', month: 'numeric', day: 'numeric', ...options }
+  ).format(date);
 }
 
 export function formatDateTime(
@@ -31,10 +82,17 @@ export function formatDateTime(
   presentation?: DatePresentation
 ): string {
   const date = parseLocalDate(d);
+  // The fields `toLocaleString` defaults to.
   return date
-    ? date.toLocaleString(presentation?.locale, {
+    ? dateTimeFormat(presentation?.locale, {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
         timeZone: presentation?.timeZone,
-      })
+      }).format(date)
     : '—';
 }
 
@@ -103,12 +161,12 @@ export function matchDateGroupLabel(
   if (!date) return '';
   if (matchDateGroupKey(d, now, presentation) === 'yesterday')
     return 'Yesterday';
-  return date.toLocaleDateString(presentation?.locale, {
+  return dateTimeFormat(presentation?.locale, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
     timeZone: presentation?.timeZone,
-  });
+  }).format(date);
 }
 
 /**

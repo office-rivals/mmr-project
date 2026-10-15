@@ -1,11 +1,28 @@
 import type {
   LeaderboardEntryResponse,
+  LeagueRatingHistoryEntry,
   MatchResponse,
   MatchTeamPlayerResponse,
   MatchTeamResponse,
 } from '@/api-v3';
 
 export type Result = 'W' | 'L';
+
+/**
+ * Each player's ratings in history order, for a table of trend lines. One pass
+ * over the league's history instead of filtering all of it once per row.
+ */
+export function ratingsByPlayer(
+  history: LeagueRatingHistoryEntry[]
+): Map<string, number[]> {
+  const byPlayer = new Map<string, number[]>();
+  for (const entry of history) {
+    const ratings = byPlayer.get(entry.leaguePlayerId);
+    if (ratings) ratings.push(entry.mmr);
+    else byPlayer.set(entry.leaguePlayerId, [entry.mmr]);
+  }
+  return byPlayer;
+}
 
 export interface MatchOutcome {
   won: boolean;

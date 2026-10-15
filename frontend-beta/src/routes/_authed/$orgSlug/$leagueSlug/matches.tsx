@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { Flag, LoaderCircle } from 'lucide-react';
@@ -33,11 +33,17 @@ import {
   MATCHES_PAGE_SIZE,
   getMatchFeedFn,
   getMatchesPageFn,
+  type MatchFeedPage,
 } from '@/lib/league-data';
 import { partnerOptions, type PartnerOption } from '@/lib/player-stats';
 import { cn } from '@/lib/utils';
 import type { FlagActionResult } from '@/lib/match-flag-actions';
 import type { MatchFlagResponse, MatchResponse } from '@/api-v3';
+
+/** Rows loaded under `feed`, the page 1 they were paged from. */
+interface OlderMatches extends MatchFeedPage {
+  feed: MatchFeedPage;
+}
 
 interface MatchesSearch extends PartnerSelection {
   season?: string;
@@ -136,32 +142,96 @@ function MatchesPage() {
     }
   };
 
-  const [older, setOlder] = useState<MatchResponse[]>([]);
-  const [hasMore, setHasMore] = useState(data.feed.hasMore);
+  // Older rows are paged by offset under the loader's page 1. When the loader
+  // refreshes (a flag action, pull to refresh) every row below page 1 can
+  // shift, so the rows loaded so far are fetched again rather than kept.
+  const [older, setOlder] = useState<OlderMatches>(() => ({
+    feed: data.feed,
+    matches: [],
+    hasMore: data.feed.hasMore,
+  }));
+  const olderStale = older.feed !== data.feed;
+  const loadedCount = older.matches.length;
+  const feedScope = {
+    orgId: league.orgId,
+    leagueId: league.leagueId,
+    seasonId: data.seasonId,
+    leaguePlayerId: mine ? me! : undefined,
+  };
+  useEffect(() => {
+    if (!olderStale) return;
+    // Page 1 alone is exact, so it is also the fallback when the re-fetch fails.
+    const pageOnly: OlderMatches = {
+      feed: data.feed,
+      matches: [],
+      hasMore: data.feed.hasMore,
+    };
+    if (loadedCount === 0) {
+      setOlder(pageOnly);
+      return;
+    }
+    let cancelled = false;
+    getMatchFeedFn({
+      data: {
+        orgId: feedScope.orgId,
+        leagueId: feedScope.leagueId,
+        seasonId: feedScope.seasonId,
+        leaguePlayerId: feedScope.leaguePlayerId,
+        offset: data.feed.matches.length,
+        limit: loadedCount,
+      },
+    })
+      .then((page): OlderMatches => ({ feed: data.feed, ...page }))
+      .catch((): OlderMatches => pageOnly)
+      .then((next) => {
+        if (!cancelled) setOlder(next);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    olderStale,
+    loadedCount,
+    data.feed,
+    feedScope.orgId,
+    feedScope.leagueId,
+    feedScope.seasonId,
+    feedScope.leaguePlayerId,
+  ]);
   const loadOlder = useMutation({
-    mutationFn: () =>
-      getMatchFeedFn({
-        data: {
-          orgId: league.orgId,
-          leagueId: league.leagueId,
-          seasonId: data.seasonId,
-          leaguePlayerId: mine ? me! : undefined,
-          offset: data.feed.matches.length + older.length,
-        },
-      }),
-    onSuccess: (page) => {
-      setOlder((prev) => [...prev, ...page.matches]);
-      setHasMore(page.hasMore);
-    },
+    mutationFn: (from: { feed: MatchFeedPage; offset: number }) =>
+      getMatchFeedFn({ data: { ...feedScope, offset: from.offset } }),
+    onSuccess: (page, from) =>
+      setOlder((prev) =>
+        prev.feed === from.feed
+          ? {
+              feed: prev.feed,
+              matches: [...prev.matches, ...page.matches],
+              hasMore: page.hasMore,
+            }
+          : prev
+      ),
   });
 
   // A partner filter loads every match it finds, so paging is local.
   const [shown, setShown] = useState(MATCHES_PAGE_SIZE);
   const filtered = data.filtered != null;
+  // Until the re-fetch lands, rows that moved up into page 1 are not repeated.
+  const pageIds = olderStale
+    ? new Set(data.feed.matches.map((m) => m.id))
+    : null;
   const matches = filtered
     ? data.feed.matches.slice(0, shown)
-    : [...data.feed.matches, ...older];
-  const moreAvailable = filtered ? shown < data.feed.matches.length : hasMore;
+    : [
+        ...data.feed.matches,
+        ...(pageIds
+          ? older.matches.filter((m) => !pageIds.has(m.id))
+          : older.matches),
+      ];
+  const olderPending = loadOlder.isPending || (olderStale && loadedCount > 0);
+  const moreAvailable = filtered
+    ? shown < data.feed.matches.length
+    : older.hasMore;
   const partners = mine
     ? partnerOptions(data.myMatches, me)
     : { teammates: [], opponents: [] };
@@ -369,14 +439,17 @@ function MatchesPage() {
               <Button
                 variant="outline"
                 className="mt-2 h-12"
-                disabled={!hydrated || loadOlder.isPending}
+                disabled={!hydrated || olderPending}
                 onClick={() =>
                   filtered
                     ? setShown((n) => n + MATCHES_PAGE_SIZE)
-                    : loadOlder.mutate()
+                    : loadOlder.mutate({
+                        feed: data.feed,
+                        offset: data.feed.matches.length + loadedCount,
+                      })
                 }
               >
-                {loadOlder.isPending ? (
+                {olderPending ? (
                   <LoaderCircle className="mr-2 size-4 animate-spin" />
                 ) : null}
                 Load older matches

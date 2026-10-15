@@ -7,6 +7,7 @@ import { PageTitle } from '@/components/page-title';
 import { PlayerAvatar } from '@/components/player-avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { readStorage, writeStorage } from '@/lib/storage';
 import { getRandomTeamsSessionStorageKey } from '@/lib/util/session';
 import { cn } from '@/lib/utils';
 
@@ -290,7 +291,7 @@ function RandomPage() {
   // the server and reading it in the render path is a hydration mismatch.
   const urlPlayersKey = getRandomTeamsSessionStorageKey(player);
   useEffect(() => {
-    const stored = sessionStorage.getItem(urlPlayersKey);
+    const stored = readStorage('session', urlPlayersKey);
     if (!stored) return;
     try {
       setTeams(JSON.parse(stored) as string[][]);
@@ -323,7 +324,8 @@ function RandomPage() {
     setTeams(next);
     setDraws((n) => n + 1);
     // Keyed on the current players, not the URL params, and no URL update.
-    sessionStorage.setItem(
+    writeStorage(
+      'session',
       getRandomTeamsSessionStorageKey(players),
       JSON.stringify(next)
     );
