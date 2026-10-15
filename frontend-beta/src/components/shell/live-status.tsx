@@ -5,6 +5,7 @@ import { useRouterState } from '@tanstack/react-router';
 import { AppLink } from '@/components/app-link';
 import { PendingMatchDialog } from '@/components/play/pending-match-dialog';
 import { useHydrated } from '@/hooks/use-hydrated';
+import { formatStake, matchOdds } from '@/lib/match-prediction';
 import { queueActionFn, type QueueActionName } from '@/lib/queue-actions';
 import { cn, formatElapsed, getPlayerDisplayName, initials } from '@/lib/utils';
 import { queueQueryKey, useQueueStatus } from './use-queue-status';
@@ -196,6 +197,12 @@ function StatusBody({
 
   if (state.kind === 'live') {
     const href = `${base}/active-match/${state.match.id}`;
+    const odds = matchOdds(state.match.prediction, leaguePlayerId);
+    const myTeam = state.match.teams.find((t) =>
+      t.players.some((p) => p.leaguePlayerId === leaguePlayerId)
+    );
+    const ours = odds?.teams.find((t) => t.index === myTeam?.index);
+    const theirs = odds?.teams.find((t) => t !== ours);
     return (
       <>
         <AppLink
@@ -210,6 +217,39 @@ function StatusBody({
           <span className="truncate text-sm font-semibold">
             {teamsLine(state.match.teams, leaguePlayerId)}
           </span>
+          {ours && theirs ? (
+            <span
+              data-testid="live-win-chance"
+              className="grid gap-1 text-[11px] text-muted-foreground tabular-nums"
+            >
+              <span>
+                <span className="font-semibold text-primary">
+                  {ours.winPercent}% win chance
+                </span>
+                <span className="sr-only">
+                  {` for your team, ${theirs.winPercent}% for the opponents`}
+                </span>
+                {/* The narrow sidebar card gives the stake its own line rather
+                    than breaking it mid-phrase. */}
+                {odds?.stake ? (
+                  variant === 'card' ? (
+                    <span className="block">{formatStake(odds.stake)}</span>
+                  ) : (
+                    ` · ${formatStake(odds.stake)}`
+                  )
+                ) : null}
+              </span>
+              <span
+                aria-hidden="true"
+                className="flex h-1 overflow-hidden rounded-full bg-muted"
+              >
+                <span
+                  className="bg-primary"
+                  style={{ width: `${ours.winPercent}%` }}
+                />
+              </span>
+            </span>
+          ) : null}
         </AppLink>
         <AppLink to={href} onClick={onNavigate} className={cta}>
           Report result
