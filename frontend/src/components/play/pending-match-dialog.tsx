@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { Check, Hourglass, X } from 'lucide-react';
 import { AcceptanceStatus } from '@/api-v3';
 import { Eyebrow } from '@/components/eyebrow';
+import { TeamAverageMmr, WinChance } from '@/components/play/win-chance';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,6 +10,8 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
+import { matchOdds } from '@/lib/match-prediction';
 import { cn, getPlayerDisplayName } from '@/lib/utils';
 import type {
   PendingMatchAcceptanceResponse,
@@ -119,6 +122,10 @@ export function PendingMatchDialog({
     if (teams.some(isMine)) return isMine(team) ? 'Your team' : 'Opponents';
     return `Team ${idx + 1}`;
   };
+  const odds = matchOdds(pendingMatch?.prediction, leaguePlayerId);
+  const { formatNumber } = useLocaleFormatters();
+  const formatMmr = (value: number) =>
+    formatNumber(value, { maximumFractionDigits: 0 });
 
   // Queue polling owns this dialog's open state.
   return (
@@ -187,10 +194,26 @@ export function PendingMatchDialog({
                         />
                       </div>
                     ))}
+                    {odds ? (
+                      <TeamAverageMmr
+                        odds={odds}
+                        teamIndex={team.index}
+                        format={formatMmr}
+                        className="mt-auto"
+                      />
+                    ) : null}
                   </div>
                 </Fragment>
               ))}
             </div>
+
+            {odds && teams[0] ? (
+              <WinChance
+                odds={odds}
+                teamIndex={teams[0].index}
+                neutral={!teams.some(isMine)}
+              />
+            ) : null}
 
             {myAcceptance?.status === AcceptanceStatus.Pending ? (
               <div className="flex flex-col gap-1">

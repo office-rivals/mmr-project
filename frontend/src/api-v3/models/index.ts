@@ -363,6 +363,8 @@ export interface PendingMatchResponse {
   expiresAt: string;
   teams: PendingMatchTeamResponse[];
   acceptances: PendingMatchAcceptanceResponse[];
+  /** Null when the prediction is unavailable; the match is still valid. */
+  prediction?: MatchPredictionResponse | null;
 }
 
 export interface PendingMatchTeamResponse {
@@ -388,6 +390,28 @@ export interface ActiveMatchResponse {
   pendingMatchId: string;
   startedAt: string;
   teams: PendingMatchTeamResponse[];
+  /** Null when the prediction is unavailable; the match is still valid. */
+  prediction?: MatchPredictionResponse | null;
+}
+
+export interface MatchPredictionResponse {
+  teams: TeamPredictionResponse[];
+}
+
+export interface TeamPredictionResponse {
+  /** The `index` of the matching `PendingMatchTeamResponse`. */
+  index: number;
+  /** From 0 to 1; the teams' chances sum to 1. */
+  winChance: number;
+  players: PlayerPredictionResponse[];
+}
+
+export interface PlayerPredictionResponse {
+  leaguePlayerId: string;
+  /** MMR going into the match (a season's first match starts from its reset). */
+  mmr: number;
+  mmrIfWin: number;
+  mmrIfLose: number;
 }
 
 export interface SubmitActiveMatchResultRequest {
