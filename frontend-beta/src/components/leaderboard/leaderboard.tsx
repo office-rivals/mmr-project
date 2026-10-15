@@ -163,6 +163,9 @@ export function Leaderboard({
                       <div className="flex items-center justify-end gap-3">
                         {entry.mmr != null ? (
                           <div className="pointer-events-none hidden w-14 md:block">
+                            {/* No loading placeholder: React would reuse its
+                                instance for the real chart, and Sparkline
+                                fixes its options on mount. */}
                             {ratingHistory != null ? (
                               <Sparkline
                                 data={ratingHistory
@@ -175,14 +178,7 @@ export function Leaderboard({
                                     rating: h.mmr,
                                   }))}
                               />
-                            ) : (
-                              // Inert in practice: Sparkline renders nothing
-                              // with <2 points.
-                              <Sparkline
-                                data={[]}
-                                options={{ data: { loading: true } }}
-                              />
-                            )}
+                            ) : null}
                           </div>
                         ) : null}
                         <span className="min-w-[4ch] text-right font-bold tabular-nums">
