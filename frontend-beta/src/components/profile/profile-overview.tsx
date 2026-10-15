@@ -151,8 +151,8 @@ function Tile({
 }) {
   return (
     <div className={cn(card, 'flex flex-col gap-1.5 p-3 lg:p-4')}>
-      <p className={dtClass}>{label}</p>
-      <p
+      <dt className={dtClass}>{label}</dt>
+      <dd
         className={cn(
           'leading-none font-bold',
           // Relative dates run longer than the numbers beside them.
@@ -163,8 +163,8 @@ function Tile({
         )}
       >
         {value}
-      </p>
-      {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
+      </dd>
+      {note ? <dd className="text-xs text-muted-foreground">{note}</dd> : null}
     </div>
   );
 }
@@ -187,11 +187,10 @@ export function ProfileKpis({
         : null;
 
   return (
-    <div className="grid grid-cols-3 gap-2 lg:gap-3">
-      {/* The labels keep the reference app's wording. */}
-      <Tile label="# Matches" value={stats.totalMatches} />
-      <Tile label="# Wins" value={stats.wins} />
-      <Tile label="# Losses" value={stats.lost} />
+    <dl className="grid grid-cols-3 gap-2 lg:gap-3">
+      <Tile label="Matches" value={stats.totalMatches} />
+      <Tile label="Wins" value={stats.wins} />
+      <Tile label="Losses" value={stats.lost} />
       <Tile
         label="Win rate"
         accent
@@ -236,7 +235,7 @@ export function ProfileKpis({
         note="per match"
       />
       <Tile label="Shutouts" value={records.shutouts} note="dealt" />
-    </div>
+    </dl>
   );
 }
 

@@ -8,26 +8,33 @@ test.describe('Player profile', () => {
     await page.goto(PROFILE_URL);
 
     await expect(page.getByText('MMR', { exact: true })).toBeVisible();
-    await expect(page.getByText('# Matches', { exact: true })).toBeVisible();
-    await expect(page.getByText('# Wins', { exact: true })).toBeVisible();
-    await expect(page.getByText('# Losses', { exact: true })).toBeVisible();
-    await expect(page.getByText('Win rate', { exact: true })).toBeVisible();
-    await expect(page.getByText('Last match', { exact: true })).toBeVisible();
-    await expect(page.getByText('Streak', { exact: true })).toBeVisible();
+    // Scoped to the tiles' terms: the match history below is headed "Matches".
+    for (const label of [
+      'Matches',
+      'Wins',
+      'Losses',
+      'Win rate',
+      'Last match',
+      'Streak',
+    ]) {
+      await expect(
+        page.locator('dt').getByText(label, { exact: true })
+      ).toBeVisible();
+    }
   });
 
-  test('rating-over-time chart container renders (Carbon CSS loaded)', async ({
+  test('rating-over-time chart names its range for screen readers', async ({
     page,
   }) => {
     await page.goto(PROFILE_URL);
 
-    await expect(page.getByText('Rating over time')).toBeVisible();
-
-    // Carbon's chart wrapper element. If Carbon's stylesheet isn't loaded the
-    // chart is a black-on-black blob; we just check the SVG exists.
-    const chart = page.locator('.bx--chart-holder, .cds--chart-holder').first();
-    await expect(chart).toBeVisible({ timeout: 15_000 });
-    await expect(chart.locator('svg').first()).toBeVisible();
+    const section = page.getByRole('region', { name: 'Rating over time' });
+    await expect(section).toBeVisible();
+    await expect(
+      section.getByRole('img', {
+        name: /^Rating over time: from [\d,]+ to [\d,]+, peak [\d,]+ on /,
+      })
+    ).toBeVisible();
   });
 
   test('rating-over-time chart plots a line from match times', async ({
@@ -36,9 +43,12 @@ test.describe('Player profile', () => {
     await page.goto(PROFILE_URL);
 
     // A missing date field still renders the SVG; only the line path shows it.
-    const line = page.locator('path.line').first();
-    await expect(line).toBeAttached({ timeout: 15_000 });
-    await expect(line).toHaveAttribute('d', /^M-?[\d.]+,-?[\d.]+/);
+    const line = page.getByTestId('rating-line');
+    await expect(line).toBeVisible();
+    await expect(line).toHaveAttribute(
+      'd',
+      /^M[\d.]+,[\d.]+(?: L[\d.]+,[\d.]+)+$/
+    );
     await expect(line).not.toHaveAttribute('d', /NaN/);
   });
 

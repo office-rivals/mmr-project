@@ -12,3 +12,4 @@ export const Heatmap = clientChart<HeatmapProps>(
   () => import('./heatmap.impl')
 );
 export { TrendLine } from './trend-line';
+export { RatingChart, RatingChartLegend } from './rating-chart';
