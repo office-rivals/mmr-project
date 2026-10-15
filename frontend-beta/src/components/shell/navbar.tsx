@@ -10,9 +10,9 @@ interface NavbarProps {
 }
 
 /**
- * The bottom bar on phones and the sidebar link list from `lg` up. Each width
- * shows five links: Leaderboard and Matches replace Submit and Profile in the
- * sidebar, which has its own Submit button and profile chip.
+ * The bottom bar on phones and the sidebar link list from `lg` up. Phones get
+ * five links; the sidebar swaps Submit (it has its own button) for Leaderboard
+ * and Matches.
  */
 export function Navbar({ base, orgId, leagueId, profilePath }: NavbarProps) {
   return (
@@ -49,12 +49,7 @@ export function Navbar({ base, orgId, leagueId, profilePath }: NavbarProps) {
           label="Random teams"
           shortLabel="Teams"
         />
-        <NavbarNav
-          path={profilePath}
-          icon={User}
-          label="Profile"
-          show="mobile"
-        />
+        <NavbarNav path={profilePath} icon={User} label="Profile" />
       </div>
     </nav>
   );
