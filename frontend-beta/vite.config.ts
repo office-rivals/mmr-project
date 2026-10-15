@@ -22,7 +22,8 @@ export default defineConfig(({ command, mode }) => {
     plugins: [
       tailwindcss(),
       tanstackStart({
-        // Preserve the shared suite's observable loader-refetch URL marker.
+        // Loader refetches stay observable as `__data.json` requests, which the
+        // e2e pull-to-refresh spec waits for.
         serverFns: { base: '/_serverFn/__data.json' },
       }),
       viteReact(),

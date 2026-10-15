@@ -1,8 +1,6 @@
-import playwright from '../../frontend/node_modules/@playwright/test/index.js';
+import { expect, test } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { gotoAuthed } from './helpers';
-const { expect, test } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
 
 const MATCHMAKING = '/test-org/test-league/matchmaking';
 const PENDING_MATCH_ID = 'eeeeeeee-3000-0000-0000-000000000001';

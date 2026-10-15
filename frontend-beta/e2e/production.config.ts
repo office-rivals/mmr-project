@@ -1,34 +1,25 @@
-import shared from '../../frontend/playwright.config';
+import { defineConfig, devices } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import playwright from '../../frontend/node_modules/@playwright/test/index.js';
+import base, { STORAGE_STATE } from '../playwright.config';
 
-const { devices } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
-
-const repo = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../..'
-);
+const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = process.env.E2E_PORT ?? '5180';
 const servers = (
-  Array.isArray(shared.webServer) ? shared.webServer : [shared.webServer]
-).filter(Boolean);
+  Array.isArray(base.webServer) ? base.webServer : [base.webServer]
+).filter((server) => server != null);
 
-export default {
-  ...shared,
-  use: { ...shared.use, timezoneId: 'Europe/Copenhagen', locale: 'en-US' },
-  testDir: path.join(repo, 'frontend/e2e'),
-  outputDir: path.join(repo, 'frontend-beta/test-results/production'),
-  globalSetup: path.join(repo, 'frontend/e2e/global-services.setup.ts'),
+export default defineConfig({
+  ...base,
+  use: { ...base.use, timezoneId: 'Europe/Copenhagen', locale: 'en-US' },
+  outputDir: path.join(appDir, 'test-results/production'),
   webServer: servers.map((server) =>
-    server!.name === 'frontend'
+    server.name === 'frontend'
       ? {
-          ...server!,
+          ...server,
           command: 'npm start',
-          cwd: path.join(repo, 'frontend-beta'),
           env: {
-            ...server!.env,
+            ...server.env,
             PORT: port,
             HOST: '127.0.0.1',
             NODE_ENV: 'production',
@@ -37,20 +28,11 @@ export default {
             CLERK_AUTHORIZED_PARTIES: `http://localhost:${port}`,
           },
         }
-      : server!
+      : server
   ),
   projects: [
-    ...(shared.projects?.map((project) => ({
-      ...project,
-      use: {
-        ...project.use,
-        ...(project.name === 'chromium'
-          ? {
-              storageState: path.join(repo, 'frontend/e2e/.auth/user.json'),
-            }
-          : {}),
-      },
-    })) ?? []),
+    // `setup`, then the whole e2e suite in Chromium.
+    ...(base.projects ?? []),
     // Each browser needs a fresh seed: repeated match submissions are rejected.
     ...(['webkit', 'firefox'] as const).flatMap((browser) => {
       const device =
@@ -65,20 +47,16 @@ export default {
         {
           name: `${browser}-smoke`,
           dependencies: [`${browser}-setup`],
-          testMatch: /(?:header|submit|admin-rbac)\.spec\.ts/,
-          use: {
-            ...device,
-            storageState: path.join(repo, 'frontend/e2e/.auth/user.json'),
-          },
+          testMatch: /(?:header|submit|admin-rbac)\.e2e\.spec\.ts$/,
+          use: { ...device, storageState: STORAGE_STATE },
         },
       ];
     }),
     {
       name: 'production-contract',
       dependencies: ['firefox-smoke'],
-      testDir: path.join(repo, 'frontend-beta/e2e'),
-      testMatch: /.*\.production\.spec\.ts/,
-      use: { storageState: path.join(repo, 'frontend/e2e/.auth/user.json') },
+      testMatch: /\.production\.spec\.ts$/,
+      use: { storageState: STORAGE_STATE },
     },
   ],
-};
+});

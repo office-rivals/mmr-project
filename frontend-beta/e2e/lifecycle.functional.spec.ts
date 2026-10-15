@@ -1,12 +1,6 @@
-import playwright, {
-  type CDPSession,
-  type Page,
-} from '../../frontend/node_modules/@playwright/test/index.js';
+import { expect, test, type CDPSession, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { gotoAuthed } from './helpers';
-
-const { expect, test } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
 
 const LEAGUE_ID = 'eeeeeeee-1000-0000-0000-000000000005';
 const LATE_LEAGUE_ID = 'eeeeeeee-1000-0000-0000-000000000006';

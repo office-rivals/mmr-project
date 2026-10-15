@@ -1,8 +1,5 @@
-import playwright from '../../frontend/node_modules/@playwright/test/index.js';
+import { expect, test } from '@playwright/test';
 import { gotoAuthed } from './helpers';
-
-const { expect, test } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
 
 test('dialog close button is visible, accessible, and dismisses the dialog', async ({
   page,

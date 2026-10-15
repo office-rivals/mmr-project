@@ -1,7 +1,4 @@
-import playwright from '../../frontend/node_modules/@playwright/test/index.js';
-
-const { test, expect } =
-  playwright as unknown as typeof import('../../frontend/node_modules/@playwright/test/index.js');
+import { expect, test } from '@playwright/test';
 
 test('production serves authenticated HTML without hydration and rejects forged form origins', async ({
   page,
@@ -87,7 +84,10 @@ for (const [locale, timezoneId] of [
   ['da-DK', 'Europe/Copenhagen'],
   ['en-US', 'Pacific/Kiritimati'],
 ]) {
-  test(`UTC server hydrates in ${locale} / ${timezoneId}`, async ({ browser, baseURL }, info) => {
+  test(`UTC server hydrates in ${locale} / ${timezoneId}`, async ({
+    browser,
+    baseURL,
+  }, info) => {
     const context = await browser.newContext({
       storageState: info.project.use.storageState,
       locale,
@@ -116,7 +116,11 @@ for (const [locale, timezoneId] of [
         if (await timestamp.count()) {
           const instant = await timestamp.getAttribute('datetime');
           await expect(timestamp).toHaveText(
-            new Intl.DateTimeFormat(locale, { timeZone: timezoneId, hour: '2-digit', minute: '2-digit' }).format(new Date(instant!))
+            new Intl.DateTimeFormat(locale, {
+              timeZone: timezoneId,
+              hour: '2-digit',
+              minute: '2-digit',
+            }).format(new Date(instant!))
           );
         }
       }
