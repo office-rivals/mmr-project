@@ -24,7 +24,10 @@ test('production serves authenticated HTML without hydration and rejects forged 
         .getByRole('heading', { name: 'Leaderboard', exact: true })
         .first()
     ).toBeVisible();
-    await expect(nativePage.getByRole('table').first()).toContainText('tuser');
+    // Server-rendered rows: Home's table shows the top seven ranked players.
+    await expect(
+      nativePage.getByRole('table').first().locator('tbody tr')
+    ).toHaveCount(7);
     await nativePage.goto(new URL('/test-org/settings', page.url()).href);
     const saved = await nativePage.request.post(nativePage.url(), {
       headers: { origin: new URL(page.url()).origin },

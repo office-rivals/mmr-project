@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { isServerFn } from './server-fns';
 
 const LEAGUE_URL = '/test-org/test-league';
+const STANDINGS_URL = `${LEAGUE_URL}/leaderboard`;
 
 // The league rating history behind the sparklines, fetched on client-side
 // navigation.
@@ -16,21 +17,55 @@ test.describe('Leaderboard page', () => {
     await page.goto(LEAGUE_URL);
 
     const headings = page.locator('h1, h2');
-    await expect(headings.nth(0)).toHaveText('Leaderboard'); // PageTitle uses h1 (page-title.svelte)
-    await expect(headings.nth(1)).toHaveText('Recent Matches'); // h2 above match cards
-    await expect(headings.nth(2)).toHaveText('Leaderboard'); // h2 above the table
+    await expect(headings.nth(0)).toHaveText('Leaderboard'); // the page's h1
+    await expect(headings.nth(1)).toHaveText('Leaderboard'); // h2 above the table
+    await expect(headings.nth(2)).toHaveText('Recent Matches'); // h2 above match cards
   });
 
   test('table has the expected columns', async ({ page }) => {
     await page.goto(LEAGUE_URL);
-    const headerCells = page.getByRole('table').first().locator('thead th');
-    await expect(headerCells).toHaveCount(5);
-    await expect(headerCells.nth(0)).toHaveText('#');
-    await expect(headerCells.nth(1)).toHaveText('Player');
-    // Wins/Losses headers contain a short variant; assert both texts present.
-    await expect(headerCells.nth(2)).toContainText(/W(ins)?/);
-    await expect(headerCells.nth(3)).toContainText(/L(osses)?/);
-    await expect(headerCells.nth(4)).toHaveText('Score');
+    // Hidden cells drop out of the role query, so this is what's on screen.
+    await expect(
+      page.getByRole('table').first().getByRole('columnheader')
+    ).toHaveText(['#', 'Player', 'Wins', 'Losses', 'Win %', 'Trend', 'MMR']);
+  });
+
+  test('shows the top seven ranked players and links to the standings', async ({
+    page,
+  }) => {
+    await page.goto(LEAGUE_URL);
+
+    const ranks = page
+      .getByRole('table')
+      .first()
+      .locator('tbody tr td:first-child');
+    await expect(ranks).toHaveText(['1', '2', '3', '4', '5', '6', '7']);
+
+    await page.getByRole('link', { name: /^View all \d+ standings$/ }).click();
+    await page.waitForURL(new RegExp(`${STANDINGS_URL}$`));
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Leaderboard' })
+    ).toBeVisible();
+  });
+
+  test.describe('on a phone', () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+
+    test('shows five rows with a combined W–L column', async ({ page }) => {
+      await page.goto(LEAGUE_URL);
+
+      const table = page.getByRole('table').first();
+      await expect(table.getByRole('columnheader')).toHaveText([
+        '#',
+        'Player',
+        'W–L',
+        'MMR',
+      ]);
+      await expect(table.getByRole('row')).toHaveCount(1 + 5);
+      await expect(
+        page.getByRole('link', { name: 'View all standings' })
+      ).toBeVisible();
+    });
   });
 
   test('shows username (handle) in match cards, not display name', async ({
@@ -56,8 +91,12 @@ test.describe('Leaderboard page', () => {
     // The season picker label reads "Current Season" by default.
     await expect(page.getByText('Current Season')).toBeVisible();
 
-    // The leaderboard should include the test user (P1) — they have 11
-    // matches in the current season, above the 10-match ranked threshold.
+    // The standings should rank the test user (P1) — they have 11 matches in
+    // the current season, above the 10-match ranked threshold. Home only
+    // shows the top rows, so look on the full standings.
+    await page.goto(STANDINGS_URL);
+    await expect(page.getByText('Current Season')).toBeVisible();
+    await page.getByRole('button', { name: /^Show all/ }).click();
     const rows = page.getByRole('table').first().locator('tbody tr');
     await expect(rows.filter({ hasText: 'tuser' })).toHaveCount(1);
   });
@@ -65,11 +104,13 @@ test.describe('Leaderboard page', () => {
   test('marks players with <10 ranked matches as Unranked', async ({
     page,
   }) => {
-    await page.goto(LEAGUE_URL);
-
     // Players in the seed who only show up in M13/M14 (Eve, Dave) have ≤4
-    // matches in the current season → they appear under an "Unranked" divider.
-    await expect(page.getByText('Unranked', { exact: true })).toBeVisible();
+    // matches in the current season → they appear in the standings' Unranked
+    // list. Home lists ranked players only.
+    await page.goto(STANDINGS_URL);
+    await expect(
+      page.getByRole('heading', { name: /^Unranked · play 10 matches/ })
+    ).toBeVisible();
   });
 
   test('toggling MMR shows the (+/−delta) inline next to each player', async ({
@@ -97,16 +138,23 @@ test.describe('Leaderboard page', () => {
   }) => {
     await page.goto(LEAGUE_URL);
 
-    const tuserRow = page
+    // The leader's row: the test user sits outside Home's top rows.
+    const firstRow = page
       .getByRole('table')
       .first()
       .locator('tbody tr')
-      .filter({ hasText: 'tuser' });
-    await tuserRow.click();
+      .first();
+    const leader = await firstRow
+      .locator('td')
+      .nth(1)
+      .locator('span')
+      .first()
+      .textContent();
+    await firstRow.click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText('Test User')).toBeVisible();
+    await expect(dialog.getByText(leader!, { exact: true })).toBeVisible();
     await expect(dialog.getByText('Rank')).toBeVisible();
     await expect(dialog.getByText('# Wins')).toBeVisible();
   });
