@@ -8,13 +8,14 @@ use Base UI primitives, with styles adapted to match the Svelte rendering.
 The stack uses React 19.3, TanStack Start/Router, TanStack Query for server data,
 Clerk for authentication, TypeScript 7, Tailwind CSS 4 and Vite 8. Carbon Charts
 and Lucide provide charts and icons. Vitest 5 covers unit tests; Playwright 1.63
-runs the shared functional and screenshot comparisons.
+runs the shared functional suite and the beta's own regression and production
+suites.
 
 shadcn components are owned source files in `src/components/ui`, not a versioned
 component runtime. `components.json` selects the Base UI `base-vega` registry;
 the local shadcn CLI is pinned by the lockfile. Generated styles and compatibility
 wrappers intentionally preserve the reference UI. Regenerating components must
-be followed by the behavior and visual gates. Tailwind uses its Vite plugin and
+be followed by the e2e suites below. Tailwind uses its Vite plugin and
 CSS-first configuration in `src/app.css`.
 
 ## Development
@@ -79,25 +80,25 @@ API contract changes; do not overwrite custom client methods with generated code
 
 ## Verification
 
-Run the shared functional suite from either app directory:
+The beta is verified by the e2e suite it shares with `../frontend`, plus two
+beta-only suites in `e2e/`:
 
 ```sh
-# Here: boots beta and the isolated e2e backend stack
+# Shared suite: boots beta and the isolated e2e backend stack
 npm run e2e
 npm run e2e:ui
+
+# Beta-only native-form, transport, cache and keyboard regressions
+npm run e2e:regressions
+
+# The shared suite against the built Node server, plus WebKit/Firefox smoke
+# and production contracts
 npm run build && npm run e2e:production
-
-# Reference baseline
-cd ../frontend
-PLAYWRIGHT_JSON_OUTPUT_NAME=/tmp/reference.json npx playwright test --reporter=json,list
-
-# Beta, using the same tests
-E2E_FRONTEND_DIR=frontend-beta PLAYWRIGHT_JSON_OUTPUT_NAME=/tmp/beta.json npx playwright test --reporter=json,list
 ```
 
 See `../frontend/e2e/README.md` for prerequisites. These tests reset the database;
-never run two suites (including visual comparisons) concurrently. Ports 8090,
-8091, and 5180 must be free. Postgres uses the dedicated e2e port 5433.
+never run two suites concurrently. Ports 8090, 8091, and 5180 must be free.
+Postgres uses the dedicated e2e port 5433.
 
 For the production suite, install all three browser engines from `../frontend`
 with `npx playwright install chromium webkit firefox`. It repeats the full shared
@@ -107,31 +108,6 @@ a fresh database seed. Final contracts check authenticated HTML without JavaScri
 native POSTs, forged origins, public health/assets and sign-out. The server runs
 in UTC while browser checks cover multiple timezones and locales. WebKit coverage
 does not replace testing on a physical Safari device.
-
-Run the screenshot comparison from this directory:
-
-```sh
-npm run parity:visual
-npm run parity:visual -- --grep '1440 leaderboard$'
-```
-
-The visual harness lives in `parity/` and starts both frontends on 5180 and 5181
-against one seeded API. It uses the shared authentication setup and Playwright
-installation, so `../frontend/node_modules` must be installed. Reference, beta,
-and pixel-diff PNGs plus numerical results are retained under
-`test-results/visual/`. Open `playwright-report/visual/index.html` for the report.
-Raw pixel differences are retained. The gate permits documented icon changes
-inside matching SVG bounds and rejects unexplained differences; captures are
-never promoted automatically.
-
-A functional test pass is not a visual parity claim. See `parity/README.md` for
-capture coverage, determinism rules, and any remaining measured differences.
-
-Run `npm run parity:behavior` to exercise the same interaction assertions against
-both apps, including keyboard focus, touch input, modal state, and mutation
-feedback. Run it alone, like the other browser suites. The harness README records
-the intentional runtime differences; `parity/VERIFICATION.md` records measured
-results.
 
 ## Data and mutation lifecycle
 

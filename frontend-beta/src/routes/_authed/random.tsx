@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
-import { Hand, Keyboard, RotateCcw } from 'lucide-react';
+import { Hand, Keyboard, Plus, RotateCcw, Shuffle, X } from 'lucide-react';
+import { Eyebrow } from '@/components/eyebrow';
 import { PageTitle } from '@/components/page-title';
+import { PlayerAvatar } from '@/components/player-avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { getRandomTeamsSessionStorageKey } from '@/lib/util/session';
 import { cn } from '@/lib/utils';
 
 const MIN_TOUCHES = 4;
 const COUNTDOWN_SECONDS = 3;
 const TEAM_SIZE = 2;
+const PLAYER_COUNT = TEAM_SIZE * 2;
 
 type Tab = 'names' | 'touch';
 
@@ -63,6 +65,7 @@ export const Route = createFileRoute('/_authed/random')({
       },
     ],
   }),
+  staticData: { wide: true },
   component: RandomPage,
 });
 
@@ -232,13 +235,7 @@ function useTouchRandomizer(active: boolean) {
       node.removeEventListener('touchend', handleTouchEnd);
       node.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, [
-    active,
-    clearTimer,
-    publishCountdown,
-    publishTouches,
-    restartCountdown,
-  ]);
+  }, [active, clearTimer, publishCountdown, publishTouches, restartCountdown]);
 
   useEffect(() => clearTimer, [clearTimer]);
 
@@ -254,13 +251,14 @@ function RandomPage() {
   const [activeTab, setActiveTab] = useState<Tab>('names');
   const userSwitchedTab = useRef(false);
 
-  const [players, setPlayers] = useState<string[]>(() => [
-    player[0] ?? '',
-    player[1] ?? '',
-    player[2] ?? '',
-    player[3] ?? '',
-  ]);
+  const [players, setPlayers] = useState<string[]>(() =>
+    player
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .slice(0, PLAYER_COUNT)
+  );
   const [teams, setTeams] = useState<string[][]>([]);
+  const [draws, setDraws] = useState(0);
 
   const {
     surfaceRef,
@@ -296,6 +294,7 @@ function RandomPage() {
     if (!stored) return;
     try {
       setTeams(JSON.parse(stored) as string[][]);
+      setDraws(1);
     } catch {
       // A corrupt entry just means no previous result to restore.
     }
@@ -308,6 +307,13 @@ function RandomPage() {
     if (tab === 'names') resetTouchRandomizer();
   }
 
+  function changePlayers(next: string[]) {
+    setPlayers(next);
+    // A draw of a different line-up no longer applies.
+    setTeams([]);
+    setDraws(0);
+  }
+
   function generateTeams() {
     const shuffled = fisherYatesShuffle(players);
     const next = [
@@ -315,20 +321,19 @@ function RandomPage() {
       shuffled.slice(TEAM_SIZE, TEAM_SIZE * 2),
     ];
     setTeams(next);
-    // Keyed on the current input values, not the URL params, and no URL update.
+    setDraws((n) => n + 1);
+    // Keyed on the current players, not the URL params, and no URL update.
     sessionStorage.setItem(
       getRandomTeamsSessionStorageKey(players),
       JSON.stringify(next)
     );
   }
 
-  const allPlayersFilled = !players.some((p) => p == null || p.trim() === '');
-
   const headerSubtitle = useMemo(() => {
     if (activeTab === 'names') {
       return teams.length === 2
-        ? 'Tap generate again to reshuffle.'
-        : 'Type four names and tap generate.';
+        ? 'Shuffle again for a new draw.'
+        : `Add ${PLAYER_COUNT} players to draw teams.`;
     }
     if (showingResult) return 'Teams ready — tap "Go again" to reset';
     if (countdown !== null && countdown > 0) return 'Hold still…';
@@ -345,36 +350,33 @@ function RandomPage() {
     <NamesRandomizer
       players={players}
       teams={teams}
-      allPlayersFilled={allPlayersFilled}
-      onChangePlayer={(index, value) =>
-        setPlayers((current) =>
-          current.map((p, i) => (i === index ? value : p))
-        )
-      }
+      draws={draws}
+      showTouchHint={isTouchDevice !== true}
+      onAdd={(name) => changePlayers([...players, name])}
+      onRemove={(index) => changePlayers(players.filter((_, i) => i !== index))}
       onGenerate={generateTeams}
     />
   );
 
   if (isTouchDevice !== true) {
     return (
-      <div className="flex flex-col gap-8">
-        <PageTitle>Random Team Generator</PageTitle>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1">
+          <Eyebrow>2v2 · Random draw</Eyebrow>
+          <PageTitle>Random teams</PageTitle>
+        </div>
         {namesForm}
       </div>
     );
   }
 
   return (
-    <div
-      className="fixed inset-x-0 z-20 flex flex-col bg-background"
-      style={{
-        top: 'calc(env(safe-area-inset-top) + var(--header-height))',
-        bottom: 'calc(env(safe-area-inset-bottom) + 64px)',
-      }}
-    >
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b bg-card px-4 py-3">
+    // Fills the space between the phone header and bottom bar, or beside the
+    // desktop sidebar.
+    <div className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+var(--header-height))] bottom-[calc(env(safe-area-inset-bottom)+64px)] z-20 flex flex-col bg-background lg:top-0 lg:bottom-0 lg:left-60">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
         <div className="flex min-w-0 flex-col">
-          <h1 className="text-lg font-bold leading-tight">Random Teams</h1>
+          <h1 className="text-lg leading-tight font-bold">Random Teams</h1>
           <p className="line-clamp-2 min-h-[2lh] text-xs leading-snug text-muted-foreground">
             {headerSubtitle}
           </p>
@@ -406,42 +408,31 @@ function RandomizerTabs({
   activeTab: Tab;
   onSelect: (tab: Tab) => void;
 }) {
+  const tab = (value: Tab, label: string, Icon: typeof Hand) => (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={activeTab === value}
+      className={cn(
+        'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+        activeTab === value
+          ? 'bg-muted font-semibold text-foreground'
+          : 'text-muted-foreground'
+      )}
+      onClick={() => onSelect(value)}
+    >
+      <Icon aria-hidden="true" className="size-3.5" />
+      {label}
+    </button>
+  );
   return (
     <div
-      className="flex items-center gap-1 rounded-full border bg-muted p-1 text-xs"
+      className="flex shrink-0 items-center gap-1 rounded-full border bg-card p-1 text-xs"
       role="tablist"
       aria-label="Randomizer mode"
     >
-      <button
-        type="button"
-        role="tab"
-        aria-selected={activeTab === 'touch'}
-        className={cn(
-          'flex items-center gap-1 rounded-full px-3 py-1 transition-colors',
-          activeTab === 'touch'
-            ? 'bg-background font-semibold shadow-sm'
-            : 'text-muted-foreground'
-        )}
-        onClick={() => onSelect('touch')}
-      >
-        <Hand className="h-3.5 w-3.5" />
-        Touch
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={activeTab === 'names'}
-        className={cn(
-          'flex items-center gap-1 rounded-full px-3 py-1 transition-colors',
-          activeTab === 'names'
-            ? 'bg-background font-semibold shadow-sm'
-            : 'text-muted-foreground'
-        )}
-        onClick={() => onSelect('names')}
-      >
-        <Keyboard className="h-3.5 w-3.5" />
-        Names
-      </button>
+      {tab('touch', 'Touch', Hand)}
+      {tab('names', 'Names', Keyboard)}
     </div>
   );
 }
@@ -449,55 +440,217 @@ function RandomizerTabs({
 function NamesRandomizer({
   players,
   teams,
-  allPlayersFilled,
-  onChangePlayer,
+  draws,
+  showTouchHint,
+  onAdd,
+  onRemove,
   onGenerate,
 }: {
   players: string[];
   teams: string[][];
-  allPlayersFilled: boolean;
-  onChangePlayer: (index: number, value: string) => void;
+  draws: number;
+  showTouchHint: boolean;
+  onAdd: (name: string) => void;
+  onRemove: (index: number) => void;
   onGenerate: () => void;
 }) {
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const full = players.length >= PLAYER_COUNT;
+  const missing = PLAYER_COUNT - players.length;
+  const drawn = teams.length === 2;
+
+  const add = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = draft.trim();
+    if (!name || full) return;
+    if (players.some((p) => p.toLowerCase() === name.toLowerCase())) return;
+    onAdd(name);
+    setDraft('');
+  };
+
   return (
-    <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {players.map((value, index) => (
-          <div key={index} className="flex flex-col gap-2">
-            <Label htmlFor={`player-${index}`}>{`Player ${index + 1}`}</Label>
-            <Input
-              id={`player-${index}`}
-              value={value}
-              onChange={(event) => onChangePlayer(index, event.target.value)}
-            />
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-6">
+      <section
+        aria-labelledby="random-players-heading"
+        className="flex flex-col gap-4 lg:rounded-xl lg:border lg:bg-card lg:p-5"
+      >
+        <div className="flex flex-col gap-1">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2
+              id="random-players-heading"
+              className="text-3xl font-bold tracking-tight lg:text-xl lg:font-normal lg:tracking-normal"
+            >
+              Who&apos;s playing?
+            </h2>
+            <span className="text-sm font-bold tabular-nums">
+              {players.length}/{PLAYER_COUNT}
+            </span>
           </div>
-        ))}
-      </div>
-      <Button type="button" disabled={!allPlayersFilled} onClick={onGenerate}>
-        Generate Teams
-      </Button>
-      {teams.length === 2 ? (
-        <div className="flex flex-row gap-4 text-center">
-          <div className="flex flex-1 flex-col">
-            <h3 className="text-2xl">Team 1</h3>
-            <ul>
-              {teams[0].map((name, index) => (
-                <li key={index}>{name}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="min-h-full w-px self-stretch bg-border" />
-          <div className="flex flex-1 flex-col">
-            <h3 className="text-2xl">Team 2</h3>
-            <ul>
-              {teams[1].map((name, index) => (
-                <li key={index}>{name}</li>
-              ))}
-            </ul>
-          </div>
+          <p className="text-sm text-muted-foreground lg:hidden">
+            Add {PLAYER_COUNT} players and let fate pick the sides.
+          </p>
         </div>
-      ) : null}
-    </>
+
+        {players.length > 0 ? (
+          <ul
+            aria-label="Players"
+            className="grid grid-cols-2 gap-2 lg:grid-cols-1"
+          >
+            {players.map((name, index) => (
+              <li
+                key={`${name}-${index}`}
+                className="flex min-w-0 items-center gap-2.5 rounded-lg border bg-background py-1.5 pr-1.5 pl-2.5"
+              >
+                <PlayerAvatar name={name} className="size-8 text-[10px]" />
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                  {name}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="-my-1.5 size-11 shrink-0 text-muted-foreground"
+                  aria-label={`Remove ${name}`}
+                  onClick={() => {
+                    onRemove(index);
+                    inputRef.current?.focus();
+                  }}
+                >
+                  <X aria-hidden="true" className="size-4" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <form onSubmit={add} className="flex gap-2">
+          <Input
+            ref={inputRef}
+            aria-label="Add a player by name"
+            placeholder={full ? 'All players added' : 'Add a player by name'}
+            value={draft}
+            disabled={full}
+            autoComplete="off"
+            enterKeyHint="done"
+            className="h-11"
+            onChange={(event) => setDraft(event.target.value)}
+          />
+          <Button
+            type="submit"
+            variant="outline"
+            size="icon"
+            className="size-11 shrink-0"
+            aria-label="Add player"
+            disabled={full || draft.trim() === ''}
+          >
+            <Plus aria-hidden="true" className="size-4" />
+          </Button>
+        </form>
+      </section>
+
+      <section
+        aria-labelledby="random-draw-heading"
+        className="flex flex-col gap-4"
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="random-draw-heading" className="text-2xl">
+            The draw
+          </h2>
+          {draws > 0 ? (
+            <span className="text-xs text-muted-foreground">Draw #{draws}</span>
+          ) : null}
+        </div>
+
+        {drawn ? (
+          <div
+            aria-live="polite"
+            className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-2"
+          >
+            <TeamCard label="Team 1" names={teams[0]} highlight />
+            <span className="self-center text-xs text-muted-foreground">
+              vs
+            </span>
+            <TeamCard label="Team 2" names={teams[1]} align="end" />
+          </div>
+        ) : (
+          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground lg:py-14">
+            {full
+              ? 'Everyone is in. Draw the teams.'
+              : `Add ${missing} more ${missing === 1 ? 'player' : 'players'} to draw teams.`}
+          </p>
+        )}
+
+        <Button
+          type="button"
+          className="h-12 gap-2 text-base font-bold"
+          disabled={!full}
+          onClick={onGenerate}
+        >
+          <Shuffle aria-hidden="true" />
+          {drawn ? 'Shuffle again' : 'Draw teams'}
+        </Button>
+
+        {showTouchHint ? (
+          <div className="hidden items-center gap-4 rounded-xl border border-dashed p-4 lg:flex">
+            <span
+              aria-hidden="true"
+              className="grid shrink-0 grid-cols-2 gap-1"
+            >
+              <span className="size-4 rounded-full bg-primary" />
+              <span className="size-4 rounded-full bg-foreground" />
+              <span className="size-4 rounded-full bg-foreground" />
+              <span className="size-4 rounded-full bg-primary" />
+            </span>
+            <p className="text-sm">
+              <span className="font-semibold">Standing at the table?</span>
+              <br />
+              <span className="text-muted-foreground">
+                Open Random teams on a phone and use the Touch draw.
+              </span>
+            </p>
+          </div>
+        ) : null}
+      </section>
+    </div>
+  );
+}
+
+function TeamCard({
+  label,
+  names,
+  highlight = false,
+  align = 'start',
+}: {
+  label: string;
+  names: string[];
+  highlight?: boolean;
+  align?: 'start' | 'end';
+}) {
+  return (
+    <div
+      className={cn(
+        'flex min-w-0 flex-col gap-2 rounded-xl border p-4 lg:p-6',
+        highlight ? 'border-primary/50 bg-primary/10' : 'bg-card',
+        align === 'end' && 'items-end text-right'
+      )}
+    >
+      <h3
+        className={cn(
+          'text-[10px] font-semibold tracking-[0.14em] uppercase',
+          highlight ? 'text-primary' : 'text-muted-foreground'
+        )}
+      >
+        {label}
+      </h3>
+      <ul className="flex w-full flex-col gap-1">
+        {names.map((name, index) => (
+          <li key={index} className="truncate text-xl font-bold lg:text-3xl">
+            {name}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -516,12 +669,20 @@ function TouchRandomizerSurface({
 }) {
   const isCountingDown = countdown !== null && countdown > 0;
 
+  // From lg the sidebar stays beside the surface, and a pull that starts there
+  // would still reload the page mid-draw.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-no-pull-to-refresh', '');
+    return () => root.removeAttribute('data-no-pull-to-refresh');
+  }, []);
+
   return (
     <div
       ref={surfaceRef}
       role="application"
       aria-label="Touch randomizer surface"
-      className="relative flex-1 touch-none select-none overflow-hidden bg-muted"
+      className="relative flex-1 touch-none overflow-hidden bg-muted select-none"
       // The app-shell pull-to-refresh listens on `window` with `{ passive:
       // true }`, so this page's own preventDefault() cannot suppress it. The
       // shared component bails via `closest('[data-no-pull-to-refresh]')`,
@@ -535,10 +696,10 @@ function TouchRandomizerSurface({
           </div>
           <p className="text-2xl font-bold">Place your fingers</p>
           <p className="max-w-xs text-sm text-muted-foreground">
-            At least {MIN_TOUCHES}. After a {COUNTDOWN_SECONDS}-second countdown,
-            two random fingers become{' '}
-            <span className="font-semibold text-foreground">white team</span> and
-            two become{' '}
+            At least {MIN_TOUCHES}. After a {COUNTDOWN_SECONDS}-second
+            countdown, two random fingers become{' '}
+            <span className="font-semibold text-foreground">white team</span>{' '}
+            and two become{' '}
             <span className="font-semibold text-foreground">red team</span>.
           </p>
         </div>
@@ -546,7 +707,7 @@ function TouchRandomizerSurface({
 
       {isCountingDown ? (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-          <div className="animate-pulse text-[12rem] font-bold leading-none text-primary/80">
+          <div className="animate-pulse text-[12rem] leading-none font-bold text-primary/80">
             {countdown}
           </div>
         </div>
@@ -554,7 +715,7 @@ function TouchRandomizerSurface({
 
       {showingResult ? (
         <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-2 px-6 text-center">
-          <p className="text-sm uppercase tracking-widest text-muted-foreground">
+          <p className="text-sm tracking-widest text-muted-foreground uppercase">
             Teams
           </p>
           <div className="flex items-center gap-3 text-2xl font-bold">
@@ -606,7 +767,7 @@ function TouchRandomizerSurface({
       {showingResult ? (
         <button
           type="button"
-          className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg"
+          className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-primary-fill px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg"
           onClick={onGoAgain}
         >
           <RotateCcw className="h-4 w-4" />

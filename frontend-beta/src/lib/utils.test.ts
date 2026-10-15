@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   groupMatchesByDate,
   formatDateTime,
+  initials,
   isToday,
   matchDateGroupKey,
   matchDateGroupLabel,
@@ -178,5 +179,22 @@ describe('groupMatchesByDate', () => {
     expect(result[1].label).not.toBe(result[2].label);
     expect(result[3].label).not.toBeNull();
     expect(result[2].label).not.toBe(result[3].label);
+  });
+});
+
+describe('initials', () => {
+  it('takes the first letter of the first two words', () => {
+    expect(initials('Test Org')).toBe('TO');
+    expect(initials('alpha beta gamma')).toBe('AB');
+  });
+
+  it('uses the first two letters of a single word', () => {
+    expect(initials('tuser')).toBe('TU');
+  });
+
+  it('splits handles on separators and falls back for empty input', () => {
+    expect(initials('first.last')).toBe('FL');
+    expect(initials('')).toBe('?');
+    expect(initials(null)).toBe('?');
   });
 });

@@ -1,68 +1,60 @@
-import { useMatch, useParams } from '@tanstack/react-router';
-import { Home, Plus, Shuffle, User } from 'lucide-react';
+import { BarChart3, Home, Shuffle, Trophy, User } from 'lucide-react';
 import { MatchmakingButton } from './matchmaking-button';
-import { NavbarNav } from './navbar-nav';
+import { NavbarNav, NavbarSubmit } from './navbar-nav';
 
 interface NavbarProps {
-  defaultOrgSlug: string | null;
-  defaultLeagueSlug: string | null;
-  defaultOrgId: string | null;
-  defaultLeagueId: string | null;
-  defaultLeaguePlayerId: string | null;
+  base: string;
+  orgId: string | null;
+  leagueId: string | null;
+  profilePath: string;
 }
 
-export function Navbar({
-  defaultOrgSlug,
-  defaultLeagueSlug,
-  defaultOrgId,
-  defaultLeagueId,
-  defaultLeaguePlayerId,
-}: NavbarProps) {
-  const params = useParams({ strict: false });
-  const leagueMatch = useMatch({
-    from: '/_authed/$orgSlug/$leagueSlug',
-    shouldThrow: false,
-  });
-  const league = leagueMatch?.loaderData;
-
-  // Prefer the league in the current route over shell defaults.
-  const orgSlug = params.orgSlug ?? defaultOrgSlug;
-  const leagueSlug = params.leagueSlug ?? defaultLeagueSlug;
-  const orgId = league?.orgId ?? defaultOrgId;
-  const leagueId = league?.leagueId ?? defaultLeagueId;
-  const leaguePlayerId = league?.leaguePlayerId ?? defaultLeaguePlayerId;
-
-  const base = orgSlug && leagueSlug ? `/${orgSlug}/${leagueSlug}` : null;
-  const profilePath =
-    base && leaguePlayerId ? `${base}/player/${leaguePlayerId}` : '/settings';
-
-  if (!base) return null;
-
+/**
+ * The bottom bar on phones and the sidebar link list from `lg` up. Each width
+ * shows five links: Leaderboard and Matches replace Submit and Profile in the
+ * sidebar, which has its own Submit button and profile chip.
+ */
+export function Navbar({ base, orgId, leagueId, profilePath }: NavbarProps) {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 flex w-screen flex-row justify-center border-t bg-card"
+      aria-label="Primary"
+      className="fixed inset-x-0 bottom-0 z-30 flex justify-center border-t bg-card lg:static lg:z-auto lg:block lg:border-t-0 lg:bg-transparent"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="flex w-full max-w-screen-sm flex-row items-center justify-stretch">
-        <NavbarNav path={base}>
-          <Home />
-        </NavbarNav>
-        {orgId && leagueId && (
+      <div className="flex w-full max-w-screen-sm items-stretch px-1 lg:max-w-none lg:flex-col lg:gap-0.5 lg:px-0">
+        <NavbarNav path={base} icon={Home} label="Home" />
+        <NavbarNav
+          path={`${base}/leaderboard`}
+          icon={Trophy}
+          label="Leaderboard"
+          show="desktop"
+        />
+        <NavbarNav
+          path={`${base}/matches`}
+          icon={BarChart3}
+          label="Matches"
+          show="desktop"
+        />
+        {orgId && leagueId ? (
           <MatchmakingButton
             path={`${base}/matchmaking`}
             orgId={orgId}
             leagueId={leagueId}
           />
-        )}
-        <NavbarNav isPrimary path={`${base}/submit`}>
-          <Plus />
-        </NavbarNav>
-        <NavbarNav path="/random">
-          <Shuffle />
-        </NavbarNav>
-        <NavbarNav path={profilePath}>
-          <User />
-        </NavbarNav>
+        ) : null}
+        <NavbarSubmit path={`${base}/submit`} />
+        <NavbarNav
+          path="/random"
+          icon={Shuffle}
+          label="Random teams"
+          shortLabel="Teams"
+        />
+        <NavbarNav
+          path={profilePath}
+          icon={User}
+          label="Profile"
+          show="mobile"
+        />
       </div>
     </nav>
   );

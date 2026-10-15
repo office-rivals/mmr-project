@@ -7,7 +7,12 @@ interface MmrDeltaProps {
 export function MmrDelta({ delta = null }: MmrDeltaProps) {
   if (delta == null) return null;
   return (
-    <span className={cn('text-xs', delta >= 0 ? 'positive' : 'destructive')}>
+    <span
+      className={cn(
+        'text-xs font-normal',
+        delta >= 0 ? 'text-green-400' : 'text-red-400'
+      )}
+    >
       {`(${delta > 0 ? '+' : ''}${delta})`}
     </span>
   );

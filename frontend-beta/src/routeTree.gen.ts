@@ -27,6 +27,8 @@ import { Route as AdminOrgSlugIndexRouteImport } from './routes/admin/$orgSlug/i
 import { Route as AdminOrgSlugMembersRouteImport } from './routes/admin/$orgSlug/members'
 import { Route as OrgSlugLeagueSlugApiRecentMatchRouteImport } from './routes/$orgSlug/$leagueSlug/api/recent-match'
 import { Route as AuthedOrgSlugLeagueSlugIndexRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/index'
+import { Route as AuthedOrgSlugLeagueSlugLeaderboardRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/leaderboard'
+import { Route as AuthedOrgSlugLeagueSlugMatchesRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/matches'
 import { Route as AuthedOrgSlugLeagueSlugMatchmakingRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/matchmaking'
 import { Route as AuthedOrgSlugLeagueSlugStatisticsRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/statistics'
 import { Route as AuthedOrgSlugLeagueSlugSubmitRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/submit'
@@ -133,6 +135,18 @@ const AuthedOrgSlugLeagueSlugIndexRoute =
     path: '/',
     getParentRoute: () => AuthedOrgSlugLeagueSlugRouteRoute,
   } as any)
+const AuthedOrgSlugLeagueSlugLeaderboardRoute =
+  AuthedOrgSlugLeagueSlugLeaderboardRouteImport.update({
+    id: '/leaderboard',
+    path: '/leaderboard',
+    getParentRoute: () => AuthedOrgSlugLeagueSlugRouteRoute,
+  } as any)
+const AuthedOrgSlugLeagueSlugMatchesRoute =
+  AuthedOrgSlugLeagueSlugMatchesRouteImport.update({
+    id: '/matches',
+    path: '/matches',
+    getParentRoute: () => AuthedOrgSlugLeagueSlugRouteRoute,
+  } as any)
 const AuthedOrgSlugLeagueSlugMatchmakingRoute =
   AuthedOrgSlugLeagueSlugMatchmakingRouteImport.update({
     id: '/matchmaking',
@@ -230,6 +244,8 @@ export interface FileRoutesByFullPath {
   '/admin/$orgSlug/': typeof AdminOrgSlugIndexRoute
   '/admin/$orgSlug/leagues/$leagueSlug': typeof AdminOrgSlugLeaguesLeagueSlugRouteRouteWithChildren
   '/$orgSlug/$leagueSlug/api/recent-match': typeof OrgSlugLeagueSlugApiRecentMatchRoute
+  '/$orgSlug/$leagueSlug/leaderboard': typeof AuthedOrgSlugLeagueSlugLeaderboardRoute
+  '/$orgSlug/$leagueSlug/matches': typeof AuthedOrgSlugLeagueSlugMatchesRoute
   '/$orgSlug/$leagueSlug/matchmaking': typeof AuthedOrgSlugLeagueSlugMatchmakingRoute
   '/$orgSlug/$leagueSlug/statistics': typeof AuthedOrgSlugLeagueSlugStatisticsRoute
   '/$orgSlug/$leagueSlug/submit': typeof AuthedOrgSlugLeagueSlugSubmitRoute
@@ -258,6 +274,8 @@ export interface FileRoutesByTo {
   '/join': typeof AuthedJoinIndexRoute
   '/admin/$orgSlug': typeof AdminOrgSlugIndexRoute
   '/$orgSlug/$leagueSlug/api/recent-match': typeof OrgSlugLeagueSlugApiRecentMatchRoute
+  '/$orgSlug/$leagueSlug/leaderboard': typeof AuthedOrgSlugLeagueSlugLeaderboardRoute
+  '/$orgSlug/$leagueSlug/matches': typeof AuthedOrgSlugLeagueSlugMatchesRoute
   '/$orgSlug/$leagueSlug/matchmaking': typeof AuthedOrgSlugLeagueSlugMatchmakingRoute
   '/$orgSlug/$leagueSlug/statistics': typeof AuthedOrgSlugLeagueSlugStatisticsRoute
   '/$orgSlug/$leagueSlug/submit': typeof AuthedOrgSlugLeagueSlugSubmitRoute
@@ -292,6 +310,8 @@ export interface FileRoutesById {
   '/admin/$orgSlug/': typeof AdminOrgSlugIndexRoute
   '/admin/$orgSlug/leagues/$leagueSlug': typeof AdminOrgSlugLeaguesLeagueSlugRouteRouteWithChildren
   '/$orgSlug/$leagueSlug/api/recent-match': typeof OrgSlugLeagueSlugApiRecentMatchRoute
+  '/_authed/$orgSlug/$leagueSlug/leaderboard': typeof AuthedOrgSlugLeagueSlugLeaderboardRoute
+  '/_authed/$orgSlug/$leagueSlug/matches': typeof AuthedOrgSlugLeagueSlugMatchesRoute
   '/_authed/$orgSlug/$leagueSlug/matchmaking': typeof AuthedOrgSlugLeagueSlugMatchmakingRoute
   '/_authed/$orgSlug/$leagueSlug/statistics': typeof AuthedOrgSlugLeagueSlugStatisticsRoute
   '/_authed/$orgSlug/$leagueSlug/submit': typeof AuthedOrgSlugLeagueSlugSubmitRoute
@@ -326,6 +346,8 @@ export interface FileRouteTypes {
     | '/admin/$orgSlug/'
     | '/admin/$orgSlug/leagues/$leagueSlug'
     | '/$orgSlug/$leagueSlug/api/recent-match'
+    | '/$orgSlug/$leagueSlug/leaderboard'
+    | '/$orgSlug/$leagueSlug/matches'
     | '/$orgSlug/$leagueSlug/matchmaking'
     | '/$orgSlug/$leagueSlug/statistics'
     | '/$orgSlug/$leagueSlug/submit'
@@ -354,6 +376,8 @@ export interface FileRouteTypes {
     | '/join'
     | '/admin/$orgSlug'
     | '/$orgSlug/$leagueSlug/api/recent-match'
+    | '/$orgSlug/$leagueSlug/leaderboard'
+    | '/$orgSlug/$leagueSlug/matches'
     | '/$orgSlug/$leagueSlug/matchmaking'
     | '/$orgSlug/$leagueSlug/statistics'
     | '/$orgSlug/$leagueSlug/submit'
@@ -387,6 +411,8 @@ export interface FileRouteTypes {
     | '/admin/$orgSlug/'
     | '/admin/$orgSlug/leagues/$leagueSlug'
     | '/$orgSlug/$leagueSlug/api/recent-match'
+    | '/_authed/$orgSlug/$leagueSlug/leaderboard'
+    | '/_authed/$orgSlug/$leagueSlug/matches'
     | '/_authed/$orgSlug/$leagueSlug/matchmaking'
     | '/_authed/$orgSlug/$leagueSlug/statistics'
     | '/_authed/$orgSlug/$leagueSlug/submit'
@@ -540,6 +566,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedOrgSlugLeagueSlugIndexRouteImport
       parentRoute: typeof AuthedOrgSlugLeagueSlugRouteRoute
     }
+    '/_authed/$orgSlug/$leagueSlug/leaderboard': {
+      id: '/_authed/$orgSlug/$leagueSlug/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/$orgSlug/$leagueSlug/leaderboard'
+      preLoaderRoute: typeof AuthedOrgSlugLeagueSlugLeaderboardRouteImport
+      parentRoute: typeof AuthedOrgSlugLeagueSlugRouteRoute
+    }
+    '/_authed/$orgSlug/$leagueSlug/matches': {
+      id: '/_authed/$orgSlug/$leagueSlug/matches'
+      path: '/matches'
+      fullPath: '/$orgSlug/$leagueSlug/matches'
+      preLoaderRoute: typeof AuthedOrgSlugLeagueSlugMatchesRouteImport
+      parentRoute: typeof AuthedOrgSlugLeagueSlugRouteRoute
+    }
     '/_authed/$orgSlug/$leagueSlug/matchmaking': {
       id: '/_authed/$orgSlug/$leagueSlug/matchmaking'
       path: '/matchmaking'
@@ -691,6 +731,8 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
 )
 
 interface AuthedOrgSlugLeagueSlugRouteRouteChildren {
+  AuthedOrgSlugLeagueSlugLeaderboardRoute: typeof AuthedOrgSlugLeagueSlugLeaderboardRoute
+  AuthedOrgSlugLeagueSlugMatchesRoute: typeof AuthedOrgSlugLeagueSlugMatchesRoute
   AuthedOrgSlugLeagueSlugMatchmakingRoute: typeof AuthedOrgSlugLeagueSlugMatchmakingRoute
   AuthedOrgSlugLeagueSlugStatisticsRoute: typeof AuthedOrgSlugLeagueSlugStatisticsRoute
   AuthedOrgSlugLeagueSlugSubmitRoute: typeof AuthedOrgSlugLeagueSlugSubmitRoute
@@ -701,6 +743,9 @@ interface AuthedOrgSlugLeagueSlugRouteRouteChildren {
 
 const AuthedOrgSlugLeagueSlugRouteRouteChildren: AuthedOrgSlugLeagueSlugRouteRouteChildren =
   {
+    AuthedOrgSlugLeagueSlugLeaderboardRoute:
+      AuthedOrgSlugLeagueSlugLeaderboardRoute,
+    AuthedOrgSlugLeagueSlugMatchesRoute: AuthedOrgSlugLeagueSlugMatchesRoute,
     AuthedOrgSlugLeagueSlugMatchmakingRoute:
       AuthedOrgSlugLeagueSlugMatchmakingRoute,
     AuthedOrgSlugLeagueSlugStatisticsRoute:

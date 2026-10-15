@@ -2,31 +2,39 @@ import { Fragment, useCallback, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import {
-  AlertCircle,
-  CheckCircle,
-  Flag,
-  Handshake,
-  Swords,
-  X,
-} from 'lucide-react';
+import { AlertCircle, CheckCircle, X } from 'lucide-react';
 import { HttpErrorView } from '@/components/http-error-view';
-import { Kpi } from '@/components/kpi';
-import { PageTitle } from '@/components/page-title';
 import { SeasonPicker } from '@/components/season-picker';
 import { LineChart } from '@/components/charts';
-import { MatchCard, MatchDateHeader } from '@/components/match-card';
+import {
+  MatchCard,
+  MatchDateHeader,
+  MatchFlagButton,
+} from '@/components/match-card';
 import { FlagDialogs } from '@/components/profile/flag-dialogs';
-import { HeadToHeadTable } from '@/components/profile/head-to-head-table';
 import { PlayerFilter } from '@/components/profile/player-filter';
+import {
+  ActivityCard,
+  ProfileHeader,
+  ProfileKpis,
+  RecordsCard,
+  RivalsCard,
+  TeammatesCard,
+} from '@/components/profile/profile-overview';
 import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { HttpError } from '@/lib/http-error';
 import {
   createMatchFlagFn,
   deleteMatchFlagFn,
   updateMatchFlagFn,
 } from '@/lib/match-flag-actions';
+import {
+  WEEK_MS,
+  bestRatingDay,
+  peakRating,
+  profileRecords,
+  ratingChangeSince,
+} from '@/lib/player-stats';
 import { createRouteGuard } from '@/lib/server/http-error';
 import { loadPlayerProfileOnce } from '@/lib/server/profile';
 import { loadShellDataOnce } from '@/lib/server/shell';
@@ -139,6 +147,7 @@ export const Route = createFileRoute(
     if (!result.ok) throw new HttpError(result.status, result.message);
     return result.data;
   },
+  staticData: { wide: true },
   errorComponent: HttpErrorView,
   component: PlayerProfileRoute,
 });
@@ -153,8 +162,7 @@ function PlayerProfileRoute() {
 }
 
 function PlayerProfilePage() {
-  const { groupMatchesByDate, formatNumber, formatRelativeTime } =
-    useLocaleFormatters();
+  const { groupMatchesByDate, formatDate } = useLocaleFormatters();
   const data = Route.useLoaderData();
   const { season } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -308,26 +316,77 @@ function PlayerProfilePage() {
 
   const findPlayer = (id: string) => data.players.find((p) => p.id === id);
 
+  const playerId = data.player.id;
+  const records = useMemo(
+    () => profileRecords(data.matches, playerId),
+    [data.matches, playerId]
+  );
+  const bestDay = useMemo(
+    () =>
+      bestRatingDay(data.matches, playerId, (at) =>
+        formatDate(at, '', {
+          year: 'numeric',
+          month: 'numeric',
+          day: 'numeric',
+        })
+      ),
+    [data.matches, playerId, formatDate]
+  );
+  const history = useMemo(
+    () =>
+      [...(data.ratingHistory?.entries ?? [])].sort(
+        (a, b) => Date.parse(a.playedAt) - Date.parse(b.playedAt)
+      ),
+    [data.ratingHistory]
+  );
+  const peak = peakRating(history);
+  const isCurrentSeason = season == null || season === data.currentSeason?.id;
+  const weekDelta = isCurrentSeason
+    ? ratingChangeSince(history, data.now - WEEK_MS)
+    : null;
+
+  const seasonPicker =
+    data.seasons != null &&
+    data.seasons.length > 1 &&
+    data.currentSeason != null ? (
+      <SeasonPicker
+        seasons={data.seasons}
+        currentSeason={data.currentSeason}
+        selectedSeasonId={season}
+        onSeasonChange={(next) => {
+          setFlagResult(null);
+          void navigate({
+            search: (prev) => ({
+              ...prev,
+              season: next.id === data.currentSeason?.id ? undefined : next.id,
+            }),
+            replace: true,
+          });
+        }}
+      />
+    ) : null;
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-center gap-1 text-center">
-        <PageTitle>{getPlayerDisplayName(data.player, 'Player')}</PageTitle>
-        <div className="flex items-center justify-center gap-2">
-          {data.player?.username && data.player?.displayName ? (
-            <p className="text-base text-muted-foreground">
-              {`@${data.player.username}`}
-            </p>
-          ) : null}
-          {data.isCurrentUser ? (
-            <Badge
-              variant="secondary"
-              className="shrink-0 uppercase tracking-wider"
-            >
-              You
-            </Badge>
-          ) : null}
-        </div>
-      </div>
+      <ProfileHeader
+        title={
+          <h1 className="min-w-0 truncate text-3xl font-bold tracking-tight lg:text-5xl">
+            {getPlayerDisplayName(data.player, 'Player')}
+          </h1>
+        }
+        name={getPlayerDisplayName(data.player, 'Player')}
+        username={
+          data.player.username && data.player.displayName
+            ? data.player.username
+            : null
+        }
+        isCurrentUser={data.isCurrentUser}
+        matchesPlayed={stats.totalMatches}
+        stats={stats}
+        peak={peak}
+        weekDelta={weekDelta}
+        actions={seasonPicker}
+      />
 
       {flagResult?.success && flagResult.message ? (
         <Alert variant="default">
@@ -345,95 +404,55 @@ function PlayerProfilePage() {
         </Alert>
       ) : null}
 
-      {data.seasons != null &&
-      data.seasons.length > 1 &&
-      data.currentSeason != null ? (
-        <div className="self-end">
-          <SeasonPicker
-            seasons={data.seasons}
-            currentSeason={data.currentSeason}
-            selectedSeasonId={season}
-            onSeasonChange={(next) => {
-              setFlagResult(null);
-              void navigate({
-                search: (prev) => ({
-                  ...prev,
-                  season:
-                    next.id === data.currentSeason?.id ? undefined : next.id,
-                }),
-                replace: true,
-              });
-            }}
-          />
-        </div>
-      ) : null}
-
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
-        <Kpi title="Rank">
-          {stats.rank != null && stats.rank > 0 ? `#${stats.rank}` : '—'}
-        </Kpi>
-        <Kpi title="MMR">{stats.mmr ?? '🐣'}</Kpi>
-        <Kpi title="# Matches">{stats.totalMatches}</Kpi>
-        <Kpi title="# Wins">{stats.wins}</Kpi>
-        <Kpi title="# Losses">{stats.lost}</Kpi>
-        <Kpi title="Win rate">
-          {/* 1 fraction digit here; the head-to-head tables use 0. */}
-          {formatNumber(stats.winrate, {
-            style: 'percent',
-            maximumFractionDigits: 1,
-          })}
-        </Kpi>
-        {stats.daysSinceLastMatch != null ? (
-          <Kpi title="Last match">
-            {formatRelativeTime(stats.daysSinceLastMatch, 'day', {
-              style: 'narrow',
-              numeric: stats.daysSinceLastMatch !== 0 ? 'always' : 'auto',
-            })}
-          </Kpi>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
+        {chartData.length > 0 ? (
+          <section
+            aria-labelledby="profile-rating-heading"
+            className="flex min-w-0 flex-col gap-2 rounded-lg border bg-card p-4 lg:p-5 [&_.cds--chart-holder]:bg-transparent"
+          >
+            <h2 id="profile-rating-heading" className="text-xl lg:text-2xl">
+              Rating over time
+            </h2>
+            <LineChart data={chartData} height={300} legend={false} />
+          </section>
         ) : null}
-        {stats.winningStreak > 0 || stats.losingStreak > 0 ? (
-          <Kpi title="Streak">
-            {stats.winningStreak > 0 ? <>🔥 {stats.winningStreak}</> : null}
-            {stats.losingStreak > 0 ? (
-              <>
-                {stats.losingStreak >= 7 ? '⛈️' : '🌧️'} {stats.losingStreak}
-              </>
-            ) : null}
-          </Kpi>
+        <ProfileKpis stats={stats} records={records} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start xl:grid-cols-3">
+        <RecordsCard
+          records={records}
+          bestDay={bestDay}
+          className="lg:order-last"
+        />
+        {data.partners.teammates.length > 0 ? (
+          <TeammatesCard
+            rows={data.partners.teammates}
+            duo={data.partners.duo}
+            playerHref={playerHref}
+          />
+        ) : null}
+        {data.partners.opponents.length > 0 ? (
+          <RivalsCard
+            rows={data.partners.opponents}
+            nemesis={data.partners.nemesis}
+            favourite={data.partners.favourite}
+            playerHref={playerHref}
+          />
         ) : null}
       </div>
 
-      {chartData.length > 0 ? (
-        <>
-          <h2 className="-mb-6 mt-6 text-2xl md:text-4xl">Rating over time</h2>
-          <LineChart data={chartData} height={300} legend={false} />
-        </>
-      ) : null}
-
-      {data.opponents.length > 0 ? (
-        <HeadToHeadTable
-          title="Most common opponents"
-          icon={<Swords />}
-          rows={data.opponents}
-          playerHref={playerHref}
-        />
-      ) : null}
-
-      {data.teammates.length > 0 ? (
-        <HeadToHeadTable
-          title="Most common teammates"
-          icon={<Handshake />}
-          rows={data.teammates}
-          playerHref={playerHref}
-        />
-      ) : null}
+      <ActivityCard matches={data.matches} now={data.now} />
 
       {data.matches.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl md:text-4xl">Matches</h2>
-          </div>
-          <div className="flex flex-col space-y-2">
+        <section
+          aria-labelledby="profile-matches-heading"
+          className="flex flex-col gap-3"
+        >
+          <h2 id="profile-matches-heading" className="text-2xl">
+            Matches
+          </h2>
+          <div className="flex flex-col gap-2 lg:max-w-md">
             <PlayerFilter
               players={data.players ?? []}
               // Deduped on select: the Svelte version pushed a duplicate id and
@@ -444,25 +463,28 @@ function PlayerProfilePage() {
                 )
               }
             />
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1.5">
               {filteredPlayers.map((id) => {
                 const p = findPlayer(id);
                 if (p == null) return null;
+                const name = p.displayName ?? p.username ?? 'Unknown';
                 return (
                   <div
                     key={id}
-                    className="flex items-center space-x-2 rounded-md bg-secondary p-2 text-sm text-secondary-foreground"
+                    className="flex items-center gap-1 rounded-full bg-secondary py-1 pr-1 pl-3 text-sm text-secondary-foreground"
                   >
-                    <span>{p.displayName ?? p.username ?? 'Unknown'}</span>
+                    <span>{name}</span>
                     <button
                       type="button"
+                      aria-label={`Remove ${name} from the filter`}
+                      className="rounded-full p-1 hover:bg-background/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                       onClick={() =>
                         setFilteredPlayers((prev) =>
                           prev.filter((pid) => pid !== id)
                         )
                       }
                     >
-                      <X className="h-4 w-4" />
+                      <X aria-hidden="true" className="h-4 w-4" />
                     </button>
                   </div>
                 );
@@ -470,7 +492,11 @@ function PlayerProfilePage() {
             </div>
           </div>
           <div className="flex flex-1 flex-col items-stretch gap-2">
-            {matches.length === 0 ? <p>No matches found</p> : null}
+            {matches.length === 0 ? (
+              <p className="rounded-lg border bg-card p-6 text-center text-muted-foreground">
+                No matches found
+              </p>
+            ) : null}
             {/* Date headers are flex SIBLINGS of the rows, not wrappers — a
                 wrapper element would change the vertical rhythm. */}
             {matchGroups.map((group) => {
@@ -482,30 +508,26 @@ function PlayerProfilePage() {
                     className={`rounded-lg ${existingFlag ? 'ring-1 ring-red-400' : ''}`}
                   >
                     <div className="flex items-stretch gap-1">
-                      <div className="flex-1">
+                      <div className="min-w-0 flex-1">
                         {/* No `playerHref`: names inside a profile's match
                             cards are plain text. */}
-                        <MatchCard match={group.match} showMmr />
+                        <MatchCard
+                          match={group.match}
+                          showMmr
+                          viewerId={playerId}
+                        />
                       </div>
-                      <button
-                        type="button"
-                        className={`rounded p-2 transition-colors hover:bg-muted ${
-                          existingFlag
-                            ? 'text-red-500'
-                            : 'text-muted-foreground'
-                        }`}
-                        title={existingFlag ? 'Edit flag' : 'Flag this match'}
+                      <MatchFlagButton
+                        flagged={existingFlag != null}
                         onClick={() => openFlagDialog(group.match.id)}
-                      >
-                        <Flag className="h-4 w-4" />
-                      </button>
+                      />
                     </div>
                   </div>
                 </Fragment>
               );
             })}
           </div>
-        </div>
+        </section>
       ) : null}
 
       <FlagDialogs

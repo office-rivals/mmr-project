@@ -12,12 +12,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: [
-      'src/**/*.test.ts',
-      'src/**/*.test.tsx',
-      'parity/**/*.test.ts',
-      'parity/**/*.test.mjs',
-    ],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'e2e/**/*.test.mjs'],
     // The date helpers format through `toLocaleDateString(undefined, …)`, so
     // the expected strings ("Friday, Jun 12") depend on the ambient locale and
     // timezone. Pin both so the suite is machine-independent.

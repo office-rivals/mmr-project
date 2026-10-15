@@ -2,6 +2,8 @@ import { getRequest } from '@tanstack/react-start/server';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { HttpError } from '@/lib/http-error';
 import { movePlayerToTopLeft } from '@/lib/move-player-to-top-left';
+import { partnerSummary, type PartnerSummary } from '@/lib/player-stats';
+import { fetchPlayerSeasonMatches } from '@/lib/server/player-matches';
 import { selectCurrentSeason } from '@/lib/util/season';
 import type {
   LeaguePlayerResponse,
@@ -11,18 +13,11 @@ import type {
   SeasonResponse,
 } from '@/api-v3/models';
 
-export interface OpponentEntry {
-  leaguePlayerId: string;
-  displayName?: string;
-  username?: string;
-  wins: number;
-  losses: number;
-  total: number;
-}
-
 export interface PlayerProfileStats {
   mmr: number | null;
   rank: number | null;
+  /** Players with a rating on the leaderboard, for the "Top N%" share. */
+  rankedCount: number;
   totalMatches: number;
   wins: number;
   lost: number;
@@ -43,8 +38,8 @@ export interface PlayerProfileData {
   ratingHistory: RatingHistoryResponse;
   isCurrentUser: boolean;
   stats: PlayerProfileStats;
-  teammates: OpponentEntry[];
-  opponents: OpponentEntry[];
+  /** The same summary Home uses, over the same window of matches. */
+  partners: PartnerSummary;
   /** Whole league roster, for the match filter. */
   players: LeaguePlayerResponse[];
   orgSlug: string;
@@ -103,12 +98,13 @@ export async function loadPlayerProfile(
       myFlags,
     ] = await Promise.all([
       apiClientV3.leaguePlayersApi.getPlayer(orgId, leagueId, playerId),
-      apiClientV3.matchesApi.getMatches(orgId, leagueId, {
+      fetchPlayerSeasonMatches(
+        apiClientV3,
+        orgId,
+        leagueId,
         seasonId,
-        leaguePlayerId: playerId,
-        limit: 1000,
-        offset: 0,
-      }),
+        playerId
+      ),
       apiClientV3.ratingHistoryApi.getPlayerHistory(
         orgId,
         leagueId,
@@ -148,56 +144,6 @@ export async function loadPlayerProfile(
         )
       : null;
 
-    const teammateAcc: Record<string, OpponentEntry> = {};
-    const opponentAcc: Record<string, OpponentEntry> = {};
-
-    for (const match of matches) {
-      const myTeam = match.teams.find((t) =>
-        t.players.some((p) => p.leaguePlayerId === playerId)
-      );
-      const otherTeam = match.teams.find((t) => t !== myTeam);
-      if (!myTeam || !otherTeam) continue;
-      const isWin = !!myTeam.isWinner;
-
-      for (const teammate of myTeam.players) {
-        if (teammate.leaguePlayerId === playerId) continue;
-        // Names are captured from the FIRST match a person appears in; later
-        // renames inside the window are ignored.
-        const acc = (teammateAcc[teammate.leaguePlayerId] ??= {
-          leaguePlayerId: teammate.leaguePlayerId,
-          displayName: teammate.displayName,
-          username: teammate.username,
-          wins: 0,
-          losses: 0,
-          total: 0,
-        });
-        acc.wins += isWin ? 1 : 0;
-        acc.losses += isWin ? 0 : 1;
-        acc.total += 1;
-      }
-      for (const opp of otherTeam.players) {
-        const acc = (opponentAcc[opp.leaguePlayerId] ??= {
-          leaguePlayerId: opp.leaguePlayerId,
-          displayName: opp.displayName,
-          username: opp.username,
-          wins: 0,
-          losses: 0,
-          total: 0,
-        });
-        acc.wins += isWin ? 1 : 0;
-        acc.losses += isWin ? 0 : 1;
-        acc.total += 1;
-      }
-    }
-
-    // Sort by `total` only; ties keep insertion order (newest match first).
-    const teammates = Object.values(teammateAcc)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-    const opponents = Object.values(opponentAcc)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-
     const reorderedMatches = matches.map((m) =>
       movePlayerToTopLeft(m, playerId)
     );
@@ -212,6 +158,8 @@ export async function loadPlayerProfile(
       stats: {
         mmr,
         rank: playerEntry?.rank ?? null,
+        rankedCount: (leaderboard.entries ?? []).filter((e) => e.mmr != null)
+          .length,
         totalMatches,
         wins,
         lost,
@@ -220,8 +168,7 @@ export async function loadPlayerProfile(
         winningStreak: playerEntry?.winningStreak ?? 0,
         losingStreak: playerEntry?.losingStreak ?? 0,
       },
-      teammates,
-      opponents,
+      partners: partnerSummary(matches, playerId),
       players,
       orgSlug,
       leagueSlug,

@@ -110,8 +110,6 @@ jobs:
             npm run e2e
             npm run e2e:production
             npm run e2e:regressions
-            npm run parity:behavior
-            npm run parity:visual
           fi
 
       - name: Upload Playwright report

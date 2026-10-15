@@ -13,6 +13,7 @@
   --color-foreground: hsl(var(--foreground));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-fill: hsl(var(--primary-fill));
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
   --color-destructive: hsl(var(--destructive));
@@ -105,6 +106,9 @@
     --popover-foreground: 20 14.3% 4.1%;
     --primary: 24.6 95% 53.1%;
     --primary-foreground: 60 9.1% 97.8%;
+    /* Filled surfaces under primary-foreground text: primary is too light for
+       small white text, so they use this darker shade (4.6:1 or better). */
+    --primary-fill: 24.6 95% 38%;
     --secondary: 60 4.8% 95.9%;
     --secondary-foreground: 24 9.8% 10%;
     --muted: 60 4.8% 95.9%;
@@ -128,6 +132,7 @@
     --popover-foreground: 60 9.1% 97.8%;
     --primary: 20.5 90.2% 48.2%;
     --primary-foreground: 60 9.1% 97.8%;
+    --primary-fill: 20.5 90.2% 40%;
     --secondary: 12 6.5% 15.1%;
     --secondary-foreground: 60 9.1% 97.8%;
     --muted: 12 6.5% 15.1%;
@@ -156,6 +161,20 @@
   html {
     scroll-behavior: smooth;
     overscroll-behavior: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
   input::placeholder,

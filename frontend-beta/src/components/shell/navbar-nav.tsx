@@ -1,48 +1,84 @@
-import type { ReactNode } from 'react';
-import { useLocation } from '@tanstack/react-router';
+import { Plus, type LucideIcon } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
-import { StatusIndicator } from '@/components/status-indicator';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface NavbarNavProps {
   path: string;
-  isPrimary?: boolean;
-  children?: ReactNode;
-  badge?: number | boolean;
+  icon: LucideIcon;
+  /** Sidebar label; also the bottom-bar label unless `shortLabel` is set. */
+  label: string;
+  shortLabel?: string;
+  /** Which layout shows the link; the other one removes it entirely. */
+  show?: 'both' | 'mobile' | 'desktop';
+  badge?: number;
+  badgeLabel?: string;
 }
 
+// One element serves both the bottom bar and the sidebar so the page keeps a
+// single primary navigation landmark at every width.
 export function NavbarNav({
   path,
-  isPrimary = false,
-  children,
+  icon: Icon,
+  label,
+  shortLabel,
+  show = 'both',
   badge,
+  badgeLabel,
 }: NavbarNavProps) {
-  // Only the league root activates Home.
-  const pathname = useLocation({ select: (location) => location.pathname });
-  const isActive = path === pathname;
+  const hasBadge = badge != null && badge > 0;
 
   return (
-    <Button
-      asChild
-      variant={isPrimary ? 'default' : 'ghost'}
-      className={cn('h-16 min-w-16 flex-1', {
-        'text-primary hover:text-primary': !isPrimary && isActive,
-      })}
+    <AppLink
+      to={path}
+      activeOptions={{ exact: true, includeSearch: false }}
+      className={cn(
+        'group relative flex h-16 min-w-16 flex-1 flex-col items-center justify-center gap-1 rounded-md text-[10px] font-medium tracking-[0.1em] text-muted-foreground uppercase transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+        'data-[status=active]:font-semibold data-[status=active]:text-primary',
+        'lg:h-11 lg:min-w-0 lg:flex-none lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-sm lg:tracking-normal lg:normal-case lg:hover:bg-muted/60 lg:data-[status=active]:bg-muted',
+        show === 'mobile' && 'lg:hidden',
+        show === 'desktop' && 'hidden lg:flex'
+      )}
     >
-      <AppLink to={path}>
-        {children}
-        {badge ? (
-          <div className="relative">
-            <StatusIndicator
-              variant="primary"
-              className="absolute -right-3 -top-6"
-            >
-              {typeof badge === 'number' ? badge : null}
-            </StatusIndicator>
-          </div>
+      <span className="relative flex">
+        <Icon aria-hidden="true" className="size-6 lg:size-[18px]" />
+        {hasBadge ? (
+          <span
+            aria-hidden="true"
+            className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-fill px-1 text-[10px] leading-none font-bold tracking-normal text-primary-foreground lg:hidden"
+          >
+            {badge}
+          </span>
         ) : null}
-      </AppLink>
-    </Button>
+      </span>
+      <span className="lg:hidden">{shortLabel ?? label}</span>
+      <span className="hidden lg:inline">{label}</span>
+      {hasBadge ? (
+        <>
+          <span
+            aria-hidden="true"
+            className="ml-auto hidden h-5 min-w-5 items-center justify-center rounded-full bg-primary-fill px-1.5 text-[11px] font-bold text-primary-foreground lg:inline-flex"
+          >
+            {badge}
+          </span>
+          {badgeLabel ? <span className="sr-only">{badgeLabel}</span> : null}
+        </>
+      ) : null}
+    </AppLink>
+  );
+}
+
+/** The raised plus in the middle of the bottom bar. */
+export function NavbarSubmit({ path }: { path: string }) {
+  return (
+    <AppLink
+      to={path}
+      activeOptions={{ exact: true, includeSearch: false }}
+      className="group flex h-16 min-w-16 flex-1 flex-col items-center justify-end gap-1 pb-1.5 text-[10px] font-semibold tracking-[0.1em] text-foreground uppercase focus-visible:outline-none lg:hidden"
+    >
+      <span className="-mt-7 flex size-14 items-center justify-center rounded-2xl bg-primary-fill text-primary-foreground shadow-[0_0_0_5px_hsl(var(--background))] transition-colors group-hover:bg-primary/90 group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-background">
+        <Plus aria-hidden="true" className="size-7" strokeWidth={2.5} />
+      </span>
+      <span className="group-data-[status=active]:text-primary">Submit</span>
+    </AppLink>
   );
 }

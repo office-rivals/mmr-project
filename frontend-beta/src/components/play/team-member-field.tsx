@@ -1,5 +1,6 @@
 import { useId, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
+import { PlayerAvatar } from '@/components/player-avatar';
 import { PlayerButton } from '@/components/player-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -186,7 +187,7 @@ export function TeamMemberField({
 
   return (
     <div className="flex flex-col gap-2">
-      <h4>{label}</h4>
+      <h4 className="text-xs text-muted-foreground">{label}</h4>
       {value === null ? (
         <>
           <Input
@@ -212,7 +213,10 @@ export function TeamMemberField({
                   aria-labelledby={headingId}
                   className="flex flex-col gap-1"
                 >
-                  <div id={headingId} className="text-sm">
+                  <div
+                    id={headingId}
+                    className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase"
+                  >
                     Recent players
                   </div>
                   {latestPlayers.map((player) =>
@@ -257,42 +261,71 @@ export function TeamMemberField({
           ) : null}
         </>
       ) : (
-        <div className="flex w-full items-center gap-1 rounded-md border border-input px-3 py-2">
-          <div className="flex flex-1 flex-col gap-1">
+        <div className="flex w-full items-center gap-2 rounded-md border border-input bg-card px-2.5 py-2">
+          <PlayerAvatar
+            name={
+              value.kind === 'league'
+                ? playerName(value.player)
+                : value.kind === 'member'
+                  ? playerName(value.member)
+                  : value.displayName
+            }
+            dashed={value.kind !== 'league'}
+            className="size-8 text-[10px]"
+          />
+          <div className="flex min-w-0 flex-1 flex-col">
             {value.kind === 'league' ? (
-              <>
-                <p className="line-clamp-1 text-sm md:text-base">
+              value.player.displayName && value.player.username ? (
+                // Phone columns are narrow: the short handle leads there, and
+                // the full name stays on hover.
+                <>
+                  <p
+                    className="line-clamp-1 text-sm font-semibold"
+                    title={value.player.displayName}
+                  >
+                    <span className="hidden sm:inline">
+                      {value.player.displayName}
+                    </span>
+                    <span className="sm:hidden">{value.player.username}</span>
+                  </p>
+                  <p className="hidden truncate text-xs text-muted-foreground sm:block">
+                    {value.player.username}
+                  </p>
+                </>
+              ) : (
+                <p className="line-clamp-1 text-sm font-semibold">
                   {playerName(value.player)}
                 </p>
-                {value.player.displayName && value.player.username ? (
-                  <p className="text-xs">{value.player.username}</p>
-                ) : null}
-              </>
+              )
             ) : value.kind === 'member' ? (
               <>
-                <p className="line-clamp-1 text-sm md:text-base">
+                <p className="line-clamp-1 text-sm font-semibold">
                   {playerName(value.member)}
                 </p>
-                <p className="text-xs">Org member · joining league</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  Org member · joining league
+                </p>
               </>
             ) : (
               <>
-                <p className="line-clamp-1 text-sm md:text-base">
+                <p className="line-clamp-1 text-sm font-semibold">
                   {value.displayName}
                 </p>
-                <p className="text-xs">
+                <p className="truncate text-xs text-muted-foreground">
                   {value.email ? `New player · ${value.email}` : 'New player'}
                 </p>
               </>
             )}
           </div>
+          {/* A full touch target, pulled into the chip's padding. */}
           <Button
             type="button"
-            className="-mr-1 h-7 w-7 rounded p-1 text-sm"
+            className="-my-1.5 -mr-1.5 size-11 shrink-0 rounded p-0 text-sm text-muted-foreground"
             onClick={reset}
             variant="ghost"
+            aria-label={`Remove ${label.toLowerCase()}`}
           >
-            <X className="h-full w-full" />
+            <X className="size-4" />
           </Button>
         </div>
       )}
