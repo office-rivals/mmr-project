@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { isRatingHistoryRoute } from './target';
 
 const LEAGUE_URL = '/test-org/test-league';
 
@@ -100,6 +101,35 @@ test.describe('Leaderboard page', () => {
     await expect(dialog.getByText('Test User')).toBeVisible();
     await expect(dialog.getByText('Rank')).toBeVisible();
     await expect(dialog.getByText('# Wins')).toBeVisible();
+  });
+
+  test('sparklines draw after navigating away and back', async ({ page }) => {
+    // Regression: on the beta, a sparkline that mounted while the history
+    // was still loading kept Carbon's loading skeleton after the data landed.
+    // Holding the history back guarantees the leaderboard mounts first.
+    await page.route(isRatingHistoryRoute, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+      await route.continue();
+    });
+
+    await page.goto(LEAGUE_URL);
+    const sparklines = page
+      .getByRole('table')
+      .first()
+      .locator('.cds--chart-holder');
+    await expect(sparklines.locator('path.line').first()).toBeAttached();
+
+    await page.locator('nav a[href$="/matchmaking"]').click();
+    await page.waitForURL(/\/matchmaking$/);
+    // Going back before the leaderboard unmounts would not remount it.
+    await expect(sparklines).toHaveCount(0);
+    await page.goBack();
+    await page.waitForURL(new RegExp(`${LEAGUE_URL}$`));
+
+    await expect(sparklines.locator('path.line').first()).toBeAttached();
+    await expect(
+      sparklines.filter({ hasNot: page.locator('path.line') })
+    ).toHaveCount(0);
   });
 
   test('opening the report-match modal loads recent matches', async ({

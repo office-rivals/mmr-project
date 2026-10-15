@@ -74,6 +74,12 @@ export const isDataReloadRoute = (url: URL) =>
     ? isServerFn(url.pathname, 'loadMatchesFn')
     : url.pathname.includes('__data.json');
 
+// The league rating history behind the leaderboard sparklines, fetched on
+// client-side navigation. SvelteKit streams it inside the page's
+// `__data.json`, so there is no separate request to match.
+export const isRatingHistoryRoute = (url: URL) =>
+  IS_BETA && isServerFn(url.pathname, 'getLeagueRatingHistoryFn');
+
 // The row's delete form, scripted directly when a modal covers the button.
 export const DELETE_FORM_SELECTOR = IS_BETA
   ? 'form[data-delete-match]'
