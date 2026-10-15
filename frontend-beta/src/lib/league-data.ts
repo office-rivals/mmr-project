@@ -126,13 +126,17 @@ export const getStandingsFn = createServerFn({ method: 'GET' })
   });
 
 export const MATCHES_PAGE_SIZE = 20;
+const MAX_FEED_ROWS = 500;
 
 export interface MatchFeedPage {
   matches: MatchResponse[];
   hasMore: boolean;
 }
 
-/** One page of the match feed; the viewer's own matches when `mine`. */
+/**
+ * One page of the match feed; the viewer's own matches when `mine`. `limit`
+ * re-fetches every older row loaded so far in one call.
+ */
 export const getMatchFeedFn = createServerFn({ method: 'GET' })
   .validator(
     (
@@ -140,11 +144,16 @@ export const getMatchFeedFn = createServerFn({ method: 'GET' })
         seasonId?: string;
         leaguePlayerId?: string;
         offset: number;
+        limit?: number;
       }
     ) => input
   )
   .handler(async ({ data }): Promise<MatchFeedPage> => {
     const apiClientV3 = await requireApiClientV3();
+    const limit = Math.min(
+      Math.max(Math.trunc(data.limit ?? MATCHES_PAGE_SIZE), 1),
+      MAX_FEED_ROWS
+    );
     // One extra row tells us whether an older page exists.
     const matches = await apiClientV3.matchesApi.getMatches(
       data.orgId,
@@ -152,13 +161,13 @@ export const getMatchFeedFn = createServerFn({ method: 'GET' })
       {
         seasonId: data.seasonId,
         leaguePlayerId: data.leaguePlayerId,
-        limit: MATCHES_PAGE_SIZE + 1,
+        limit: limit + 1,
         offset: data.offset,
       }
     );
     return {
-      matches: matches.slice(0, MATCHES_PAGE_SIZE),
-      hasMore: matches.length > MATCHES_PAGE_SIZE,
+      matches: matches.slice(0, limit),
+      hasMore: matches.length > limit,
     };
   });
 
