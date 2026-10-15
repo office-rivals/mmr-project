@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Fix leaderboard sparklines staying blank after navigating away and back.
+
 ## 0.2.0
 
 - Run the frontend-beta container on Node 26 (`node:26-bookworm-slim`) instead of Node 24.
