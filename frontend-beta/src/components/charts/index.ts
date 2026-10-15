@@ -1,13 +1,8 @@
 import { clientChart } from './client-chart';
-import type { SparklineProps } from './sparkline.impl';
 import type { LineChartProps } from './line-chart.impl';
 import type { HeatmapProps } from './heatmap.impl';
 
-export type { SparklineProps, LineChartProps, HeatmapProps };
-
-export const Sparkline = clientChart<SparklineProps>(
-  () => import('./sparkline.impl')
-);
+export type { LineChartProps, HeatmapProps };
 
 export const LineChart = clientChart<LineChartProps>(
   () => import('./line-chart.impl')

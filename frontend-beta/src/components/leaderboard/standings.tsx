@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Crown } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
 import { TrendLine } from '@/components/charts';
@@ -8,7 +8,12 @@ import { Button } from '@/components/ui/button';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { RANKED_MATCH_THRESHOLD, SHOW_STREAK_THRESHOLD } from '@/lib/constants';
-import { winRate, type Result, type WeekChange } from '@/lib/player-stats';
+import {
+  ratingsByPlayer,
+  winRate,
+  type Result,
+  type WeekChange,
+} from '@/lib/player-stats';
 import { cn, getPlayerDisplayName } from '@/lib/utils';
 import type {
   LeaderboardEntryResponse,
@@ -390,6 +395,10 @@ export function StandingsTable({
   const hydrated = useHydrated();
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? entries : entries.slice(0, initialRows);
+  const trends = useMemo(
+    () => (ratingHistory ? ratingsByPlayer(ratingHistory) : null),
+    [ratingHistory]
+  );
   const head =
     'h-10 px-2 text-left align-middle text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground';
   const cell = 'px-2 py-2.5 align-middle';
@@ -453,9 +462,7 @@ export function StandingsTable({
         <tbody>
           {visible.map((entry, index) => {
             const isMe = entry.leaguePlayerId === me;
-            const history = ratingHistory
-              ?.filter((h) => h.leaguePlayerId === entry.leaguePlayerId)
-              .map((h) => h.mmr);
+            const history = trends?.get(entry.leaguePlayerId);
             return (
               <tr
                 key={entry.leaguePlayerId}

@@ -47,8 +47,8 @@ export default function LineChartImpl({
         },
       },
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- init-once by design
-    []
+    // Carbon redraws on every new options object, so only real changes count.
+    [height, legend]
   );
 
   return <CarbonLineChart data={data} options={options} />;

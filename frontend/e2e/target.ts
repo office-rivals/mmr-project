@@ -80,6 +80,13 @@ export const isDataReloadRoute = (url: URL) =>
 export const isRatingHistoryRoute = (url: URL) =>
   IS_BETA && isServerFn(url.pathname, 'getLeagueRatingHistoryFn');
 
+// A leaderboard row's sparkline and the line drawn in it: a Carbon chart on
+// SvelteKit, a plain SVG polyline on the beta.
+export const SPARKLINE_SELECTOR = IS_BETA
+  ? 'svg:has(> polyline)'
+  : '.cds--chart-holder';
+export const SPARKLINE_LINE_SELECTOR = IS_BETA ? 'polyline' : 'path.line';
+
 // The row's delete form, scripted directly when a modal covers the button.
 export const DELETE_FORM_SELECTOR = IS_BETA
   ? 'form[data-delete-match]'
