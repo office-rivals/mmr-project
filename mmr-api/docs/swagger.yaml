@@ -47,6 +47,48 @@ definitions:
     - players
     - score
     type: object
+  view.MMRPredictionRequest:
+    properties:
+      team1:
+        $ref: '#/definitions/view.MMRPredictionTeam'
+      team2:
+        $ref: '#/definitions/view.MMRPredictionTeam'
+    required:
+    - team1
+    - team2
+    type: object
+  view.MMRPredictionResponse:
+    properties:
+      team1:
+        $ref: '#/definitions/view.MMRTeamPrediction'
+      team2:
+        $ref: '#/definitions/view.MMRTeamPrediction'
+    required:
+    - team1
+    - team2
+    type: object
+  view.MMRPredictionTeam:
+    properties:
+      players:
+        items:
+          $ref: '#/definitions/view.MMRCalculationPlayerRating'
+        type: array
+    required:
+    - players
+    type: object
+  view.MMRTeamPrediction:
+    properties:
+      players:
+        items:
+          $ref: '#/definitions/view.PlayerMMRPrediction'
+        type: array
+      winChance:
+        description: Probability from 0 to 1; the two teams' chances sum to 1.
+        type: number
+    required:
+    - players
+    - winChance
+    type: object
   view.MMRTeamResult:
     properties:
       players:
@@ -58,6 +100,24 @@ definitions:
     required:
     - players
     - score
+    type: object
+  view.PlayerMMRPrediction:
+    properties:
+      id:
+        type: integer
+      mmr:
+        description: The MMR the player goes into the match with, after any season
+          reset.
+        type: integer
+      mmrIfLose:
+        type: integer
+      mmrIfWin:
+        type: integer
+    required:
+    - id
+    - mmr
+    - mmrIfLose
+    - mmrIfWin
     type: object
   view.PlayerMMRResult:
     properties:
@@ -127,6 +187,29 @@ paths:
               $ref: '#/definitions/view.MMRCalculationResponse'
             type: array
       summary: Submit multiple MMR calculation requests
+      tags:
+      - Calculation
+  /v1/mmr-calculation/predict:
+    post:
+      consumes:
+      - application/json
+      description: Returns each team's chance of winning and each player's MMR if
+        their team wins or loses, rated exactly as a submitted result would be
+      parameters:
+      - description: MMR Prediction Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/view.MMRPredictionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: MMR prediction result
+          schema:
+            $ref: '#/definitions/view.MMRPredictionResponse'
+      summary: Predict an MMR calculation before the match is played
       tags:
       - Calculation
 swagger: "2.0"
