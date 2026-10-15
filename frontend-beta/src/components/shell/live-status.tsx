@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouterState } from '@tanstack/react-router';
 import { AppLink } from '@/components/app-link';
 import { useHydrated } from '@/hooks/use-hydrated';
+import { formatStake, matchOdds } from '@/lib/match-prediction';
 import { queueActionFn, type QueueActionName } from '@/lib/queue-actions';
 import { cn, formatElapsed, getPlayerDisplayName, initials } from '@/lib/utils';
 import { queueQueryKey, useQueueStatus } from './use-queue-status';
@@ -83,10 +84,16 @@ export function LiveStatus({
   if (data.activeMatch) {
     const started = new Date(data.activeMatch.startedAt).getTime();
     const minutes = Math.max(0, Math.floor((now - started) / 60_000));
+    const odds = matchOdds(data.activeMatch.prediction, leaguePlayerId);
+    const myTeam = data.activeMatch.teams.find((t) =>
+      t.players.some((p) => p.leaguePlayerId === leaguePlayerId)
+    );
+    const ours = odds?.teams.find((t) => t.index === myTeam?.index);
+    const theirs = odds?.teams.find((t) => t !== ours);
     return (
       <section
         aria-label="Live match"
-        className={cn(shell, 'border-green-500/40')}
+        className={cn(shell, 'overflow-hidden border-green-500/40 lg:relative')}
       >
         <AppLink
           to={`${base}/active-match/${data.activeMatch.id}`}
@@ -102,6 +109,27 @@ export function LiveStatus({
           <span className="truncate text-sm font-semibold">
             {teamsLine(data.activeMatch.teams, leaguePlayerId)}
           </span>
+          {ours && theirs ? (
+            // One line in the phone bar; the narrow sidebar card gives the
+            // stake a line of its own rather than cutting it off.
+            <span
+              data-testid="live-win-chance"
+              className="truncate text-[11px] text-muted-foreground tabular-nums lg:whitespace-normal"
+            >
+              <span className="font-semibold text-primary">
+                {ours.winPercent}% win chance
+              </span>
+              <span className="sr-only">
+                {` for your team, ${theirs.winPercent}% for the opponents`}
+              </span>
+              {odds?.stake ? (
+                <>
+                  <span className="lg:hidden"> · </span>
+                  <span className="lg:block">{formatStake(odds.stake)}</span>
+                </>
+              ) : null}
+            </span>
+          ) : null}
         </AppLink>
         <AppLink
           to={`${base}/active-match/${data.activeMatch.id}`}
@@ -109,6 +137,19 @@ export function LiveStatus({
         >
           Report result
         </AppLink>
+        {ours ? (
+          // The odds bar runs along the card's bottom edge so the phone bar
+          // stays within the space the page leaves for it.
+          <span
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 flex h-0.5 bg-muted"
+          >
+            <span
+              className="bg-primary"
+              style={{ width: `${ours.winPercent}%` }}
+            />
+          </span>
+        ) : null}
       </section>
     );
   }
