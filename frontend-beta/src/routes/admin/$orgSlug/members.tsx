@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HttpErrorView } from '@/components/http-error-view';
 import { parseActionSuccessKey } from '@/lib/action-feedback';
+import { describeApiFailure } from '@/lib/api-error-copy';
 import {
   failServerAction,
   nativeFormResponse,
@@ -32,6 +33,7 @@ import {
 } from '@/lib/server/action-result';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { requireAdminOrg, resolveOrgIdBySlug } from '@/lib/server/admin';
+import { getFormActionFailure } from '@/lib/server/apiError';
 import { getRoleBadgeVariant, isModeratorOrAbove } from '@/lib/utils';
 import type {
   InviteLinkResponse,
@@ -39,8 +41,20 @@ import type {
   OrganizationRole,
 } from '@/api-v3';
 
-// Fixed messages keep submitted fields out of native error documents.
-type ActionResult = { error?: string; success?: string };
+// `error` is fixed copy for native error documents; `detail` is the API's
+// reason, shown on the page (see getFormActionFailure).
+type ActionResult = { error?: string; detail?: string; success?: string };
+
+async function failMemberAction(
+  error: unknown,
+  fallback: string
+): Promise<ActionResult> {
+  const failure = await getFormActionFailure(error, fallback);
+  return failServerAction(failure.status, {
+    error: failure.error,
+    detail: describeApiFailure(failure.status, failure.detail),
+  });
+}
 
 const MEMBER_SUCCESS_MESSAGES = {
   'member-invited': 'Member invited successfully',
@@ -93,8 +107,8 @@ async function inviteMember(data: InviteMemberInput): Promise<ActionResult> {
       username: data.username.trim() || undefined,
     });
     return { success: 'Member invited successfully' };
-  } catch {
-    return failServerAction(400, { error: 'Failed to invite member' });
+  } catch (error) {
+    return failMemberAction(error, 'Failed to invite member');
   }
 }
 
@@ -122,8 +136,8 @@ async function updateMemberRole(
       { role: data.role as OrganizationRole }
     );
     return { success: 'Role updated successfully' };
-  } catch {
-    return failServerAction(400, { error: 'Failed to update role' });
+  } catch (error) {
+    return failMemberAction(error, 'Failed to update role');
   }
 }
 
@@ -158,8 +172,8 @@ const updateMemberProfileFn = createServerFn({ method: 'POST' })
         }
       );
       return { success: 'Profile updated successfully' };
-    } catch {
-      return failServerAction(400, { error: 'Failed to update profile' });
+    } catch (error) {
+      return failMemberAction(error, 'Failed to update profile');
     }
   });
 
@@ -179,8 +193,8 @@ async function removeMember(data: RemoveMemberInput): Promise<ActionResult> {
       data.membershipId
     );
     return { success: 'Member removed successfully' };
-  } catch {
-    return failServerAction(400, { error: 'Failed to remove member' });
+  } catch (error) {
+    return failMemberAction(error, 'Failed to remove member');
   }
 }
 
@@ -206,8 +220,8 @@ const createInviteLinkFn = createServerFn({ method: 'POST' })
           : undefined,
       });
       return { success: 'Invite link created' };
-    } catch {
-      return failServerAction(400, { error: 'Failed to create invite link' });
+    } catch (error) {
+      return failMemberAction(error, 'Failed to create invite link');
     }
   });
 
@@ -229,8 +243,8 @@ async function deleteInviteLink(
       data.linkId
     );
     return { success: 'Invite link deleted' };
-  } catch {
-    return failServerAction(400, { error: 'Failed to delete invite link' });
+  } catch (error) {
+    return failMemberAction(error, 'Failed to delete invite link');
   }
 }
 
@@ -369,7 +383,9 @@ function MembersPage() {
         </p>
       </div>
 
-      {result?.error && <Alert variant="destructive">{result.error}</Alert>}
+      {result?.error && (
+        <Alert variant="destructive">{result.detail ?? result.error}</Alert>
+      )}
       {result?.success && <Alert variant="success">{result.success}</Alert>}
 
       {canModerate && (

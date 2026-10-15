@@ -20,6 +20,7 @@ import { Route as LoginSplatRouteImport } from './routes/login.$'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as AuthedOrgSlugIndexRouteImport } from './routes/_authed/$orgSlug/index'
 import { Route as AuthedOrgSlugLeagueSlugRouteRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/route'
+import { Route as AuthedOrgSlugClaimRouteImport } from './routes/_authed/$orgSlug/claim'
 import { Route as AuthedOrgSlugSettingsRouteImport } from './routes/_authed/$orgSlug/settings'
 import { Route as AuthedJoinIndexRouteImport } from './routes/_authed/join/index'
 import { Route as AuthedJoinCodeRouteImport } from './routes/_authed/join/$code'
@@ -98,6 +99,11 @@ const AuthedOrgSlugLeagueSlugRouteRoute =
     path: '/$orgSlug/$leagueSlug',
     getParentRoute: () => AuthedRoute,
   } as any)
+const AuthedOrgSlugClaimRoute = AuthedOrgSlugClaimRouteImport.update({
+  id: '/$orgSlug/claim',
+  path: '/$orgSlug/claim',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedOrgSlugSettingsRoute = AuthedOrgSlugSettingsRouteImport.update({
   id: '/$orgSlug/settings',
   path: '/$orgSlug/settings',
@@ -236,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/sign-up/$': typeof SignUpSplatRoute
   '/admin/': typeof AdminIndexRoute
   '/$orgSlug/$leagueSlug': typeof AuthedOrgSlugLeagueSlugRouteRouteWithChildren
+  '/$orgSlug/claim': typeof AuthedOrgSlugClaimRoute
   '/$orgSlug/settings': typeof AuthedOrgSlugSettingsRoute
   '/join/$code': typeof AuthedJoinCodeRoute
   '/admin/$orgSlug/members': typeof AdminOrgSlugMembersRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/sign-up/$': typeof SignUpSplatRoute
   '/': typeof AuthedIndexRoute
   '/admin': typeof AdminIndexRoute
+  '/$orgSlug/claim': typeof AuthedOrgSlugClaimRoute
   '/$orgSlug/settings': typeof AuthedOrgSlugSettingsRoute
   '/join/$code': typeof AuthedJoinCodeRoute
   '/admin/$orgSlug/members': typeof AdminOrgSlugMembersRoute
@@ -302,6 +310,7 @@ export interface FileRoutesById {
   '/_authed/': typeof AuthedIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/_authed/$orgSlug/$leagueSlug': typeof AuthedOrgSlugLeagueSlugRouteRouteWithChildren
+  '/_authed/$orgSlug/claim': typeof AuthedOrgSlugClaimRoute
   '/_authed/$orgSlug/settings': typeof AuthedOrgSlugSettingsRoute
   '/_authed/join/$code': typeof AuthedJoinCodeRoute
   '/admin/$orgSlug/members': typeof AdminOrgSlugMembersRoute
@@ -338,6 +347,7 @@ export interface FileRouteTypes {
     | '/sign-up/$'
     | '/admin/'
     | '/$orgSlug/$leagueSlug'
+    | '/$orgSlug/claim'
     | '/$orgSlug/settings'
     | '/join/$code'
     | '/admin/$orgSlug/members'
@@ -369,6 +379,7 @@ export interface FileRouteTypes {
     | '/sign-up/$'
     | '/'
     | '/admin'
+    | '/$orgSlug/claim'
     | '/$orgSlug/settings'
     | '/join/$code'
     | '/admin/$orgSlug/members'
@@ -403,6 +414,7 @@ export interface FileRouteTypes {
     | '/_authed/'
     | '/admin/'
     | '/_authed/$orgSlug/$leagueSlug'
+    | '/_authed/$orgSlug/claim'
     | '/_authed/$orgSlug/settings'
     | '/_authed/join/$code'
     | '/admin/$orgSlug/members'
@@ -515,6 +527,13 @@ declare module '@tanstack/react-router' {
       path: '/$orgSlug/$leagueSlug'
       fullPath: '/$orgSlug/$leagueSlug'
       preLoaderRoute: typeof AuthedOrgSlugLeagueSlugRouteRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$orgSlug/claim': {
+      id: '/_authed/$orgSlug/claim'
+      path: '/$orgSlug/claim'
+      fullPath: '/$orgSlug/claim'
+      preLoaderRoute: typeof AuthedOrgSlugClaimRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/$orgSlug/settings': {
@@ -767,6 +786,7 @@ interface AuthedRouteChildren {
   AuthedSettingsRoute: typeof AuthedSettingsRoute
   AuthedIndexRoute: typeof AuthedIndexRoute
   AuthedOrgSlugLeagueSlugRouteRoute: typeof AuthedOrgSlugLeagueSlugRouteRouteWithChildren
+  AuthedOrgSlugClaimRoute: typeof AuthedOrgSlugClaimRoute
   AuthedOrgSlugSettingsRoute: typeof AuthedOrgSlugSettingsRoute
   AuthedJoinCodeRoute: typeof AuthedJoinCodeRoute
   AuthedOrgSlugIndexRoute: typeof AuthedOrgSlugIndexRoute
@@ -779,6 +799,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedIndexRoute: AuthedIndexRoute,
   AuthedOrgSlugLeagueSlugRouteRoute:
     AuthedOrgSlugLeagueSlugRouteRouteWithChildren,
+  AuthedOrgSlugClaimRoute: AuthedOrgSlugClaimRoute,
   AuthedOrgSlugSettingsRoute: AuthedOrgSlugSettingsRoute,
   AuthedJoinCodeRoute: AuthedJoinCodeRoute,
   AuthedOrgSlugIndexRoute: AuthedOrgSlugIndexRoute,

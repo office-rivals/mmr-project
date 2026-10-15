@@ -2,6 +2,7 @@ import { AppLink } from '@/components/app-link';
 import { RatingTrend } from '@/components/charts/rating-trend';
 import { Eyebrow } from '@/components/eyebrow';
 import { FormChips } from '@/components/form-chips';
+import { featuredCard, plainCard, StatusPill } from '@/components/surfaces';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import {
   partnerWinRate,
@@ -24,9 +25,6 @@ export interface HomeStanding {
   weekDelta: number | null | undefined;
 }
 
-const warmCard =
-  'rounded-lg border border-primary/50 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent';
-const plainCard = 'rounded-lg border bg-card';
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 function Delta({ value, suffix = '' }: { value: number; suffix?: string }) {
@@ -53,7 +51,7 @@ export function HomeHeroCompact({ standing }: { standing: HomeStanding }) {
   const streak = streakLabel(entry);
 
   return (
-    <div className={cn(warmCard, 'flex flex-col gap-3 p-4 lg:hidden')}>
+    <div className={cn(featuredCard, 'flex flex-col gap-3 p-4 lg:hidden')}>
       <dl className="grid grid-cols-3 divide-x divide-primary/20">
         <div className="flex flex-col gap-1 pr-3">
           <dt className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
@@ -138,14 +136,10 @@ export function HomeRankCard({ standing }: { standing: HomeStanding }) {
   }
 
   return (
-    <div className={cn(warmCard, 'flex flex-col gap-6 p-6')}>
+    <div className={cn(featuredCard, 'flex flex-col gap-6 p-6')}>
       <div className="flex items-start justify-between gap-4">
         <Eyebrow>League rank</Eyebrow>
-        {topShare != null ? (
-          <span className="rounded-full border border-primary/60 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold tracking-wider text-primary uppercase">
-            Top {topShare}%
-          </span>
-        ) : null}
+        {topShare != null ? <StatusPill>Top {topShare}%</StatusPill> : null}
       </div>
       <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
         <p className="flex items-baseline gap-2">
@@ -442,7 +436,7 @@ export function PartnerCards({
         <AppLink
           to={`${profileBase}/${nemesis.leaguePlayerId}`}
           className={cn(
-            warmCard,
+            featuredCard,
             'flex flex-col gap-2 p-5 transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
           )}
         >

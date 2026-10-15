@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import * as runtime from '../runtime';
+import { MembershipClaimStatus } from '../models/index';
 import type {
   CreateInviteLinkRequest,
   InviteLinkResponse,
@@ -40,6 +41,10 @@ import type {
   TokenResponse,
   CreateTokenResponse,
   MatchFlagStatus,
+  ClaimableMembershipsResponse,
+  CreateMembershipClaimRequest,
+  ReviewMembershipClaimRequest,
+  MembershipClaimRequestResponse,
 } from '../models/index';
 
 // Me API
@@ -111,6 +116,15 @@ export class OrganizationMembersApi extends runtime.BaseAPI {
     return await response.json();
   }
 
+  async listClaimable(orgId: string): Promise<ClaimableMembershipsResponse> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/members/claimable`,
+      method: 'GET',
+      headers: {},
+    });
+    return await response.json();
+  }
+
   async inviteMember(
     orgId: string,
     request: InviteMemberRequest
@@ -158,6 +172,80 @@ export class OrganizationMembersApi extends runtime.BaseAPI {
       method: 'DELETE',
       headers: {},
     });
+  }
+}
+
+// Membership Claim Requests API
+export class OrganizationClaimRequestsApi extends runtime.BaseAPI {
+  async create(
+    orgId: string,
+    request: CreateMembershipClaimRequest
+  ): Promise<MembershipClaimRequestResponse> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/claim-requests`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: request,
+    });
+    return await response.json();
+  }
+
+  async getMine(
+    orgId: string
+  ): Promise<MembershipClaimRequestResponse | undefined> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/claim-requests/mine`,
+      method: 'GET',
+      headers: {},
+    });
+    return response.status === 204 ? undefined : await response.json();
+  }
+
+  async list(
+    orgId: string,
+    status: MembershipClaimStatus = MembershipClaimStatus.Pending
+  ): Promise<MembershipClaimRequestResponse[]> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/claim-requests`,
+      method: 'GET',
+      headers: {},
+      query: { status },
+    });
+    return await response.json();
+  }
+
+  async cancel(orgId: string, claimId: string): Promise<void> {
+    await this.request({
+      path: `/api/v3/organizations/${orgId}/claim-requests/${claimId}`,
+      method: 'DELETE',
+      headers: {},
+    });
+  }
+
+  async approve(
+    orgId: string,
+    claimId: string
+  ): Promise<MembershipClaimRequestResponse> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/claim-requests/${claimId}/approve`,
+      method: 'POST',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async reject(
+    orgId: string,
+    claimId: string,
+    request: ReviewMembershipClaimRequest
+  ): Promise<MembershipClaimRequestResponse> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/claim-requests/${claimId}/reject`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: request,
+    });
+    return await response.json();
   }
 }
 

@@ -46,10 +46,7 @@ export function NewPlayerDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add new player</DialogTitle>
-          <DialogDescription>
-            Create a player for this match. If you add an email, the address can
-            be claimed later.
-          </DialogDescription>
+          <DialogDescription>Create a player for this match.</DialogDescription>
         </DialogHeader>
 
         <div className="mt-4 flex flex-col gap-4">
@@ -92,7 +89,15 @@ export function NewPlayerDialog({
               onChange={(e) => onDraftChange({ email: e.currentTarget.value })}
               type="email"
               placeholder="new.player@example.com"
+              aria-describedby="new-player-email-hint"
             />
+            <p
+              id="new-player-email-hint"
+              className="text-xs text-muted-foreground"
+            >
+              Links the player to their account when they join with this email.
+              Leave it blank and they can claim it after joining.
+            </p>
           </div>
         </div>
 
