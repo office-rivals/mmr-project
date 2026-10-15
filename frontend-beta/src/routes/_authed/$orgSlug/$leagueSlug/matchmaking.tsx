@@ -414,7 +414,7 @@ function MatchmakingPage({
 
           {activeMatches.length > 0 ? (
             <section className="flex flex-col gap-3">
-              <h2 className="text-xl">Active matches</h2>
+              <h2 className="text-xl">Live now</h2>
               <div className="flex flex-col gap-3">
                 {activeMatches.map((match) => (
                   <ActiveMatchCard
@@ -615,7 +615,7 @@ function ActiveMatchCard({
         to={href}
         className="inline-flex items-center gap-1 self-end rounded-sm text-sm font-semibold text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
-        Submit Result
+        Report result
         <ChevronRight aria-hidden="true" className="size-4" />
       </AppLink>
     </div>
