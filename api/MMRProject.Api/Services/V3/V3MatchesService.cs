@@ -981,40 +981,19 @@ public class V3MatchesService(
         return new MMRCalculationTeam
         {
             Score = team.Score,
-            Players = team.Players.OrderBy(p => p.Index).Select(p =>
-            {
-                var lp = leaguePlayerLookup[p.LeaguePlayerId];
-                return new MMRCalculationPlayerRating
-                {
-                    Id = guidToIndex[p.LeaguePlayerId],
-                    Mu = lp.Mu,
-                    Sigma = lp.Sigma,
-                    IsPreviousSeasonRating = !playersWithCurrentSeasonHistory.Contains(p.LeaguePlayerId),
-                };
-            }).ToList(),
+            Players = team.Players.OrderBy(p => p.Index)
+                .Select(p => MmrCalculationInputs.PlayerRating(
+                    guidToIndex[p.LeaguePlayerId],
+                    leaguePlayerLookup[p.LeaguePlayerId],
+                    playersWithCurrentSeasonHistory))
+                .ToList(),
         };
     }
 
-    private async Task<HashSet<Guid>> LoadPlayersWithSeasonHistoryAsync(
+    private Task<HashSet<Guid>> LoadPlayersWithSeasonHistoryAsync(
         Guid seasonId,
-        IReadOnlyCollection<Guid> playerIds)
-    {
-        if (playerIds.Count == 0) return [];
-
-        var seasonedIds = await dbContext.RatingHistories
-            .Where(rh => playerIds.Contains(rh.LeaguePlayerId))
-            .Join(
-                dbContext.Set<V3Match>(),
-                rh => rh.MatchId,
-                m => m.Id,
-                (rh, m) => new { rh.LeaguePlayerId, m.SeasonId })
-            .Where(x => x.SeasonId == seasonId)
-            .Select(x => x.LeaguePlayerId)
-            .Distinct()
-            .ToListAsync();
-
-        return [.. seasonedIds];
-    }
+        IReadOnlyCollection<Guid> playerIds) =>
+        MmrCalculationInputs.LoadPlayersWithSeasonHistoryAsync(dbContext, seasonId, playerIds);
 
     private async Task<MatchResponse> LoadAndMapMatch(Guid orgId, Guid leagueId, Guid matchId)
     {
