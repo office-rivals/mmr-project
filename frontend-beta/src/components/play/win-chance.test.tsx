@@ -26,13 +26,29 @@ const prediction: MatchPredictionResponse = {
   ],
 };
 
-// Markup with tags and screen-reader-only spans removed: what a sighted
-// viewer reads.
+// The text a sighted viewer reads: the markup's text outside its tags and
+// outside screen-reader-only spans.
 function visibleText(markup: string) {
-  return markup
-    .replace(/<span class="sr-only">.*?<\/span>/g, '')
-    .replace(/<[^>]+>/g, '')
-    .replace(/\s+/g, ' ');
+  let text = '';
+  let hiddenDepth = 0;
+  let i = 0;
+  while (i < markup.length) {
+    if (markup[i] !== '<') {
+      if (hiddenDepth === 0) text += markup[i];
+      i++;
+      continue;
+    }
+    const end = markup.indexOf('>', i);
+    const tag = markup.slice(i, end + 1);
+    if (hiddenDepth > 0) {
+      if (tag.startsWith('<span')) hiddenDepth++;
+      else if (tag === '</span>') hiddenDepth--;
+    } else if (tag === '<span class="sr-only">') {
+      hiddenDepth = 1;
+    }
+    i = end + 1;
+  }
+  return text.replace(/\s+/g, ' ');
 }
 
 function activeMatch(
