@@ -18,6 +18,7 @@ export function Navbar({ base, orgId, leagueId, profilePath }: NavbarProps) {
   return (
     <nav
       aria-label="Primary"
+      data-phone-chrome=""
       className="fixed inset-x-0 bottom-0 z-30 flex justify-center border-t bg-card lg:static lg:z-auto lg:block lg:border-t-0 lg:bg-transparent"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >

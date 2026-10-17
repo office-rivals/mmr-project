@@ -187,6 +187,16 @@
   }
 }
 
+/* A page that needs the whole phone screen (the touch draw) sets
+   data-immersive on <html>. display:none, not a cover, so the hidden bars also
+   leave the tab order and the accessibility tree. Unlayered so it beats the
+   bars' own display utilities. */
+@media (width < 64rem) {
+  html[data-immersive] [data-phone-chrome] {
+    display: none;
+  }
+}
+
 /* Tailwind 4 spaces preceding siblings; retain the reference's following-sibling model. */
 @layer utilities {
   .outline-none,
