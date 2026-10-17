@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0
+
+- The show-MMR toggles, the winner and score pickers, and the random-teams mode tabs now use shared Switch, ToggleGroup and Tabs components, so they work with arrow keys. The league page's MMR checkbox is now a switch, like the matches page's.
+- On phones, the Teams touch draw now fills the whole screen with smaller finger markers numbered by team, and the matchmaking queue card no longer appears on Teams.
+
 ## 0.3.0
 
 - Follow the redesign's labels and layout: "Live now" and "Report result" for live matches, "Looks right?" before submitting, the top of the standings on Home, Profile in the sidebar, and a new rating chart on profiles.
