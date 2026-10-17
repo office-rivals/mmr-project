@@ -1,0 +1,9 @@
+info:
+  name: admin
+  type: folder
+  seq: 3
+
+request:
+  headers:
+    - name: X-API-KEY
+      value: super-secret-admin

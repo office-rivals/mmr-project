@@ -1,0 +1,51 @@
+info:
+  name: Hardware_Revoke
+  type: http
+  seq: 7
+  tags:
+    - Hardware
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/hardware/:hardwareId/revoke"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+    - name: hardwareId
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 204 Response
+    description: No Content
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/hardware/:hardwareId/revoke"
+      method: POST
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: hardwareId
+          value: ""
+          type: path
+    response:
+      status: 204
+      statusText: No Content
+      body:
+        type: text
+        data: ""

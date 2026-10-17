@@ -1,0 +1,123 @@
+info:
+  name: Hardware_List
+  type: http
+  seq: 2
+  tags:
+    - Hardware
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/hardware"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/hardware"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          [
+            {
+              "id": "",
+              "hardwareId": "",
+              "organizationId": "",
+              "leagueId": "",
+              "localIpAddress": "",
+              "lastSeenAt": "",
+              "isOnline": false
+            }
+          ]
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/hardware"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          [
+            {
+              "id": "",
+              "hardwareId": "",
+              "organizationId": "",
+              "leagueId": "",
+              "localIpAddress": "",
+              "lastSeenAt": "",
+              "isOnline": false
+            }
+          ]
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/hardware"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          [
+            {
+              "id": "",
+              "hardwareId": "",
+              "organizationId": "",
+              "leagueId": "",
+              "localIpAddress": "",
+              "lastSeenAt": "",
+              "isOnline": false
+            }
+          ]

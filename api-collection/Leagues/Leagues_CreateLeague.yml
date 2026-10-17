@@ -1,0 +1,141 @@
+info:
+  name: Leagues_CreateLeague
+  type: http
+  seq: 1
+  tags:
+    - Leagues
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "name": "",
+        "slug": "",
+        "teamSize": 0,
+        "winningScore": 0
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues"
+      method: POST
+      params:
+        - name: orgId
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "name": "",
+            "slug": "",
+            "teamSize": 0,
+            "winningScore": 0
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          {
+            "id": "",
+            "organizationId": "",
+            "name": "",
+            "slug": "",
+            "teamSize": 0,
+            "winningScore": 0,
+            "createdAt": ""
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues"
+      method: POST
+      params:
+        - name: orgId
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "name": "",
+            "slug": "",
+            "teamSize": 0,
+            "winningScore": 0
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "organizationId": "",
+            "name": "",
+            "slug": "",
+            "teamSize": 0,
+            "winningScore": 0,
+            "createdAt": ""
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues"
+      method: POST
+      params:
+        - name: orgId
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "name": "",
+            "slug": "",
+            "teamSize": 0,
+            "winningScore": 0
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "organizationId": "",
+            "name": "",
+            "slug": "",
+            "teamSize": 0,
+            "winningScore": 0,
+            "createdAt": ""
+          }
