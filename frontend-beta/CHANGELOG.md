@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- Follow the redesign's labels and layout: "Live now" and "Report result" for live matches, "Looks right?" before submitting, the top of the standings on Home, Profile in the sidebar, and a new rating chart on profiles.
+- Keep the bottom bar steady while scrolling on phones.
+- Stop the matches page dropping or repeating matches after a refresh, and let a match submit when the browser blocks storage.
+- Fix picking a player or season by tapping on iPhones, where the list closed without selecting anything. Both pickers are now built on shadcn's Combobox and Select.
+- Draw the home leaderboard sparklines as the same lightweight trend lines as Standings, and start loading fonts sooner.
+
 ## 0.2.1
 
 - Fix leaderboard sparklines staying blank after navigating away and back.
