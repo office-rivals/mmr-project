@@ -1,11 +1,17 @@
-import { useId, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { PlayerAvatar } from '@/components/player-avatar';
-import { PlayerButton } from '@/components/player-button';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  Combobox,
+  ComboboxGroup,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxLabel,
+  ComboboxList,
+} from '@/components/ui/combobox';
 import { useHydratedInputValue } from '@/hooks/use-hydrated-input-value';
-import { usePlayerCombobox } from '@/hooks/use-player-combobox';
+import { useInlineList } from '@/hooks/use-inline-list';
 import type {
   LeaguePlayerResponse,
   OrganizationMemberResponse,
@@ -49,7 +55,8 @@ const playerName = (p: {
  *
  * Enter never reaches the form — implicit submission would post an empty match.
  * It picks the top typed match, or an option the user arrowed to; an untouched
- * list of recents is not a choice.
+ * list of recents is not a choice, which is why the first option is only
+ * auto-highlighted once two characters are typed.
  */
 export function TeamMemberField({
   label,
@@ -62,7 +69,6 @@ export function TeamMemberField({
   onCreateUser,
   autofocus = false,
 }: TeamMemberFieldProps) {
-  const headingId = useId();
   const [filter, setFilter] = useState('');
 
   const matches = useMemo(() => {
@@ -124,131 +130,118 @@ export function TeamMemberField({
     [filter, latestPlayers, matchedPlayers, matchedMembers]
   );
 
-  const select = (optionValue: string) => {
-    const player = leaguePlayers.find((p) => `league:${p.id}` === optionValue);
-    if (player) {
-      onChange({ kind: 'league', player });
-      setFilter('');
-      return;
-    }
-    const member = orgMembers.find((m) => `member:${m.id}` === optionValue);
-    if (member) {
-      onChange({ kind: 'member', member });
-      setFilter('');
-    }
-  };
+  const findPlayer = (optionValue: string) =>
+    leaguePlayers.find((p) => `league:${p.id}` === optionValue);
+  const findMember = (optionValue: string) =>
+    orgMembers.find((m) => `member:${m.id}` === optionValue);
 
-  const {
-    open,
-    clearHighlight,
-    onFilterInput,
-    inputProps,
-    listboxProps,
-    getOptionProps,
-  } = usePlayerCombobox({
-    options,
-    filterLength: filter.length,
-    // Recents sit on screen with an empty filter, so only an arrowed highlight
-    // authorises Enter.
-    requireArrow: true,
-    minFilterLength: 2,
-    // The browser focuses an autofocused input before this component's focus
-    // handler exists, so the focus event never reaches us — start open instead.
+  const list = useInlineList({
+    // The browser focuses an autofocused input before React attaches its
+    // focus handler, so the focus event never reaches us — start open instead.
     initialOpen: autofocus,
-    onSelect: select,
     onEscape: () => setFilter(''),
   });
+
+  const select = (optionValue: string) => {
+    const player = findPlayer(optionValue);
+    const member = player ? undefined : findMember(optionValue);
+    if (player) onChange({ kind: 'league', player });
+    else if (member) onChange({ kind: 'member', member });
+    else return;
+    setFilter('');
+    list.setOpen(false);
+  };
 
   // The slot is server-rendered, so it can be typed into before hydration.
   const filterRef = useHydratedInputValue(filter, (fromDom) => {
     setFilter(fromDom);
-    onFilterInput();
+    list.setOpen(true);
   });
 
   const reset = () => {
     onChange(null);
     setFilter('');
-    // The slot goes back to an untouched recents list, so the arrow the user
-    // pressed before the last pick must not still authorise Enter.
-    clearHighlight();
   };
 
   const option = (
     optionValue: string,
     user: { displayName?: string; username?: string }
   ) => (
-    <PlayerButton
-      key={optionValue}
-      {...getOptionProps(optionValue)}
-      user={user}
-      className="data-[highlighted]:border-primary data-[highlighted]:bg-muted"
-    />
+    <ComboboxItem key={optionValue} value={optionValue}>
+      <p className="line-clamp-1 text-sm md:text-base">
+        {user.displayName ?? user.username ?? 'Unknown'}
+      </p>
+      {user.displayName != null && user.username != null ? (
+        <p className="text-xs">{user.username}</p>
+      ) : null}
+    </ComboboxItem>
   );
 
   return (
     <div className="flex flex-col gap-2">
       <h4 className="text-xs text-muted-foreground">{label}</h4>
       {value === null ? (
-        <>
-          <Input
+        <Combobox
+          inline
+          open
+          items={options}
+          filteredItems={options}
+          value={null}
+          onValueChange={(picked) => {
+            if (typeof picked === 'string') select(picked);
+          }}
+          inputValue={filter}
+          onInputValueChange={(next, details) => {
+            // A pick writes the option's label into the input; the slot turns
+            // into a chip instead.
+            if (details.reason === 'item-press') return;
+            setFilter(next);
+            list.setOpen(true);
+          }}
+          itemToStringLabel={(optionValue: string) => {
+            const user = findPlayer(optionValue) ?? findMember(optionValue);
+            return user ? playerName(user) : optionValue;
+          }}
+          autoHighlight={filter.length > 1}
+        >
+          <ComboboxInput
             ref={filterRef}
-            value={filter}
-            onChange={(e) => {
-              setFilter(e.currentTarget.value);
-              // Covers input that arrives without a keydown (paste, autofill).
-              onFilterInput();
-            }}
             placeholder="Filter..."
             autoFocus={autofocus || undefined}
-            spellCheck={false}
-            autoCorrect="off"
-            autoCapitalize="none"
-            {...inputProps}
+            {...list.inputProps}
           />
-          {open ? (
-            <div {...listboxProps} className="flex flex-col gap-1">
+          {list.open ? (
+            <div {...list.listProps} className="flex flex-col gap-1">
               {filter.length === 0 && latestPlayers.length > 0 ? (
-                <div
-                  role="group"
-                  aria-labelledby={headingId}
-                  className="flex flex-col gap-1"
-                >
-                  <div
-                    id={headingId}
-                    className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase"
-                  >
-                    Recent players
-                  </div>
-                  {latestPlayers.map((player) =>
-                    option(`league:${player.id}`, player)
-                  )}
-                </div>
+                <ComboboxList>
+                  <ComboboxGroup>
+                    <ComboboxLabel className="text-[10px] font-medium tracking-[0.14em] uppercase">
+                      Recent players
+                    </ComboboxLabel>
+                    {latestPlayers.map((player) =>
+                      option(`league:${player.id}`, player)
+                    )}
+                  </ComboboxGroup>
+                </ComboboxList>
               ) : filter.length > 1 && options.length > 0 ? (
-                <>
+                <ComboboxList>
                   {matchedPlayers.map((player) =>
                     option(`league:${player.id}`, player)
                   )}
                   {matchedMembers.length > 0 ? (
-                    <div
-                      role="group"
-                      aria-labelledby={`${headingId}-members`}
-                      className="flex flex-col gap-1"
-                    >
-                      <div
-                        id={`${headingId}-members`}
-                        className="mt-1 text-xs text-muted-foreground"
-                      >
+                    <ComboboxGroup>
+                      <ComboboxLabel className="mt-1">
                         Org members not yet in league
-                      </div>
+                      </ComboboxLabel>
                       {matchedMembers.map((member) =>
                         option(`member:${member.id}`, {
                           displayName: member.displayName,
                           username: member.username,
                         })
                       )}
-                    </div>
+                    </ComboboxGroup>
                   ) : null}
-                </>
+                </ComboboxList>
               ) : filter.length > 1 ? (
                 <div className="flex flex-col items-start gap-1">
                   <p className="text-sm">No players found</p>
@@ -259,7 +252,7 @@ export function TeamMemberField({
               ) : null}
             </div>
           ) : null}
-        </>
+        </Combobox>
       ) : (
         <div className="flex w-full items-center gap-2 rounded-md border border-input bg-card px-2.5 py-2">
           <PlayerAvatar

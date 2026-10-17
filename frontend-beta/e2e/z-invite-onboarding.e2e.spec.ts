@@ -95,7 +95,7 @@ async function pickPlayer(
   const input = team.locator('input[placeholder="Filter..."]').first();
   await input.fill(filter);
   await page
-    .locator('button', { hasText: new RegExp(filter, 'i') })
+    .getByRole('option', { name: new RegExp(filter, 'i') })
     .first()
     .click();
 }

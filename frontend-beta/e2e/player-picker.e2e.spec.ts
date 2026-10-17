@@ -23,11 +23,8 @@ const PROFILE_URL = `/test-org/test-league/player/${TEST_USER_LEAGUE_PLAYER_ID}`
 const gotoHydrated = (page: Page, url: string) =>
   page.goto(url, { waitUntil: 'networkidle' });
 
-// Suggestions render as PlayerButton, i.e. a <button> element. Matching the
-// element rather than an ARIA role keeps these specs stable if the picker's
-// listbox semantics change.
 const suggestion = (scope: Page, name: string | RegExp) =>
-  scope.locator('button', { hasText: name }).first();
+  scope.getByRole('option', { name }).first();
 
 // The submit page reads its quick-pick list from localStorage, so seed it
 // before the page's hydration effect runs.
@@ -111,10 +108,10 @@ test.describe('Submit — player slot picker', () => {
     // from the leaderboard, so this reads the highlight rather than assuming it.
     await you.pressSequentially('ro');
     // Waiting on the second option is how we know there's more than one.
-    await expect(team1.locator('button[role="option"]').nth(1)).toBeVisible();
+    await expect(team1.locator('[role="option"]').nth(1)).toBeVisible();
 
-    // data-highlighted is bits-ui's marker for the active option — the thing
-    // the arrow keys are meant to move.
+    // data-highlighted marks the active option — the thing the arrow keys are
+    // meant to move.
     const highlightedName = async () =>
       (await team1.locator('[data-highlighted]').innerText()).split('\n')[0];
 
@@ -144,7 +141,7 @@ test.describe('Submit — player slot picker', () => {
     await you.press('Escape');
 
     await expect(you).toHaveValue('');
-    await expect(team1.locator('button[role="option"]')).toHaveCount(0);
+    await expect(team1.locator('[role="option"]')).toHaveCount(0);
   });
 
   test('Enter with a filter that matches nobody does not submit the match', async ({
@@ -175,10 +172,8 @@ test.describe('Submit — player slot picker', () => {
 
   // Removing a chip hands the slot back an untouched list of recents, so Enter
   // has to be a no-op there again. The two cases below differ only in how the
-  // first pick happened, which is what pins the arrow path specifically: the
-  // picker remembers that the user arrowed, and undoing the pick has to forget
-  // it. Without that, the second Enter picks whichever recent bits-ui
-  // highlights when the list reopens.
+  // first pick happened, which is what pins the arrow path specifically: a
+  // highlight left over from arrowing must not survive undoing the pick.
   for (const firstPick of ['arrow key', 'click'] as const) {
     test(`Enter stays a no-op after a pick by ${firstPick} is undone`, async ({
       page,
@@ -250,7 +245,7 @@ test.describe('Player profile — compare filter', () => {
     await input.press('Escape');
 
     await expect(input).toHaveValue('');
-    await expect(page.locator('button[role="option"]')).toHaveCount(0);
+    await expect(page.locator('[role="option"]')).toHaveCount(0);
   });
 
   test('a player can be picked again after removing their chip', async ({

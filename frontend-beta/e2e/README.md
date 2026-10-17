@@ -18,11 +18,11 @@ command below brings everything up from cold.
   keyboard regressions.
 - **`e2e:production`** repeats the main suite against the production build in
   Chromium, then runs the header, submit and admin-role specs in WebKit and
-  Firefox (each browser on a fresh seed), then the production contracts:
-  authenticated HTML without JavaScript, native POSTs, forged origins, public
-  health and assets, and sign-out. The server runs in UTC while the browser
-  checks cover several time zones and locales. WebKit does not replace testing
-  on a physical Safari device.
+  Firefox, plus the touch-picker spec in Firefox (each browser on a fresh
+  seed), then the production contracts: authenticated HTML without JavaScript,
+  native POSTs, forged origins, public health and assets, and sign-out. The
+  server runs in UTC while the browser checks cover several time zones and
+  locales. WebKit does not replace testing on a physical Safari device.
 
 Each suite re-seeds the same database, so never run two at once.
 
