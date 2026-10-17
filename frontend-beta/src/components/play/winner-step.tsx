@@ -1,5 +1,5 @@
 import { StepHeading } from './step-heading';
-import { cn } from '@/lib/utils';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface WinnerStepProps {
   /** True once "we" already hold `winningScore`; that side is the pick. */
@@ -10,15 +10,12 @@ interface WinnerStepProps {
   step?: number;
 }
 
-const choice =
-  'flex h-14 flex-1 items-center justify-center rounded-md border text-lg font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
-
 /**
  * `#winner-step`, shared by the submit page and the active-match page.
  *
- * The picked side stays enabled, so focus does not drop to the page when it is
- * chosen; picking it again does nothing. The labels keep a non-breaking space
- * before the emoji; e2e matches `/We won/` and `/They won/`.
+ * Pressing the picked side again would un-press it; that change is ignored, so
+ * a winner, once picked, can only be swapped. The labels keep a non-breaking
+ * space before the emoji; e2e matches `/We won/` and `/They won/`.
  */
 export function WinnerStep({
   weDisabled,
@@ -27,37 +24,25 @@ export function WinnerStep({
   onTheyWon,
   step,
 }: WinnerStepProps) {
+  const value = weDisabled ? ['we'] : theyDisabled ? ['they'] : [];
   return (
     <div id="winner-step" className="flex flex-col gap-4">
       <StepHeading step={step}>Who won?</StepHeading>
-      <div className="flex flex-row gap-3">
-        <button
-          type="button"
-          onClick={weDisabled ? undefined : onWeWon}
-          aria-pressed={weDisabled}
-          className={cn(
-            choice,
-            weDisabled
-              ? 'border-primary-fill bg-primary-fill text-primary-foreground'
-              : 'bg-card hover:border-primary/60'
-          )}
-        >
+      <ToggleGroup
+        aria-label="Who won?"
+        value={value}
+        onValueChange={([next]) => {
+          if (next === 'we') onWeWon();
+          else if (next === 'they') onTheyWon();
+        }}
+      >
+        <ToggleGroupItem value="we" className="flex-1 text-lg">
           {'We won   🎉'}
-        </button>
-        <button
-          type="button"
-          onClick={theyDisabled ? undefined : onTheyWon}
-          aria-pressed={theyDisabled}
-          className={cn(
-            choice,
-            theyDisabled
-              ? 'border-primary-fill bg-primary-fill text-primary-foreground'
-              : 'bg-card hover:border-primary/60'
-          )}
-        >
+        </ToggleGroupItem>
+        <ToggleGroupItem value="they" className="flex-1 text-lg">
           {'They won   😓'}
-        </button>
-      </div>
+        </ToggleGroupItem>
+      </ToggleGroup>
     </div>
   );
 }
