@@ -58,10 +58,13 @@ export function LiveStatus({
     pathname.startsWith(`${base}/matchmaking`) ||
     pathname.startsWith(`${base}/active-match`) ||
     pathname.startsWith(`${base}/submit`);
-  if (!hydrated || !leaguePlayerId || !data || onPlayPage) return null;
+  // Teams needs the room for fingers; Play still carries the queue count.
+  const onTeamsPage = pathname === '/random';
+  if (!hydrated || !leaguePlayerId || !data || onPlayPage || onTeamsPage) {
+    return null;
+  }
 
-  // From sm the bar keeps to the content column instead of the viewport. z-30
-  // keeps it above page overlays such as the random-teams panel.
+  // From sm the bar keeps to the content column instead of the viewport.
   const shell = cn(
     'fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-30 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border bg-card p-2.5 pl-3 shadow-lg sm:inset-x-0 sm:mx-auto sm:max-w-[39rem]',
     'lg:static lg:inset-auto lg:mx-0 lg:max-w-none lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-3 lg:p-3 lg:shadow-none',
