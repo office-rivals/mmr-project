@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
-import { createFileRoute } from '@tanstack/react-router';
+import {
+  createFileRoute,
+  useCanGoBack,
+  useRouter,
+} from '@tanstack/react-router';
 import { Hand, Keyboard, Plus, RotateCcw, Shuffle, X } from 'lucide-react';
+import { AppLink } from '@/components/app-link';
 import { Eyebrow } from '@/components/eyebrow';
 import { PageTitle } from '@/components/page-title';
 import { PlayerAvatar } from '@/components/player-avatar';
@@ -15,6 +20,9 @@ const MIN_TOUCHES = 4;
 const COUNTDOWN_SECONDS = 3;
 const TEAM_SIZE = 2;
 const PLAYER_COUNT = TEAM_SIZE * 2;
+// Matches the Names tab's "Team 1" / "Team 2", so the teams don't rely on
+// colour alone.
+const TEAM_NUMBER = { white: 1, red: 2 } as const;
 
 type Tab = 'names' | 'touch';
 
@@ -60,9 +68,10 @@ export const Route = createFileRoute('/_authed/random')({
       {
         // The animation and the marker's positioning share the `transform`
         // property, so the keyframes have to re-apply the centring translate
-        // or every pulsing marker jumps to its top-left corner.
+        // or every pulsing marker jumps to its top-left corner. The bloom is
+        // a one-off ring that marks the moment a finger gets its team.
         children:
-          '@keyframes pulse-scale{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.15)}}.pulse-scale{animation:pulse-scale 1.5s ease-in-out infinite}',
+          '@keyframes pulse-scale{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.15)}}.pulse-scale{animation:pulse-scale 1.5s ease-in-out infinite}@keyframes team-bloom{from{transform:scale(1);opacity:.8}to{transform:scale(2.1);opacity:0}}.team-bloom{animation:team-bloom .7s ease-out forwards}',
       },
     ],
   }),
@@ -245,6 +254,7 @@ function useTouchRandomizer(active: boolean) {
 
 function RandomPage() {
   const { player = [] } = Route.useSearch();
+  const { authedShell } = Route.useRouteContext();
 
   // `null` until hydration decides, so the server renders the desktop layout
   // and the touch overlay only ever appears client-side.
@@ -268,6 +278,17 @@ function RandomPage() {
     showingResult,
     reset: resetTouchRandomizer,
   } = useTouchRandomizer(isTouchDevice === true && activeTab === 'touch');
+
+  // Four hands share one phone, so the touch draw takes the whole screen
+  // below lg: the top bar and bottom navigation step aside until the user
+  // closes it or switches to Names.
+  const immersive = isTouchDevice === true && activeTab === 'touch';
+  useEffect(() => {
+    if (!immersive) return;
+    const root = document.documentElement;
+    root.setAttribute('data-immersive', '');
+    return () => root.removeAttribute('data-immersive');
+  }, [immersive]);
 
   useEffect(() => {
     const mq = window.matchMedia('(hover: none) and (pointer: coarse)');
@@ -331,22 +352,32 @@ function RandomPage() {
     );
   }
 
+  // One short line: the strip shares its row with the close button and tabs.
   const headerSubtitle = useMemo(() => {
     if (activeTab === 'names') {
       return teams.length === 2
-        ? 'Shuffle again for a new draw.'
-        : `Add ${PLAYER_COUNT} players to draw teams.`;
+        ? 'Shuffle for a new draw'
+        : `Add ${PLAYER_COUNT} players`;
     }
-    if (showingResult) return 'Teams ready — tap "Go again" to reset';
+    if (showingResult) {
+      return (
+        <>
+          <TeamSwatch className="bg-white" /> Team 1 vs{' '}
+          <TeamSwatch className="bg-red-600" /> Team 2
+        </>
+      );
+    }
     if (countdown !== null && countdown > 0) return 'Hold still…';
-    if (touches.length === 0) {
-      return `Place at least ${MIN_TOUCHES} fingers on the screen`;
-    }
     if (touches.length < MIN_TOUCHES) {
-      return `${touches.length} of ${MIN_TOUCHES} fingers — keep going`;
+      return `${touches.length} of ${MIN_TOUCHES} fingers`;
     }
     return `${touches.length} fingers down`;
   }, [activeTab, countdown, showingResult, teams.length, touches.length]);
+
+  const homePath =
+    authedShell.defaultOrgSlug && authedShell.defaultLeagueSlug
+      ? `/${authedShell.defaultOrgSlug}/${authedShell.defaultLeagueSlug}`
+      : '/';
 
   const namesForm = (
     <NamesRandomizer
@@ -373,13 +404,33 @@ function RandomPage() {
   }
 
   return (
-    // Fills the space between the phone header and bottom bar, or beside the
-    // desktop sidebar.
-    <div className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+var(--header-height))] bottom-[calc(env(safe-area-inset-bottom)+64px)] z-20 flex flex-col bg-background lg:top-0 lg:bottom-0 lg:left-60">
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
-        <div className="flex min-w-0 flex-col">
-          <h1 className="text-lg leading-tight font-bold">Random Teams</h1>
-          <p className="line-clamp-2 min-h-[2lh] text-xs leading-snug text-muted-foreground">
+    // Immersive: the whole phone screen. Names: between the phone header and
+    // bottom bar. From lg: beside the sidebar either way.
+    <div
+      className={cn(
+        'fixed inset-x-0 z-20 flex flex-col bg-background lg:top-0 lg:bottom-0 lg:left-60',
+        immersive
+          ? 'top-0 bottom-0'
+          : 'top-[calc(env(safe-area-inset-top)+var(--header-height))] bottom-[calc(env(safe-area-inset-bottom)+64px)]'
+      )}
+    >
+      <header
+        className={cn(
+          'flex shrink-0 items-center gap-2 border-b bg-card px-2 py-1.5 lg:px-4',
+          immersive
+            ? 'pt-[calc(env(safe-area-inset-top)+0.375rem)] lg:pt-1.5'
+            : 'pl-4'
+        )}
+      >
+        {immersive ? (
+          <CloseImmersive homePath={homePath} className="lg:hidden" />
+        ) : null}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <h1 className="text-sm leading-tight font-bold">Random teams</h1>
+          <p
+            aria-live="polite"
+            className="truncate text-xs leading-snug text-muted-foreground"
+          >
             {headerSubtitle}
           </p>
         </div>
@@ -403,6 +454,38 @@ function RandomPage() {
   );
 }
 
+/**
+ * The way out while the bottom navigation is hidden: back to wherever the
+ * user came from, or to the league home on a cold start at `/random`.
+ */
+function CloseImmersive({
+  homePath,
+  className,
+}: {
+  homePath: string;
+  className?: string;
+}) {
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
+  return (
+    <AppLink
+      to={homePath}
+      aria-label="Close random teams"
+      className={cn(
+        'flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+        className
+      )}
+      onClick={(event) => {
+        if (!canGoBack) return;
+        event.preventDefault();
+        router.history.back();
+      }}
+    >
+      <X aria-hidden="true" className="size-5" />
+    </AppLink>
+  );
+}
+
 function RandomizerTabs({
   activeTab,
   onSelect,
@@ -416,7 +499,7 @@ function RandomizerTabs({
       role="tab"
       aria-selected={activeTab === value}
       className={cn(
-        'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+        'flex h-9 items-center gap-1.5 rounded-full px-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
         activeTab === value
           ? 'bg-muted font-semibold text-foreground'
           : 'text-muted-foreground'
@@ -429,7 +512,7 @@ function RandomizerTabs({
   );
   return (
     <div
-      className="flex shrink-0 items-center gap-1 rounded-full border bg-card p-1 text-xs"
+      className="flex shrink-0 items-center gap-0.5 rounded-full border bg-background p-0.5 text-xs"
       role="tablist"
       aria-label="Randomizer mode"
     >
@@ -700,9 +783,9 @@ function TouchRandomizerSurface({
           <p className="max-w-xs text-sm text-muted-foreground">
             At least {MIN_TOUCHES}. After a {COUNTDOWN_SECONDS}-second
             countdown, two random fingers become{' '}
-            <span className="font-semibold text-foreground">white team</span>{' '}
-            and two become{' '}
-            <span className="font-semibold text-foreground">red team</span>.
+            <span className="font-semibold text-foreground">team 1</span>{' '}
+            (white) and two become{' '}
+            <span className="font-semibold text-foreground">team 2</span> (red).
           </p>
         </div>
       ) : null}
@@ -715,33 +798,17 @@ function TouchRandomizerSurface({
         </div>
       ) : null}
 
-      {showingResult ? (
-        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-2 px-6 text-center">
-          <p className="text-sm tracking-widest text-muted-foreground uppercase">
-            Teams
-          </p>
-          <div className="flex items-center gap-3 text-2xl font-bold">
-            <span className="inline-flex items-center gap-2">
-              <span className="h-4 w-4 rounded-full border-2 border-foreground bg-white" />
-              White
-            </span>
-            <span className="text-muted-foreground">vs</span>
-            <span className="inline-flex items-center gap-2">
-              <span className="h-4 w-4 rounded-full bg-red-600" />
-              Red
-            </span>
-          </div>
-        </div>
-      ) : null}
-
       {showingResult ? <TeamConnectorSvg touches={touches} /> : null}
 
+      {/* 72px: a fingertip covers roughly the middle 45-55px, so the ring
+          still shows around it, and four fit side by side across a phone. */}
       {touches.map((touch) =>
         showingResult && touch.color === null ? null : (
           <div
             key={touch.identifier}
+            data-marker=""
             className={cn(
-              'pointer-events-none absolute flex h-28 w-28 items-center justify-center rounded-full border-4 shadow-lg transition-colors duration-500',
+              'pointer-events-none absolute size-18 rounded-full border-[3px] shadow-lg transition-colors duration-500',
               isCountingDown && 'pulse-scale',
               touch.color === 'white' && 'border-white',
               touch.color === 'red' && 'border-red-600',
@@ -755,13 +822,23 @@ function TouchRandomizerSurface({
           >
             <div
               className={cn(
-                'rounded-full transition-colors duration-500',
-                touch.color === 'white' && 'bg-white',
-                touch.color === 'red' && 'bg-red-600',
+                'absolute inset-1.5 flex items-center justify-center rounded-full text-2xl font-bold transition-colors duration-500',
+                touch.color === 'white' && 'bg-white text-neutral-900',
+                touch.color === 'red' && 'bg-red-600 text-white',
                 touch.color === null && 'bg-primary opacity-30'
               )}
-              style={{ width: '88px', height: '88px' }}
-            />
+            >
+              {touch.color === null ? null : TEAM_NUMBER[touch.color]}
+            </div>
+            {touch.color !== null ? (
+              <div
+                aria-hidden="true"
+                className={cn(
+                  'team-bloom absolute -inset-[3px] rounded-full border-[3px]',
+                  touch.color === 'white' ? 'border-white' : 'border-red-600'
+                )}
+              />
+            ) : null}
           </div>
         )
       )}
@@ -769,7 +846,7 @@ function TouchRandomizerSurface({
       {showingResult ? (
         <button
           type="button"
-          className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-primary-fill px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg"
+          className="absolute bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] left-1/2 z-20 flex h-12 -translate-x-1/2 items-center gap-2 rounded-full bg-primary-fill px-6 text-sm font-semibold text-primary-foreground shadow-lg"
           onClick={onGoAgain}
         >
           <RotateCcw className="h-4 w-4" />
@@ -780,13 +857,23 @@ function TouchRandomizerSurface({
   );
 }
 
+function TeamSwatch({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn('inline-block size-2 rounded-full align-middle', className)}
+    />
+  );
+}
+
 function TeamConnectorSvg({ touches }: { touches: TouchMarker[] }) {
   const white = touches.filter((touch) => touch.color === 'white');
   const red = touches.filter((touch) => touch.color === 'red');
 
   return (
+    // Beneath the markers, so the lines never cut through a team number.
     <svg
-      className="pointer-events-none absolute inset-0 z-[5] h-full w-full"
+      className="pointer-events-none absolute inset-0 h-full w-full"
       aria-hidden="true"
     >
       {white.length === 2 ? (
@@ -796,9 +883,9 @@ function TeamConnectorSvg({ touches }: { touches: TouchMarker[] }) {
           x2={white[1].x}
           y2={white[1].y}
           stroke="#ffffff"
-          strokeWidth="6"
+          strokeWidth="4"
           strokeLinecap="round"
-          strokeDasharray="14 10"
+          strokeDasharray="10 8"
         />
       ) : null}
       {red.length === 2 ? (
@@ -808,9 +895,9 @@ function TeamConnectorSvg({ touches }: { touches: TouchMarker[] }) {
           x2={red[1].x}
           y2={red[1].y}
           stroke="#dc2626"
-          strokeWidth="6"
+          strokeWidth="4"
           strokeLinecap="round"
-          strokeDasharray="14 10"
+          strokeDasharray="10 8"
         />
       ) : null}
     </svg>

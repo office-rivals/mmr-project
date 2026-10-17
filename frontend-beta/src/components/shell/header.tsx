@@ -55,7 +55,10 @@ export function Header({
         {/* From `lg` the settings trigger sits beside the brand, but it stays
             next to the switcher in the DOM so the two remain adjacent in the
             tab order. */}
-        <div className="fixed inset-x-0 top-0 z-30 border-b bg-card pt-[env(safe-area-inset-top)] lg:static lg:z-auto lg:border-b-0 lg:bg-transparent lg:pt-0">
+        <div
+          data-phone-chrome=""
+          className="fixed inset-x-0 top-0 z-30 border-b bg-card pt-[env(safe-area-inset-top)] lg:static lg:z-auto lg:border-b-0 lg:bg-transparent lg:pt-0"
+        >
           <div className="mx-auto flex h-[var(--header-height)] w-full max-w-screen-sm min-w-0 items-center justify-between gap-1 px-4 lg:h-auto lg:max-w-none lg:px-0">
             <div className="flex min-w-0 flex-1">
               {currentOrg && (
