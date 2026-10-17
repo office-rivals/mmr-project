@@ -1,8 +1,12 @@
 import { useMemo, useState } from 'react';
-import { PlayerButton } from '@/components/player-button';
-import { Input } from '@/components/ui/input';
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
 import { useHydratedInputValue } from '@/hooks/use-hydrated-input-value';
-import { usePlayerCombobox } from '@/hooks/use-player-combobox';
+import { useInlineList } from '@/hooks/use-inline-list';
 import type { LeaguePlayerResponse } from '@/api-v3/models';
 
 interface PlayerFilterProps {
@@ -48,72 +52,83 @@ export function PlayerFilter({
     [filter, filtered]
   );
 
-  const {
-    open,
-    setOpen,
-    inputProps,
-    listboxProps,
-    getOptionProps,
-    onFilterInput,
-  } = usePlayerCombobox({
-    options,
-    filterLength: filter.length,
-    requireArrow: false,
-    minFilterLength: 2,
+  const list = useInlineList({
     // An autofocused input is focused by the browser before this component's
     // focus handler is attached, so the focus event never reaches us.
     initialOpen: autoFocus,
-    onSelect: (playerId) => {
-      onSelected(playerId);
-      setFilter('');
-      setOpen(false);
-      // The picker stays mounted across picks and the box is ready for the
-      // next name, so keep the caret where the user left it.
-      inputRef.current?.focus();
-    },
     onEscape: () => setFilter(''),
   });
 
   // The filter is server-rendered, so it can be typed into before hydration.
   const inputRef = useHydratedInputValue(filter, (fromDom) => {
     setFilter(fromDom);
-    onFilterInput();
+    list.setOpen(true);
   });
 
   return (
-    <div className="relative flex flex-col gap-2">
-      <Input
-        ref={inputRef}
-        value={filter}
-        onChange={(event) => {
-          setFilter(event.target.value);
-          // Covers input that arrives without a keydown (paste, autofill).
-          onFilterInput();
-        }}
-        placeholder="Filter..."
-        autoFocus={autoFocus ? autoFocus : undefined}
-        {...inputProps}
-      />
-      {open && filter.length > 1 ? (
-        <div className="absolute top-[100%] z-10 mt-3 w-full">
-          {filtered.length > 0 ? (
-            <div {...listboxProps} className="flex flex-col gap-2">
-              {filtered.map((player) => (
-                <PlayerButton
-                  key={player.id}
-                  {...getOptionProps(player.id)}
-                  user={player}
-                  className="bg-background data-[highlighted]:border-primary data-[highlighted]:bg-muted"
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-start gap-1">
-              <p className="text-sm">No players found</p>
-            </div>
-          )}
-        </div>
-      ) : null}
-    </div>
+    <Combobox
+      inline
+      open
+      items={options}
+      filteredItems={options}
+      value={null}
+      onValueChange={(playerId) => {
+        if (typeof playerId !== 'string') return;
+        onSelected(playerId);
+        setFilter('');
+        list.setOpen(false);
+      }}
+      inputValue={filter}
+      onInputValueChange={(next, details) => {
+        // The picker stays mounted across picks and the box is ready for the
+        // next name, so a pick must not write the label into it.
+        if (details.reason === 'item-press') return;
+        setFilter(next);
+        list.setOpen(true);
+      }}
+      itemToStringLabel={(playerId: string) => {
+        const player = players.find((p) => p.id === playerId);
+        return player?.displayName ?? player?.username ?? playerId;
+      }}
+      autoHighlight
+    >
+      <div className="relative flex flex-col gap-2">
+        <ComboboxInput
+          ref={inputRef}
+          placeholder="Filter..."
+          autoFocus={autoFocus ? autoFocus : undefined}
+          {...list.inputProps}
+        />
+        {list.open && filter.length > 1 ? (
+          <div
+            {...list.listProps}
+            className="absolute top-[100%] z-10 mt-3 w-full"
+          >
+            {filtered.length > 0 ? (
+              <ComboboxList className="gap-2">
+                {filtered.map((player) => (
+                  <ComboboxItem
+                    key={player.id}
+                    value={player.id}
+                    className="bg-background"
+                  >
+                    <p className="line-clamp-1 text-sm md:text-base">
+                      {player.displayName ?? player.username ?? 'Unknown'}
+                    </p>
+                    {player.displayName != null && player.username != null ? (
+                      <p className="text-xs">{player.username}</p>
+                    ) : null}
+                  </ComboboxItem>
+                ))}
+              </ComboboxList>
+            ) : (
+              <div className="flex flex-col items-start gap-1">
+                <p className="text-sm">No players found</p>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </Combobox>
   );
 }

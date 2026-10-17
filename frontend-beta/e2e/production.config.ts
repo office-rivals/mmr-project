@@ -47,7 +47,13 @@ export default defineConfig({
         {
           name: `${browser}-smoke`,
           dependencies: [`${browser}-setup`],
-          testMatch: /(?:header|submit|admin-rbac)\.e2e\.spec\.ts$/,
+          // Playwright's desktop WebKit drops the click after a touch
+          // pointerdown is prevented, which Base UI's list items always do, so
+          // its taps cannot stand in for an iPhone's.
+          testMatch:
+            browser === 'webkit'
+              ? /(?:header|submit|admin-rbac)\.e2e\.spec\.ts$/
+              : /(?:header|submit|admin-rbac|touch-pickers)\.e2e\.spec\.ts$/,
           use: { ...device, storageState: STORAGE_STATE },
         },
       ];
