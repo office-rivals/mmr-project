@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import { Check, ChevronRight, Flag } from 'lucide-react';
+import { ChevronRight, Flag } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
 import { Eyebrow } from '@/components/eyebrow';
 import {
@@ -23,7 +23,7 @@ import { ReportMatchModal } from '@/components/report-match-modal';
 import { SeasonPicker } from '@/components/season-picker';
 import { UserStatsModal } from '@/components/user-stats-modal';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { useMatchFlagHandlers } from '@/hooks/use-match-flag-handlers';
 import { useShowMmr } from '@/hooks/use-show-mmr';
@@ -465,32 +465,14 @@ function LeagueHomePage() {
                 Recent Matches
               </h2>
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Label
-                    id="show-mmr-label"
-                    htmlFor="show-mmr"
-                    className="text-xs tracking-[0.14em] text-muted-foreground uppercase"
-                  >
-                    MMR:
-                  </Label>
-                  {/* Hand-rolled because the library ships no Checkbox: e2e
-                      clicks `button[role=checkbox]#show-mmr` exactly. */}
-                  <button
-                    type="button"
-                    id="show-mmr"
-                    role="checkbox"
-                    aria-checked={showMmr}
-                    aria-labelledby="show-mmr-label"
-                    data-state={showMmr ? 'checked' : 'unchecked'}
+                <label className="flex items-center gap-2 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
+                  MMR:
+                  <Switch
+                    checked={showMmr}
+                    onCheckedChange={setShowMmr}
                     disabled={!hydrated}
-                    onClick={() => setShowMmr(!showMmr)}
-                    className="relative inline-flex size-5 items-center justify-center rounded border border-muted-foreground/60 transition-colors before:absolute before:-inset-3 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none data-[state=checked]:border-primary data-[state=checked]:bg-primary"
-                  >
-                    {showMmr ? (
-                      <Check className="size-3.5 text-primary-foreground" />
-                    ) : null}
-                  </button>
-                </div>
+                  />
+                </label>
                 <ViewAll to={`${base}/matches`} label="matches" />
               </div>
             </div>

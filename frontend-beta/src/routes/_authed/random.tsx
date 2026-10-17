@@ -12,6 +12,7 @@ import { PageTitle } from '@/components/page-title';
 import { PlayerAvatar } from '@/components/player-avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { readStorage, writeStorage } from '@/lib/storage';
 import { getRandomTeamsSessionStorageKey } from '@/lib/util/session';
 import { cn } from '@/lib/utils';
@@ -406,9 +407,11 @@ function RandomPage() {
   return (
     // Immersive: the whole phone screen. Names: between the phone header and
     // bottom bar. From lg: beside the sidebar either way.
-    <div
+    <Tabs
+      value={activeTab}
+      onValueChange={(tab: Tab) => selectTab(tab)}
       className={cn(
-        'fixed inset-x-0 z-20 flex flex-col bg-background lg:top-0 lg:bottom-0 lg:left-60',
+        'fixed inset-x-0 z-20 bg-background lg:top-0 lg:bottom-0 lg:left-60',
         immersive
           ? 'top-0 bottom-0'
           : 'top-[calc(env(safe-area-inset-top)+var(--header-height))] bottom-[calc(env(safe-area-inset-bottom)+64px)]'
@@ -434,10 +437,19 @@ function RandomPage() {
             {headerSubtitle}
           </p>
         </div>
-        <RandomizerTabs activeTab={activeTab} onSelect={selectTab} />
+        <TabsList aria-label="Randomizer mode">
+          <TabsTrigger value="touch">
+            <Hand aria-hidden="true" />
+            Touch
+          </TabsTrigger>
+          <TabsTrigger value="names">
+            <Keyboard aria-hidden="true" />
+            Names
+          </TabsTrigger>
+        </TabsList>
       </header>
 
-      {activeTab === 'touch' ? (
+      <TabsContent value="touch" className="flex min-h-0 flex-1 flex-col">
         <TouchRandomizerSurface
           surfaceRef={surfaceRef}
           touches={touches}
@@ -445,12 +457,14 @@ function RandomPage() {
           showingResult={showingResult}
           onGoAgain={resetTouchRandomizer}
         />
-      ) : (
-        <div className="flex flex-1 flex-col gap-6 overflow-y-auto bg-background p-4">
-          {namesForm}
-        </div>
-      )}
-    </div>
+      </TabsContent>
+      <TabsContent
+        value="names"
+        className="flex flex-1 flex-col gap-6 overflow-y-auto bg-background p-4"
+      >
+        {namesForm}
+      </TabsContent>
+    </Tabs>
   );
 }
 
@@ -483,42 +497,6 @@ function CloseImmersive({
     >
       <X aria-hidden="true" className="size-5" />
     </AppLink>
-  );
-}
-
-function RandomizerTabs({
-  activeTab,
-  onSelect,
-}: {
-  activeTab: Tab;
-  onSelect: (tab: Tab) => void;
-}) {
-  const tab = (value: Tab, label: string, Icon: typeof Hand) => (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={activeTab === value}
-      className={cn(
-        'flex h-9 items-center gap-1.5 rounded-full px-3 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-        activeTab === value
-          ? 'bg-muted font-semibold text-foreground'
-          : 'text-muted-foreground'
-      )}
-      onClick={() => onSelect(value)}
-    >
-      <Icon aria-hidden="true" className="size-3.5" />
-      {label}
-    </button>
-  );
-  return (
-    <div
-      className="flex shrink-0 items-center gap-0.5 rounded-full border bg-background p-0.5 text-xs"
-      role="tablist"
-      aria-label="Randomizer mode"
-    >
-      {tab('touch', 'Touch', Hand)}
-      {tab('names', 'Names', Keyboard)}
-    </div>
   );
 }
 

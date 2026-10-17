@@ -118,6 +118,27 @@ test.describe('Teams on a phone', () => {
     await expect(page.getByLabel('Settings menu')).toBeVisible();
   });
 
+  test('the mode tabs switch from the keyboard', async ({ page }) => {
+    await openTouchDraw(page);
+    const touch = page.getByRole('tab', { name: 'Touch' });
+    const names = page.getByRole('tab', { name: 'Names' });
+    await expect(touch).toHaveAttribute('aria-selected', 'true');
+
+    await touch.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(names).toBeFocused();
+    // Focus alone doesn't switch modes mid-draw; Enter does.
+    await expect(surface(page)).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(names).toHaveAttribute('aria-selected', 'true');
+    await expect(surface(page)).toHaveCount(0);
+    await expect(
+      page
+        .getByRole('tabpanel')
+        .getByRole('heading', { name: "Who's playing?" })
+    ).toBeVisible();
+  });
+
   test('closing goes back to where the draw was opened from', async ({
     page,
   }) => {

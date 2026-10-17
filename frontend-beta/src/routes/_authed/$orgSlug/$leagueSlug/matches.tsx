@@ -25,6 +25,7 @@ import { FlagDialogs } from '@/components/profile/flag-dialogs';
 import { ReportMatchModal } from '@/components/report-match-modal';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { useMatchFlagHandlers } from '@/hooks/use-match-flag-handlers';
@@ -335,25 +336,11 @@ function MatchesPage() {
           ) : null}
           <label className="flex min-h-11 items-center gap-3 text-sm lg:ml-auto lg:min-h-0">
             MMR changes
-            <button
-              type="button"
-              role="switch"
-              aria-checked={showMmr}
+            <Switch
+              checked={showMmr}
+              onCheckedChange={setShowMmr}
               disabled={!hydrated}
-              onClick={() => setShowMmr(!showMmr)}
-              className={cn(
-                'relative h-6 w-11 rounded-full border transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
-                showMmr ? 'border-primary bg-primary' : 'bg-muted'
-              )}
-            >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'absolute top-0.5 size-[18px] rounded-full bg-foreground transition-[left] motion-reduce:transition-none',
-                  showMmr ? 'left-[22px]' : 'left-0.5'
-                )}
-              />
-            </button>
+            />
           </label>
         </div>
 

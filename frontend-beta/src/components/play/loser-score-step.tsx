@@ -1,5 +1,5 @@
 import { StepHeading } from './step-heading';
-import { cn } from '@/lib/utils';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface LoserScoreStepProps {
   /** `your` when the current user's side lost, `their` otherwise. */
@@ -27,24 +27,26 @@ export function LoserScoreStep({
   return (
     <div id="score-step" className="flex flex-col gap-4">
       <StepHeading step={step}>What was {possessive} score?</StepHeading>
-      <div className="grid grid-cols-5 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(3.5rem,1fr))]">
+      <ToggleGroup
+        aria-label={`What was ${possessive} score?`}
+        value={selected === -1 ? [] : [String(selected)]}
+        // Pressing the picked score again un-presses it; treat that as picking
+        // it again so it still moves the user on to submit.
+        onValueChange={([next]) =>
+          onPick(next === undefined ? selected : Number(next))
+        }
+        className="grid grid-cols-5 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(3.5rem,1fr))]"
+      >
         {options.map((score) => (
-          <button
+          <ToggleGroupItem
             key={score}
-            type="button"
-            aria-pressed={selected === score}
-            onClick={() => onPick(score)}
-            className={cn(
-              'flex h-14 items-center justify-center rounded-md border text-xl font-semibold tabular-nums transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
-              selected === score
-                ? 'border-primary-fill bg-primary-fill text-primary-foreground'
-                : 'bg-card hover:border-primary/60'
-            )}
+            value={String(score)}
+            className="text-xl tabular-nums"
           >
             {score === 0 ? '🥚' : score}
-          </button>
+          </ToggleGroupItem>
         ))}
-      </div>
+      </ToggleGroup>
     </div>
   );
 }

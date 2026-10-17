@@ -126,7 +126,7 @@ test.describe('Leaderboard page', () => {
       firstCard.locator('span', { hasText: /\(\+\d+\)|\(-\d+\)/ })
     ).toHaveCount(0);
 
-    await page.locator('button[role=checkbox]#show-mmr').click();
+    await page.getByRole('switch', { name: 'MMR:' }).click();
 
     await expect(
       firstCard.locator('span', { hasText: /\(\+\d+\)|\(-\d+\)/ }).first()
