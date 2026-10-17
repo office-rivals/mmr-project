@@ -6,6 +6,7 @@ public interface IMMRCalculationApiClient
 {
     Task<MMRCalculationResponse> CalculateMMRAsync(MMRCalculationRequest request);
     Task<List<MMRCalculationResponse>> CalculateMMRBatchAsync(List<MMRCalculationRequest> requests);
+    Task<MMRPredictionResponse> PredictMatchAsync(MMRPredictionRequest request, CancellationToken cancellationToken = default);
 }
 
 public class MMRCalculationApiClient(HttpClient httpClient) : IMMRCalculationApiClient
@@ -36,5 +37,14 @@ public class MMRCalculationApiClient(HttpClient httpClient) : IMMRCalculationApi
         }
 
         return result;
+    }
+
+    public async Task<MMRPredictionResponse> PredictMatchAsync(MMRPredictionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.PostAsJsonAsync("api/v1/mmr-calculation/predict", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<MMRPredictionResponse>(cancellationToken)
+               ?? throw new InvalidOperationException("Failed to deserialize prediction response");
     }
 }
