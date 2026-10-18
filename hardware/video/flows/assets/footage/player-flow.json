@@ -1,0 +1,117 @@
+[
+  {
+    "step": "1 live 3 : 2",
+    "t_action": 0.5,
+    "t_settled": 0.5
+  },
+  {
+    "step": "2 goal for Red",
+    "t_action": 3.5,
+    "t_settled": 3.6
+  },
+  {
+    "step": "2b 20 s later",
+    "t_action": 6.1,
+    "t_settled": 6.1
+  },
+  {
+    "step": "3 counter undo",
+    "t_action": 8.6,
+    "t_settled": 8.6
+  },
+  {
+    "step": "5 new game sheet",
+    "t_action": 11.6,
+    "t_settled": 11.7
+  },
+  {
+    "step": "5b cancel",
+    "t_action": 14.2,
+    "t_settled": 14.5
+  },
+  {
+    "step": "6 goal-red",
+    "t_action": 15.7,
+    "t_settled": 15.7
+  },
+  {
+    "step": "6 goal-white",
+    "t_action": 16.6,
+    "t_settled": 16.6
+  },
+  {
+    "step": "6 goal-red",
+    "t_action": 17.5,
+    "t_settled": 17.5
+  },
+  {
+    "step": "6 goal-red",
+    "t_action": 18.4,
+    "t_settled": 18.4
+  },
+  {
+    "step": "6 goal-white",
+    "t_action": 19.3,
+    "t_settled": 19.3
+  },
+  {
+    "step": "6 goal-red",
+    "t_action": 20.2,
+    "t_settled": 20.2
+  },
+  {
+    "step": "6 goal-red",
+    "t_action": 21.1,
+    "t_settled": 21.1
+  },
+  {
+    "step": "6 goal-red",
+    "t_action": 22,
+    "t_settled": 22
+  },
+  {
+    "step": "6 win: saving",
+    "t_action": 22.9,
+    "t_settled": 24.2
+  },
+  {
+    "step": "6 saved",
+    "t_action": 28.2,
+    "t_settled": 28.2
+  },
+  {
+    "step": "7 table 2: who played?",
+    "t_action": 31.2,
+    "t_settled": 31.3
+  },
+  {
+    "step": "7 pick Anna",
+    "t_action": 33.8,
+    "t_settled": 34.2
+  },
+  {
+    "step": "7 pick Ben",
+    "t_action": 35.1,
+    "t_settled": 35.4
+  },
+  {
+    "step": "7 pick Cleo",
+    "t_action": 36.3,
+    "t_settled": 36.8
+  },
+  {
+    "step": "7 pick Dan",
+    "t_action": 37.7,
+    "t_settled": 38
+  },
+  {
+    "step": "7 save",
+    "t_action": 39.9,
+    "t_settled": 40
+  },
+  {
+    "step": "7 saved",
+    "t_action": 41.2,
+    "t_settled": 41.2
+  }
+]

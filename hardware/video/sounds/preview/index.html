@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Sounds Preview</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/theme.css" />
+    <!-- Cue data, waveforms and the version tag, written by tools/build.py from tools/cues.json -->
+    <script src="assets/cues.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #f2efe8;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #f2efe8;
+        color: #1b1d22;
+      }
+      #bg-grid {
+        position: absolute;
+        inset: -80px;
+        background-image:
+          linear-gradient(rgba(27, 29, 34, 0.07) 2px, transparent 2px),
+          linear-gradient(90deg, rgba(27, 29, 34, 0.07) 2px, transparent 2px);
+        background-size: 80px 80px;
+      }
+      #chrome-mark {
+        position: absolute;
+        left: 120px;
+        top: 46px;
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: 0.16em;
+        color: #55585f;
+      }
+      #tag {
+        position: absolute;
+        right: 120px;
+        top: 36px;
+        padding: 8px 18px;
+        border: 3px solid #e8431f;
+        border-radius: 10px;
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 22px;
+        letter-spacing: 0.12em;
+        color: #b8321a;
+      }
+      #chrome-rule {
+        position: absolute;
+        left: 120px;
+        right: 120px;
+        bottom: 56px;
+        height: 2px;
+        background: rgba(27, 29, 34, 0.22);
+      }
+      .grp {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+      }
+      .cap {
+        position: absolute;
+        left: 120px;
+        bottom: 150px;
+        font-family: var(--display);
+        font-size: 72px;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+        white-space: nowrap;
+        opacity: 0;
+      }
+      /* title */
+      #t-head {
+        position: absolute;
+        left: 120px;
+        top: 330px;
+        font-family: var(--display);
+        font-size: 120px;
+        letter-spacing: -0.03em;
+        line-height: 1;
+      }
+      #t-sub {
+        position: absolute;
+        left: 124px;
+        top: 490px;
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 36px;
+        color: #55585f;
+      }
+      /* one card per sound */
+      .c-n {
+        position: absolute;
+        left: 120px;
+        top: 170px;
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 26px;
+        letter-spacing: 0.12em;
+        color: #b8321a;
+      }
+      .c-name {
+        position: absolute;
+        left: 114px;
+        top: 210px;
+        font-family: var(--display);
+        font-size: 140px;
+        line-height: 1;
+        letter-spacing: -0.03em;
+      }
+      .c-what {
+        position: absolute;
+        left: 120px;
+        top: 390px;
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 42px;
+      }
+      .c-music {
+        position: absolute;
+        left: 120px;
+        top: 456px;
+        font-family: var(--mono);
+        font-weight: 600;
+        font-size: 30px;
+        color: #55585f;
+      }
+      .c-wave {
+        position: absolute;
+        left: 120px;
+        top: 560px;
+        width: 1680px;
+        height: 260px;
+        overflow: visible;
+      }
+      /* the story: the board's screen at 2x, and the seven sounds lighting as they play */
+      #bezel {
+        position: absolute;
+        left: 150px;
+        top: 130px;
+        width: 860px;
+        height: 660px;
+        border-radius: 26px;
+        background: #22252b;
+        box-shadow: 0 30px 60px rgba(27, 29, 34, 0.25);
+      }
+      #scr {
+        position: absolute;
+        left: 30px;
+        top: 30px;
+        width: 800px;
+        height: 600px;
+        background: #e4e1d8;
+        overflow: hidden;
+        isolation: isolate;
+      }
+      #scr img {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 800px;
+        height: 600px;
+        image-rendering: pixelated;
+        mix-blend-mode: multiply;
+        opacity: 0;
+      }
+      .inv {
+        position: absolute;
+        top: 496px;
+        width: 180px;
+        height: 100px;
+        border-radius: 10px;
+        background: #ffffff;
+        mix-blend-mode: difference;
+        opacity: 0;
+      }
+      #flash {
+        position: absolute;
+        inset: 0;
+        background: #15171b;
+        opacity: 0;
+      }
+      .row {
+        position: absolute;
+        left: 1070px;
+        width: 730px;
+        height: 76px;
+        padding: 0 26px;
+        border-radius: 16px;
+        border: 4px solid #1b1d22;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .row b {
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 38px;
+        letter-spacing: -0.02em;
+      }
+      .row span {
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 20px;
+        color: #55585f;
+      }
+      #end-line {
+        position: absolute;
+        left: 0;
+        width: 1920px;
+        top: 400px;
+        text-align: center;
+        font-family: var(--display);
+        font-size: 110px;
+        letter-spacing: -0.03em;
+      }
+      #end-sub {
+        position: absolute;
+        left: 0;
+        width: 1920px;
+        top: 540px;
+        text-align: center;
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 34px;
+        color: #55585f;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="44" data-width="1920" data-height="1080">
+      <div id="bg" class="clip" data-start="0" data-duration="44" data-track-index="0"><div id="bg-grid"></div></div>
+
+      <div id="stage" class="clip" data-start="0" data-duration="44" data-track-index="1">
+        <div class="grp" id="g-title">
+          <div id="t-head">Scoreboard sounds v2</div>
+          <div id="t-sub">Seven sounds, one family. A proposal by ux.</div>
+        </div>
+        <div id="cards"></div>
+        <div class="grp" id="g-story">
+          <div id="bezel">
+            <div id="scr">
+              <div class="inv" id="inv0" style="left: 22px"></div>
+              <div class="inv" id="inv1" style="left: 214px"></div>
+              <div class="inv" id="inv2" style="left: 406px"></div>
+              <div class="inv" id="inv3" style="left: 598px"></div>
+              <div id="flash"></div>
+            </div>
+          </div>
+          <div id="rows"></div>
+        </div>
+        <div class="grp" id="g-end">
+          <div id="end-line">Seven sounds. One family.</div>
+          <div id="end-sub">ux/SOUNDS-V2.md · a proposal: the buzzer stays until you pick</div>
+        </div>
+      </div>
+
+      <div id="chrome" class="clip" data-start="0" data-duration="44" data-track-index="4">
+        <div id="chrome-mark">MMR PROJECT · SCOREBOARD SOUNDS V2</div>
+        <div id="tag"></div>
+        <div id="chrome-rule"></div>
+      </div>
+      <div id="caps" class="clip" data-start="0" data-duration="44" data-track-index="2"></div>
+
+      <!-- ux's earcons only (tools/build.py; no other sound in this film) -->
+      <audio id="audio-track" src="assets/audio/track.wav" data-start="0" data-duration="44" data-track-index="6" data-volume="1"></audio>
+    </div>
+    <script>
+      const P = window.__P;
+      const tl = gsap.timeline({ paused: true });
+      const $ = (id) => document.getElementById(id);
+      $("tag").textContent = P.tag;
+      $("t-sub").textContent = P.sub;
+      tl.fromTo("#bg-grid", { x: 0, y: 0 }, { x: -80, y: -40, duration: P.total, ease: "none" }, 0);
+      const fadeIn = (el, t, d = 0.25) => tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: d, ease: "none", immediateRender: false }, t);
+      const fadeOut = (el, t, d = 0.2) => tl.to(el, { opacity: 0, duration: d, ease: "none" }, t);
+      const LABEL = Object.fromEntries(P.cards.map(([k, name, what]) => [k, [name, what]]));
+
+      // ---- title ----
+      fadeIn("#g-title", P.title, 0.4);
+      fadeOut("#g-title", P.card0 - 0.25);
+
+      // ---- one card per sound: name, purpose, music; the waveform at a fixed 1.5 s scale, a playhead over it ----
+      const W = 1680, Hh = 130, SPAN = 1.5;
+      P.cards.forEach(([k, name, what, music], i) => {
+        const t0 = P.card0 + i * P.card_step, ts = t0 + P.card_sound, dur = P.durs[k];
+        const g = document.createElement("div");
+        g.className = "grp";
+        g.id = "card-" + k;
+        const e = P.env[k], n = e.length;
+        const top = e.map((v, j) => `${(j / n) * W},${Hh - v * (Hh - 6)}`).join(" ");
+        const bot = e.map((v, j) => `${((n - 1 - j) / n) * W},${Hh + e[n - 1 - j] * (Hh - 6)}`).join(" ");
+        let ticks = "";
+        for (let s = 0.5; s <= SPAN; s += 0.5) ticks += `<line x1="${(s / SPAN) * W}" y1="0" x2="${(s / SPAN) * W}" y2="${2 * Hh}" /><text x="${(s / SPAN) * W - 8}" y="${2 * Hh + 34}" text-anchor="end">${s.toFixed(1)} s</text>`;
+        g.innerHTML = `<div class="c-n">${i + 1} / ${P.cards.length}</div><div class="c-name">${name}</div><div class="c-what">${what}</div><div class="c-music">${music}</div>
+          <svg class="c-wave" viewBox="0 0 ${W} ${2 * Hh}"><line x1="0" y1="${Hh}" x2="${W}" y2="${Hh}" stroke="#1b1d22" stroke-opacity="0.25" stroke-width="2" />
+          <g stroke="#1b1d22" stroke-opacity="0.15" stroke-width="2" font-family="IBM Plex Mono, monospace" font-weight="700" font-size="22" fill="#55585f">${ticks}</g>
+          <polygon id="wv-${k}" points="${top} ${bot}" fill="#1b1d22" />
+          <line id="ph-${k}" x1="0" y1="-10" x2="0" y2="${2 * Hh + 10}" stroke="#e8431f" stroke-width="6" /></svg>`;
+        $("cards").appendChild(g);
+        fadeIn(g, t0, 0.2);
+        if (i < P.cards.length - 1) fadeOut(g, t0 + P.card_step - 0.2);
+        else fadeOut(g, P.story0 - 0.25);
+        gsap.set("#ph-" + k, { opacity: 0 });
+        tl.set("#ph-" + k, { opacity: 1 }, ts);
+        tl.fromTo("#ph-" + k, { x: 0 }, { x: (dur / SPAN) * W, duration: dur, ease: "none", immediateRender: false }, ts);
+        tl.fromTo("#wv-" + k, { fill: "#1b1d22" }, { fill: "#e8431f", duration: 0.05, ease: "none", immediateRender: false }, ts);
+        tl.to("#wv-" + k, { fill: "#1b1d22", duration: 0.3, ease: "none" }, ts + dur);
+      });
+
+      // ---- the story ----
+      fadeIn("#g-story", P.story0 - 0.1, 0.3);
+      P.cards.forEach(([k, name], i) => {
+        const r = document.createElement("div");
+        r.className = "row";
+        r.id = "row-" + k;
+        r.style.top = 150 + i * 92 + "px";
+        r.innerHTML = `<b>${name}</b><span>${P.cards[i][2]}</span>`;
+        $("rows").appendChild(r);
+      });
+      const scr = {};
+      let cur = null;
+      function show(t, name, full) {
+        if (!scr[name]) {
+          const img = document.createElement("img");
+          img.src = `assets/screens/${name}.png`;
+          img.alt = "";
+          img.id = "scr-" + name;
+          $("scr").insertBefore(img, $("inv0"));
+          scr[name] = img;
+        }
+        const next = scr[name];
+        if (!full) {
+          tl.to(next, { opacity: 1, duration: 0.1, ease: "none" }, t);
+          if (cur && cur !== next) tl.to(cur, { opacity: 0, duration: 0.1, ease: "none" }, t);
+        } else {   // e-paper full refresh (start of a game)
+          tl.set("#flash", { opacity: 1, backgroundColor: "#15171b" }, t);
+          tl.set("#flash", { backgroundColor: "#f4f2ec" }, t + 0.14);
+          tl.set("#flash", { backgroundColor: "#15171b" }, t + 0.27);
+          tl.set(next, { opacity: 1 }, t + 0.27);
+          if (cur && cur !== next) tl.set(cur, { opacity: 0 }, t + 0.27);
+          tl.set("#flash", { opacity: 0 }, t + 0.4);
+        }
+        cur = next;
+      }
+      const caps = [];
+      P.story.forEach(([t, screen, sound, cap]) => {
+        if (screen === "end") return;
+        if (screen && screen.startsWith("key")) {   // a key press: its label inverts (the switch clicks; no beep)
+          const i = screen[3];
+          tl.set("#inv" + i, { opacity: 1 }, t);
+          tl.set("#inv" + i, { opacity: 0 }, t + 0.3);
+        } else if (screen) show(t, screen, screen === "teams");
+        if (sound) {
+          const off = t + Math.max(P.durs[sound], 0.45);   // the row lights while its sound plays
+          tl.set("#row-" + sound, { backgroundColor: "#e8431f", borderColor: "#e8431f", color: "#ffffff" }, t);
+          tl.set(`#row-${sound} span`, { color: "#ffffff" }, t);
+          tl.set("#row-" + sound, { backgroundColor: "#ffffff", borderColor: "#1b1d22", color: "#1b1d22" }, off);
+          tl.set(`#row-${sound} span`, { color: "#55585f" }, off);
+        }
+        if (cap) caps.push([t, cap]);
+      });
+      const tEnd = P.story.find((r) => r[1] === "end")[0];
+      caps.forEach(([t, text], i) => {
+        const el = document.createElement("div");
+        el.className = "cap";
+        el.id = "cap" + i;
+        el.textContent = text;
+        $("caps").appendChild(el);
+        tl.fromTo(el, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.2, ease: "power3.out", immediateRender: false }, t);
+        tl.to(el, { opacity: 0, duration: 0.15, ease: "none" }, (caps[i + 1] ? caps[i + 1][0] : tEnd) - 0.15);
+      });
+      fadeOut("#g-story", tEnd - 0.2, 0.3);
+      fadeIn("#g-end", tEnd + 0.1, 0.4);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

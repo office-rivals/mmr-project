@@ -1,0 +1,4 @@
+# Python env for build123d (uv)
+.venv/
+__pycache__/
+# out/ (STL, 3MF, PNG renders) IS committed: printable without installing CAD tooling

@@ -1,0 +1,159 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        /* Stills from mechanical/sled.py (tools/sled_renders.py); overlay coordinates are the stills' own pixels
+           (assets/sled/points.json), so each overlay svg has the still's size as its viewBox. */
+        #s4-ex {
+          left: 456px;
+          top: 30px;
+          width: 1008px;
+          height: 760px;
+        }
+        #s4-tun {
+          left: 454px;
+          top: 80px;
+          width: 1012px;
+          height: 740px;
+        }
+        .s4-box {
+          position: absolute;
+        }
+        .s4-box img,
+        .s4-box svg {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          overflow: visible;
+        }
+        #s4-top {
+          left: 210px;
+          top: 70px;
+          width: 1500px;
+          height: 670px;
+        }
+        #s4-front {
+          left: 330px;
+          top: 110px;
+          width: 875px;
+          height: 690px;
+        }
+        #s4-count {
+          position: absolute;
+          left: 1560px;
+          top: 120px;
+          width: 240px;
+          height: 220px;
+          font-family: var(--display);
+          font-size: 220px;
+          line-height: 220px;
+          color: #c9381a;
+        }
+        .s4-digit {
+          position: absolute;
+          left: 0;
+          top: 0;
+        }
+      </style>
+      <div id="root" class="scene" data-composition-id="s4" data-width="1920" data-height="1080">
+        <img class="render" id="s4-ex" src="assets/sled/exploded.png" alt="" />
+        <img class="render" id="s4-tun" src="assets/sled/tunnel.png" alt="" />
+
+        <!-- From above, lid off: the V-wall sends the ball into the channel and through the beam -->
+        <div class="s4-box" id="s4-top">
+          <img src="assets/sled/top.png" alt="" />
+          <svg viewBox="0 0 1684 752">
+            <g id="s4-beam">
+              <line x1="988" y1="444" x2="988" y2="644" stroke="#e8431f" stroke-width="30" stroke-opacity="0.25" />
+              <line x1="988" y1="444" x2="988" y2="644" stroke="#e8431f" stroke-width="8" stroke-dasharray="18 10" />
+            </g>
+            <circle id="s4-ball" r="84" fill="#ffffff" stroke="#1b1d22" stroke-width="6" />
+          </svg>
+        </div>
+
+        <!-- The front face, through the frame's opening: the buzzer grille chirps; the undo button -->
+        <div class="s4-box" id="s4-front">
+          <img src="assets/sled/front.png" alt="" />
+          <svg viewBox="0 0 1144 903">
+            <!-- drawn for the 1166 x 919 still; review 2 frames the same view at 0.9811 -->
+            <g transform="scale(0.9811)">
+            <!-- the 0.91" OLED is off unless short-pressed (ux): drawn dark over the model's light marker colour -->
+            <rect x="538" y="291" width="300" height="66" rx="3" fill="#15171b" />
+            <rect x="538" y="291" width="300" height="21" rx="3" fill="#ffffff" opacity="0.06" />
+            <!-- the buzzer sits under the OLED; its port opens upward into the open room above it -->
+            <g id="s4-waves" fill="none" stroke="#e8431f" stroke-width="10" stroke-linecap="round">
+              <path id="s4-w1" d="M 624 66 A 55 55 0 0 1 694 66" />
+              <path id="s4-w2" d="M 601 39 A 90 90 0 0 1 717 39" />
+              <path id="s4-w3" d="M 579 12 A 125 125 0 0 1 739 12" />
+            </g>
+            <!-- the MX key's 10 x 10 keycap: pressed = shaded; the ring fills over the 1 s hold -->
+            <rect id="s4-press" x="296" y="304" width="134" height="134" rx="4" fill="#1b1d22" opacity="0" />
+            <circle id="s4-ring" cx="363" cy="371" r="105" fill="none" stroke="#e8431f" stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="659.7" stroke-dashoffset="659.7" transform="rotate(-90 363 371)" />
+            </g>
+          </svg>
+        </div>
+
+        <div id="s4-count">
+          <span class="s4-digit" id="s4-d0">0</span>
+          <span class="s4-digit" id="s4-d1">1</span>
+          <span class="s4-digit" id="s4-d2">0</span>
+        </div>
+      </div>
+      <script>
+        (function () {
+          // Cue times (scene-local s) come from tools/retime.py via window.__FILM: each one lands
+          // with, or just before, the narrated word it illustrates.
+          const C = window.__FILM.cues.s4;
+          const tl = gsap.timeline({ paused: true });
+          gsap.set(["#s4-tun", "#s4-top", "#s4-front", "#s4-count", "#s4-d1", "#s4-d2", "#s4-ball", "#s4-beam", "#s4-waves path"], { opacity: 0 });
+          // b0: "a 3D-printed sled, in two halves" (exploded); in: "They go in where the balls come out" (in the drawer)
+          tl.fromTo("#s4-ex", { opacity: 0, y: 80, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: "power3.out" }, C.b0);
+          tl.to("#s4-ex", { opacity: 0, duration: 0.3 }, C.in);
+          tl.fromTo("#s4-tun", { opacity: 0, x: 160 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, C.in);
+          tl.to("#s4-tun", { scale: 1.04, duration: Math.max(0.5, C.b1 - C.in - 0.6), ease: "none" }, C.in + 0.6);
+          // b1: from above, the beam on; roll: "sends every ball past the beam"
+          tl.to("#s4-tun", { opacity: 0, duration: 0.3 }, C.b1);
+          tl.fromTo("#s4-top", { opacity: 0, scale: 1.05 }, { opacity: 1, scale: 1, duration: 0.4, ease: "power2.out" }, C.b1);
+          tl.fromTo("#s4-beam", { opacity: 0 }, { opacity: 1, duration: 0.08, ease: "none", yoyo: true, repeat: 4 }, C.b1 + 0.3);
+          tl.set("#s4-beam", { opacity: 1 }, C.b1 + 0.75);
+          tl.fromTo("#s4-ball", { x: 1600, y: 260, opacity: 0 }, { opacity: 1, duration: 0.15 }, C.roll);
+          tl.to("#s4-ball", { x: 1180, y: 520, duration: 0.5, ease: "sine.in" }, C.roll + 0.15);
+          tl.to("#s4-ball", { x: 988, y: 544, duration: 0.25, ease: "none" }, C.roll + 0.65);
+          tl.to("#s4-beam", { opacity: 0.1, duration: 0.05 }, C.roll + 0.85);
+          tl.to("#s4-ball", { x: 273, y: 544, duration: 0.7, ease: "sine.out" }, C.roll + 0.9);
+          tl.to("#s4-beam", { opacity: 1, duration: 0.05 }, C.roll + 1.1);
+          // b2: the front face; chirp: "Every goal gets a little chirp" -> waves from the grille, 0 -> 1
+          tl.to("#s4-top", { opacity: 0, duration: 0.3 }, C.b2);
+          tl.fromTo("#s4-front", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.45, ease: "power3.out" }, C.b2);
+          tl.fromTo("#s4-count", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, C.b2 + 0.1);
+          ["#s4-w1", "#s4-w2", "#s4-w3"].forEach((w, i) => {
+            tl.fromTo(w, { opacity: 0 }, { opacity: 1, duration: 0.06 }, C.chirp + i * 0.06);
+            tl.to(w, { opacity: 0, duration: 0.5, ease: "power1.in" }, C.chirp + 0.35 + i * 0.06);
+          });
+          tl.to("#s4-d0", { opacity: 0, duration: 0.01 }, C.chirp);
+          tl.fromTo("#s4-d1", { opacity: 0, scale: 1.8, transformOrigin: "30% 50%" }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(3)" }, C.chirp);
+          // hold: the button is held (press tick), the ring fills for the 1 s hold; undo: "Gone" -> 1 -> 0
+          tl.set("#s4-press", { opacity: 0.35 }, C.hold);
+          tl.to("#s4-ring", { attr: { "stroke-dashoffset": 0 }, duration: Math.max(0.3, C.undo - C.hold), ease: "none" }, C.hold);
+          tl.set("#s4-press", { opacity: 0 }, C.undo);
+          tl.to("#s4-ring", { opacity: 0, scale: 1.3, transformOrigin: "363px 371px", duration: 0.5, ease: "power2.out" }, C.undo);
+          tl.to("#s4-d1", { opacity: 0, duration: 0.01 }, C.undo);
+          tl.fromTo("#s4-d2", { opacity: 0, y: -60 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, C.undo);
+          tl.to("#s4-front", { scale: 1.03, duration: 4, ease: "none" }, C.undo + 0.4);
+          window.__timelines["s4"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+# HyperFrames Studio caches and local state
+.hyperframes/
+.thumbnails/
+.waveform-cache/
+node_modules/
+# Generated audio (tools/sound.py rebuilds it in seconds)
+assets/audio/*.wav
+# Review stills
+boards/

@@ -1,0 +1,198 @@
+{
+ "total": 88.49,
+ "vo": [
+  {
+   "id": "L1",
+   "start": 1.4,
+   "end": 6.499
+  },
+  {
+   "id": "L2",
+   "start": 7.973,
+   "end": 10.981
+  },
+  {
+   "id": "L3",
+   "start": 12.673,
+   "end": 18.902
+  },
+  {
+   "id": "L4",
+   "start": 21.752,
+   "end": 28.195
+  },
+  {
+   "id": "L5",
+   "start": 29.545,
+   "end": 33.534
+  },
+  {
+   "id": "L6",
+   "start": 33.984,
+   "end": 38.357
+  },
+  {
+   "id": "L7",
+   "start": 39.107,
+   "end": 43.182
+  },
+  {
+   "id": "L8",
+   "start": 45.932,
+   "end": 53.975
+  },
+  {
+   "id": "L9",
+   "start": 57.132,
+   "end": 64.791
+  },
+  {
+   "id": "L10",
+   "start": 66.641,
+   "end": 73.958
+  },
+  {
+   "id": "L11",
+   "start": 75.808,
+   "end": 82.912
+  },
+  {
+   "id": "L12",
+   "start": 83.962,
+   "end": 86.287
+  }
+ ],
+ "sfx": [
+  {
+   "cue": "key",
+   "t": 7.873,
+   "dur": null
+  },
+  {
+   "cue": "thud",
+   "t": 8.923,
+   "dur": null
+  },
+  {
+   "cue": "rattle",
+   "t": 8.923,
+   "dur": null
+  },
+  {
+   "cue": "scan",
+   "t": 13.723,
+   "dur": null
+  },
+  {
+   "cue": "joined",
+   "t": 14.733,
+   "dur": null
+  },
+  {
+   "cue": "scan",
+   "t": 19.252,
+   "dur": null
+  },
+  {
+   "cue": "joined",
+   "t": 19.952,
+   "dur": null
+  },
+  {
+   "cue": "scan",
+   "t": 20.452,
+   "dur": null
+  },
+  {
+   "cue": "joined",
+   "t": 21.452,
+   "dur": null
+  },
+  {
+   "cue": "key",
+   "t": 25.252,
+   "dur": null
+  },
+  {
+   "cue": "key",
+   "t": 25.972,
+   "dur": null
+  },
+  {
+   "cue": "goal",
+   "t": 30.365,
+   "dur": null
+  },
+  {
+   "cue": "key",
+   "t": 36.124,
+   "dur": null
+  },
+  {
+   "cue": "key",
+   "t": 38.927,
+   "dur": null
+  },
+  {
+   "cue": "key",
+   "t": 41.167,
+   "dur": null
+  },
+  {
+   "cue": "undo",
+   "t": 41.547,
+   "dur": null
+  },
+  {
+   "cue": "won",
+   "t": 45.632,
+   "dur": null
+  },
+  {
+   "cue": "saved",
+   "t": 49.552,
+   "dur": null
+  },
+  {
+   "cue": "key",
+   "t": 51.592,
+   "dur": null
+  },
+  {
+   "cue": "scan",
+   "t": 57.382,
+   "dur": null
+  },
+  {
+   "cue": "notjoined",
+   "t": 57.982,
+   "dur": null
+  },
+  {
+   "cue": "pop",
+   "t": 61.632,
+   "dur": null
+  },
+  {
+   "cue": "pop",
+   "t": 62.282,
+   "dur": null
+  },
+  {
+   "cue": "pop",
+   "t": 63.042,
+   "dur": null
+  },
+  {
+   "cue": "whoosh",
+   "t": 66.241,
+   "dur": null
+  },
+  {
+   "cue": "thud",
+   "t": 71.191,
+   "dur": null
+  }
+ ],
+ "silence": []
+}

@@ -1,0 +1,12 @@
+{
+  "devices": {
+    "fb-000000000001": { "role": "goal", "table_id": "table-1", "goal": "home" },
+    "fb-000000000002": { "role": "goal", "table_id": "table-1", "goal": "away" },
+    "fb-000000000004": { "role": "goal", "table_id": "table-2", "goal": "home" },
+    "fb-000000000005": { "role": "goal", "table_id": "table-2", "goal": "away" }
+  },
+  "tables": {
+    "table-1": { "sound_volume": 2 },
+    "table-2": {}
+  }
+}

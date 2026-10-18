@@ -1,0 +1,18 @@
+#!/bin/sh
+# Wait for lead to answer you. Run it in the background right after you send a QUESTION:/BLOCKED:.
+# usage: team/await-reply <you> [minutes, default 10]
+# Exits 0 as soon as lead messages you (or all). Exits 1 after the timeout: then re-send your
+# question to lead starting with "REMINDER:" and run await-reply again.
+set -eu
+me=$1; mins=${2:-10}
+log="$(cd "$(dirname "$0")" && pwd)/log.md"
+start=$(wc -l < "$log")
+end=$(( $(date +%s) + mins * 60 ))
+while [ "$(date +%s)" -lt "$end" ]; do
+  if tail -n +"$((start + 1))" "$log" | grep -Eq "^## .*  lead -> ($me|all)\$"; then
+    echo "lead replied"; exit 0
+  fi
+  sleep 15
+done
+echo "NO REPLY from lead after $mins min: re-send your question to lead starting with REMINDER:"
+exit 1

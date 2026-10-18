@@ -1,0 +1,117 @@
+[
+  {
+    "step": "1 hardware, unclaimed devices",
+    "t_action": 0.5,
+    "t_settled": 0.6
+  },
+  {
+    "step": "1 guarded by White",
+    "t_action": 3.6,
+    "t_settled": 3.7
+  },
+  {
+    "step": "1 claim → already guarded",
+    "t_action": 6.2,
+    "t_settled": 6.4
+  },
+  {
+    "step": "1 pick Table 3",
+    "t_action": 9.4,
+    "t_settled": 9.4
+  },
+  {
+    "step": "1 guarded by Black",
+    "t_action": 10.6,
+    "t_settled": 10.7
+  },
+  {
+    "step": "1 claim",
+    "t_action": 13.2,
+    "t_settled": 13.4
+  },
+  {
+    "step": "1 now in Table 3",
+    "t_action": 14.9,
+    "t_settled": 15.8
+  },
+  {
+    "step": "2 edit Table 3",
+    "t_action": 18.8,
+    "t_settled": 18.9
+  },
+  {
+    "step": "2 clash",
+    "t_action": 20.1,
+    "t_settled": 20.6
+  },
+  {
+    "step": "2 fix + save",
+    "t_action": 23.6,
+    "t_settled": 24.4
+  },
+  {
+    "step": "3 overview banner",
+    "t_action": 27.4,
+    "t_settled": 27.5
+  },
+  {
+    "step": "3 → device",
+    "t_action": 31,
+    "t_settled": 31.1
+  },
+  {
+    "step": "3 Table 1 rows",
+    "t_action": 33.6,
+    "t_settled": 34.5
+  },
+  {
+    "step": "3 Table 2 rows",
+    "t_action": 37.5,
+    "t_settled": 38.4
+  },
+  {
+    "step": "4 beam settings",
+    "t_action": 41.4,
+    "t_settled": 42.4
+  },
+  {
+    "step": "4 mode Auto",
+    "t_action": 43.9,
+    "t_settled": 43.9
+  },
+  {
+    "step": "4 advanced",
+    "t_action": 45.9,
+    "t_settled": 46.9
+  },
+  {
+    "step": "4 save beam",
+    "t_action": 49.9,
+    "t_settled": 50.1
+  },
+  {
+    "step": "4 saved (message at the device)",
+    "t_action": 51.6,
+    "t_settled": 52.5
+  },
+  {
+    "step": "4 edit Table 1",
+    "t_action": 55,
+    "t_settled": 56
+  },
+  {
+    "step": "4 table sound High",
+    "t_action": 57.2,
+    "t_settled": 57.2
+  },
+  {
+    "step": "4 save table",
+    "t_action": 58.7,
+    "t_settled": 58.9
+  },
+  {
+    "step": "5 Table 2 unclaimed match",
+    "t_action": 61.9,
+    "t_settled": 62.8
+  }
+]

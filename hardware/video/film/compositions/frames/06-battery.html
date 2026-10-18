@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #s6-render {
+          left: 200px;
+          top: 70px;
+          width: 680px;
+          height: 754px;
+        }
+        #s6-render {
+          position: absolute;
+        }
+        .s6-r {
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+        }
+        #s6-svg {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+          overflow: visible;
+        }
+        .s6-z {
+          position: absolute;
+          font-family: var(--display);
+          color: var(--ink);
+        }
+      </style>
+      <div id="root" class="scene" data-composition-id="s6" data-width="1920" data-height="1080">
+        <div id="s6-render">
+          <img class="render s6-r" id="s6-in" src="assets/sled/drawer_in.png" alt="" />
+          <img class="render s6-r" id="s6-out" src="assets/sled/drawer_out.png" alt="" />
+        </div>
+        <svg id="s6-svg" viewBox="0 0 1920 1080">
+          <g fill="#d9b56a" stroke="#1b1d22" stroke-width="6">
+            <g id="s6-c1"><rect x="1240" y="170" width="440" height="66" rx="16" /><rect x="1680" y="186" width="18" height="34" rx="4" fill="#1b1d22" /></g>
+            <g id="s6-c2"><rect x="1240" y="260" width="440" height="66" rx="16" /><rect x="1680" y="276" width="18" height="34" rx="4" fill="#1b1d22" /></g>
+            <g id="s6-c3"><rect x="1240" y="350" width="440" height="66" rx="16" /><rect x="1680" y="366" width="18" height="34" rx="4" fill="#1b1d22" /></g>
+          </g>
+          <!-- month bar: 5 slots of 92 px, tick at the 1-month target; solid to 1.7, a light band to 3.4 (INTERFACES §0: ≈ 1.7–3.4 EST) -->
+          <rect x="1240" y="520" width="460" height="70" rx="12" fill="#ffffff" stroke="#1b1d22" stroke-width="6" />
+          <rect id="s6-band" x="1246" y="526" width="307" height="58" rx="8" fill="#e8431f" fill-opacity="0.3" />
+          <rect id="s6-fill" x="1246" y="526" width="150" height="58" rx="8" fill="#e8431f" />
+          <g stroke="#1b1d22" stroke-width="3" stroke-opacity="0.35">
+            <line x1="1424" y1="526" x2="1424" y2="584" /><line x1="1516" y1="526" x2="1516" y2="584" /><line x1="1608" y1="526" x2="1608" y2="584" />
+          </g>
+          <line x1="1332" y1="500" x2="1332" y2="610" stroke="#1b1d22" stroke-width="8" />
+        </svg>
+        <div class="s6-z" id="s6-z1" style="left: 860px; top: 200px; font-size: 70px">z</div>
+        <div class="s6-z" id="s6-z2" style="left: 920px; top: 130px; font-size: 96px">z</div>
+        <div class="s6-z" id="s6-z3" style="left: 1000px; top: 40px; font-size: 124px">z</div>
+      </div>
+      <script>
+        (function () {
+          // Cue times (scene-local s) come from tools/retime.py via window.__FILM: each one lands
+          // with, or just before, the narrated word it illustrates.
+          const C = window.__FILM.cues.s6;
+          const tl = gsap.timeline({ paused: true });
+          // b0: "Three AA cells ... one and a half to three and a half months": the sled, its drawer out, cells drop in, month bar (solid to 1.7, light to 3.4)
+          tl.fromTo("#s6-render", { opacity: 0, x: -80 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, C.b0);
+          // the AA drawer slides out through the frame (sled.DRAWER_OUT), no tools
+          gsap.set("#s6-out", { opacity: 0 });
+          tl.to("#s6-in", { opacity: 0, duration: 0.35 }, C.b0 + 0.7);
+          tl.to("#s6-out", { opacity: 1, duration: 0.35 }, C.b0 + 0.7);
+          ["#s6-c1", "#s6-c2", "#s6-c3"].forEach((c, i) => {
+            tl.fromTo(c, { opacity: 0, y: -120 }, { opacity: 1, y: 0, duration: 0.35, ease: "bounce.out" }, C.b0 + 0.1 + i * 0.15);
+          });
+          tl.fromTo("#s6-fill", { scaleX: 0, transformOrigin: "1246px 555px" }, { scaleX: 1, duration: 0.6, ease: "power2.out" }, C.b0 + 2.0);
+          tl.fromTo("#s6-band", { scaleX: 0, transformOrigin: "1246px 555px" }, { scaleX: 1, duration: 1.0, ease: "power2.out" }, C.b0 + 2.3);
+          tl.to("#s6-render", { scale: 1.04, duration: 10, ease: "none" }, C.b0 + 0.5);
+          // b1: "Asleep": z z z
+          ["#s6-z1", "#s6-z2", "#s6-z3"].forEach((z, i) => {
+            tl.fromTo(z, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.35, ease: "back.out(2)" }, C.b1 + i * 0.25);
+            tl.to(z, { y: -20, duration: 1.2, ease: "sine.inOut", yoyo: true, repeat: 1 }, C.b1 + 0.4 + i * 0.25);
+          });
+          window.__timelines["s6"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

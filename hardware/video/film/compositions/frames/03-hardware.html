@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #s3-board {
+          position: absolute;
+          left: 300px;
+          top: 170px;
+          width: 980px;
+          height: 420px;
+        }
+        #s3-board svg,
+        #s3-over {
+          display: block;
+          width: 100%;
+          height: 100%;
+          overflow: visible;
+        }
+        #s3-over {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+        }
+      </style>
+      <div id="root" class="scene" data-composition-id="s3" data-width="1920" data-height="1080">
+        <div id="s3-board">
+          <svg viewBox="0 0 700 300">
+            <defs>
+              <pattern id="s3-holes" width="16" height="16" patternUnits="userSpaceOnUse">
+                <circle cx="8" cy="8" r="2.6" fill="#8a6a2e" />
+              </pattern>
+            </defs>
+            <rect x="0" y="0" width="700" height="300" rx="10" fill="#d9b56a" stroke="#1b1d22" stroke-width="5" />
+            <rect x="0" y="0" width="700" height="300" rx="10" fill="url(#s3-holes)" />
+            <g fill="#f2efe8" stroke="#1b1d22" stroke-width="3">
+              <circle cx="320" cy="30" r="14" /><circle cx="660" cy="30" r="14" />
+              <circle cx="320" cy="270" r="14" /><circle cx="660" cy="270" r="14" />
+            </g>
+            <g id="s3-xiao">
+              <rect x="60" y="60" width="230" height="190" rx="12" fill="#1b1d22" />
+              <rect x="40" y="125" width="30" height="60" rx="4" fill="#9aa0a8" />
+              <rect x="150" y="115" width="80" height="80" rx="6" fill="#3a3e46" />
+            </g>
+            <g id="s3-lis">
+              <rect x="350" y="70" width="130" height="110" rx="8" fill="#b8321a" />
+              <rect x="395" y="105" width="40" height="40" rx="3" fill="#1b1d22" />
+            </g>
+            <g id="s3-pass">
+              <rect x="360" y="215" width="70" height="22" rx="10" fill="#c9b79a" stroke="#1b1d22" stroke-width="3" />
+              <rect x="450" y="215" width="70" height="22" rx="10" fill="#c9b79a" stroke="#1b1d22" stroke-width="3" />
+              <rect x="540" y="200" width="60" height="50" rx="4" fill="#1b1d22" />
+              <rect x="520" y="90" width="80" height="26" rx="4" fill="#1b1d22" />
+            </g>
+          </svg>
+        </div>
+
+        <svg id="s3-over" viewBox="0 0 1920 1080">
+          <!-- Wi-Fi arcs above the XIAO (board x 175 -> 545 px, top 170) -->
+          <g id="s3-wifi" fill="none" stroke="#e8431f" stroke-width="10" stroke-linecap="round">
+            <path id="s3-a1" d="M 505 150 A 50 50 0 0 1 585 150" />
+            <path id="s3-a2" d="M 475 125 A 90 90 0 0 1 615 125" />
+            <path id="s3-a3" d="M 445 100 A 130 130 0 0 1 645 100" />
+          </g>
+          <!-- wake ripple around the LIS3DH (board 415,125 -> 881,345) -->
+          <circle id="s3-ripple" cx="881" cy="345" r="90" fill="none" stroke="#e8431f" stroke-width="8" />
+          <!-- leaders down to the caption -->
+          <path id="s3-lx" d="M 545 530 L 545 830" fill="none" stroke="#1b1d22" stroke-width="5" />
+          <path id="s3-ll" d="M 881 430 L 881 830" fill="none" stroke="#1b1d22" stroke-width="5" />
+          <!-- wires out to the beam parts and the battery -->
+          <g fill="none" stroke-width="8" stroke-linecap="round">
+            <path id="s3-w1" d="M 1280 280 C 1380 280 1400 220 1500 220" stroke="#e8431f" />
+            <path id="s3-w2" d="M 1280 380 C 1380 380 1400 400 1500 400" stroke="#1b1d22" />
+            <path id="s3-w3" d="M 1280 500 C 1380 500 1400 580 1500 580" stroke="#1b1d22" />
+          </g>
+          <g id="s3-parts">
+            <!-- IR LED -->
+            <g id="s3-p1"><rect x="1510" y="200" width="70" height="40" fill="#1b1d22" /><path d="M 1580 200 L 1600 200 A 20 20 0 0 1 1600 240 L 1580 240 Z" fill="#e8431f" /></g>
+            <!-- phototransistor -->
+            <g id="s3-p2"><rect x="1510" y="385" width="60" height="30" fill="#1b1d22" /><path d="M 1570 385 L 1580 385 A 15 15 0 0 1 1580 415 L 1570 415 Z" fill="#55585f" /></g>
+            <!-- 3 x AA -->
+            <g id="s3-p3" fill="#d9b56a" stroke="#1b1d22" stroke-width="5">
+              <rect x="1510" y="540" width="220" height="30" rx="8" /><rect x="1510" y="575" width="220" height="30" rx="8" />
+              <rect x="1510" y="610" width="220" height="30" rx="8" />
+            </g>
+          </g>
+        </svg>
+      </div>
+      <script>
+        (function () {
+          // Cue times (scene-local s) come from tools/retime.py via window.__FILM: each one lands
+          // with, or just before, the narrated word it illustrates.
+          const C = window.__FILM.cues.s3;
+          const tl = gsap.timeline({ paused: true });
+          gsap.set(["#s3-lx", "#s3-ll"], { opacity: 0 });
+          // b0: "a tiny ESP32 ... and the Wi-Fi": board drops in, parts snap on, Wi-Fi arcs pulse
+          tl.fromTo("#s3-board", { opacity: 0, y: -80, rotation: -4 }, { opacity: 1, y: 0, rotation: 0, duration: 0.6, ease: "back.out(1.4)" }, C.b0);
+          tl.fromTo("#s3-xiao", { opacity: 0, y: -50 }, { opacity: 1, y: 0, duration: 0.35, ease: "back.out(2)" }, C.b0 + 0.3);
+          tl.fromTo("#s3-lis", { opacity: 0, y: -50 }, { opacity: 1, y: 0, duration: 0.35, ease: "back.out(2)" }, C.b0 + 0.55);
+          tl.fromTo("#s3-pass", { opacity: 0, y: -30 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, C.b0 + 0.8);
+          gsap.set("#s3-wifi", { opacity: 0 });
+          if (window.__FILM.t.s3_wifi) {  // only where the narration mentions Wi-Fi
+            gsap.set("#s3-wifi", { opacity: 1 });
+            ["#s3-a1", "#s3-a2", "#s3-a3"].forEach((a, i) => {
+              tl.fromTo(a, { opacity: 0 }, { opacity: 1, duration: 0.15, yoyo: true, repeat: 3 }, C.b0 + 2.4 + i * 0.12);
+            });
+          }
+          // b1: "A motion sensor wakes it": board shakes, ripple from the sensor
+          tl.fromTo("#s3-board", { x: -14 }, { x: 14, duration: 0.06, ease: "none", yoyo: true, repeat: 7, immediateRender: false }, C.b1);
+          tl.set("#s3-board", { x: 0 }, C.b1 + 0.5);
+          gsap.set("#s3-ripple", { opacity: 0, transformOrigin: "881px 345px" });
+          tl.fromTo("#s3-ripple", { opacity: 1, scale: 0.6 }, { opacity: 0, scale: 2.2, duration: 0.9, ease: "power1.out", immediateRender: false }, C.b1 + 0.1);
+          // b2: "Plus an infrared LED, a light sensor, and three AA batteries"
+          ["#s3-w1", "#s3-w2", "#s3-w3"].forEach((w, i) => {
+            tl.fromTo(w, { strokeDasharray: 300, strokeDashoffset: 300 }, { strokeDashoffset: 0, duration: 0.4, ease: "power2.out" }, C.b2 + i * 0.15);
+          });
+          ["#s3-p1", "#s3-p2", "#s3-p3"].forEach((p, i) => {
+            tl.fromTo(p, { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.3, ease: "back.out(2)" }, C.b2 + 0.3 + i * 0.15);
+          });
+          window.__timelines["s3"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

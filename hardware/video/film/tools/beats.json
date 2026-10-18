@@ -1,0 +1,292 @@
+{
+ "_doc": "One row per VO line, film order. beat = scene cue placed LEAD s before the line's first word; every {marker} in the script becomes a scene cue LEAD s before its word (remap names with cues). Captions come from tools/strings.json and land at the {cap} marker (else at the beat). sfx = [cue, scene cue, offset]. pre = extra silence before the line. after = seconds the motion needs after the line's last cue. Run: python3 tools/retime.py en",
+ "lead": 0.3,
+ "gap": 0.35,
+ "tail": 1.8,
+ "lines": [
+  {
+   "vo": "L1",
+   "scene": "s1",
+   "beat": "b0",
+   "sfx": [
+    [
+     "click",
+     "b0",
+     1.0
+    ]
+   ]
+  },
+  {
+   "vo": "L2",
+   "scene": "s1",
+   "beat": "b1"
+  },
+  {
+   "vo": "L3",
+   "scene": "s1",
+   "beat": "b2",
+   "sfx": [
+    [
+     "key",
+     "type",
+     0.0
+    ],
+    [
+     "key",
+     "type",
+     0.7
+    ],
+    [
+     "pop",
+     "wrong",
+     0.0
+    ]
+   ],
+   "fallback": {
+    "wrong": [
+     "type",
+     1.0
+    ]
+   }
+  },
+  {
+   "vo": "L4",
+   "scene": "s1",
+   "beat": "b3",
+   "sfx": [
+    [
+     "thud",
+     "b3",
+     0.05
+    ]
+   ]
+  },
+  {
+   "vo": "L5",
+   "scene": "s2",
+   "beat": "b0",
+   "cues": {
+    "cut": "cap"
+   },
+   "sfx": [
+    [
+     "roll",
+     "roll",
+     0.6,
+     "cut"
+    ],
+    [
+     "bzgoal",
+     "cut",
+     0.0
+    ]
+   ],
+   "after": 0.8
+  },
+  {
+   "vo": "L6",
+   "scene": "s2",
+   "beat": "b1"
+  },
+  {
+   "vo": "L7",
+   "scene": "s2",
+   "beat": "b2",
+   "sfx": [
+    [
+     "bzgoal",
+     "b2",
+     0.85
+    ]
+   ]
+  },
+  {
+   "vo": "L8",
+   "scene": "s3",
+   "beat": "b0"
+  },
+  {
+   "vo": "L9",
+   "scene": "s3",
+   "beat": "b1",
+   "sfx": [
+    [
+     "rattle",
+     "b1",
+     0.0
+    ]
+   ]
+  },
+  {
+   "vo": "L10",
+   "scene": "s3",
+   "beat": "b2"
+  },
+  {
+   "vo": "L11",
+   "scene": "s4",
+   "beat": "b0"
+  },
+  {
+   "vo": "L12",
+   "scene": "s4",
+   "beat": "b1",
+   "sfx": [
+    [
+     "roll",
+     "roll",
+     0.15,
+     1.2
+    ]
+   ],
+   "after": 1.4
+  },
+  {
+   "vo": "L13",
+   "scene": "s4",
+   "beat": "b2",
+   "sfx": [
+    [
+     "bzgoal",
+     "chirp",
+     0.0
+    ]
+   ],
+   "after": 0.8
+  },
+  {
+   "vo": "L24",
+   "scene": "s4",
+   "beat": "b3",
+   "sfx": [
+    [
+     "key",
+     "hold",
+     0.0
+    ],
+    [
+     "bzscan",
+     "hold",
+     0.0
+    ],
+    [
+     "bzundo",
+     "undo",
+     0.0
+    ]
+   ],
+   "after": 0.8
+  },
+  {
+   "vo": "L14",
+   "scene": "s5",
+   "beat": "b0",
+   "sfx": [
+    [
+     "rattle",
+     "b0",
+     0.1
+    ],
+    [
+     "bip",
+     "goal",
+     0.0
+    ],
+    [
+     "whoosh",
+     "goal",
+     0.35
+    ]
+   ],
+   "after": 1.0
+  },
+  {
+   "vo": "L15",
+   "scene": "s5",
+   "beat": "b1",
+   "sfx": [
+    [
+     "ding",
+     "b1",
+     0.3
+    ]
+   ]
+  },
+  {
+   "vo": "L16",
+   "scene": "s5",
+   "beat": "b2",
+   "cues": {
+    "x": "cap"
+   }
+  },
+  {
+   "vo": "L17",
+   "scene": "s5",
+   "beat": "b3",
+   "sfx": [
+    [
+     "pop",
+     "b3",
+     0.4
+    ],
+    [
+     "whoosh",
+     "sent",
+     0.0
+    ]
+   ],
+   "after": 0.9,
+   "fallback": {
+    "sent": [
+     "end",
+     -0.5
+    ]
+   }
+  },
+  {
+   "vo": "L18",
+   "scene": "s6",
+   "beat": "b0"
+  },
+  {
+   "vo": "L19",
+   "scene": "s6",
+   "beat": "b1"
+  },
+  {
+   "vo": "L20",
+   "scene": "s7",
+   "beat": "b0",
+   "cues": {
+    "tap": "cap"
+   },
+   "sfx": [
+    [
+     "click",
+     "tap",
+     0.0
+    ],
+    [
+     "ding",
+     "tap",
+     0.1
+    ]
+   ]
+  },
+  {
+   "vo": "L21",
+   "scene": "s7"
+  },
+  {
+   "vo": "L22",
+   "scene": "s7",
+   "pre": 1.0,
+   "silence": true
+  },
+  {
+   "vo": "L23",
+   "scene": "s7"
+  }
+ ]
+}

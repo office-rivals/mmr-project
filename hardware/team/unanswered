@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""Lead's inbox check: messages to lead that lead hasn't replied to yet.
+
+usage: team/unanswered            # every agent with messages after lead's last reply to it
+       team/unanswered --open     # only QUESTION:/BLOCKED:/REMINDER:/DECIDE: messages (they need an answer)
+
+A message from X counts as answered once lead has sent anything to X (or to all) after it.
+"""
+import re
+import sys
+from pathlib import Path
+
+log = Path(__file__).with_name("log.md").read_text(encoding="utf-8")
+entries = [(m.group(1), m.group(2), m.group(3), m.group(4).strip())
+           for m in re.finditer(r"^## (\S+ \S+)  (\S+) -> (\S+)\n(.*?)(?=^## |\Z)", log, re.M | re.S)]
+
+open_only = "--open" in sys.argv
+pending = {}                                  # agent -> [(time, body)]
+for when, frm, to, body in entries:
+    if frm == "lead":
+        for agent in (list(pending) if to == "all" else [to]):
+            pending[agent] = []
+    elif to == "lead":
+        pending.setdefault(frm, []).append((when, body))
+
+found = False
+for agent, msgs in sorted(pending.items()):
+    for when, body in msgs:
+        tagged = re.match(r"(QUESTION|BLOCKED|REMINDER|DECIDE)\b", body)
+        if open_only and not tagged:
+            continue
+        found = True
+        first = body.splitlines()[0][:160]
+        print(f"{when}  {agent:<16} {'!! ' if tagged else ''}{first}")
+if not found:
+    print("nothing unanswered")

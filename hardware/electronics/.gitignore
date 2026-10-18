@@ -1,0 +1,4 @@
+# electronics/: WireViz side products (the .svg/.png diagrams ARE committed)
+wiring.html
+wiring.bom.tsv
+*.tmp

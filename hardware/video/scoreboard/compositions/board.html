@@ -1,0 +1,908 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        /* The board: a stylised view of the 45° face from the players' side, with the top of the case (badge
+           target) above it. Not an exact render: the case is still being reshaped. Rig = 700 x 738 px. */
+        #rig-pos {
+        position: absolute;
+        left: 440px;
+        top: 80px;
+        width: 1040px;
+        height: 710px;
+      }
+      #rig {
+        position: absolute;
+        inset: 0;
+      }
+      #top {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1040px;
+        height: 30px;
+        overflow: visible;
+      }
+      .wall {
+        position: absolute;
+        top: 30px;
+        width: 50px;
+        height: 680px;
+      }
+      #wall-l {
+        left: 0;
+        border-radius: 0 0 0 18px;
+        background: linear-gradient(90deg, #17191d, #23262c);
+      }
+      #wall-r {
+        right: 0;
+        border-radius: 0 0 18px 0;
+        background: linear-gradient(90deg, #23262c, #17191d);
+      }
+      #face {
+        position: absolute;
+        left: 50px;
+        top: 30px;
+        width: 940px;
+        height: 680px;
+        background: linear-gradient(180deg, #2c3038 0%, #262930 60%, #202328 100%);
+        box-shadow: 0 30px 60px rgba(27, 29, 34, 0.28);
+      }
+      #base {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 940px;
+        height: 44px;
+        background: #1b1d22;
+      }
+      /* the anti-glare PC window over the e-paper */
+      #window {
+        position: absolute;
+        left: 30px;
+        top: 24px;
+        width: 580px;
+        height: 446px;
+        border-radius: 16px;
+        background: #30343c;
+        box-shadow: inset 0 0 0 3px #474c56;
+      }
+      #plate {
+        position: absolute;
+        left: 675px;
+        top: 50px;
+        width: 200px;
+        height: 150px;
+        overflow: visible;
+      }
+      .glow {
+        position: absolute;
+        left: 640px;
+        top: 20px;
+        width: 270px;
+        height: 210px;
+        border-radius: 40px;
+        opacity: 0;
+        mix-blend-mode: screen;
+      }
+      #scr {
+        position: absolute;
+        left: 60px;
+        top: 52px;
+        width: 520px;
+        height: 390px;
+        background: #e4e1d8;
+        overflow: hidden;
+        isolation: isolate;
+        box-shadow: 0 0 0 3px #15171b;
+      }
+      #scr img {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 520px;
+        height: 390px;
+        mix-blend-mode: multiply;
+        opacity: 0;
+      }
+      .inv {
+        position: absolute;
+        top: 322px;
+        width: 117px;
+        height: 65px;
+        border-radius: 8px;
+        background: #ffffff;
+        mix-blend-mode: difference;
+        opacity: 0;
+      }
+      #flash {
+        position: absolute;
+        inset: 0;
+        background: #15171b;
+        opacity: 0;
+      }
+      /* LED bar: a glossy opal bar, one segment per key, lit in the player's colour */
+      #strip {
+        position: absolute;
+        left: 65.5px;
+        top: 488px;
+        width: 509px;
+        height: 34px;
+        border-radius: 6px;
+        background: linear-gradient(180deg, #fbfaf6 0%, #e6e2d9 55%, #d2cdc2 100%);
+        box-shadow: inset 0 0 0 2px rgba(27, 29, 34, 0.28);
+        overflow: hidden;
+      }
+      .ledseg {
+        position: absolute;
+        top: 0;
+        height: 34px;
+        opacity: 0;
+      }
+      #strip-shine {
+        position: absolute;
+        z-index: 1;
+        left: 0;
+        top: 4px;
+        width: 509px;
+        height: 7px;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.7) 40%, rgba(255, 255, 255, 0) 80%);
+      }
+      /* MX switches with printed caps 3 mm proud: the cap's front wall shows below it */
+      .well {
+        position: absolute;
+        top: 536px;
+        width: 106px;
+        height: 92px;
+        border-radius: 10px;
+        background: #121316;
+      }
+      .key-side {
+        position: absolute;
+        top: 554px;
+        width: 98px;
+        height: 67px;
+        border-radius: 8px;
+        background: #7e432f;
+      }
+      .key {
+        position: absolute;
+        top: 540px;
+        width: 98px;
+        height: 67px;
+        border-radius: 8px;
+        background: #b5654a;
+        box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), inset 0 3px 0 rgba(255, 255, 255, 0.2);
+      }
+      /* props */
+        #card {
+          position: absolute;
+          left: 1141px;
+          top: 159px;
+          width: 200px;
+          height: 128px;
+          border-radius: 14px;
+          background: #f7f5f0;
+          border: 5px solid #1b1d22;
+          transform-origin: 50% 50%;
+        }
+        #card-slot {
+          position: absolute;
+          left: 78px;
+          top: 9px;
+          width: 34px;
+          height: 9px;
+          border-radius: 5px;
+          background: #1b1d22;
+        }
+        #card-photo {
+          position: absolute;
+          left: 18px;
+          top: 30px;
+          width: 58px;
+          height: 72px;
+          border-radius: 8px;
+          background: #d8d2c4;
+        }
+        .card-line {
+          position: absolute;
+          left: 92px;
+          height: 10px;
+          border-radius: 5px;
+          background: #1b1d22;
+        }
+        #phone {
+          position: absolute;
+          left: 1480px;
+          top: 230px;
+          width: 310px;
+          height: 520px;
+          border-radius: 40px;
+          background: #1b1d22;
+        }
+        #ph-screen {
+          position: absolute;
+          left: 14px;
+          top: 14px;
+          width: 282px;
+          height: 492px;
+          border-radius: 28px;
+          background: #f2efe8;
+          overflow: hidden;
+        }
+        .ph-view {
+          position: absolute;
+          inset: 0;
+        }
+        #ph-who {
+          opacity: 0;
+          font-family: var(--mono);
+          font-weight: 700;
+          color: #1b1d22;
+        }
+        #ph-title {
+          position: absolute;
+          left: 18px;
+          top: 34px;
+          width: 246px;
+          font-size: 26px;
+          line-height: 1.2;
+        }
+        .ph-opt {
+          position: absolute;
+          left: 18px;
+          width: 246px;
+          height: 56px;
+          border: 3px solid #1b1d22;
+          border-radius: 12px;
+          font-size: 19px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        #ph-mine {
+          top: 120px;
+        }
+        #ph-other {
+          top: 186px;
+        }
+        #ph-eve {
+          position: absolute;
+          left: 18px;
+          top: 262px;
+          width: 246px;
+          height: 50px;
+          padding-left: 14px;
+          border-radius: 10px;
+          font-size: 22px;
+          display: flex;
+          align-items: center;
+          opacity: 0;
+        }
+        #ph-btn {
+          position: absolute;
+          left: 18px;
+          top: 340px;
+          width: 246px;
+          height: 84px;
+          padding: 0 12px;
+          border-radius: 14px;
+          background: #e8431f;
+          color: #ffffff;
+          font-size: 19px;
+          line-height: 1.25;
+          text-align: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+        }
+        .panel {
+          position: absolute;
+          left: 1010px;
+          width: 800px;
+          border-radius: 22px;
+          background: #ffffff;
+          border: 5px solid #1b1d22;
+          box-shadow: 0 24px 50px rgba(27, 29, 34, 0.18);
+        }
+        #admin {
+          top: 190px;
+          height: 300px;
+        }
+        #admin-head {
+          position: absolute;
+          left: 44px;
+          top: 34px;
+          font-family: var(--mono);
+          font-weight: 700;
+          font-size: 24px;
+          letter-spacing: 0.08em;
+          color: #55585f;
+        }
+        #admin-label {
+          position: absolute;
+          left: 44px;
+          top: 76px;
+          font-family: var(--display);
+          font-size: 50px;
+          letter-spacing: -0.02em;
+          color: #1b1d22;
+        }
+        #seg {
+          position: absolute;
+          left: 44px;
+          top: 170px;
+          width: 702px;
+          height: 82px;
+          border-radius: 14px;
+          border: 4px solid #1b1d22;
+          overflow: hidden;
+        }
+        .seg {
+          position: absolute;
+          top: 0;
+          width: 173.5px;
+          height: 74px;
+          font-family: var(--mono);
+          font-weight: 700;
+          font-size: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        #seg-hl {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 173.5px;
+          height: 74px;
+          background: #1b1d22;
+        }
+        .seg {
+          color: #1b1d22;
+        }
+        #combo {
+          top: 540px;
+          height: 220px;
+        }
+        #combo-text {
+          position: absolute;
+          left: 330px;
+          top: 82px;
+          font-family: var(--mono);
+          font-weight: 700;
+          font-size: 34px;
+          color: #1b1d22;
+        }
+        .mini-key {
+          position: absolute;
+          top: 70px;
+          width: 86px;
+          height: 62px;
+          border-radius: 8px;
+          background: #b5654a;
+          box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.25);
+        }
+        #combo-plus {
+          position: absolute;
+          left: 150px;
+          top: 62px;
+          font-family: var(--display);
+          font-size: 60px;
+          color: #1b1d22;
+        }
+        #combo-x {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 800px;
+          height: 220px;
+          overflow: visible;
+        }
+        #cells {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+          overflow: visible;
+        }
+        #months-label {
+          position: absolute;
+          left: 1150px;
+          top: 520px;
+          font-family: var(--mono);
+          font-weight: 700;
+          font-size: 26px;
+          letter-spacing: 0.06em;
+          color: #1b1d22;
+        }
+        .tick {
+          position: absolute;
+          top: 650px;
+          width: 100px;
+          text-align: center;
+          font-family: var(--mono);
+          font-weight: 700;
+          font-size: 24px;
+          color: #55585f;
+        }
+      </style>
+      <div id="root" class="scene" data-composition-id="board" data-width="1920" data-height="1080">
+        <div id="rig-pos">
+          <!-- Scoreboard v5 (mechanical/out/scoreboard_preview.png), stylised and seen from the front: the window
+               with the e-paper on the left, the LED bar and 4 keys under it, the badge target in the right wing,
+               the phone tag on the left wall, the speaker grille on the right wall. -->
+          <div id="rig">
+            <svg id="top" viewBox="0 0 1040 30">
+              <polygon points="0,30 1040,30 990,0 50,0" fill="#33363d" />
+              <line x1="50" y1="29" x2="990" y2="29" stroke="#4a4e57" stroke-width="3" />
+            </svg>
+            <div class="wall" id="wall-l">
+              <svg viewBox="0 0 50 120" style="position: absolute; left: 5px; top: 240px; width: 40px; height: 96px">
+                <g fill="none" stroke="#5c616c" stroke-width="3" stroke-linecap="round">
+                  <rect x="14" y="40" width="22" height="38" rx="5" />
+                  <path d="M 18 30 Q 25 24 32 30" /><path d="M 13 22 Q 25 12 37 22" />
+                </g>
+              </svg>
+            </div>
+            <div class="wall" id="wall-r">
+              <svg viewBox="0 0 50 680" style="position: absolute; left: 0; top: 0; width: 50px; height: 680px">
+                <g fill="#101114"><circle cx="15" cy="380" r="2.6" /><circle cx="15" cy="390" r="2.6" /><circle cx="15" cy="400" r="2.6" /><circle cx="15" cy="410" r="2.6" /><circle cx="15" cy="420" r="2.6" /><circle cx="15" cy="430" r="2.6" /><circle cx="15" cy="440" r="2.6" /><circle cx="15" cy="450" r="2.6" /><circle cx="15" cy="460" r="2.6" /><circle cx="15" cy="470" r="2.6" /><circle cx="15" cy="480" r="2.6" /><circle cx="15" cy="490" r="2.6" /><circle cx="15" cy="500" r="2.6" /><circle cx="15" cy="510" r="2.6" /><circle cx="15" cy="520" r="2.6" /><circle cx="15" cy="530" r="2.6" /><circle cx="25" cy="380" r="2.6" /><circle cx="25" cy="390" r="2.6" /><circle cx="25" cy="400" r="2.6" /><circle cx="25" cy="410" r="2.6" /><circle cx="25" cy="420" r="2.6" /><circle cx="25" cy="430" r="2.6" /><circle cx="25" cy="440" r="2.6" /><circle cx="25" cy="450" r="2.6" /><circle cx="25" cy="460" r="2.6" /><circle cx="25" cy="470" r="2.6" /><circle cx="25" cy="480" r="2.6" /><circle cx="25" cy="490" r="2.6" /><circle cx="25" cy="500" r="2.6" /><circle cx="25" cy="510" r="2.6" /><circle cx="25" cy="520" r="2.6" /><circle cx="25" cy="530" r="2.6" /><circle cx="35" cy="380" r="2.6" /><circle cx="35" cy="390" r="2.6" /><circle cx="35" cy="400" r="2.6" /><circle cx="35" cy="410" r="2.6" /><circle cx="35" cy="420" r="2.6" /><circle cx="35" cy="430" r="2.6" /><circle cx="35" cy="440" r="2.6" /><circle cx="35" cy="450" r="2.6" /><circle cx="35" cy="460" r="2.6" /><circle cx="35" cy="470" r="2.6" /><circle cx="35" cy="480" r="2.6" /><circle cx="35" cy="490" r="2.6" /><circle cx="35" cy="500" r="2.6" /><circle cx="35" cy="510" r="2.6" /><circle cx="35" cy="520" r="2.6" /><circle cx="35" cy="530" r="2.6" /></g>
+              </svg>
+            </div>
+            <div id="face">
+              <div id="window"></div>
+              <div id="scr">
+                <img id="scr-idle" src="assets/screens/idle.png" alt="" />
+                <img id="scr-waking" src="assets/screens/waking.png" alt="" />
+                <img id="scr-lobby" src="assets/screens/lobby.png" alt="" />
+                <img id="scr-bob-joined" src="assets/screens/bob-joined.png" alt="" />
+                <img id="scr-carol-joined" src="assets/screens/carol-joined.png" alt="" />
+                <img id="scr-dave-joined" src="assets/screens/dave-joined.png" alt="" />
+                <img id="scr-teams-made" src="assets/screens/teams-made.png" alt="" />
+                <img id="scr-teams" src="assets/screens/teams.png" alt="" />
+                <img id="scr-live-7-5" src="assets/screens/live-7-5.png" alt="" />
+                <img id="scr-goal" src="assets/screens/goal.png" alt="" />
+                <img id="scr-own-goal" src="assets/screens/own-goal.png" alt="" />
+                <img id="scr-live-8-5" src="assets/screens/live-8-5.png" alt="" />
+                <img id="scr-undo" src="assets/screens/undo.png" alt="" />
+                <img id="scr-live-9-7" src="assets/screens/live-9-7.png" alt="" />
+                <img id="scr-saving-8" src="assets/screens/saving-8.png" alt="" />
+                <img id="scr-saving-6" src="assets/screens/saving-6.png" alt="" />
+                <img id="scr-saving-4" src="assets/screens/saving-4.png" alt="" />
+                <img id="scr-saving-2" src="assets/screens/saving-2.png" alt="" />
+                <img id="scr-saved" src="assets/screens/saved.png" alt="" />
+                <img id="scr-lobby-ab" src="assets/screens/lobby-ab.png" alt="" />
+                <img id="scr-unknown" src="assets/screens/unknown.png" alt="" />
+                <img id="scr-eve-in" src="assets/screens/eve-in.png" alt="" />
+                <img id="scr-flat" src="assets/screens/flat.png" alt="" />
+                <div class="inv" id="inv0" style="left: 14.3px"></div>
+                <div class="inv" id="inv1" style="left: 139.1px"></div>
+                <div class="inv" id="inv2" style="left: 263.9px"></div>
+                <div class="inv" id="inv3" style="left: 388.7px"></div>
+                <div id="flash"></div>
+              </div>
+              <svg id="plate" viewBox="-118 -88 236 177" data-layout-allow-occlusion>
+                <rect x="-118" y="-88" width="236" height="177" rx="18" fill="#ddd3bb" />
+                <g fill="none" stroke="#5a5142" stroke-width="5">
+                  <rect x="-86" y="-74" width="172" height="112" rx="14" />
+                  <rect x="-17" y="-64" width="34" height="9" rx="4" />
+                  <circle cx="-44" cy="-22" r="14" />
+                  <path d="M -70 26 Q -44 -4 -18 26" />
+                  <line x1="6" y1="-26" x2="62" y2="-26" />
+                  <line x1="6" y1="-2" x2="48" y2="-2" />
+                </g>
+                <text id="t-badge" x="0" y="74" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="700" font-size="34" fill="#5a5142">badge</text>
+              </svg>
+              <div id="glows"></div>
+              <div id="strip"><div id="strip-shine"></div></div>
+              <div class="well" style="left: 78.8px"></div>
+              <div class="well" style="left: 203.6px"></div>
+              <div class="well" style="left: 328.4px"></div>
+              <div class="well" style="left: 453.2px"></div>
+              <div class="key-side" style="left: 83.8px"></div>
+              <div class="key-side" style="left: 208.6px"></div>
+              <div class="key-side" style="left: 333.4px"></div>
+              <div class="key-side" style="left: 458.2px"></div>
+              <div class="key" id="k0" style="left: 83.8px"></div>
+              <div class="key" id="k1" style="left: 208.6px"></div>
+              <div class="key" id="k2" style="left: 333.4px"></div>
+              <div class="key" id="k3" style="left: 458.2px"></div>
+              <div id="base"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="card">
+          <div id="card-slot"></div>
+          <div id="card-photo"></div>
+          <div class="card-line" style="top: 46px; width: 80px"></div>
+          <div class="card-line" style="top: 70px; width: 56px"></div>
+        </div>
+
+        <div id="phone">
+          <div id="ph-screen">
+            <div class="ph-view" id="ph-scan">
+              <svg width="282" height="492" viewBox="-25 0 282 492">
+                <g fill="none" stroke="#1b1d22" stroke-width="7" stroke-linecap="round">
+                  <path d="M40 150 v-34 h34" /><path d="M158 116 h34 v34" />
+                  <path d="M192 250 v34 h-34" /><path d="M74 284 h-34 v-34" />
+                </g>
+                <g fill="#1b1d22">
+                  <rect x="70" y="146" width="28" height="28" /><rect x="134" y="146" width="28" height="28" />
+                  <rect x="70" y="226" width="28" height="28" /><rect x="110" y="190" width="14" height="14" />
+                  <rect x="134" y="214" width="14" height="14" /><rect x="148" y="236" width="14" height="14" />
+                </g>
+              </svg>
+            </div>
+            <div class="ph-view" id="ph-who">
+              <div id="ph-title"></div>
+              <div class="ph-opt" id="ph-mine"></div>
+              <div class="ph-opt" id="ph-other"></div>
+              <div id="ph-eve"></div>
+              <div id="ph-btn"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" id="admin">
+          <div id="admin-head"></div>
+          <div id="admin-label"></div>
+          <div id="seg"></div>
+        </div>
+
+        <div class="panel" id="combo">
+          <div class="mini-key" style="left: 48px"></div>
+          <div id="combo-plus">+</div>
+          <div class="mini-key" style="left: 206px"></div>
+          <div id="combo-text"></div>
+          <svg id="combo-x" viewBox="0 0 800 220">
+            <g stroke="#e8431f" stroke-width="20" stroke-linecap="round">
+              <line id="x1" opacity="0" x1="30" y1="36" x2="310" y2="184" />
+              <line id="x2" opacity="0" x1="30" y1="184" x2="310" y2="36" />
+              <line id="x3" opacity="0" x1="322" y1="104" x2="770" y2="104" stroke-width="6" />
+            </g>
+          </svg>
+        </div>
+
+        <svg id="cells" viewBox="0 0 1920 1080">
+          <g id="cells-on" fill="#d9b56a" stroke="#1b1d22" stroke-width="6">
+            <g id="c1"><rect x="1150" y="190" width="440" height="66" rx="16" /><rect x="1590" y="206" width="18" height="34" rx="4" fill="#1b1d22" /></g>
+            <g id="c2"><rect x="1150" y="280" width="440" height="66" rx="16" /><rect x="1590" y="296" width="18" height="34" rx="4" fill="#1b1d22" /></g>
+            <g id="c3"><rect x="1150" y="370" width="440" height="66" rx="16" /><rect x="1590" y="386" width="18" height="34" rx="4" fill="#1b1d22" /></g>
+          </g>
+          <g id="cells-flat" fill="#a9a59c" stroke="#1b1d22" stroke-width="6" opacity="0">
+            <rect x="1150" y="190" width="440" height="66" rx="16" />
+            <rect x="1150" y="280" width="440" height="66" rx="16" />
+            <rect x="1150" y="370" width="440" height="66" rx="16" />
+          </g>
+          <g id="bar">
+            <rect x="1150" y="570" width="612" height="70" rx="12" fill="#ffffff" stroke="#1b1d22" stroke-width="6" />
+            <rect id="bar-fill" x="1156" y="576" width="230" height="58" rx="8" fill="#e8431f" />
+            <rect id="bar-range" x="1386" y="576" width="100" height="58" fill="#e8431f" opacity="0.35" />
+            <g stroke="#1b1d22" stroke-width="3" stroke-opacity="0.35">
+              <line x1="1256" y1="576" x2="1256" y2="634" /><line x1="1356" y1="576" x2="1356" y2="634" />
+              <line x1="1456" y1="576" x2="1456" y2="634" /><line x1="1556" y1="576" x2="1556" y2="634" />
+              <line x1="1656" y1="576" x2="1656" y2="634" />
+            </g>
+          </g>
+        </svg>
+        <div id="months">
+          <div id="months-label"></div>
+          <div class="tick" style="left: 1206px">1</div>
+          <div class="tick" style="left: 1306px">2</div>
+          <div class="tick" style="left: 1406px">3</div>
+          <div class="tick" style="left: 1506px">4</div>
+          <div class="tick" style="left: 1606px">5</div>
+          <div class="tick" style="left: 1706px">6</div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          // Every time below is film time: scene start + a cue from tools/retime.py, so each visual lands with,
+          // or 0.3 s before, the narrated word it shows. Behaviour follows ux/SCOREBOARD-UI.md (screens, LEDs,
+          // target light, refresh rules); the buzzer sounds are in the audio track (tools/sound.py).
+          const F = window.__FILM;
+          const T = F.t;
+          const at = (s, k) => F.scenes[s][0] + F.cues[s][k];
+          const S0 = (s) => F.scenes[s][0];
+          const tl = gsap.timeline({ paused: true });
+          const $ = (id) => document.getElementById(id);
+
+          // fixed texts
+          $("t-badge").textContent = T.badge;
+          $("admin-head").textContent = T.admin_head.toUpperCase();
+          $("admin-label").textContent = T.admin_label;
+          $("ph-title").textContent = T.ph_title;
+          $("ph-mine").textContent = T.ph_mine;
+          $("ph-other").textContent = T.ph_other;
+          $("ph-eve").textContent = T.ph_eve;
+          $("ph-btn").textContent = T.ph_link;
+          $("combo-text").textContent = T.combo;
+          $("months-label").textContent = T.months;
+          const hl = document.createElement("div");
+          hl.id = "seg-hl";
+          $("seg").appendChild(hl);
+          T.levels.forEach((w, i) => {
+            const el = document.createElement("div");
+            el.className = "seg";
+            el.id = "seg" + i;
+            el.style.left = i * 175.5 + "px";
+            el.textContent = w;
+            $("seg").appendChild(el);
+          });
+
+          // LEDs (6 player colours + white feedback) and the target light, one layer per colour
+          const COL = { white: "#ffffff", blue: "#3d7bff", yellow: "#ffd23f", green: "#3ddc6a", magenta: "#ff3fd2", cyan: "#3fe0ff" };
+          const SEG = [[0, 129.7], [129.7, 254.5], [254.5, 379.3], [379.3, 509]];   // bar x; baffles at the key boundaries
+          SEG.forEach(([x0, x1], i) => {
+            const kx = 67.3 + i * 124.8 - x0;   // the key's centre inside its segment
+            for (const c in COL) {
+              const el = document.createElement("div");
+              el.className = "ledseg";
+              el.id = `led${i}-${c}`;
+              el.style.left = x0 + "px";
+              el.style.width = x1 - x0 + "px";
+              el.style.background = `radial-gradient(ellipse 70px 30px at ${kx}px 50%, #ffffff 0%, ${COL[c]} 32%, ${COL[c]}bb 70%, ${COL[c]}66 100%)`;
+              $("strip").appendChild(el);
+            }
+          });
+          for (const c of [...Object.keys(COL), "pulse"]) {
+            const el = document.createElement("div");
+            el.className = "glow";
+            el.id = "glow-" + c;
+            const col = c === "pulse" ? "#ffffff" : COL[c];
+            el.style.background = `radial-gradient(closest-side, ${col} 0%, ${col}cc 45%, ${col}00 100%)`;
+            $("glows").appendChild(el);
+          }
+
+          const AWAY = { x: 1150, y: 300, scale: 1.5, rotation: 12 };   // the badge card, off frame (front right)
+          const NEAR = { x: 40, y: 18, scale: 1.12, rotation: -4 };    // just in front of the target
+          const ON = { x: 0, y: 0, scale: 1, rotation: 0 };            // pressed on the target (right wing)
+          // ---- helpers (call in film order: they track what is lit / shown) ----
+          let cur = null;
+          function show(t, name, full) {
+            const next = $("scr-" + name);
+            if (!full) {
+              tl.to(next, { opacity: 1, duration: 0.12, ease: "none" }, t);
+              if (cur) tl.to(cur, { opacity: 0, duration: 0.12, ease: "none" }, t);
+            } else {   // e-paper full refresh: black / white / black, then the new image
+              tl.set("#flash", { opacity: 1, backgroundColor: "#15171b" }, t);
+              tl.set("#flash", { backgroundColor: "#f4f2ec" }, t + 0.14);
+              tl.set("#flash", { backgroundColor: "#15171b" }, t + 0.27);
+              tl.set(next, { opacity: 1 }, t + 0.27);
+              if (cur) tl.set(cur, { opacity: 0 }, t + 0.27);
+              tl.set("#flash", { opacity: 0 }, t + 0.4);
+            }
+            cur = next;
+          }
+          const led = [null, null, null, null];
+          function setLed(t, i, c) {
+            if (led[i] === c) return;
+            if (led[i]) tl.to(`#led${i}-${led[i]}`, { opacity: 0, duration: 0.08, ease: "none" }, t);
+            if (c) tl.to(`#led${i}-${c}`, { opacity: 1, duration: 0.08, ease: "none" }, t);
+            led[i] = c;
+          }
+          const setLeds = (t, cs) => cs.forEach((c, i) => setLed(t, i, c));
+          function blink(t, idx, cs, n, period) {   // e.g. goal: scoring side, twice
+            const keep = idx.map((i) => led[i]);
+            for (let k = 0; k < n; k++) {
+              idx.forEach((i, j) => setLed(t + k * period, i, cs[j]));
+              idx.forEach((i) => setLed(t + k * period + period / 2, i, null));
+            }
+            idx.forEach((i, j) => setLed(t + n * period, i, keep[j]));
+          }
+          function press(t, i, opts = {}) {   // switch click is in the audio; label inverts; LED white 0.2 s
+            tl.to("#k" + i, { y: 11, duration: 0.06, ease: "power2.in" }, t);
+            tl.to("#k" + i, { y: 0, duration: 0.14, ease: "power2.out" }, t + 0.14);
+            if (opts.led !== false) {
+              const was = led[i];
+              setLed(t + 0.04, i, "white");
+              setLed(t + 0.24, i, was);
+            }
+            if (opts.inv !== false) {
+              tl.set("#inv" + i, { opacity: 1 }, t + 0.04);
+              tl.set("#inv" + i, { opacity: 0 }, t + 0.35);
+            }
+          }
+          const glowEvents = [];
+          function glow(t, c, dur, level = 1) {
+            glowEvents.push([t, t + dur]);
+            tl.to("#glow-" + c, { opacity: level, duration: 0.08, ease: "none" }, t);
+            tl.to("#glow-" + c, { opacity: 0, duration: 0.2, ease: "none" }, t + dur);
+          }
+          const listening = [];   // [from, to]: the soft "you can scan now" blink every 3 s
+          function card(enter, touch, lift) {
+            tl.fromTo("#card", AWAY, { ...NEAR, duration: 0.4, ease: "power3.out", immediateRender: false }, enter);
+            tl.to("#card", { ...ON, duration: 0.16, ease: "power2.in" }, touch - 0.16);
+            tl.to("#card", { ...AWAY, duration: 0.4, ease: "power2.in" }, lift);
+          }
+          // initial states outside the timeline (a set at 0 doesn't render while the playhead sits at 0)
+          gsap.set("#rig-pos", { scale: 0.92, transformOrigin: "50% 0%" });
+          gsap.set("#card", AWAY);
+          gsap.set("#phone", { y: 900 });
+          gsap.set(["#admin", "#combo"], { x: 1000 });
+          gsap.set(["#cells", "#months"], { autoAlpha: 0 });   // hidden, not just transparent, until s7
+
+          // ---- s1: asleep, wake ----
+          show(0, "idle", false);
+          tl.fromTo("#rig-pos", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9, ease: "power3.out" }, 0);
+          const key = at("s1", "key"), bump = at("s1", "bump"), wake = at("s1", "wake");
+          press(key, 2, { led: false, inv: false });   // a key in Idle only wakes the board
+          show(key + 0.3, "waking");
+          tl.to("#rig", { keyframes: [{ x: -14, rotation: -0.6, duration: 0.05 }, { x: 10, rotation: 0.4, duration: 0.06 }, { x: -6, rotation: -0.2, duration: 0.06 }, { x: 0, rotation: 0, duration: 0.1 }] }, bump);
+          show(wake, "lobby");
+          listening.push([wake + 0.5, at("s3", "play")]);
+
+          // ---- s2: badges, teams ----
+          const blip = at("s2", "blip"), joined = at("s2", "joined");
+          card(at("s2", "tap"), blip - 0.25, joined - 0.3);
+          glow(blip - 0.25, "white", joined - 0.3 - (blip - 0.25));
+          show(joined, "bob-joined");
+          glow(joined, "yellow", 1.0);
+          setLeds(joined, ["blue", "yellow", null, null]);   // Alice (joined earlier) and Bob, above their slots
+          const allin = at("s2", "allin");
+          // Carol, then Dave (one card stands in for both): each tap >= 0.3 s, each join after the release
+          tl.fromTo("#card", AWAY, { ...NEAR, duration: 0.35, ease: "power3.out", immediateRender: false }, allin - 2.75);
+          tl.to("#card", { ...ON, duration: 0.16, ease: "power2.in" }, allin - 2.36);
+          glow(allin - 2.2, "white", 0.35);
+          tl.to("#card", { ...NEAR, duration: 0.2, ease: "power2.out" }, allin - 1.85);
+          show(allin - 1.5, "carol-joined");
+          glow(allin - 1.5, "green", 0.45);
+          setLed(allin - 1.5, 2, "green");
+          tl.to("#card", { ...ON, duration: 0.16, ease: "power2.in" }, allin - 1.16);
+          glow(allin - 1.0, "white", 0.4);
+          tl.to("#card", { ...AWAY, duration: 0.4, ease: "power2.in" }, allin - 0.6);
+          show(allin, "dave-joined");
+          glow(allin, "magenta", 1.0);
+          setLed(allin, 3, "magenta");
+          // the three ways to make teams (ux 18d): each mode key's label lights in turn, then K4 Fair is pressed
+          function modeKey(t0, t1, i) {
+            const was = led[i];
+            setLed(t0, i, "white");
+            setLed(t1, i, was);
+            tl.set("#inv" + i, { opacity: 1 }, t0);
+            tl.set("#inv" + i, { opacity: 0 }, t1);
+          }
+          const make = at("s2", "make");
+          modeKey(at("s2", "choose"), at("s2", "random"), 1);
+          modeKey(at("s2", "random"), at("s2", "fair"), 2);
+          modeKey(at("s2", "fair"), make, 3);
+          press(make, 3);
+          show(make + 0.35, "teams-made");
+          setLeds(make + 0.35, ["green", "magenta", "blue", "yellow"]);   // left team K1-K2, right K3-K4
+          const swap = at("s2", "swap");
+          press(swap, 1);
+          show(swap + 0.35, "teams");
+          setLeds(swap + 0.35, ["blue", "yellow", "green", "magenta"]);
+
+          // ---- s3: goals, who scored, undo ----
+          const play = at("s3", "play");
+          setLeds(play, [null, null, null, null]);
+          show(play, "live-7-5", true);   // full refresh at the start of a game
+          const goal = at("s3", "goal");
+          show(goal, "goal");
+          blink(goal, [0, 1], ["blue", "yellow"], 2, 0.5);
+          const own = at("s3", "own");
+          press(own, 2);
+          show(own + 0.35, "own-goal");
+          const undo = at("s3", "undo");
+          show(undo - 0.75, "live-8-5");
+          press(undo, 0);
+          show(undo + 0.35, "undo");
+          const down = at("s3", "down");
+          press(down, 3);
+          show(down + 0.5, "live-7-5");
+
+          // ---- s4: won, auto-save, rematch ----
+          show(S0("s4") - 0.05, "live-9-7");
+          const won = at("s4", "won");
+          blink(won, [0, 1], ["blue", "yellow"], 4, 0.25);
+          show(won + 0.9, "saving-8");
+          const count = at("s4", "count");
+          show(count, "saving-6");
+          show(count + 0.45, "saving-4");
+          show(count + 0.9, "saving-2");
+          show(at("s4", "saved"), "saved");
+          const rematch = at("s4", "rematch");
+          press(rematch, 3);
+          show(rematch + 0.35, "teams");
+          setLeds(rematch + 0.35, ["blue", "yellow", "green", "magenta"]);
+          listening.push([won + 1.6, S0("s5") - 0.3]);   // Finished (first 60 s) and Teams
+
+          // ---- s5: unknown badge, link with the phone ----
+          setLeds(S0("s5") - 0.05, [null, null, null, null]);
+          show(S0("s5") - 0.05, "lobby-ab");
+          const unk = at("s5", "unknown");
+          card(unk - 0.1, unk + 0.55, unk + 0.85);
+          glow(unk + 0.55, "white", 0.3);
+          glowEvents.push([unk + 0.85, unk + 2.15]);   // unknown: target off for 1 s after the answer
+          show(unk + 1.15, "unknown");
+          const link = at("s5", "link");
+          tl.fromTo("#phone", { y: 900 }, { y: 0, duration: 0.45, ease: "power3.out", immediateRender: false }, link);
+          const mate = at("s5", "mate"), inn = at("s5", "in");
+          tl.to("#ph-who", { opacity: 1, duration: 0.15, ease: "none" }, mate);
+          tl.to("#ph-scan", { opacity: 0, duration: 0.15, ease: "none" }, mate);
+          const tap = (el, t) => {
+            tl.to(el, { scale: 0.94, duration: 0.07, ease: "power2.in" }, t);
+            tl.to(el, { scale: 1, duration: 0.12, ease: "power2.out" }, t + 0.08);
+          };
+          tap("#ph-other", mate + 0.45);
+          tl.to("#ph-other", { backgroundColor: "#1b1d22", color: "#f2efe8", duration: 0.1, ease: "none" }, mate + 0.5);
+          tl.to("#ph-eve", { opacity: 1, duration: 0.15, ease: "none" }, mate + 0.75);
+          tap("#ph-eve", mate + 1.1);
+          tl.to("#ph-eve", { backgroundColor: "#e7e2d7", duration: 0.1, ease: "none" }, mate + 1.15);
+          tl.to("#ph-btn", { opacity: 1, duration: 0.15, ease: "none" }, inn);
+          tap("#ph-btn", inn + 0.5);
+          show(inn + 0.9, "eve-in");
+          setLeds(inn + 0.9, ["blue", "yellow", "cyan", null]);
+          tl.to("#phone", { y: 900, duration: 0.5, ease: "power2.in" }, inn + 2.0);
+          listening.push([S0("s5") + 0.3, at("s7", "flat")]);
+
+          // ---- s6: volume in admin, no combo ----
+          const admin = at("s6", "admin");
+          tl.to("#rig-pos", { x: -400, scale: 0.8, duration: 0.6, ease: "power3.inOut" }, admin - 0.3);
+          tl.to("#admin", { x: 0, duration: 0.5, ease: "power3.out" }, admin);
+          const lv = (t, i) => {   // the selection pill moves; the chosen word turns paper-coloured
+            tl.to("#seg-hl", { x: i * 175.5, duration: 0.12, ease: "power2.out" }, t);
+            [0, 1, 2, 3].forEach((j) => tl.to("#seg" + j, { color: j === i ? "#f2efe8" : "#1b1d22", duration: 0.1, ease: "none" }, t));
+          };
+          lv(admin, 2);   // default Medium
+          ["off", "low", "med", "high"].forEach((k, i) => lv(at("s6", k), i));
+          lv(at("s6", "high") + 0.7, 2);
+          const combo = at("s6", "combo");
+          tl.to("#combo", { x: 0, duration: 0.4, ease: "power3.out" }, combo);
+          ["#x1", "#x2", "#x3"].forEach((x, i) => {
+            tl.set(x, { opacity: 1 }, combo + 0.4 + i * 0.12);
+            tl.fromTo(x, { strokeDasharray: 800, strokeDashoffset: 800 }, { strokeDashoffset: 0, duration: 0.18, ease: "power2.in", immediateRender: true }, combo + 0.4 + i * 0.12);
+          });
+          setLeds(inn + 0.9 + 10, [null, null, null, null]);   // steady lobby light times out after 10 s
+
+          // ---- s7: batteries, flat, close ----
+          const s7 = S0("s7");
+          tl.to(["#admin", "#combo"], { x: 1000, duration: 0.45, ease: "power2.in" }, s7 - 0.3);
+          tl.to("#rig-pos", { x: -340, scale: 0.8, duration: 0.5, ease: "power2.inOut" }, s7 - 0.1);
+          tl.set(["#cells", "#months"], { autoAlpha: 1 }, s7);
+          const b11 = at("s7", "b11");
+          ["#c1", "#c2", "#c3"].forEach((c, i) => {
+            tl.fromTo(c, { opacity: 0, y: -140 }, { opacity: 1, y: 0, duration: 0.4, ease: "bounce.out", immediateRender: true }, b11 + i * 0.15);
+          });
+          tl.fromTo(["#bar", "#months-label", ".tick"], { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "none", immediateRender: true }, b11 + 0.5);
+          tl.fromTo("#bar-fill", { scaleX: 0, svgOrigin: "1156 605" }, { scaleX: 1, duration: 1.1, ease: "power2.out", immediateRender: true }, at("s7", "months"));   // 2.3 months, then the range to 3.3 (INTERFACES §0, scoreboard, speaker; EST)
+          tl.fromTo("#bar-range", { opacity: 0 }, { opacity: 0.35, duration: 0.4, ease: "none", immediateRender: true }, at("s7", "months") + 1.1);
+          const flat = at("s7", "flat");
+          tl.to("#cells-flat", { opacity: 1, duration: 0.3, ease: "none" }, flat);
+          show(flat, "flat", true);
+          const b12 = at("s7", "b12");
+          tl.to("#cells-flat", { opacity: 0, duration: 0.25, ease: "none" }, b12 - 1.1);
+          ["#c1", "#c2", "#c3"].forEach((c, i) => tl.fromTo(c, { y: -30 }, { y: 0, duration: 0.3, ease: "bounce.out", immediateRender: false }, b12 - 1.1 + i * 0.08));
+          show(b12 - 0.6, "lobby", true);   // fresh cells: one full refresh to what the server says
+          tl.to(["#cells", "#months"], { autoAlpha: 0, duration: 0.4, ease: "none" }, b12 - 0.2);
+          tl.to("#rig-pos", { x: 0, scale: 0.92, duration: 0.8, ease: "power3.inOut" }, b12 - 0.2);
+          listening.push([b12 + 0.6, F.total - 0.3]);
+
+          // the target's listening blink: every 3 s, never on top of a touch / join / "off for 1 s"
+          listening.forEach(([a, b]) => {
+            for (let t = a; t + 0.6 < b; t += 3) {
+              if (glowEvents.some(([g0, g1]) => t + 0.6 > g0 - 0.2 && t < g1 + 0.3)) continue;
+              tl.fromTo("#glow-pulse", { opacity: 0 }, { opacity: 0.45, duration: 0.3, ease: "sine.inOut", immediateRender: false }, t);
+              tl.to("#glow-pulse", { opacity: 0, duration: 0.3, ease: "sine.inOut" }, t + 0.3);
+            }
+          });
+
+          window.__timelines["board"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

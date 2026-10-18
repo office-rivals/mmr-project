@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Admin flow</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <!-- Cue times (film seconds) from tools/build.py: admin-ui's recorded steps + the intro offset -->
+    <script src="assets/cues.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #f2efe8;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #f2efe8;
+        color: #1b1d22;
+      }
+      #bg-grid {
+        position: absolute;
+        inset: -80px;
+        background-image:
+          linear-gradient(rgba(27, 29, 34, 0.07) 2px, transparent 2px),
+          linear-gradient(90deg, rgba(27, 29, 34, 0.07) 2px, transparent 2px);
+        background-size: 80px 80px;
+      }
+      #bg-glow {
+        position: absolute;
+        width: 1400px;
+        height: 1400px;
+        right: -400px;
+        top: -500px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(232, 67, 31, 0.16), rgba(232, 67, 31, 0) 65%);
+      }
+      #chrome-mark {
+        position: absolute;
+        left: 120px;
+        top: 46px;
+        font-family: "IBM Plex Mono", monospace;
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: 0.16em;
+        color: #55585f;
+      }
+      /* a browser window: the 1280 x 800 page shown at 1240 x 775 */
+      #window {
+        position: absolute;
+        left: 80px;
+        top: 150px;
+        width: 1240px;
+        height: 821px;
+        border-radius: 18px;
+        overflow: hidden;
+        background: #0c0c0c;
+        box-shadow: 0 30px 80px rgba(27, 29, 34, 0.35), 0 0 0 3px #2a2d34;
+      }
+      #bar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1240px;
+        height: 46px;
+        background: #1d1f24;
+      }
+      #bar .dot {
+        position: absolute;
+        top: 16px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #3b3f47;
+      }
+      #bar .url {
+        position: absolute;
+        left: 120px;
+        top: 9px;
+        width: 520px;
+        height: 28px;
+        border-radius: 14px;
+        background: #2a2d34;
+        color: #9aa0aa;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 15px;
+        line-height: 28px;
+        padding-left: 16px;
+      }
+      #viewport {
+        position: absolute;
+        left: 0;
+        top: 46px;
+        width: 1240px;
+        height: 775px;
+        overflow: hidden;
+      }
+      #viewport video {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1240px;
+        height: 775px;
+      }
+      .cap {
+        position: absolute;
+        left: 1390px;
+        top: 220px;
+        width: 470px;
+        opacity: 0;
+      }
+      .cap .kicker {
+        font-family: "IBM Plex Mono", monospace;
+        font-weight: 700;
+        font-size: 24px;
+        letter-spacing: 0.16em;
+        color: #b8321a;
+        margin-bottom: 20px;
+      }
+      .cap .line {
+        font-family: "Archivo Black", "Arial Black", sans-serif;
+        font-size: 64px;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+      }
+      .card {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+      }
+      .card .kicker {
+        position: absolute;
+        left: 0;
+        width: 1920px;
+        top: 420px;
+        text-align: center;
+        font-family: "IBM Plex Mono", monospace;
+        font-weight: 700;
+        font-size: 26px;
+        letter-spacing: 0.16em;
+        color: #b8321a;
+      }
+      .card .line {
+        position: absolute;
+        left: 0;
+        width: 1920px;
+        top: 480px;
+        text-align: center;
+        font-family: "Archivo Black", "Arial Black", sans-serif;
+        font-size: 96px;
+        letter-spacing: -0.03em;
+      }
+      #end img {
+        position: absolute;
+        left: 870px;
+        top: 300px;
+        width: 180px;
+        height: 180px;
+        border-radius: 32px;
+      }
+      #end .line {
+        top: 540px;
+        font-size: 84px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="74.7" data-width="1920" data-height="1080">
+      <div id="bg" class="clip" data-start="0" data-duration="74.7" data-track-index="0">
+        <div id="bg-grid"></div>
+        <div id="bg-glow"></div>
+        <div id="chrome-mark">MMR PROJECT · ADMIN · HARDWARE</div>
+      </div>
+
+      <div id="stage" class="clip" data-start="0" data-duration="74.7" data-track-index="1">
+        <div class="card" id="title">
+          <div class="kicker">FOR ADMINS</div>
+          <div class="line">Setting up a table.</div>
+        </div>
+
+        <div id="window">
+          <div id="bar">
+            <div class="dot" style="left: 20px"></div>
+            <div class="dot" style="left: 44px"></div>
+            <div class="dot" style="left: 68px"></div>
+            <div class="url">/admin/acme/hardware</div>
+          </div>
+          <div id="viewport">
+            <video id="clip" class="clip" src="assets/admin.mp4" data-start="4" data-duration="66.720000" data-track-index="2" muted playsinline></video>
+          </div>
+        </div>
+
+        <div id="caps"></div>
+
+        <div class="card" id="end">
+          <img src="assets/crest.png" alt="" />
+          <div class="line">Every table, at a glance.</div>
+        </div>
+      </div>
+
+      <!-- Sound: clicks and a quiet bed (tools/build.py) -->
+      <audio id="audio-sfx" src="assets/audio/sfx.wav" data-start="0" data-duration="74.7" data-track-index="6" data-volume="1"></audio>
+    </div>
+    <script>
+      const T = window.__T;
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#bg-grid", { x: 0, y: 0 }, { x: -80, y: -40, duration: T.total, ease: "none" }, 0);
+
+      // title card, then the window comes up and the recording starts at T.intro
+      tl.fromTo("#title", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.3);
+      tl.to("#title", { opacity: 0, duration: 0.3 }, T.intro - 1.0);
+      tl.fromTo("#window", { opacity: 0, y: 80 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, T.intro - 0.7);
+
+      // captions: kicker + one line, each until the next
+      const host = document.getElementById("caps");
+      T.caps.forEach(([at, kicker, line], i) => {
+        const el = document.createElement("div");
+        el.className = "cap";
+        el.innerHTML = `<div class="kicker">${kicker}</div><div class="line">${line}</div>`;
+        host.appendChild(el);
+        const out = i + 1 < T.caps.length ? T.caps[i + 1][0] : T.end;
+        tl.fromTo(el, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, at);
+        tl.to(el, { opacity: 0, duration: 0.18 }, out - 0.18);
+      });
+
+      // three zoom-ins on the page (tools/build.py; page px x 0.96875 = window px): the goalkeeper question and its
+      // live line, the team-name clash, the unclaimed match
+      const k = 1240 / 1280;
+      T.zooms.forEach(([a, b, x, y, s]) => {
+        tl.set("#clip", { transformOrigin: `${x * k}px ${y * k}px` }, a - 0.01);
+        tl.to("#clip", { scale: s, duration: 0.6, ease: "power2.inOut" }, a);
+        tl.to("#clip", { scale: 1, duration: 0.5, ease: "power2.inOut" }, b);
+      });
+
+      // end card
+      tl.to("#window", { opacity: 0, duration: 0.4 }, T.end);
+      tl.fromTo("#end", { opacity: 0 }, { opacity: 1, duration: 0.5 }, T.end + 0.2);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

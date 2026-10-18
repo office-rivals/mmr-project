@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #s7-card {
+          position: absolute;
+          left: 560px;
+          top: 150px;
+          width: 800px;
+          height: 460px;
+          border-radius: 32px;
+          background: #ffffff;
+          border: 5px solid var(--ink);
+          box-shadow: 20px 20px 0 var(--ink);
+        }
+        #s7-score {
+          position: absolute;
+          left: 0;
+          top: 60px;
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 36px;
+          font-family: var(--mono);
+          font-weight: 700;
+          font-size: 150px;
+          line-height: 1;
+        }
+        .s7-field {
+          position: relative;
+          display: block;
+          width: 260px;
+          height: 210px;
+          border: 5px solid var(--accent);
+          border-radius: 22px;
+          text-align: center;
+          line-height: 200px;
+          background: var(--paper);
+          overflow: hidden;
+        }
+        .s7-shine {
+          position: absolute;
+          left: -120px;
+          top: 0;
+          width: 80px;
+          height: 100%;
+          background: rgba(232, 67, 31, 0.35);
+        }
+        .s7-v {
+          position: relative;
+          display: inline-block;
+        }
+        #s7-btn {
+          position: absolute;
+          left: 50%;
+          bottom: 44px;
+          width: 140px;
+          height: 76px;
+          margin-left: -70px;
+          border-radius: 16px;
+          background: var(--ink);
+          color: var(--ink);
+          font-family: var(--mono);
+          font-weight: 700;
+          font-size: 48px;
+          line-height: 76px;
+          text-align: center;
+        }
+        #s7-cursor {
+          position: absolute;
+          left: 975px;
+          top: 560px;
+          width: 64px;
+          height: 78px;
+        }
+      </style>
+      <div id="root" class="scene" data-composition-id="s7" data-width="1920" data-height="1080">
+        <div id="s7-card">
+          <div id="s7-score">
+            <span class="s7-field"><span class="s7-shine" id="s7-sh1"></span><span class="s7-v" id="s7-a">10</span></span>
+            <span>–</span>
+            <span class="s7-field"><span class="s7-shine" id="s7-sh2"></span><span class="s7-v" id="s7-b">5</span></span>
+          </div>
+          <div id="s7-btn"><svg viewBox="0 0 140 76" width="140" height="76"><path id="s7-check" d="M 48 38 L 64 54 L 94 22" fill="none" stroke="#f2efe8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" /></svg></div>
+        </div>
+        <svg id="s7-cursor" viewBox="0 0 54 66">
+          <path d="M 4 4 L 4 54 L 17 42 L 27 62 L 36 58 L 26 38 L 44 38 Z" fill="#1b1d22" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" />
+        </svg>
+      </div>
+      <script>
+        (function () {
+          // Cue times (scene-local s) from tools/retime.py via window.__FILM.
+          const C = window.__FILM.cues.s7;
+          const tl = gsap.timeline({ paused: true });
+          // b0: card in, fields auto-fill 10 – 5; tap: "You just tap" -> cursor clicks ✓
+          tl.fromTo("#s7-card", { opacity: 0, y: 80, rotation: 2 }, { opacity: 1, y: 0, rotation: 0, duration: 0.5, ease: "power3.out" }, C.b0);
+          tl.fromTo(["#s7-sh1", "#s7-sh2"], { x: 0 }, { x: 460, duration: 0.5, ease: "power2.inOut", stagger: 0.15 }, C.b0 + 0.4);
+          tl.fromTo(["#s7-a", "#s7-b"], { opacity: 0, scale: 1.6 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(3)", stagger: 0.15 }, C.b0 + 0.6);
+          tl.fromTo("#s7-cursor", { opacity: 0, x: 380, y: 220 }, { opacity: 1, x: 0, y: 0, duration: 0.7, ease: "power3.out" }, C.tap - 0.9);
+          tl.to("#s7-cursor", { scale: 0.85, duration: 0.08, yoyo: true, repeat: 1, transformOrigin: "10% 10%" }, C.tap - 0.1);
+          tl.to("#s7-btn", { scale: 0.92, duration: 0.08, yoyo: true, repeat: 1 }, C.tap - 0.1);
+          tl.to("#s7-btn", { backgroundColor: "#e8431f", duration: 0.15 }, C.tap);
+          tl.to("#s7-check", { stroke: "#1b1d22", duration: 0.15 }, C.tap);
+          tl.to("#s7-cursor", { opacity: 0, x: 80, y: 60, duration: 0.4, ease: "power2.in" }, C.tap + 0.4);
+          window.__timelines["s7"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

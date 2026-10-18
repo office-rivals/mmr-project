@@ -1,0 +1,34 @@
+{
+ "en": {
+  "chrome": "MMR PROJECT · REVIEW GUIDE · FOOSBALL GOAL COUNTERS",
+  "t": {},
+  "captions": {
+   "L2": "Four pull requests.",
+   "L3": "Device → API → phone.",
+   "L7": "1 · The API",
+   "L18": "2 · The frontend",
+   "L26": "3 · The hardware",
+   "L34": "4 · Observability",
+   "L37": "Look closer here."
+  },
+  "say_as": {
+   "slash api slash v three slash hardware": "/api/v3/hardware",
+   "two oh one": "201",
+   "four oh nine": "409",
+   "four twenty-two": "422",
+   "nineteen": "19",
+   "one hundred and thirty-nine": "139",
+   "fifty-five": "55",
+   "thirty": "30",
+   "live dot T S": "live.ts",
+   "OTLP": "OTLP",
+   "read-me": "README",
+   "observability read-me": "observability README",
+   "forty-five": "45",
+   "seven": "7",
+   "two hundred and ninety-four": "294",
+   "Fifty-seven": "57",
+   "four hundred": "400"
+  }
+ }
+}

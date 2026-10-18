@@ -1,0 +1,1 @@
+window.__T = {"beam": 0.5, "shadow": 1.55, "cross": 2.05, "paper": 2.75, "refresh": 3.2, "snap": 3.5, "key": 4.3, "glow": 4.55, "badge": 5.5, "tap": 5.95, "joined": 6.2, "black": 6.85, "title": 7.35, "end": 9.2, "total": 11.0, "flicker": [0, 0.08, 0.16, 0.22, 0.3]};

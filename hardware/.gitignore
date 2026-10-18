@@ -1,0 +1,9 @@
+# hardware/: shared ignores for every agent folder (per-folder .gitignore files add the specifics)
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+*.log
+/build/

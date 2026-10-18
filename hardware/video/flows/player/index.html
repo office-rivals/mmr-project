@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Player flow</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <!-- Cue times (film seconds) from tools/build.py: admin-ui's recorded steps + the intro offset -->
+    <script src="assets/cues.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #f2efe8;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #f2efe8;
+        color: #1b1d22;
+      }
+      #bg-grid {
+        position: absolute;
+        inset: -80px;
+        background-image:
+          linear-gradient(rgba(27, 29, 34, 0.07) 2px, transparent 2px),
+          linear-gradient(90deg, rgba(27, 29, 34, 0.07) 2px, transparent 2px);
+        background-size: 80px 80px;
+      }
+      #bg-glow {
+        position: absolute;
+        width: 1400px;
+        height: 1400px;
+        right: -400px;
+        top: -500px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(232, 67, 31, 0.16), rgba(232, 67, 31, 0) 65%);
+      }
+      #chrome-mark {
+        position: absolute;
+        left: 120px;
+        top: 46px;
+        font-family: "IBM Plex Mono", monospace;
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: 0.16em;
+        color: #55585f;
+      }
+      /* the phone: 390 x 844 CSS px shown at 1.6x (624 x 1350); the app uses the top half, so the phone runs off
+         the bottom of the frame */
+      #phone {
+        position: absolute;
+        left: 230px;
+        top: 96px;
+        width: 656px;
+        height: 1382px;
+        border-radius: 84px;
+        background: #0b0c0e;
+        box-shadow: 0 30px 80px rgba(27, 29, 34, 0.35), inset 0 0 0 3px #2a2d34;
+      }
+      #screen {
+        position: absolute;
+        left: 16px;
+        top: 16px;
+        width: 624px;
+        height: 1350px;
+        border-radius: 68px;
+        overflow: hidden;
+        background: #090909;
+      }
+      #screen video {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 624px;
+        height: 1350px;
+      }
+      #sticker {
+        position: absolute;
+        left: 820px;
+        top: 300px;
+        width: 380px;
+        height: 380px;
+        border-radius: 36px;
+        background: #ffffff;
+        border: 6px solid #1b1d22;
+        box-shadow: 14px 14px 0 #1b1d22;
+      }
+      #sticker .qr {
+        position: absolute;
+        left: 50px;
+        top: 50px;
+        width: 180px;
+        height: 180px;
+      }
+      #sticker .nfc {
+        position: absolute;
+        right: 44px;
+        top: 70px;
+        width: 90px;
+        height: 140px;
+      }
+      #sticker .label {
+        position: absolute;
+        left: 50px;
+        bottom: 46px;
+        font-family: "Archivo Black", "Arial Black", sans-serif;
+        font-size: 52px;
+        letter-spacing: -0.02em;
+      }
+      #tap-ring {
+        position: absolute;
+        left: 1080px;
+        top: 410px;
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        border: 8px solid #e8431f;
+        opacity: 0;
+      }
+      .cap {
+        position: absolute;
+        left: 990px;
+        top: 230px;
+        width: 860px;
+        opacity: 0;
+      }
+      .cap .kicker {
+        font-family: "IBM Plex Mono", monospace;
+        font-weight: 700;
+        font-size: 26px;
+        letter-spacing: 0.16em;
+        color: #b8321a;
+        margin-bottom: 22px;
+      }
+      .cap .line {
+        font-family: "Archivo Black", "Arial Black", sans-serif;
+        font-size: 84px;
+        line-height: 1.04;
+        letter-spacing: -0.03em;
+      }
+      /* the goal counter in the drawer: the same still as the goal-counter film */
+      #counter {
+        position: absolute;
+        left: 1380px;
+        top: 690px;
+        width: 420px;
+        height: 332px;
+        opacity: 0;
+      }
+      #counter-label {
+        position: absolute;
+        left: 0;
+        top: -40px;
+        font-family: "IBM Plex Mono", monospace;
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: 0.16em;
+        color: #55585f;
+      }
+      #counter img,
+      #counter svg {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 420px;
+        height: 332px;
+        overflow: visible;
+      }
+      #end {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+      }
+      #end .line {
+        position: absolute;
+        left: 0;
+        width: 1920px;
+        top: 600px;
+        text-align: center;
+        font-family: "Archivo Black", "Arial Black", sans-serif;
+        font-size: 84px;
+        letter-spacing: -0.03em;
+      }
+      #end img {
+        position: absolute;
+        left: 870px;
+        top: 360px;
+        width: 180px;
+        height: 180px;
+        border-radius: 32px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="52.5" data-width="1920" data-height="1080">
+      <div id="bg" class="clip" data-start="0" data-duration="52.5" data-track-index="0">
+        <div id="bg-grid"></div>
+        <div id="bg-glow"></div>
+        <div id="chrome-mark">MMR PROJECT · THE GAME ON YOUR PHONE</div>
+      </div>
+
+      <div id="stage" class="clip" data-start="0" data-duration="52.5" data-track-index="1">
+        <!-- intro: the table's sticker (QR + NFC); the phone taps it -->
+        <div id="sticker">
+          <svg class="qr" viewBox="0 0 7 7" shape-rendering="crispEdges">
+            <g fill="#1b1d22">
+              <rect x="0" y="0" width="3" height="3" /><rect x="4" y="0" width="3" height="3" /><rect x="0" y="4" width="3" height="3" />
+              <rect x="4" y="4" width="1" height="1" /><rect x="6" y="4" width="1" height="1" /><rect x="5" y="5" width="1" height="1" />
+              <rect x="4" y="6" width="1" height="1" /><rect x="6" y="6" width="1" height="1" /><rect x="3" y="3" width="1" height="1" />
+            </g>
+            <g fill="#ffffff"><rect x="1" y="1" width="1" height="1" /><rect x="5" y="1" width="1" height="1" /><rect x="1" y="5" width="1" height="1" /></g>
+          </svg>
+          <svg class="nfc" viewBox="0 0 60 100" fill="none" stroke="#e8431f" stroke-width="7" stroke-linecap="round">
+            <path d="M 10 30 A 30 30 0 0 1 10 70" /><path d="M 26 18 A 46 46 0 0 1 26 82" /><path d="M 42 6 A 62 62 0 0 1 42 94" />
+          </svg>
+          <div class="label">Table 1</div>
+        </div>
+        <div id="tap-ring"></div>
+
+        <div id="phone">
+          <div id="screen">
+            <video id="clip" class="clip" src="assets/player.mp4" data-start="4" data-duration="44.440000" data-track-index="2" muted playsinline></video>
+          </div>
+        </div>
+
+        <div id="caps"></div>
+
+        <div id="counter">
+          <div id="counter-label">THE GOAL COUNTER</div>
+          <img src="assets/counter.png" alt="" />
+          <svg viewBox="0 0 1144 903">
+            <g transform="scale(0.9811)">
+              <rect x="538" y="291" width="300" height="66" rx="3" fill="#15171b" />
+              <g id="waves" fill="none" stroke="#e8431f" stroke-width="12" stroke-linecap="round">
+                <path id="w1" d="M 624 66 A 55 55 0 0 1 694 66" />
+                <path id="w2" d="M 601 39 A 90 90 0 0 1 717 39" />
+                <path id="w3" d="M 579 12 A 125 125 0 0 1 739 12" />
+              </g>
+              <rect id="press" x="296" y="304" width="134" height="134" rx="4" fill="#1b1d22" opacity="0" />
+              <circle id="ring" cx="363" cy="371" r="105" fill="none" stroke="#e8431f" stroke-width="14" stroke-linecap="round"
+                stroke-dasharray="659.7" stroke-dashoffset="659.7" transform="rotate(-90 363 371)" />
+            </g>
+          </svg>
+        </div>
+
+        <div id="end">
+          <img src="assets/crest.png" alt="" />
+          <div class="line">The game, live on your phone.</div>
+        </div>
+      </div>
+
+      <!-- Sound: the goal counter's buzzer, taps, a quiet bed (tools/build.py) -->
+      <audio id="audio-sfx" src="assets/audio/sfx.wav" data-start="0" data-duration="52.5" data-track-index="6" data-volume="1"></audio>
+    </div>
+    <script>
+      const T = window.__T;
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#bg-grid", { x: 0, y: 0 }, { x: -80, y: -40, duration: T.total, ease: "none" }, 0);
+
+      // intro: the sticker, the phone comes in and taps it (bip), then settles on the left and the clip starts
+      gsap.set("#phone", { x: 1250, y: 260, rotation: 10, scale: 0.55, transformOrigin: "0% 0%" });
+      tl.fromTo("#sticker", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.2);
+      tl.to("#phone", { x: 920, y: 170, rotation: -6, scale: 0.55, duration: 1.4, ease: "power2.inOut" }, 0.8);   // its top edge on the NFC mark
+      tl.fromTo("#tap-ring", { opacity: 1, scale: 0.4 }, { opacity: 0, scale: 2, duration: 0.6, ease: "power2.out" }, T.intro - 0.9);
+      tl.to("#sticker", { x: 1200, duration: 0.45, ease: "power2.in" }, T.intro - 0.5);   // slides off (no fade: its text keeps contrast)
+      tl.to("#phone", { x: 0, y: 0, rotation: 0, scale: 1, duration: 0.7, ease: "power3.inOut" }, T.intro - 0.6);
+      tl.fromTo("#counter", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5 }, T.intro + 0.4);
+
+      // captions: kicker + one line, each until the next
+      const host = document.getElementById("caps");
+      T.caps.forEach(([at, kicker, line], i) => {
+        const el = document.createElement("div");
+        el.className = "cap";
+        el.innerHTML = `<div class="kicker">${kicker}</div><div class="line">${line}</div>`;
+        host.appendChild(el);
+        const out = i + 1 < T.caps.length ? T.caps[i + 1][0] : T.end;
+        tl.fromTo(el, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.25, ease: "power3.out" }, at);
+        tl.to(el, { opacity: 0, duration: 0.18 }, out - 0.18);
+      });
+
+      // the counter: waves on every chirp; the key held for 1 s (ring), then its undo
+      T.chirps.forEach((t) => {
+        ["#w1", "#w2", "#w3"].forEach((w, i) => {
+          tl.fromTo(w, { opacity: 0 }, { opacity: 1, duration: 0.05, immediateRender: false }, t + i * 0.05);
+          tl.to(w, { opacity: 0, duration: 0.35 }, t + 0.25 + i * 0.05);
+        });
+      });
+      gsap.set("#waves path", { opacity: 0 });
+      tl.set("#press", { opacity: 0.35 }, T.hold);
+      tl.to("#ring", { attr: { "stroke-dashoffset": 0 }, duration: T.undo - T.hold, ease: "none" }, T.hold);
+      tl.set("#press", { opacity: 0 }, T.undo);
+      tl.to("#ring", { opacity: 0, duration: 0.4 }, T.undo);
+
+      // end card
+      tl.to(["#phone", "#counter"], { opacity: 0, duration: 0.4 }, T.end);
+      tl.fromTo("#end", { opacity: 0 }, { opacity: 1, duration: 0.5 }, T.end + 0.2);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

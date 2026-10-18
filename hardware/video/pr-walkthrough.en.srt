@@ -1,0 +1,707 @@
+1
+00:00:00,200 --> 00:00:01,320
+This is a review guide
+
+2
+00:00:01,320 --> 00:00:03,400
+for the foosball goal counters:
+
+3
+00:00:03,400 --> 00:00:06,120
+what the change adds, how to review it,
+
+4
+00:00:06,120 --> 00:00:08,145
+and where to start reading.
+
+5
+00:00:08,145 --> 00:00:09,905
+Nothing is merged yet.
+
+6
+00:00:09,905 --> 00:00:12,785
+The work splits into four pull requests:
+
+7
+00:00:12,785 --> 00:00:13,825
+the API,
+
+8
+00:00:13,825 --> 00:00:15,985
+the beta frontend and its docs,
+
+9
+00:00:15,985 --> 00:00:19,149
+the hardware folder, and observability.
+
+10
+00:00:19,549 --> 00:00:21,069
+A ball breaks an infrared
+
+11
+00:00:21,069 --> 00:00:22,749
+beam in the goal's drawer.
+
+12
+00:00:22,749 --> 00:00:24,589
+The counter saves the goal,
+
+13
+00:00:24,589 --> 00:00:27,878
+beeps, and posts it to the API.
+
+14
+00:00:27,878 --> 00:00:29,878
+The API stores the goal,
+
+15
+00:00:29,878 --> 00:00:31,558
+bumps the table's version,
+
+16
+00:00:31,558 --> 00:00:32,998
+and wakes every phone
+
+17
+00:00:32,998 --> 00:00:35,226
+that is waiting on that table.
+
+18
+00:00:35,226 --> 00:00:37,386
+The phone shows the new score,
+
+19
+00:00:37,386 --> 00:00:40,078
+usually within a second of the goal.
+
+20
+00:00:40,078 --> 00:00:42,398
+Undo comes from one place only:
+
+21
+00:00:42,398 --> 00:00:44,158
+the counter's own button,
+
+22
+00:00:44,158 --> 00:00:47,498
+for its own goal, within ten seconds.
+
+23
+00:00:47,898 --> 00:00:50,538
+Pull request one is the API.
+
+24
+00:00:50,538 --> 00:00:53,338
+Devices sign in with their own scheme.
+
+25
+00:00:53,338 --> 00:00:54,618
+An unknown device
+
+26
+00:00:54,618 --> 00:00:56,511
+that holds the organisation's
+
+27
+00:00:56,511 --> 00:00:58,858
+enrolment token registers itself,
+
+28
+00:00:58,858 --> 00:01:00,058
+unclaimed.
+
+29
+00:01:00,058 --> 00:01:02,938
+After that, only its own secret counts,
+
+30
+00:01:02,938 --> 00:01:05,315
+compared in constant time.
+
+31
+00:01:05,315 --> 00:01:06,595
+The device endpoints
+
+32
+00:01:06,595 --> 00:01:10,675
+live under /api/v3/hardware.
+
+33
+00:01:10,675 --> 00:01:12,515
+They stay out of Swagger:
+
+34
+00:01:12,515 --> 00:01:16,780
+their contract is the firmware's OpenAPI file.
+
+35
+00:01:16,780 --> 00:01:19,920
+A goal event returns 201 when it is counted,
+
+36
+00:01:19,920 --> 00:01:23,740
+409 for a retry the server has already seen,
+
+37
+00:01:23,740 --> 00:01:26,540
+and 422 when the event belongs
+
+38
+00:01:26,540 --> 00:01:28,331
+to another device.
+
+39
+00:01:28,331 --> 00:01:30,411
+The undo rules sit in one place,
+
+40
+00:01:30,411 --> 00:01:31,931
+inside the table lock.
+
+41
+00:01:31,931 --> 00:01:34,491
+A retry is deduplicated first.
+
+42
+00:01:34,491 --> 00:01:37,051
+Then come the refusals: not yours,
+
+43
+00:01:37,051 --> 00:01:40,091
+game closed, already undone, or too late.
+
+44
+00:01:40,091 --> 00:01:43,018
+Each is a 422 with a code.
+
+45
+00:01:43,018 --> 00:01:45,098
+The live view is a long-poll.
+
+46
+00:01:45,098 --> 00:01:46,698
+Send the version you have.
+
+47
+00:01:46,698 --> 00:01:49,738
+If the table has changed, you get it at once.
+
+48
+00:01:49,738 --> 00:01:53,139
+If not, the request waits for the next change.
+
+49
+00:01:53,139 --> 00:01:55,619
+Every change to a table takes one path:
+
+50
+00:01:55,619 --> 00:01:56,659
+lock the row,
+
+51
+00:01:56,659 --> 00:01:58,979
+apply the change, bump the version,
+
+52
+00:01:58,979 --> 00:02:00,899
+commit, then notify.
+
+53
+00:02:00,899 --> 00:02:02,339
+One limit to know:
+
+54
+00:02:02,339 --> 00:02:04,019
+waiters also re-check the
+
+55
+00:02:04,019 --> 00:02:05,859
+database every two seconds,
+
+56
+00:02:05,859 --> 00:02:08,739
+so several API replicas still work,
+
+57
+00:02:08,739 --> 00:02:10,556
+just a little slower.
+
+58
+00:02:10,556 --> 00:02:12,956
+Two small background services save
+
+59
+00:02:12,956 --> 00:02:15,036
+a won game after ten seconds,
+
+60
+00:02:15,036 --> 00:02:17,968
+and close games that have gone quiet.
+
+61
+00:02:17,968 --> 00:02:20,448
+One migration adds eight tables.
+
+62
+00:02:20,448 --> 00:02:22,448
+Two unique indexes matter:
+
+63
+00:02:22,448 --> 00:02:24,768
+a goal event is stored only once,
+
+64
+00:02:24,768 --> 00:02:27,897
+and only one counter can guard each goal.
+
+65
+00:02:27,897 --> 00:02:30,137
+Every table now belongs to one league,
+
+66
+00:02:30,137 --> 00:02:32,057
+and so do its devices.
+
+67
+00:02:32,057 --> 00:02:33,417
+Its games are claimed
+
+68
+00:02:33,417 --> 00:02:35,417
+and rated only in that league:
+
+69
+00:02:35,417 --> 00:02:37,577
+another league gets a 400.
+
+70
+00:02:37,577 --> 00:02:39,737
+And a table can change league only
+
+71
+00:02:39,737 --> 00:02:41,337
+when no game is live,
+
+72
+00:02:41,337 --> 00:02:43,586
+or waiting for its players.
+
+73
+00:02:43,586 --> 00:02:46,146
+The seed data gives you two tables,
+
+74
+00:02:46,146 --> 00:02:49,346
+six placeholder devices in every health state,
+
+75
+00:02:49,346 --> 00:02:51,746
+a live game with an undone goal,
+
+76
+00:02:51,746 --> 00:02:52,946
+and a finished game
+
+77
+00:02:52,946 --> 00:02:55,286
+that is waiting for its players.
+
+78
+00:02:55,286 --> 00:02:59,366
+The API suite now has 294 integration
+
+79
+00:02:59,366 --> 00:03:03,509
+tests. 57 of them are new hardware tests.
+
+80
+00:03:03,509 --> 00:03:06,309
+Start with the hardware API document,
+
+81
+00:03:06,309 --> 00:03:07,989
+then the device controller,
+
+82
+00:03:07,989 --> 00:03:09,589
+the authentication handler,
+
+83
+00:03:09,589 --> 00:03:12,081
+and the table match service.
+
+84
+00:03:12,481 --> 00:03:15,201
+Pull request two is the beta frontend.
+
+85
+00:03:15,201 --> 00:03:18,241
+The table page becomes the phone's live view:
+
+86
+00:03:18,241 --> 00:03:21,514
+the score, who scored last, and when.
+
+87
+00:03:21,514 --> 00:03:23,834
+The page holds one request at a time,
+
+88
+00:03:23,834 --> 00:03:25,914
+and never repeats a held one.
+
+89
+00:03:25,914 --> 00:03:28,794
+A goal makes the scoring column pulse.
+
+90
+00:03:28,794 --> 00:03:32,361
+An undo shows a short line with the new score.
+
+91
+00:03:32,361 --> 00:03:35,081
+New game sends the version the phone saw.
+
+92
+00:03:35,081 --> 00:03:37,961
+A stale screen gets a polite conflict,
+
+93
+00:03:37,961 --> 00:03:40,370
+instead of ending the wrong game.
+
+94
+00:03:40,370 --> 00:03:43,090
+The admin Hardware page sets up tables,
+
+95
+00:03:43,090 --> 00:03:46,290
+their league and team names, claims new devices,
+
+96
+00:03:46,290 --> 00:03:48,930
+and asks one question per goal counter:
+
+97
+00:03:48,930 --> 00:03:51,537
+whose goalkeeper guards this goal?
+
+98
+00:03:51,537 --> 00:03:54,257
+Each device shows its health: battery,
+
+99
+00:03:54,257 --> 00:03:56,897
+silence, and the beam's own checks.
+
+100
+00:03:56,897 --> 00:03:58,577
+The admin overview leads
+
+101
+00:03:58,577 --> 00:04:00,698
+with whatever needs attention.
+
+102
+00:04:00,698 --> 00:04:02,378
+A game the table scored can
+
+103
+00:04:02,378 --> 00:04:04,298
+be claimed from the submit page,
+
+104
+00:04:04,298 --> 00:04:06,378
+or from the table's short link.
+
+105
+00:04:06,378 --> 00:04:09,561
+Then it is rated like any other match.
+
+106
+00:04:09,561 --> 00:04:11,881
+There are 45 new Vitest tests,
+
+107
+00:04:11,881 --> 00:04:13,561
+and a new Playwright spec
+
+108
+00:04:13,561 --> 00:04:16,601
+with 7 end-to-end tests for the live view
+
+109
+00:04:16,601 --> 00:04:18,281
+and the admin page.
+
+110
+00:04:18,281 --> 00:04:20,921
+Please run the beta's end-to-end suite
+
+111
+00:04:20,921 --> 00:04:22,498
+before you approve.
+
+112
+00:04:22,498 --> 00:04:25,938
+Start with the table page, then live.ts,
+
+113
+00:04:25,938 --> 00:04:29,769
+then the admin Hardware page and device health.
+
+114
+00:04:30,169 --> 00:04:32,969
+Pull request three is the hardware folder.
+
+115
+00:04:32,969 --> 00:04:34,329
+The firmware keeps all of
+
+116
+00:04:34,329 --> 00:04:35,689
+its behaviour in a core
+
+117
+00:04:35,689 --> 00:04:38,729
+that also builds and tests on your laptop.
+
+118
+00:04:38,729 --> 00:04:41,058
+The device layer is thin.
+
+119
+00:04:41,058 --> 00:04:44,178
+A goal is a beam that stays blocked long enough.
+
+120
+00:04:44,178 --> 00:04:46,978
+It is counted while the ball is still there,
+
+121
+00:04:46,978 --> 00:04:48,498
+then locked out briefly,
+
+122
+00:04:48,498 --> 00:04:50,923
+so one ball counts once.
+
+123
+00:04:50,923 --> 00:04:52,603
+Each goal is saved to flash
+
+124
+00:04:52,603 --> 00:04:53,883
+before anything is sent,
+
+125
+00:04:53,883 --> 00:04:56,123
+and the counter beeps at once.
+
+126
+00:04:56,123 --> 00:04:58,463
+No beep means no goal.
+
+127
+00:04:58,463 --> 00:05:02,063
+An undo joins the same queue, behind its goal,
+
+128
+00:05:02,063 --> 00:05:04,783
+so the server always sees them in order.
+
+129
+00:05:04,783 --> 00:05:06,543
+The server's answer comes back
+
+130
+00:05:06,543 --> 00:05:08,243
+to the little screen.
+
+131
+00:05:08,243 --> 00:05:09,763
+The digital twin compiles
+
+132
+00:05:09,763 --> 00:05:11,603
+that same core for your laptop,
+
+133
+00:05:11,603 --> 00:05:14,643
+and runs 19 scenarios against the mock server
+
+134
+00:05:14,643 --> 00:05:16,563
+or the real API:
+
+135
+00:05:16,563 --> 00:05:18,683
+power cuts, offline queues,
+
+136
+00:05:18,683 --> 00:05:21,159
+stuck balls, and daylight.
+
+137
+00:05:21,159 --> 00:05:23,479
+The sled is parametric CAD
+
+138
+00:05:23,479 --> 00:05:25,079
+with its own self-check.
+
+139
+00:05:25,079 --> 00:05:27,239
+An assembly gate moves every
+
+140
+00:05:27,239 --> 00:05:28,839
+part along its real path
+
+141
+00:05:28,839 --> 00:05:29,575
+into place:
+
+142
+00:05:29,575 --> 00:05:33,350
+139 checks, all passing.
+
+143
+00:05:33,350 --> 00:05:36,710
+On the firmware side: 55 native tests,
+
+144
+00:05:36,710 --> 00:05:38,710
+and 30 contract payloads
+
+145
+00:05:38,710 --> 00:05:41,935
+checked against the OpenAPI file.
+
+146
+00:05:41,935 --> 00:05:44,015
+Start with the interfaces document,
+
+147
+00:05:44,015 --> 00:05:46,575
+then the firmware README and the goal app,
+
+148
+00:05:46,575 --> 00:05:48,352
+then the twin.
+
+149
+00:05:48,752 --> 00:05:51,392
+Pull request four is observability.
+
+150
+00:05:51,392 --> 00:05:53,792
+Aspire gains a Grafana container
+
+151
+00:05:53,792 --> 00:05:55,712
+that you start when you want it.
+
+152
+00:05:55,712 --> 00:05:58,272
+Devices send their logs and metrics
+
+153
+00:05:58,272 --> 00:06:01,924
+with OpenTelemetry at the end of each session.
+
+154
+00:06:01,924 --> 00:06:03,444
+There are two dashboards,
+
+155
+00:06:03,444 --> 00:06:05,684
+one for the fleet and one per device,
+
+156
+00:06:05,684 --> 00:06:07,444
+and eight alert rules,
+
+157
+00:06:07,444 --> 00:06:08,644
+from a low battery
+
+158
+00:06:08,644 --> 00:06:11,085
+to a blocked beam during play.
+
+159
+00:06:11,085 --> 00:06:13,325
+The OTLP port has no authentication,
+
+160
+00:06:13,325 --> 00:06:16,765
+so it stays on localhost unless you opt in.
+
+161
+00:06:16,765 --> 00:06:18,860
+Nothing is deployed.
+
+162
+00:06:18,860 --> 00:06:21,100
+Start with the observability README,
+
+163
+00:06:21,100 --> 00:06:22,380
+then the AppHost,
+
+164
+00:06:22,380 --> 00:06:26,365
+the alert rules, and the device's OTLP code.
+
+165
+00:06:26,845 --> 00:06:29,932
+A few things deserve a closer look.
+
+166
+00:06:29,932 --> 00:06:32,572
+The scoreboard is parked, not removed:
+
+167
+00:06:32,572 --> 00:06:36,012
+its endpoints and pages are still in the API
+
+168
+00:06:36,012 --> 00:06:37,372
+and the frontend.
+
+169
+00:06:37,372 --> 00:06:39,692
+The two changesets also mention it,
+
+170
+00:06:39,692 --> 00:06:41,772
+and they are longer than our usual one
+
+171
+00:06:41,772 --> 00:06:43,675
+or two sentences.
+
+172
+00:06:43,675 --> 00:06:45,088
+And check the long-poll's
+
+173
+00:06:45,088 --> 00:06:48,050
+two-second fallback under load.
+
+174
+00:06:48,450 --> 00:06:50,690
+Four pull requests, one feature:
+
+175
+00:06:50,690 --> 00:06:52,210
+goals counted in the drawer,
+
+176
+00:06:52,210 --> 00:06:54,210
+and shown live on the phone.
+
+177
+00:06:54,210 --> 00:06:56,126
+Thanks for reviewing.

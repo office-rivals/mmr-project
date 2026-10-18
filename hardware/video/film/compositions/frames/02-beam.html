@@ -1,0 +1,147 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #s2-top,
+        #s2-front {
+          position: absolute;
+          left: 300px;
+          top: 90px;
+          width: 1200px;
+          height: 686px;
+        }
+        #s2-top svg,
+        #s2-front svg {
+          display: block;
+          width: 100%;
+          height: 100%;
+          overflow: visible;
+        }
+        #s2-count {
+          position: absolute;
+          left: 1560px;
+          top: 120px;
+          width: 240px;
+          height: 220px;
+          font-family: var(--display);
+          font-size: 220px;
+          line-height: 220px;
+          color: #c9381a;
+        }
+        .s2-digit {
+          position: absolute;
+          left: 0;
+          top: 0;
+        }
+      </style>
+      <div id="root" class="scene" data-composition-id="s2" data-width="1920" data-height="1080">
+        <!-- Top view of the drawer with the insert -->
+        <div id="s2-top">
+          <svg viewBox="0 0 1120 640">
+            <!-- mechanical/sled.py from above, 3.6 px/mm: x = 20 + 3.6 s (s from the frame's face), y = 69 + 3.6 d
+                 (d from the tunnel's left wall, as seen from the opening). Front (frame) left, the goal's back right. -->
+            <defs>
+              <pattern id="s2-hatch" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <line x1="0" y1="0" x2="0" y2="18" stroke="#1b1d22" stroke-width="3" stroke-opacity="0.25" />
+              </pattern>
+            </defs>
+            <rect id="s2-drawer" x="20" y="69" width="1080" height="502" fill="#e7e2d7" stroke="#1b1d22" stroke-width="5" />
+            <rect id="s2-entrance" x="22" y="71" width="117" height="498" fill="url(#s2-hatch)" />
+            <g id="s2-insert">
+              <!-- L: the box, its 45 deg V-wall ending at the beam -->
+              <polygon points="150,85 1011,85 718,378 150,378" fill="#1b1d22" />
+              <!-- R: the skin along the right wall, the receiver pod and its lead-in -->
+              <rect x="178" y="565" width="897" height="6" fill="#55585f" />
+              <polygon points="668,565 668,522 769,522 1075,565" fill="#55585f" />
+            </g>
+            <g id="s2-beam">
+              <line x1="718" y1="380" x2="718" y2="520" stroke="#e8431f" stroke-width="22" stroke-opacity="0.25" />
+              <line x1="718" y1="380" x2="718" y2="520" stroke="#e8431f" stroke-width="6" stroke-dasharray="14 8" />
+            </g>
+            <circle cx="718" cy="374" r="10" fill="#e8431f" />
+            <circle cx="718" cy="526" r="10" fill="#f2efe8" stroke="#e8431f" stroke-width="4" />
+            <circle id="s2-ball1" r="61" fill="#ffffff" stroke="#1b1d22" stroke-width="5" />
+          </svg>
+        </div>
+
+        <!-- Front view of the gate: the beam runs through the ball's centre -->
+        <div id="s2-front">
+          <svg viewBox="0 0 1120 640">
+            <line x1="40" y1="560" x2="1080" y2="560" stroke="#1b1d22" stroke-width="6" />
+            <rect x="120" y="140" width="300" height="420" fill="#1b1d22" />
+            <rect x="700" y="140" width="300" height="420" fill="#1b1d22" />
+            <rect x="380" y="400" width="40" height="40" fill="#e8431f" />
+            <rect x="700" y="400" width="40" height="40" fill="#f2efe8" stroke="#e8431f" stroke-width="4" />
+            <g id="s2-fbeam">
+              <line x1="420" y1="420" x2="700" y2="420" stroke="#e8431f" stroke-width="26" stroke-opacity="0.25" />
+              <line x1="420" y1="420" x2="700" y2="420" stroke="#e8431f" stroke-width="7" stroke-dasharray="16 9" />
+            </g>
+            <g id="s2-fball">
+              <circle cx="560" cy="420" r="138" fill="#ffffff" stroke="#1b1d22" stroke-width="6" />
+            </g>
+            <g id="s2-fball2">
+              <circle cx="560" cy="420" r="138" fill="#ffffff" stroke="#1b1d22" stroke-width="6" />
+            </g>
+            <!-- ball-centre marker -->
+            <g id="s2-centre" stroke="#1b1d22" stroke-width="5">
+              <line x1="545" y1="420" x2="575" y2="420" /><line x1="560" y1="405" x2="560" y2="435" />
+            </g>
+          </svg>
+        </div>
+
+        <div id="s2-count">
+          <span class="s2-digit" id="s2-d0">0</span>
+          <span class="s2-digit" id="s2-d1">1</span>
+          <span class="s2-digit" id="s2-d2">2</span>
+        </div>
+      </div>
+      <script>
+        (function () {
+          // Cue times (scene-local s) come from tools/retime.py via window.__FILM: each one lands
+          // with, or just before, the narrated word it illustrates.
+          const C = window.__FILM.cues.s2;
+          const tl = gsap.timeline({ paused: true });
+          gsap.set(["#s2-d1", "#s2-d2"], { opacity: 0 });
+          // b0: diagram draws, beam flickers on
+          tl.fromTo("#s2-drawer", { opacity: 0, scale: 0.95, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" }, C.b0);
+          tl.fromTo("#s2-entrance", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.b0 + 0.4);
+          tl.fromTo("#s2-insert", { opacity: 0, y: -40 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C.b0 + 0.6);
+          tl.fromTo("#s2-beam", { opacity: 0 }, { opacity: 1, duration: 0.08, ease: "none", yoyo: true, repeat: 4 }, C.b0 + 1.3);
+          tl.fromTo("#s2-count", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, C.b0 + 1.5);
+          // roll: "Every ball rolls" -> drops in and rolls; cut: "infrared beam" -> cuts the beam -> 1
+          const run = Math.max(0.8, C.cut - C.roll - 0.5);
+          tl.fromTo("#s2-ball1", { x: 1040, y: 300, scale: 1.6, opacity: 0, transformOrigin: "0px 0px" }, { scale: 1, opacity: 1, duration: 0.5, ease: "bounce.out" }, C.roll);
+          tl.to("#s2-ball1", { x: 850, y: 440, duration: run * 0.6, ease: "sine.inOut" }, C.roll + 0.5);
+          tl.to("#s2-ball1", { x: 718, y: 450, duration: run * 0.4, ease: "sine.in" }, C.roll + 0.5 + run * 0.6);
+          tl.to("#s2-beam", { opacity: 0.08, duration: 0.05 }, C.cut);
+          tl.to("#s2-d0", { opacity: 0, duration: 0.01 }, C.cut);
+          tl.fromTo("#s2-d1", { opacity: 0, scale: 1.8, transformOrigin: "30% 50%" }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(3)" }, C.cut);
+          tl.to("#s2-ball1", { x: 200, y: 450, duration: 0.9, ease: "sine.out" }, C.cut + 0.1);   // queues at the frame's bar
+          tl.to("#s2-beam", { opacity: 1, duration: 0.05 }, C.cut + 0.5);
+          // b1: front view of the gate; the beam runs through the ball's centre
+          tl.to("#s2-top", { opacity: 0, scale: 1.4, transformOrigin: "64% 70%", duration: 0.4, ease: "power2.in" }, C.b1 - 0.2);
+          tl.fromTo("#s2-front", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.4, ease: "power3.out" }, C.b1);
+          tl.fromTo("#s2-fball", { opacity: 0, scale: 0.3, transformOrigin: "560px 420px" }, { opacity: 1, scale: 1, duration: 0.5, ease: "power2.out" }, C.b1 + 0.1);
+          tl.to("#s2-fbeam", { opacity: 0.12, duration: 0.05 }, C.b1 + 0.55);
+          tl.fromTo("#s2-centre", { opacity: 0 }, { opacity: 1, duration: 0.2 }, C.b1 + 0.55);
+          // b2: the ball leaves, a second one arrives faster -> 2
+          tl.to(["#s2-fball", "#s2-centre"], { opacity: 0, scale: 1.5, transformOrigin: "560px 420px", duration: 0.35, ease: "power2.in" }, C.b2);
+          tl.to("#s2-fbeam", { opacity: 1, duration: 0.05 }, C.b2 + 0.35);
+          tl.fromTo("#s2-fball2", { opacity: 0, scale: 0.2, transformOrigin: "560px 420px" }, { opacity: 1, scale: 1, duration: 0.35, ease: "power3.in" }, C.b2 + 0.5);
+          tl.to("#s2-fbeam", { opacity: 0.12, duration: 0.05 }, C.b2 + 0.85);
+          tl.to("#s2-d1", { opacity: 0, duration: 0.01 }, C.b2 + 0.9);
+          tl.fromTo("#s2-d2", { opacity: 0, scale: 1.8, transformOrigin: "30% 50%" }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(3)" }, C.b2 + 0.9);
+          window.__timelines["s2"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

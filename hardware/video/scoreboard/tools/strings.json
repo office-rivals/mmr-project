@@ -1,0 +1,37 @@
+{
+ "en": {
+  "chrome": "MMR PROJECT · SCOREBOARD",
+  "t": {
+   "badge": "badge",
+   "admin_head": "Table settings",
+   "admin_label": "Scoreboard sound",
+   "levels": [
+    "Off",
+    "Low",
+    "Medium",
+    "High"
+   ],
+   "combo": "hold two keys to mute",
+   "months": "months (est.)",
+   "ph_title": "Whose badge is this?",
+   "ph_mine": "This is my badge",
+   "ph_other": "It's someone else's",
+   "ph_eve": "Eve",
+   "ph_link": "Link this badge to Eve?"
+  },
+  "captions": {
+   "L1": "Asleep, and still <em>readable.</em>",
+   "L4": "Teams: yours, random, or <em>fair.</em>",
+   "L5": "Goals arrive <em>by themselves.</em>",
+   "L6": "Who scored? <em>Optional.</em>",
+   "L7": "Undo <em>asks first.</em>",
+   "L8": "Rematch: <em>same teams.</em>",
+   "L9": "Any colleague can <em>link it.</em>",
+   "L10": "No secret <em>mute combo.</em>",
+   "L12": "It keeps score. <em>You play.</em>"
+  },
+  "say_as": {
+   "M M R": "MMR"
+  }
+ }
+}

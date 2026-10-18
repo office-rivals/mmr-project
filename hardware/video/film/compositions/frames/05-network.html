@@ -1,0 +1,240 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        .s5-stage {
+          position: absolute;
+          inset: 0;
+        }
+        .s5-svg {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 1920px;
+          height: 1080px;
+          overflow: visible;
+        }
+        .s5-lbl {
+          position: absolute;
+          font-family: var(--mono);
+          font-weight: 700;
+          font-size: 26px;
+          letter-spacing: 0.08em;
+          color: var(--ink);
+          text-align: center;
+          white-space: nowrap;
+        }
+        .s5-img {
+          position: absolute;
+          display: block;
+          object-fit: contain;
+        }
+        .s5-card {
+          position: absolute;
+          width: 380px;
+          height: 112px;
+          margin-left: -190px;
+          margin-top: -56px;
+          border-radius: 16px;
+          background: #ffffff;
+          border: 4px solid var(--ink);
+          box-shadow: 8px 8px 0 var(--ink);
+          font-family: var(--mono);
+          padding: 14px 22px;
+        }
+        .s5-card b {
+          display: block;
+          font-family: var(--display);
+          font-weight: 400;
+          font-size: 34px;
+          line-height: 1.05;
+          color: var(--accent);
+        }
+        .s5-card span {
+          display: block;
+          margin-top: 6px;
+          font-weight: 700;
+          font-size: 23px;
+          color: var(--ink);
+        }
+        /* MMR app phone */
+        #s5-app {
+          position: absolute;
+          left: 1520px;
+          top: 210px;
+          width: 290px;
+          height: 480px;
+          border-radius: 40px;
+          background: #ffffff;
+          border: 6px solid var(--ink);
+        }
+        #s5-app .s5-app-h {
+          margin-top: 54px;
+          text-align: center;
+          font-family: var(--mono);
+          font-weight: 700;
+          font-size: 22px;
+          letter-spacing: 0.12em;
+          color: var(--muted);
+        }
+        #s5-app .s5-app-s {
+          position: relative;
+          margin-top: 70px;
+          height: 120px;
+          text-align: center;
+          font-family: var(--display);
+          font-size: 104px;
+          line-height: 120px;
+        }
+        .s5-sc {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+        }
+        #s5-sc2 em {
+          font-style: normal;
+          color: var(--accent);
+        }
+      </style>
+      <div id="root" class="scene" data-composition-id="s5" data-width="1920" data-height="1080">
+        <!-- Stage A: sensor -> Wi-Fi -> goal event -> server -> app -->
+        <div class="s5-stage" id="s5-A">
+          <svg class="s5-svg" viewBox="0 0 1920 1080">
+            <line id="s5-line" x1="520" y1="450" x2="1150" y2="450" stroke="#1b1d22" stroke-width="6" stroke-dasharray="16 14" />
+            <line id="s5-line2" x1="1390" y1="450" x2="1510" y2="450" stroke="#1b1d22" stroke-width="6" />
+            <polygon id="s5-arrow" points="1510,436 1530,450 1510,464" fill="#1b1d22" />
+            <!-- Wi-Fi symbol -->
+            <g id="s5-wifi" transform="translate(620 300)" fill="none" stroke="#e8431f" stroke-width="12" stroke-linecap="round">
+              <path d="M -26 -10 A 40 40 0 0 1 26 -10" /><path d="M -52 -36 A 76 76 0 0 1 52 -36" /><path d="M -78 -62 A 112 112 0 0 1 78 -62" />
+              <circle cx="0" cy="18" r="10" fill="#e8431f" stroke="none" />
+            </g>
+            <!-- server rack -->
+            <g transform="translate(1270 450)">
+              <rect x="-110" y="-130" width="220" height="70" rx="12" fill="#1b1d22" />
+              <rect x="-110" y="-35" width="220" height="70" rx="12" fill="#1b1d22" />
+              <rect x="-110" y="60" width="220" height="70" rx="12" fill="#1b1d22" />
+              <g fill="#e8431f"><circle cx="70" cy="-95" r="9" /><circle cx="70" cy="0" r="9" /><circle cx="70" cy="95" r="9" /></g>
+              <rect id="s5-srvflash" x="-122" y="-142" width="244" height="284" rx="18" fill="none" stroke="#e8431f" stroke-width="8" />
+            </g>
+          </svg>
+          <img class="s5-img" id="s5-sensor" src="assets/sled/closed.png" alt="" style="left: 60px; top: 300px; width: 440px; height: 330px" />
+          <div class="s5-lbl" style="left: 80px; top: 640px; width: 400px" data-t="sensor">GOAL SENSOR</div>
+          <div class="s5-lbl" id="s5-wifi-l" style="left: 540px; top: 150px; width: 160px" data-t="wifi">WI-FI</div>
+          <div class="s5-lbl" style="left: 1120px; top: 610px; width: 300px" data-t="server">MMR SERVER</div>
+          <div id="s5-app">
+            <div class="s5-app-h" data-t="app_head">MMR · TABLE 3</div>
+            <div class="s5-app-s">
+              <div class="s5-sc" id="s5-sc1">3–2</div>
+              <div class="s5-sc" id="s5-sc2"><em>4</em>–2</div>
+            </div>
+          </div>
+          <div class="s5-lbl" style="left: 1515px; top: 710px; width: 300px" data-t="app">MMR APP</div>
+          <div class="s5-card" id="s5-card" style="left: 330px; top: 450px"><b data-t="card_goal">GOAL</b><span data-t="card1">table 3 · 20:41:07</span></div>
+          <!-- goal burst on the sensor -->
+          <svg class="s5-svg" viewBox="0 0 1920 1080">
+            <g id="s5-burst" stroke="#e8431f" stroke-width="10" stroke-linecap="round">
+              <line x1="280" y1="300" x2="280" y2="250" /><line x1="220" y1="315" x2="190" y2="275" /><line x1="340" y1="315" x2="370" y2="275" />
+            </g>
+          </svg>
+        </div>
+
+        <!-- Stage B: one table, a goal sensor in each goal; they never talk, both only report to the server -->
+        <div class="s5-stage" id="s5-B">
+          <svg class="s5-svg" viewBox="0 0 1920 1080">
+            <!-- table, top view -->
+            <rect x="520" y="470" width="880" height="300" rx="18" fill="#e7e2d7" stroke="#1b1d22" stroke-width="6" />
+            <line x1="960" y1="490" x2="960" y2="750" stroke="#1b1d22" stroke-width="3" />
+            <circle cx="960" cy="620" r="46" fill="none" stroke="#1b1d22" stroke-width="3" />
+            <g stroke="#55585f" stroke-width="5" stroke-opacity="0.6">
+              <line x1="640" y1="450" x2="640" y2="790" /><line x1="760" y1="450" x2="760" y2="790" />
+              <line x1="1160" y1="450" x2="1160" y2="790" /><line x1="1280" y1="450" x2="1280" y2="790" />
+            </g>
+            <rect x="514" y="580" width="18" height="80" fill="#e8431f" /><rect x="1388" y="580" width="18" height="80" fill="#e8431f" />
+            <!-- links: each sensor reports to the server -->
+            <g stroke="#1b1d22" stroke-width="5" id="s5-links">
+              <line x1="410" y1="545" x2="920" y2="300" /><line x1="1510" y1="545" x2="1000" y2="300" />
+            </g>
+            <g id="s5-gossip">
+              <line x1="540" y1="620" x2="1380" y2="620" stroke="#55585f" stroke-width="6" stroke-dasharray="16 12" />
+              <g id="s5-x" stroke="#e8431f" stroke-width="16" stroke-linecap="round">
+                <line x1="915" y1="575" x2="1005" y2="665" /><line x1="1005" y1="575" x2="915" y2="665" />
+              </g>
+            </g>
+            <g transform="translate(960 200) scale(0.7)">
+              <rect x="-110" y="-130" width="220" height="70" rx="12" fill="#1b1d22" />
+              <rect x="-110" y="-35" width="220" height="70" rx="12" fill="#1b1d22" />
+              <rect x="-110" y="60" width="220" height="70" rx="12" fill="#1b1d22" />
+              <g fill="#e8431f"><circle cx="70" cy="-95" r="9" /><circle cx="70" cy="0" r="9" /><circle cx="70" cy="95" r="9" /></g>
+            </g>
+            <!-- batteries next to the left sensor -->
+            <g transform="translate(210 625)"><g id="s5-batt" fill="#d9b56a" stroke="#1b1d22" stroke-width="5">
+              <rect x="-34" y="-60" width="68" height="34" rx="8" /><rect x="-34" y="-17" width="68" height="34" rx="8" /><rect x="-34" y="26" width="68" height="34" rx="8" />
+            </g></g>
+          </svg>
+          <img class="s5-img" src="assets/sled/closed.png" alt="" style="left: 290px; top: 540px; width: 240px; height: 180px" />
+          <img class="s5-img" src="assets/sled/closed.png" alt="" style="left: 1390px; top: 540px; width: 240px; height: 180px; transform: scaleX(-1)" />
+          <div class="s5-lbl" style="left: 260px; top: 728px; width: 300px" data-t="sensor">GOAL SENSOR</div>
+          <div class="s5-lbl" style="left: 1360px; top: 728px; width: 300px" data-t="sensor">GOAL SENSOR</div>
+          <div class="s5-lbl" style="left: 1060px; top: 182px; width: 300px; text-align: left" data-t="server">MMR SERVER</div>
+          <div class="s5-card" id="s5-card2" style="left: 380px; top: 372px"><b data-t="card_goal">GOAL</b><span data-t="card2">table 3 · 20:52:13</span></div>
+          <div class="s5-lbl" id="s5-saved" style="left: 230px; top: 440px; width: 300px; font-size: 22px; color: #b8321a" data-t="saved">SAVED ON DEVICE</div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          // Cue times (scene-local s) come from tools/retime.py via window.__FILM: each one lands
+          // with, or just before, the narrated word it illustrates. Labels come from window.__FILM.t.
+          const F = window.__FILM, C = F.cues.s5;
+          document.querySelectorAll("#s5-A [data-t], #s5-B [data-t]").forEach((el) => { el.textContent = F.t[el.dataset.t]; });
+          const tl = gsap.timeline({ paused: true });
+          gsap.set(["#s5-B", "#s5-card", "#s5-card2", "#s5-saved", "#s5-sc2", "#s5-burst", "#s5-srvflash", "#s5-batt"], { opacity: 0 });
+
+          // b0 "When the table moves": stage in, sensor shakes; wifi "joins the Wi-Fi"; goal "Score" -> card flies
+          tl.fromTo("#s5-A", { opacity: 0 }, { opacity: 1, duration: 0.4 }, C.b0);
+          tl.set(["#s5-wifi", "#s5-line"], { opacity: 0.15 }, C.b0);
+          tl.set("#s5-wifi-l", { opacity: 0.3 }, C.b0);
+          tl.fromTo("#s5-sensor", { x: 0 }, { x: 10, duration: 0.06, ease: "none", yoyo: true, repeat: 7, immediateRender: false }, C.b0 + 0.3);
+          tl.to(["#s5-wifi", "#s5-wifi-l", "#s5-line"], { opacity: 1, duration: 0.25 }, C.wifi);
+          tl.fromTo("#s5-wifi", { scale: 0.7, transformOrigin: "620px 300px" }, { scale: 1, duration: 0.4, ease: "back.out(2.5)", immediateRender: false }, C.wifi);
+          tl.fromTo("#s5-line", { strokeDashoffset: 0 }, { strokeDashoffset: -60, duration: 1.5, ease: "none", repeat: 3, immediateRender: false }, C.wifi + 0.3);
+          tl.fromTo("#s5-burst", { opacity: 1, scale: 0.4, transformOrigin: "280px 300px" }, { opacity: 0, scale: 1.3, duration: 0.5, ease: "power2.out", immediateRender: false }, C.goal);
+          tl.fromTo("#s5-card", { opacity: 0, x: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(2.5)", immediateRender: false }, C.goal + 0.05);
+          tl.to("#s5-card", { x: 640, duration: 0.6, ease: "power2.in" }, C.goal + 0.35);
+          tl.to("#s5-card", { opacity: 0, scale: 0.4, duration: 0.2 }, C.goal + 0.95);
+          tl.fromTo("#s5-srvflash", { opacity: 1 }, { opacity: 0, duration: 0.5, immediateRender: false }, C.goal + 1.0);
+
+          // b1 "The server keeps count": arrow pulses, the app ticks up
+          tl.fromTo("#s5-line2", { opacity: 1 }, { opacity: 0.3, duration: 0.15, yoyo: true, repeat: 1, immediateRender: false }, C.b1);
+          tl.to("#s5-sc1", { opacity: 0, duration: 0.01 }, C.b1 + 0.3);
+          tl.fromTo("#s5-sc2", { opacity: 0, scale: 1.4 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(3)", immediateRender: false }, C.b1 + 0.3);
+
+          // b2 "Even the two goals on one table never talk": one table, the line between the goals crossed out
+          tl.to("#s5-A", { opacity: 0, scale: 0.85, transformOrigin: "960px 450px", duration: 0.3, ease: "power2.in" }, C.b2 - 0.3);
+          tl.fromTo("#s5-B", { opacity: 0, scale: 1.12, transformOrigin: "960px 500px" }, { opacity: 1, scale: 1, duration: 0.4, ease: "power3.out", immediateRender: false }, C.b2);
+          tl.fromTo("#s5-gossip", { opacity: 0 }, { opacity: 1, duration: 0.2 }, C.b2 + 0.3);
+          tl.fromTo("#s5-x", { opacity: 0, scale: 0.3, transformOrigin: "960px 620px" }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(3)" }, Math.max(C.x, C.b2) + 0.9);
+
+          // b3 "Yank the batteries": they pop out; saved "Every goal is saved" -> card waits; sent "sent" -> it flies
+          tl.to("#s5-gossip", { opacity: 0, duration: 0.3 }, C.b3 - 0.2);
+          tl.fromTo("#s5-batt", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.2, ease: "back.out(2)", immediateRender: false }, C.b3);
+          tl.to("#s5-batt", { opacity: 0, x: -50, y: 170, rotation: -30, duration: 0.45, ease: "power2.in" }, C.b3 + 0.4);
+          tl.fromTo(["#s5-card2", "#s5-saved"], { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2.5)", immediateRender: false }, C.saved);
+          tl.to("#s5-batt", { opacity: 1, x: 0, y: 0, rotation: 0, duration: 0.35, ease: "back.out(1.6)" }, Math.max(C.saved + 0.5, C.sent - 0.5));
+          tl.to("#s5-saved", { opacity: 0, duration: 0.2 }, C.sent - 0.1);
+          tl.to("#s5-card2", { x: 580, y: -172, duration: 0.5, ease: "power2.in" }, C.sent);
+          tl.to("#s5-card2", { opacity: 0, scale: 0.4, duration: 0.2 }, C.sent + 0.5);
+          window.__timelines["s5"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

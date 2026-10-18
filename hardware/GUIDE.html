@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foosball Table Hardware</title>
+<style>
+:root{
+  --bg:#f7f6f2; --surface:#ffffff; --ink:#1b1d22; --muted:#5b6070; --line:#dcd9d0;
+  --accent:#d9441c; --accent-soft:#fbe6df; --code:#f0eee8; --ok:#2e7d4f;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15171b; --surface:#1d2026; --ink:#e9e7e1; --muted:#a3a7b3; --line:#30343c;
+    --accent:#ff7a52; --accent-soft:#3a2219; --code:#262a31; --ok:#6fcf97;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15171b; --surface:#1d2026; --ink:#e9e7e1; --muted:#a3a7b3; --line:#30343c;
+  --accent:#ff7a52; --accent-soft:#3a2219; --code:#262a31; --ok:#6fcf97;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:920px;margin:0 auto;padding:32px 16px 80px}
+h1{font-size:2.1rem;line-height:1.15;margin:0 0 8px}
+h2{font-size:1.45rem;margin:48px 0 12px;padding-top:12px;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:28px 0 8px}
+p,li{max-width:72ch}
+a{color:var(--accent)}
+.lead{font-size:1.1rem;color:var(--muted);margin:0 0 20px}
+.kicker{font:600 .78rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+nav.toc{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:20px 0}
+nav.toc ol{margin:0;padding-left:20px;columns:2;column-gap:28px}
+@media (max-width:640px){nav.toc ol{columns:1}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:16px 0}
+.callout{background:var(--accent-soft);border-left:4px solid var(--accent);border-radius:6px;padding:12px 16px;margin:16px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:16px 0}
+figure{margin:16px 0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px}
+figure img{width:100%;height:auto;display:block;border-radius:6px;background:#fff}
+figcaption{font-size:.88rem;color:var(--muted);margin-top:6px}
+.tablewrap{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:.93rem;background:var(--surface)}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:var(--code);font-weight:600}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em}
+code{background:var(--code);padding:1px 5px;border-radius:4px}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;line-height:1.45}
+ol.steps>li{margin:6px 0}
+.tag{display:inline-block;font:600 .72rem/1 ui-monospace,monospace;padding:4px 7px;border-radius:999px;background:var(--code);color:var(--muted);margin-right:4px}
+.muted{color:var(--muted)}
+audio{width:100%;max-width:520px;margin:6px 0}
+footer{margin-top:56px;color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<main>
+
+<div class="kicker">MMR project · hardware</div>
+<h1>Foosball table hardware: an introduction</h1>
+<p class="lead">A quick, honest tour for a hardware person joining the project: what we're building, why,
+which parts it uses, how it all goes together, and where we'd value a second pair of eyes.</p>
+
+<nav class="toc" aria-label="Contents">
+<ol>
+  <li><a href="#what">What and why</a></li>
+  <li><a href="#system">The system at a glance</a></li>
+  <li><a href="#rules">Ground rules (requirements)</a></li>
+  <li><a href="#goal">Goal counter: electronics</a></li>
+  <li><a href="#scoreboard">Scoreboard: electronics</a></li>
+  <li><a href="#printed">3D-printed parts</a></li>
+  <li><a href="#play">Badges, teams and sounds</a></li>
+  <li><a href="#firmware">Firmware in one page</a></li>
+  <li><a href="#install">Installation flow, end to end</a></li>
+  <li><a href="#cost">Cost and shopping</a></li>
+  <li><a href="#help">Design review</a></li>
+  <li><a href="#docs">Detailed documents</a></li>
+</ol>
+</nav>
+
+<div class="callout"><strong>Numbers.</strong> Battery life, costs, ball size, footprints and test counts live in
+one place: the <a href="team/INTERFACES.md">§0 "Numbers" table in <code>team/INTERFACES.md</code></a>, each with an
+owner. This page quotes them as of 2026-10-18 and marks them "§0"; if they differ, §0 wins. <code>EST</code> means
+not yet measured.</div>
+
+<h2 id="what">1. What and why</h2>
+<p>We play foosball a lot at the office (Garlando G-5000 tables). Today we count goals by hand with the
+bead counter, then type the result into our rating app (the <strong>MMR project</strong>, the repo this
+folder lives in), usually from memory. We'd like the table to count for us: players tap a badge, the table
+makes the teams, counts the goals and saves the result to MMR on its own.</p>
+<p>Honest reason: <em>because we can.</em> It should be cheap, robust, and need no babysitting.</p>
+<div class="callout"><strong>Scope right now (phase 1, 2026-10-17):</strong> one table with its 2 goal counters, each with an undo
+button, a small buzzer and a tiny status display, and the live score on a phone. The scoreboard is fully designed but <strong>parked</strong>
+until the counters work. Later up to 3 tables. Everything is battery-powered and built from off-the-shelf modules on perfboard; no custom PCB
+yet (we costed it: not worth it below ~9 tables).</div>
+
+<h2 id="system">2. The system at a glance</h2>
+<p>Per table there are <strong>three battery-powered devices</strong>, all based on the <strong>Seeed XIAO
+ESP32-C6</strong>:</p>
+<div class="grid">
+  <div class="card"><strong>2 × goal counter</strong><br>
+  One in each goal's ball tunnel, on a 3D-printed <em>sled</em> that slides in through the drawer opening.
+  The ball rolls along a channel and breaks an IR beam → goal event to the server.</div>
+  <div class="card"><strong>1 × scoreboard</strong><br>
+  On the right end of the end rail, beside the bead counter. 4.2" black/white e-paper, 4 keys with RGB
+  lights, a badge reader, a small speaker, and an NFC sticker for phones.</div>
+  <div class="card"><strong>Backend</strong><br>
+  The MMR API keeps the score, owns matches, makes teams and maps devices to tables. Devices never talk
+  to each other, only to the server.</div>
+</div>
+<pre>
+ table motion ─► LIS3DH wakes ─► XIAO ESP32-C6 ─Wi-Fi─► MMR API (REST) ─► saved to MMR
+                                   ▲    │                    ▲    ▲
+              ball breaks IR beam ─┘    └─OTLP──► Grafana    │    │
+                                         (battery, alerts)   │    │
+ scoreboard: e-paper, keys, badge reader ◄── long-poll ──────┘    └── phone: NFC → /t/&lt;code&gt;
+</pre>
+<p>Typical life of a match: someone bumps the table → the motion sensor wakes the devices → players press
+a key and tap their badges → the board makes the teams (<strong>choose, random or fair by MMR</strong>) →
+each goal is sent immediately and the board shows it within a fraction of a second, with a sound → "who
+scored?" → at the winning score the match is <strong>saved to MMR automatically after 10 s</strong> (time to
+undo the last goal) → after ~5 min with no motion and no goals everything goes back to deep sleep. Playing
+without badges still works: the board shows a QR code and someone claims the result in the app.</p>
+
+<h2 id="rules">3. Ground rules (requirements)</h2>
+<div class="tablewrap"><table>
+<tr><th>Rule</th><th>What it means for the hardware</th></tr>
+<tr><td>Battery only, swappable <strong>AA</strong></td><td>3 × AA rechargeable NiMH (any low-self-discharge cells you already have). Target ≥ 1 month; estimates (EST until the bench): goal counter ≈ 1.7–3.4 months (≈ 1.2 on a table switched to a boosted beam), scoreboard ≈ 2.3–3.3 months with the speaker (§0).</td></tr>
+<tr><td><strong>Service from the drawer opening</strong></td><td>Batteries and USB-C of the goal counter must be reachable from the open end where you take the balls out, never from the top, and without taking the drawer apart.</td></tr>
+<tr><td>Power can be pulled <strong>at any instant</strong></td><td>No corrupted storage, no lost goals: every goal is persisted before it's sent; the server dedupes resends. Clean brown-out, low-battery cutoff.</td></tr>
+<tr><td>No device-to-device radio</td><td>Wi-Fi station only. No ESP-NOW, BLE, mDNS, broadcast, or setup hotspot. Even the two goals of one table never talk to each other.</td></tr>
+<tr><td>Ball: <strong>31 mm usual, 31–36 mm supported</strong> (§0); up to 3 balls waiting</td><td>Balls arrive slowly on a wooden floor that tilts towards the opening and towards the right wall. The ball path must never stall a slow ball, and the balls queuing at the opening must never sit in the beam.</td></tr>
+<tr><td>Mounting: <strong>tape only</strong>, no drilling</td><td>Flat bases for double-sided/duct tape; no holes in the table or in bought parts. The bead counter stays on the end rail.</td></tr>
+<tr><td>Printed on a Bambu Lab (A1/P1S/X1C)</td><td>Parts ≤ 256 mm, PETG for the final parts, no supports. PLA is fine for test prints.</td></tr>
+<tr><td>Measure before geometry</td><td>CAD that depends on the table waits for the make-or-break measurements; unmeasured values are marked <code>EST</code>.</td></tr>
+<tr><td>Observability</td><td>Devices ship logs + metrics (OpenTelemetry) so we can diagnose and get "replace batteries" alerts.</td></tr>
+</table></div>
+
+<h2 id="goal">4. Goal counter: electronics</h2>
+<h3>How a goal is detected</h3>
+<p>A 940 nm IR LED (<strong>TSAL6200</strong>) shines across the 40 mm ball channel into a
+<strong>TEFT4300</strong> phototransistor, 17 mm above the floor (the centre of a 31 mm ball). The phototransistor
+pulls D8 LOW while lit; a ball blocks the beam and the pull-up takes D8 HIGH. <strong>Blocked =
+HIGH.</strong> DC, not modulated: the tunnel is dark and shaded, so ambient-light immunity wasn't needed,
+and DC is one GPIO. The beam is only powered while the device is awake. The server picks the beam mode:
+<code>a</code> runs the LED at ≈ 0.93 mA; a table that needs more margin can be switched to <code>a_boost</code>
+(≈ 6.3 mA); <code>b</code> adds a second pull-up for daylight. A second input (D2, ADC) watches the beam's
+health.</p>
+<p>The smallest ball blocks the beam for ~9 ms (3 m/s) to ~56 ms (0.5 m/s); the phototransistor's edges with a
+220 kΩ load are ≤ ~2 ms. A goal counts once the beam has been blocked ≥ <code>min_block_ms</code>
+(default 5 ms, server-tunable), with a lockout afterwards. A photoresistor was rejected as too slow.</p>
+
+<h3>Parts (per goal counter)</h3>
+<div class="tablewrap"><table>
+<tr><th>Part</th><th>Role</th><th>Notes</th></tr>
+<tr><td>Seeed <strong>XIAO ESP32-C6</strong></td><td>MCU + Wi-Fi</td><td>~15 µA deep sleep, no power LED, onboard buck fed from its BAT pads</td></tr>
+<tr><td><strong>LIS3DH</strong> breakout (SparkFun SEN-13963 for the first table; cheap clones later)</td><td>Wake on table motion</td><td>Same chip either way. The clone must have no power LED or regulator (or have them removed): bench check sleep ≤ 30 µA. Firmware finds it at I²C 0x19 or 0x18.</td></tr>
+<tr><td>Vishay <strong>TSAL6200</strong></td><td>IR LED</td><td>5 mm, 940 nm, ≈ 0.93 mA via 2.2 kΩ; + 270 Ω boost to ≈ 6.3 mA</td></tr>
+<tr><td>Vishay <strong>TEFT4300</strong></td><td>Phototransistor</td><td>3 mm, daylight filter, 220 kΩ pull-up (+ 68 kΩ in daylight mode)</td></tr>
+<tr><td><strong>1N5817</strong> Schottky</td><td>Pack → XIAO BAT pad</td><td>Stops the XIAO's onboard Li-ion charger from ever charging the AAs over USB</td></tr>
+<tr><td>3 × AA holder (DFRobot FIT0610)</td><td>Power</td><td>Sliding cover, tool-free</td></tr>
+<tr><td>470 µF electrolytic, 100 nF</td><td>Wi-Fi burst buffer, ADC filter</td><td>The AA pack's internal resistance needs the bulk cap</td></tr>
+<tr><td>2 × 1 MΩ</td><td>Battery voltage divider → D0</td><td>±60 mV typ accuracy after averaging, radio off</td></tr>
+<tr><td>6.8 kΩ + 10 kΩ, 5V → MTCK pad (GPIO6) → GND</td><td>USB power sense</td><td>2.8–3.1 V on USB, 0 V on batteries: the firmware stays awake while USB is plugged in</td></tr>
+<tr><td><strong>MX blue</strong> (clicky) switch + printed keycap, 100 kΩ pull-up, 1 kΩ (phase 1)</td><td>Undo button</td><td>On the front face; a 1 s hold undoes this counter's own last goal within 10 s (server config), a press outside that gets a "no" knock</td></tr>
+<tr><td><strong>CMT-1209</strong> magnetic buzzer, BC337-40, 1 kΩ, 100 kΩ, 1N5817 flyback (phase 1)</td><td>Buzzer</td><td>Goal chirp, undo sound and the "no" knock behind a front grille; the volume is set per table</td></tr>
+<tr><td><strong>0.91" OLED</strong>, 128 × 32, white, SSD1306 I²C (phase 1)</td><td>Status display</td><td>Two-line status view, standing upright in the middle of the frame opening, shown on a short press of the undo button; panel off otherwise, so the battery barely notices</td></tr>
+<tr><td><strong>Red + green 3 mm LEDs</strong>, 680 Ω + 220 Ω (socketed)</td><td>Status lights</td><td>Under the OLED: green blinks = OK, red blinks = needs attention or battery low, dark = off or flat. Blinked by the low-power core, also in deep sleep</td></tr>
+<tr><td><strong>Wired battery lead</strong> on a JST-PH pair (J_BAT), 2 A fuse at the holder</td><td>Battery drawer lead</td><td>The drawer pulls out on its lead, with a slack loop; no sliding contacts</td></tr>
+<tr><td>10 kΩ (R_STRAP) D7 → GND</td><td>Wrong-board guard</td><td>Goal firmware refuses to run on a scoreboard board and vice versa</td></tr>
+<tr><td>Perfboard 70 × 30 mm, headers, Dupont leads</td><td>Carrier</td><td>The two calibration resistors (R_LED, R_PU) sit in a socket so they can be swapped</td></tr>
+</table></div>
+
+<h3>Pin map</h3>
+<div class="tablewrap"><table>
+<tr><th>Pin</th><th>Function</th></tr>
+<tr><td>D0 / GPIO0</td><td>VBAT sense (ADC), 1 M / 1 M + 100 nF</td></tr>
+<tr><td>D1 / GPIO1</td><td>LIS3DH INT1 → ext1 deep-sleep wake (active-HIGH, latched)</td></tr>
+<tr><td>D2 / GPIO2</td><td>Beam health (ADC), through 1 kΩ from the receiver</td></tr>
+<tr><td>D3 / GPIO21</td><td>Receiver pull-up A (220 k); HIGH only while awake</td></tr>
+<tr><td>D4 / D5</td><td>I²C SDA / SCL to the LIS3DH and the OLED (0x3C)</td></tr>
+<tr><td>D6 / GPIO16</td><td>Receiver pull-up B (68 k), daylight mode <code>b</code></td></tr>
+<tr><td>D7 / GPIO17</td><td>Role strap (10 kΩ to GND on the goal board)</td></tr>
+<tr><td>D8 / GPIO19</td><td>Beam receiver (digital, through 1 kΩ), blocked = HIGH; light-sleep wake</td></tr>
+<tr><td>D9 / GPIO20</td><td>Beam LED (2.2 k, ≈ 0.93 mA)</td></tr>
+<tr><td>D10 / GPIO18</td><td>Beam LED boost (270 Ω, ≈ 6.3 mA in all)</td></tr>
+<tr><td>MTCK pad (GPIO6)</td><td>USB VBUS sense (6.8 k / 10 k), deep-sleep wake</td></tr>
+<tr><td>MTMS pad (GPIO4)</td><td>Undo button, active LOW, ext1 deep-sleep wake</td></tr>
+<tr><td>MTDO pad (GPIO7)</td><td>Buzzer: LEDC PWM → BC337, HIGH = coil on, volume = duty</td></tr>
+<tr><td>MTDI pad (GPIO5)</td><td>Status LEDs: LOW = red, HIGH = green, floating = both off</td></tr>
+<tr><td>BAT+ / BAT− pads</td><td>3 × AA via 1N5817 (the fiddliest solder joints)</td></tr>
+</table></div>
+
+<div class="grid">
+<figure><img src="electronics/schematic.svg" alt="Goal counter schematic"><figcaption>Schematic (<code>electronics/schematic.svg</code>)</figcaption></figure>
+<figure><img src="electronics/perfboard.png" alt="Goal counter perfboard layout"><figcaption>Perfboard layout, top + mirrored underside</figcaption></figure>
+</div>
+<figure><img src="electronics/wiring.png" alt="Goal counter wiring diagram"><figcaption>Wire-by-wire diagram (WireViz)</figcaption></figure>
+
+<h3>Power budget (estimate, to be measured on the bench)</h3>
+<div class="tablewrap"><table>
+<tr><th>State</th><th>Current</th></tr>
+<tr><td>Deep sleep (XIAO + buck Iq + LIS3DH + divider)</td><td>~15–22 µA</td></tr>
+<tr><td>Awake: beam</td><td>≈ 0.93 mA (mode <code>a</code>); ≈ 6.3 mA boosted</td></tr>
+<tr><td>Awake: CPU light sleep + Wi-Fi power save (associated)</td><td>~1.0 mA budgeted</td></tr>
+<tr><td>Result at 4.7 h of play per day</td><td>≈ 1.7–3.4 months on 3 × AA NiMH (≈ 1.2 on a boosted table), EST until the bench (§0)</td></tr>
+</table></div>
+<p class="muted">Low-battery thresholds (pack, radio off; from review 2, checked on the bench): warn 3750 mV,
+cutoff 3650 mV (the path drops ≈ 0.55–0.7 V while transmitting, so this keeps 3V3 ≥ 3.0 V), resume ≥ 3950 mV.
+Brown-out reset at 2.76 V.</p>
+
+<h2 id="scoreboard">5. Scoreboard: electronics (parked in phase 1)</h2>
+<p>Same XIAO, same motion sensor, same 3 × AA power path, plus:</p>
+<ul>
+  <li><strong>Display:</strong> 4.2" e-paper (Good Display GDEY042T81, 400 × 300, SSD1683) through a
+  <strong>DESPI-C02</strong> adapter. It holds the last image at zero power. (A colour TFT would last
+  days to weeks on AA, so we stayed on e-paper.)</li>
+  <li><strong>Keys:</strong> 4 <strong>MX-style switches</strong> (the user's own) in a printed plate, on a
+  resistor ladder read by one ADC pin that also wakes the board.</li>
+  <li><strong>Lights:</strong> a PCA9685 drives 5 common-cathode RGB LEDs (Kingbright WP154A4SUREQBFZGW):
+  one above each key behind a glossy opal bar, and one lighting the badge target. ~1 mA per lit LED, off by
+  default; WS2812s were ruled out (they need ≥ 3.5 V).</li>
+  <li><strong>Badge reader:</strong> an RFID-RC522 module (13.56 MHz, ISO14443A UIDs), polled only while a
+  screen that accepts a scan is showing, otherwise in soft power-down. A tap can't wake a sleeping board.</li>
+  <li><strong>Sound, two assembly options on one pin (GPIO7):</strong> A, the pick: PDM audio → RC filter →
+  PAM8302 clone amp → 40 mm 8 Ω speaker; B, the fallback: a 12 mm magnetic buzzer on a BC337. One socketed
+  1 kΩ selects the option; firmware supports both.</li>
+  <li><strong>NFC sticker</strong> (NTAG213) in the left side wall: phones tap it to open the table's page.</li>
+</ul>
+<p>Battery: ≈ 2.3–3.3 months with the speaker, ≈ 2.6–3.8 with the buzzer, EST until the bench (§0). Every header pin and all four back
+pads of the XIAO are used.</p>
+<div class="tablewrap"><table>
+<tr><th>Pin</th><th>Function</th></tr>
+<tr><td>D0 / D1 / D4 / D5</td><td>As the goal counter (VBAT, LIS3DH INT1, I²C); the PCA9685 (0x40) shares the I²C bus</td></tr>
+<tr><td>D2</td><td>Key ladder: 100 k pull-up; K1 0 Ω, K2 4.7 k, K3 10 k, K4 22 k (ext1 wake on LOW + ADC)</td></tr>
+<tr><td>D3</td><td>EPD BUSY (input)</td></tr>
+<tr><td>D6 / D7 / D8 / D9 / D10</td><td>EPD RST / DC / SCK / CS / MOSI (D7 also reads as "no strap" = scoreboard); SCK/MOSI shared with the RC522</td></tr>
+<tr><td>MTDO pad (GPIO7)</td><td>Sound: A = PDM → amp (amp enable on PCA9685 ch 15), B = LEDC → buzzer driver</td></tr>
+<tr><td>MTMS / MTDI pads (GPIO4 / 5)</td><td>RC522 MISO / CS</td></tr>
+<tr><td>MTCK pad (GPIO6)</td><td>USB power sense (wakes the board when USB is plugged in)</td></tr>
+</table></div>
+<div class="grid">
+<figure><img src="electronics/schematic-scoreboard.svg" alt="Scoreboard schematic"><figcaption>Scoreboard schematic</figcaption></figure>
+<figure><img src="electronics/perfboard-scoreboard.png" alt="Scoreboard perfboard layout"><figcaption>Scoreboard perfboard layout</figcaption></figure>
+</div>
+
+<h2 id="printed">6. 3D-printed parts</h2>
+<h3>Goal counter: the sled</h3>
+<p>Photos of the real table showed the ball tunnel behind the drawer opening is different from the first
+sketch: the black frame's opening is only ≈ 130 × 57 mm (§0), the tunnel's wooden floor sits ~10 mm below the frame's bottom bar, and the
+tunnel behind it is wider (≈ 139.5 mm, EST, §0). So the earlier one-piece insert was replaced by a <strong>sled in two units</strong>
+that each pass the opening and lock together inside:</p>
+<ul>
+  <li><strong>Left unit:</strong> the V-wall that steers every ball to the right, three 2 mm slide ribs on its left face that
+  set the fit in the tunnel, and the electronics: 3 × AA in a pull-out drawer, the board, and <strong>USB-C on its front face</strong>,
+  reachable from the opening.</li>
+  <li><strong>Right unit:</strong> a PTFE-taped skin along the right wall (the floor tilts that way, so balls
+  already run there), the receiver pod and three bridges whose pegs ride in a groove on the left unit, which
+  sets the 40 mm gate and aligns the beam.</li>
+  <li>The beam sits <strong>~194 mm in from the frame</strong> behind a 45° V-wall, so 4 waiting balls (5 small ones)
+  queue against the frame's bottom bar without reaching it.</li>
+</ul>
+<p>Before the real sled, a low-material <strong>roll-test print</strong> of the same ball path (no electronics,
+doubles as a measuring gauge) checks that 31 and 36 mm balls roll through and queue correctly
+(<code>mechanical/ROLL-TEST.md</code>). The first print has been fitted in the real tunnel; that fit gave a
+locking dovetail rail, a shorter left unit, no wiper, a taller V-wall and stiffer bridges, now in roll test v2. Tunnel dimensions not yet measured are marked <code>EST</code>.</p>
+<figure><img src="mechanical/out/roll_test_vs_sled.png" alt="Top view of the roll-test print and the sled concept in the ball tunnel"><figcaption>Top view: the roll-test print (top) and the sled (bottom).</figcaption></figure>
+<p>The <strong>sled CAD is final</strong> for the ball path. The client chose <strong>AA cells in a pull-out drawer</strong> (2026-10-18): the drawer slides out
+through the frame opening on a wired lead (JST-PH plug) with a slack loop, so the cells are swapped while the sled stays in. The front is rebuilt: the drawer
+sits low, with a 0.91" OLED standing upright above it in the middle of the opening, next to the undo button;
+L is 54 mm tall to pass the 57 mm opening. The client measured the opening's left edge at ≈ 10–15 mm in from the
+tunnel's left wall (§0); the USB-C port and the undo button work up to ≈ 23 mm, so the layout stands. It is the roll
+test's ball path with the electronics, the undo button and the buzzer inside L under a lid; L pulls out by a cord
+loop in its mouth bay. How to print it, build it, install it and swap the
+batteries is in <code>mechanical/SLED-ASSEMBLY.md</code>.</p>
+<div class="grid">
+<figure><img src="mechanical/out/sled_drawer_out.png" alt="Render: the battery drawer pulled out of the sled's front through the frame, the sled left in place"><figcaption>Battery swap: the drawer comes out, the sled stays in</figcaption></figure>
+<figure><img src="mechanical/out/sled_eye_0.png" alt="Render: the sled's front seen through the frame opening, with the OLED, undo button, battery drawer and mouth bay"><figcaption>Seen through the frame: OLED, undo button, drawer, bay</figcaption></figure>
+</div>
+
+<h3>Scoreboard v5 (parked in phase 1)</h3>
+<p>A wedge on the right end of the end rail, beside the bead counter, footprint 151 W × 91 D × 103 H mm
+with the face at 50° (§0), all on the rail's flat top and held with tape.</p>
+<ul>
+  <li>Screen on the inner side next to the counter; the badge target (lit from below by LED5) and the speaker
+  in the outer wing.</li>
+  <li>A <strong>3 mm anti-glare polycarbonate window</strong> over the e-paper, with the panel backed over its
+  full area, so a hard shot can only press it flat.</li>
+  <li>MX keys in a printed plate with printed caps; the 4 key lights behind one glossy opal polycarbonate bar.</li>
+  <li>USB-C on a panel-mount extension in the back cover; the phone NFC tag in the left wall with a tap mark.</li>
+</ul>
+<div class="grid">
+<figure><img src="mechanical/out/scoreboard_preview.png" alt="Render of the v5 scoreboard: e-paper behind a window, a light bar and four keys, the badge target in the right wing"><figcaption>v5: screen, light bar and keys; badge target in the right wing</figcaption></figure>
+<figure><img src="mechanical/out/shelf_fit_v5.png" alt="The v5 scoreboard at the right end of the end rail, beside the bead counter"><figcaption>On the end rail, beside the bead counter (<code>mechanical/shelf_fit.py</code>)</figcaption></figure>
+</div>
+<p>Everything is parametric (build123d, <code>mechanical/*.py</code>) with self-checks for ball stall margin,
+fit, keep-outs around the badge reader and collisions. No screws or magnets: boards snap in on printed
+pins/clips. STL + 3MF are in <code>mechanical/out/</code>.</p>
+
+<h2 id="play">7. Badges, teams and sounds</h2>
+<ul>
+  <li><strong>Scan in:</strong> press a key, tap your badge on the target. An unknown badge shows a QR code;
+  any signed-in colleague can link it to any player (handy when someone's phone isn't signed in).</li>
+  <li><strong>Teams, three ways:</strong> choose yourselves, fully random, or fair (balanced by MMR). Rematch
+  keeps the teams.</li>
+  <li><strong>During the game:</strong> live score, undo, "who scored?" (including own goals; skipped in 1v1).
+  Scorers can also be fixed in the app afterwards.</li>
+  <li><strong>At the end:</strong> a linked game is saved to MMR 10 s after the winning goal, with a visible
+  countdown and Undo; an unlinked game shows a QR code to claim it.</li>
+  <li><strong>The NFC sticker</strong> holds the table's <strong>permanent link</strong> <code>/t/&lt;code&gt;</code>
+  (written once). It opens whatever fits the table's state: the live game, the prefilled result to claim, or
+  the saved match. It only resolves for signed-in members of the organisation.</li>
+  <li><strong>Table pages:</strong> Free / In use (since …) from signals the devices already send, plus
+  per-table stats (games per day, busiest hours, match length).</li>
+  <li><strong>Sounds:</strong> one family of short, warm "mallet bell" earcons in D major pentatonic: goal,
+  undo, won, saved, joined, not joined, scan. The volume is set per table in the admin pages.</li>
+</ul>
+<div class="grid">
+<figure><img src="ux/out/18d-lobby-all-in.png" alt="Scoreboard screen: all four players scanned in, pick how to make teams"><figcaption>All in: pick how to make teams</figcaption></figure>
+<figure><img src="ux/out/04-live.png" alt="Scoreboard live-score screen"><figcaption>Live score (one of 39 designed screens)</figcaption></figure>
+</div>
+<p>Listen to the whole sound family (reference render, <code>ux/out/sounds/family.wav</code>):</p>
+<audio controls preload="none" src="ux/out/sounds/family.wav"></audio>
+
+<h2 id="firmware">8. Firmware in one page</h2>
+<ul>
+  <li><strong>One image</strong> in phase 1, the goal counter, from one PlatformIO project; the logic lives in
+  <code>firmware/lib/core</code> (host-tested). Arduino on pioarduino, PlatformIO pinned to 6.1.19.</li>
+  <li>Deep sleep → wake on motion (ext1) → Wi-Fi power-save + auto light sleep → beam edges handled in an
+  ISR, never blocked by networking.</li>
+  <li>Goal events go to the REST API (<code>firmware/openapi.yaml</code>) with a persisted, idempotent
+  event id; config is pulled from the server; daily heartbeat with battery level.</li>
+  <li>The parked scoreboard's firmware has left the phase-1 tree (archived, kept for later). It long-polls the
+  server for its table's state and holds no match state itself; its screens come from ux's layout contract
+  (<code>ux/mockups.py</code>).</li>
+  <li>Logs + metrics go out as OpenTelemetry (OTLP/HTTP) to Grafana.</li>
+  <li>Secrets (Wi-Fi, server URL, enrolment token) come from a gitignored file at flash time.</li>
+  <li>Firmware updates go over USB-C for now; an OTA plan is parked in <code>team/plans/OTA-PLAN.md</code>.</li>
+  <li>A <strong>digital twin</strong> (<code>twin/</code>) runs the same core on a PC with simulated
+  sensors, so the backend can be tested without hardware. Current test counts are in §0.</li>
+</ul>
+
+<h2 id="install">9. Installation flow, end to end</h2>
+<ol class="steps">
+  <li><strong>Print the roll test</strong> first (PLA is fine) and check it in the real tunnel with 31 and 36 mm balls.</li>
+  <li><strong>Buy parts</strong> for one table once the review's blockers are closed (shopping list per shop in <code>electronics/bom.md</code>).</li>
+  <li><strong>Print</strong> the sled in PETG (the scoreboard parts once it is unparked) (settings in <code>mechanical/print-and-install.md</code>).</li>
+  <li><strong>Build the goal counter board</strong>: cut the perfboard, solder XIAO + LIS3DH on headers, the diode/caps/divider, the strap resistor, the calibration socket, and the leads to the LED, phototransistor and battery holder (~110 joints; the XIAO BAT pads are the fiddly part).</li>
+  <li><strong>Power-on test</strong> on the bench with a multimeter (voltages per the table in <code>ASSEMBLY.md</code>), then <strong>flash</strong> the bench firmware over USB-C.</li>
+  <li><strong>Fit the beam</strong>, check it reads clear/blocked with a ball, tune R_LED/R_PU if the margin is poor.</li>
+  <li><strong>Measure sleep current</strong> (should be tens of µA), flash the final firmware.</li>
+  <li><strong>Install</strong>: slide the sled into the tunnel through the drawer opening, roll a few balls through.</li>
+  <li><strong>Scoreboard</strong> (later; parked in phase 1): same board recipe plus the keys, LED board, card reader, sound option and display; flash the scoreboard image; tape it to the right end of the end rail.</li>
+  <li><strong>Claim the devices</strong> in the admin pages (frontend-beta): each device shows up as "unclaimed" with its <code>fb-&lt;mac&gt;</code> id; assign it to the table and end.</li>
+  <li><strong>Write the NFC sticker</strong> with the table's permanent link <code>/t/&lt;code&gt;</code> from the admin page (it is written once).</li>
+  <li><strong>Play.</strong> Watch the first matches in Grafana (battery, Wi-Fi, rejected beam blocks).</li>
+</ol>
+<p>The full step-by-step guide with hole coordinates and troubleshooting is
+<a href="ASSEMBLY.md"><code>ASSEMBLY.md</code></a>.</p>
+
+<h2 id="cost">10. Cost and shopping</h2>
+<p>From §0 (owner: electronics). AA cells, filament and tape are left out: we already have them. Review 2 froze
+exact parts; the first table uses the qualified ones (SparkFun LIS3DH, Waveshare OLED), and the fleet the cheaper
+equivalents (clone LIS3DH, AliExpress OLED of the same outline).</p>
+<div class="tablewrap"><table>
+<tr><th>Item</th><th>≈ DKK (incl. VAT)</th></tr>
+<tr><td>Goal counter (incl. the undo button, buzzer, status display, status LEDs and battery drawer lead; at fleet quantity, ≈ 350 each for the first table)</td><td>≈ 245</td></tr>
+<tr><td>Scoreboard (<strong>parked</strong> in phase 1; speaker build, with the window, diffuser and USB-C panel extension; ≈ 630 with the buzzer fallback parts)</td><td>≈ 610</td></tr>
+<tr><td><strong>First table, phase 1</strong> (2 goal counters, no scoreboard; one counted cart incl. shipping, spares and a few parts bought ahead)</td><td><strong>≈ 1,400–1,500</strong></td></tr>
+<tr><td>First table later, with its scoreboard</td><td>≈ 2,000–2,150 (est.)</td></tr>
+<tr><td>Three tables, phase 1 (6 goal counters)</td><td>≈ 1,900–2,200 (est.)</td></tr>
+<tr><td>Three tables later, with 3 scoreboards</td><td>≈ 3,750–4,100 (est.)</td></tr>
+</table></div>
+<p class="muted">Where to buy each item (price, delivery time, fallback), the "buy it like this" plan
+and a tools checklist (if you have none) are in <code>electronics/bom.md</code>. No Danish shop stocks the
+LIS3DH breakout or e-paper panels (AliExpress, DigiKey and OpenELAB).</p>
+
+<h2 id="help">11. Design review</h2>
+<p>Two rounds of independent electronics review have been done (two reviewers, then four, reading blind); every
+reviewer said "buy after fixes". The second round froze the parts list with exact part numbers, which is why the
+costs went up. Findings, decisions and who fixes what:
+<a href="electronics-review/2026-10-18-CONSOLIDATED.md"><code>electronics-review/2026-10-18-CONSOLIDATED.md</code></a>
+(round 2) and <a href="electronics-review/CONSOLIDATED.md"><code>CONSOLIDATED.md</code></a> (round 1).
+Nothing is ordered until its blockers are closed. A second pair of eyes on that list, or on the bench items
+(the 3V3 rail at the cutoff, beam margin, sleep current), is still very welcome.</p>
+
+<h2 id="docs">12. Detailed documents</h2>
+<div class="tablewrap"><table>
+<tr><th>Document</th><th>What's in it</th></tr>
+<tr><td><a href="ASSEMBLY.md">ASSEMBLY.md</a></td><td>Step-by-step build, test, flash and install for both devices</td></tr>
+<tr><td><a href="team/INTERFACES.md">team/INTERFACES.md</a></td><td>The contract between disciplines, with the §0 Numbers table</td></tr>
+<tr><td><a href="team/DECISIONS.md">team/DECISIONS.md</a></td><td>Every requirement and decision, with the reasoning</td></tr>
+<tr><td><a href="electronics/README.md">electronics/README.md</a></td><td>Design choices with numbers, power budgets, pin maps</td></tr>
+<tr><td><a href="electronics/bom.md">electronics/bom.md</a></td><td>Parts, sources, prices, per-shop order lists, tools</td></tr>
+<tr><td><a href="electronics/premium-sound.md">electronics/premium-sound.md</a></td><td>The speaker audio path, its current and keep-outs</td></tr>
+<tr><td><a href="electronics-review/2026-10-18-CONSOLIDATED.md">electronics-review/2026-10-18-CONSOLIDATED.md</a></td><td>Electronics design review, round 2: findings and fixes</td></tr>
+<tr><td><a href="electronics/pcba-vs-diy.md">electronics/pcba-vs-diy.md</a></td><td>Why no custom PCB yet, and the break-even</td></tr>
+<tr><td><a href="mechanical/drawer-v4-concept.md">mechanical/drawer-v4-concept.md</a></td><td>The real ball tunnel and the sled concept</td></tr>
+<tr><td><a href="mechanical/ROLL-TEST.md">mechanical/ROLL-TEST.md</a></td><td>The roll-test print and how to test with it</td></tr>
+<tr><td><a href="mechanical/SLED-ASSEMBLY.md">mechanical/SLED-ASSEMBLY.md</a></td><td>The goal-counter sled: print, build, install, swap the battery</td></tr>
+<tr><td><a href="mechanical/README.md">mechanical/README.md</a></td><td>Printed parts, parameters, self-checks</td></tr>
+<tr><td><a href="firmware/README.md">firmware/README.md</a></td><td>Firmware design, power strategy, bench checklist</td></tr>
+<tr><td><a href="firmware/openapi.yaml">firmware/openapi.yaml</a> + <a href="../api/docs/hardware-api.md">api/docs/hardware-api.md</a></td><td>The device ↔ server API, and how the backend uses it</td></tr>
+<tr><td><a href="ux/SCOREBOARD-UI.md">ux/SCOREBOARD-UI.md</a></td><td>All scoreboard screens, keys, lights and scan-in</td></tr>
+<tr><td><a href="ux/SOUNDS-V2.md">ux/SOUNDS-V2.md</a></td><td>The sound family</td></tr>
+<tr><td><a href="analytics/METRICS.md">analytics/METRICS.md</a></td><td>Player, match and table statistics</td></tr>
+</table></div>
+
+<footer>Status (2026-10-18): designed, simulated and reviewed twice, not yet built; parts are bought once
+review 2's blockers are closed. Numbers marked as estimates come from datasheets and will be replaced by bench
+measurements on the first table.</footer>
+</main>
+</body>
+</html>

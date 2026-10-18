@@ -1,0 +1,2 @@
+# The film is embedded from video/ at publish time; don't commit a copy
+*.mp4

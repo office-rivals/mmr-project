@@ -1,0 +1,252 @@
+{
+ "_doc": "Scoreboard film. Same format as video/film/tools/beats.json: one row per VO line; beat = cue LEAD s before the line's first word; every {marker} becomes a cue LEAD s before its word. sfx = [cue, scene cue, offset s]. pre = silence before the line. open = the line's scene starts that long before its first cue (adds that much silence too). after = seconds the motion needs after the line's last cue. Build: video/film/tools/build.sh scoreboard",
+ "name": "scoreboard",
+ "scenes": [
+  "s1",
+  "s2",
+  "s3",
+  "s4",
+  "s5",
+  "s6",
+  "s7"
+ ],
+ "lead": 0.3,
+ "gap": 0.45,
+ "tail": 2.2,
+ "lines": [
+  {
+   "vo": "L1",
+   "scene": "s1",
+   "beat": "b1",
+   "pre": 0.9
+  },
+  {
+   "vo": "L2",
+   "scene": "s1",
+   "beat": "b2",
+   "after": 1.2,
+   "sfx": [
+    [
+     "key",
+     "key",
+     0.12
+    ],
+    [
+     "thud",
+     "bump",
+     0.05
+    ],
+    [
+     "rattle",
+     "bump",
+     0.05
+    ]
+   ]
+  },
+  {
+   "vo": "L3",
+   "scene": "s2",
+   "beat": "b3",
+   "pre": 0.3,
+   "after": 1.4,
+   "sfx": [
+    [
+     "scan",
+     "blip",
+     -0.25
+    ],
+    [
+     "joined",
+     "joined",
+     0.0
+    ]
+   ],
+   "open": 0.8
+  },
+  {
+   "vo": "L4",
+   "scene": "s2",
+   "beat": "b4",
+   "pre": 2.4,
+   "after": 1.4,
+   "sfx": [
+    [
+     "scan",
+     "allin",
+     -2.2
+    ],
+    [
+     "joined",
+     "allin",
+     -1.5
+    ],
+    [
+     "scan",
+     "allin",
+     -1.0
+    ],
+    [
+     "joined",
+     "allin",
+     0.0
+    ],
+    [
+     "key",
+     "make",
+     0.12
+    ],
+    [
+     "key",
+     "swap",
+     0.12
+    ]
+   ]
+  },
+  {
+   "vo": "L5",
+   "scene": "s3",
+   "beat": "b5",
+   "pre": 0.3,
+   "after": 1.0,
+   "sfx": [
+    [
+     "goal",
+     "goal",
+     0.0
+    ]
+   ],
+   "open": 0.6
+  },
+  {
+   "vo": "L6",
+   "scene": "s3",
+   "beat": "b6",
+   "after": 1.0,
+   "sfx": [
+    [
+     "key",
+     "own",
+     0.12
+    ]
+   ]
+  },
+  {
+   "vo": "L7",
+   "scene": "s3",
+   "beat": "b7",
+   "pre": 0.3,
+   "after": 1.0,
+   "sfx": [
+    [
+     "key",
+     "undo",
+     0.12
+    ],
+    [
+     "key",
+     "down",
+     0.12
+    ],
+    [
+     "undo",
+     "down",
+     0.5
+    ]
+   ]
+  },
+  {
+   "vo": "L8",
+   "scene": "s4",
+   "beat": "b8",
+   "pre": 0.9,
+   "after": 1.2,
+   "sfx": [
+    [
+     "won",
+     "won",
+     0.0
+    ],
+    [
+     "saved",
+     "saved",
+     0.0
+    ],
+    [
+     "key",
+     "rematch",
+     0.12
+    ]
+   ],
+   "open": 1.4
+  },
+  {
+   "vo": "L9",
+   "scene": "s5",
+   "beat": "b9",
+   "pre": 0.6,
+   "after": 2.2,
+   "sfx": [
+    [
+     "scan",
+     "unknown",
+     0.55
+    ],
+    [
+     "notjoined",
+     "unknown",
+     1.15
+    ],
+    [
+     "pop",
+     "mate",
+     0.48
+    ],
+    [
+     "pop",
+     "mate",
+     1.13
+    ],
+    [
+     "pop",
+     "in",
+     0.53
+    ]
+   ],
+   "open": 1.4
+  },
+  {
+   "vo": "L10",
+   "scene": "s6",
+   "beat": "b10",
+   "pre": 0.6,
+   "after": 0.8,
+   "sfx": [
+    [
+     "whoosh",
+     "admin",
+     -0.1
+    ],
+    [
+     "thud",
+     "combo",
+     0.45
+    ]
+   ],
+   "open": 0.8
+  },
+  {
+   "vo": "L11",
+   "scene": "s7",
+   "beat": "b11",
+   "pre": 0.6,
+   "after": 1.4,
+   "open": 0.8
+  },
+  {
+   "vo": "L12",
+   "scene": "s7",
+   "beat": "b12",
+   "pre": 0.6
+  }
+ ]
+}

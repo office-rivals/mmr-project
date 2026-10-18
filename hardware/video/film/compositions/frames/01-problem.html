@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        #s1-counter {
+          position: absolute;
+          left: 410px;
+          top: 120px;
+          width: 1100px;
+          height: 560px;
+        }
+        #s1-counter svg,
+        #s1-burst svg {
+          display: block;
+          width: 100%;
+          height: 100%;
+          overflow: visible;
+        }
+        #s1-card {
+          position: absolute;
+          left: 560px;
+          top: 170px;
+          width: 800px;
+          height: 440px;
+          border-radius: 32px;
+          background: #ffffff;
+          border: 5px solid var(--ink);
+          box-shadow: 20px 20px 0 var(--ink);
+        }
+        #s1-score {
+          position: absolute;
+          left: 0;
+          top: 70px;
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 36px;
+          font-family: var(--mono);
+          font-weight: 700;
+          font-size: 150px;
+          line-height: 1;
+        }
+        .s1-field {
+          position: relative;
+          display: block;
+          width: 260px;
+          height: 210px;
+          border: 5px solid var(--ink);
+          border-radius: 22px;
+          text-align: center;
+          line-height: 200px;
+          background: var(--paper);
+        }
+        #s1-f2 {
+          border-color: var(--accent);
+        }
+        .s1-glyph {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          text-align: center;
+        }
+        #s1-caret {
+          position: absolute;
+          right: 40px;
+          top: 45px;
+          width: 8px;
+          height: 120px;
+          background: var(--accent);
+        }
+        #s1-btn {
+          position: absolute;
+          left: 50%;
+          bottom: 44px;
+          width: 120px;
+          height: 64px;
+          margin-left: -60px;
+          border-radius: 14px;
+          background: var(--ink);
+        }
+      </style>
+      <div id="root" class="scene" data-composition-id="s1" data-width="1920" data-height="1080">
+        <!-- The table's bead score counter -->
+        <div id="s1-counter">
+          <svg viewBox="0 0 1100 560">
+            <line x1="40" y1="170" x2="1060" y2="170" stroke="#1b1d22" stroke-width="10" stroke-linecap="round" />
+            <line x1="40" y1="400" x2="1060" y2="400" stroke="#1b1d22" stroke-width="10" stroke-linecap="round" />
+            <g fill="#1b1d22">
+              <circle cx="660" cy="170" r="34" /><circle cx="710" cy="170" r="34" /><circle cx="760" cy="170" r="34" />
+              <circle cx="810" cy="170" r="34" /><circle cx="860" cy="170" r="34" /><circle cx="910" cy="170" r="34" />
+              <circle cx="960" cy="170" r="34" /><circle cx="1010" cy="170" r="34" />
+              <circle cx="90" cy="170" r="34" /><circle cx="140" cy="170" r="34" />
+              <circle cx="90" cy="400" r="34" /><circle cx="140" cy="400" r="34" /><circle cx="190" cy="400" r="34" />
+              <circle cx="240" cy="400" r="34" />
+              <circle cx="810" cy="400" r="34" /><circle cx="860" cy="400" r="34" /><circle cx="910" cy="400" r="34" />
+              <circle cx="960" cy="400" r="34" /><circle cx="1010" cy="400" r="34" />
+            </g>
+            <circle id="s1-slide" cx="190" cy="170" r="34" fill="#e8431f" />
+            <g id="s1-burst" stroke="#e8431f" stroke-width="8" stroke-linecap="round">
+              <line x1="560" y1="110" x2="540" y2="80" /><line x1="610" y1="100" x2="610" y2="64" />
+              <line x1="660" y1="110" x2="680" y2="80" />
+            </g>
+            <circle id="s1-amb" cx="525" cy="400" r="34" fill="#e8431f" />
+            <g id="s1-mag">
+              <circle cx="525" cy="400" r="140" fill="rgba(255,255,255,0.35)" stroke="#1b1d22" stroke-width="12" />
+              <line x1="625" y1="500" x2="740" y2="615" stroke="#1b1d22" stroke-width="28" stroke-linecap="round" />
+            </g>
+          </svg>
+        </div>
+
+        <!-- A bare score card in the app -->
+        <div id="s1-card">
+          <div id="s1-score">
+            <span class="s1-field">10</span>
+            <span>–</span>
+            <span class="s1-field" id="s1-f2">
+              <span class="s1-glyph" id="s1-g6">6</span>
+              <span class="s1-glyph" id="s1-g5">5</span>
+              <span class="s1-glyph" id="s1-gq">?</span>
+              <span id="s1-caret"></span>
+            </span>
+          </div>
+          <div id="s1-btn"></div>
+        </div>
+      </div>
+      <script>
+        (function () {
+          // Cue times (scene-local s) come from tools/retime.py via window.__FILM: each one lands
+          // with, or just before, the narrated word it illustrates.
+          const C = window.__FILM.cues.s1;
+          const tl = gsap.timeline({ paused: true });
+          // b0: counter in, a bead snaps home
+          tl.fromTo("#s1-counter", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, C.b0);
+          tl.fromTo("#s1-slide", { x: 0 }, { x: 420, duration: 0.4, ease: "power4.in" }, C.b0 + 0.6);
+          tl.fromTo("#s1-burst", { opacity: 0, scale: 0.5, transformOrigin: "610px 120px" }, { opacity: 1, scale: 1, duration: 0.2, ease: "back.out(3)" }, C.b0 + 1.0);
+          tl.to("#s1-burst", { opacity: 0, duration: 0.3 }, C.b0 + 1.6);
+          // b1: magnifier over a bead stuck halfway; it wobbles
+          tl.fromTo("#s1-mag", { opacity: 0, scale: 0.4, rotation: -30, transformOrigin: "525px 400px" }, { opacity: 1, scale: 1, rotation: 0, duration: 0.5, ease: "back.out(1.7)" }, C.b1);
+          tl.fromTo("#s1-amb", { x: -10 }, { x: 10, duration: 0.2, ease: "sine.inOut", yoyo: true, repeat: 3 }, C.b1 + 0.2);
+          // b2: the app card; "Confidently" types 6, deletes, 5; "Incorrectly" deletes and gives up
+          tl.to("#s1-counter", { opacity: 0, y: -60, duration: 0.3, ease: "power2.in" }, C.b2 - 0.3);
+          tl.fromTo("#s1-card", { opacity: 0, y: 80, rotation: -2 }, { opacity: 1, y: 0, rotation: 0, duration: 0.5, ease: "power3.out" }, C.b2);
+          gsap.set(["#s1-g6", "#s1-g5", "#s1-gq"], { opacity: 0 });
+          tl.fromTo("#s1-caret", { opacity: 1 }, { opacity: 0, duration: 0.25, ease: "steps(1)", yoyo: true, repeat: 11 }, C.b2 + 0.5);
+          tl.fromTo("#s1-g6", { opacity: 0 }, { opacity: 1, duration: 0.01 }, C.type);
+          tl.to("#s1-g6", { opacity: 0, duration: 0.01 }, C.type + 0.45);
+          tl.fromTo("#s1-g5", { opacity: 0 }, { opacity: 1, duration: 0.01 }, C.type + 0.7);
+          tl.to("#s1-g5", { opacity: 0, duration: 0.01 }, Math.max(C.type + 0.9, C.wrong - 0.05));
+          tl.fromTo("#s1-gq", { opacity: 0, scale: 1.5 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(3)" }, Math.max(C.type + 1.0, C.wrong));
+          // b3: the card slumps
+          tl.to("#s1-card", { rotation: 8, y: 40, duration: 0.6, ease: "bounce.out" }, C.b3);
+          window.__timelines["s1"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

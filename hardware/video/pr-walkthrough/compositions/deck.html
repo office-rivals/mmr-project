@@ -1,0 +1,517 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+        }
+        .panel {
+          position: absolute;
+          inset: 0;
+          opacity: 0;
+        }
+        /* code: verbatim from the working tree (assets/code.js) */
+        .code {
+          position: absolute;
+          left: 120px;
+          top: 120px;
+          width: 1150px;
+          padding: 22px 26px 26px;
+          border-radius: 18px;
+          overflow: hidden;
+          background: #15171b;
+          color: #e6e1d6;
+          box-shadow: 0 24px 60px rgba(27, 29, 34, 0.25);
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 500;
+          font-size: 19px;
+          line-height: 29px;
+        }
+        .code .path {
+          font-size: 17px;
+          color: #9aa0aa;
+          margin-bottom: 14px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .code .ln {
+          white-space: pre;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          padding-left: 6px;
+          border-left: 4px solid transparent;
+        }
+        .code .no {
+          display: inline-block;
+          width: 64px;
+          color: #a2a8b1;
+        }
+        .code .ln.hl {
+          background: rgba(232, 67, 31, 0.24);
+          border-left-color: #e8431f;
+        }
+        .tc {
+          color: #8b929c;
+          font-style: italic;
+        }
+        .ts {
+          color: #b9d97c;
+        }
+        .tn {
+          color: #f2a65a;
+        }
+        /* the right-hand notes beside code or a screen */
+        .notes {
+          position: absolute;
+          left: 1320px;
+          top: 136px;
+          width: 500px;
+          color: #1b1d22;
+        }
+        .nk {
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 700;
+          font-size: 22px;
+          letter-spacing: 0.16em;
+          color: #b8321a;
+          margin-bottom: 18px;
+        }
+        .notes .item {
+          font-family: "Archivo Black", "Arial Black", sans-serif;
+          font-size: 34px;
+          line-height: 1.12;
+          letter-spacing: -0.02em;
+          margin-bottom: 22px;
+        }
+        .notes .item small,
+        .list .item small {
+          display: block;
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 600;
+          font-size: 20px;
+          letter-spacing: 0;
+          color: #55585f;
+          margin-top: 6px;
+        }
+        /* a full-width list */
+        .list {
+          position: absolute;
+          left: 120px;
+          top: 130px;
+          width: 1680px;
+        }
+        .list .title {
+          font-family: "Archivo Black", "Arial Black", sans-serif;
+          font-size: 60px;
+          letter-spacing: -0.03em;
+          margin-bottom: 34px;
+        }
+        .list .item {
+          font-family: "Archivo Black", "Arial Black", sans-serif;
+          font-size: 38px;
+          line-height: 1.1;
+          letter-spacing: -0.02em;
+          margin-bottom: 24px;
+          padding-left: 40px;
+          position: relative;
+        }
+        .list .item::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 14px;
+          width: 18px;
+          height: 18px;
+          border-radius: 4px;
+          background: #e8431f;
+        }
+        .list .item code {
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 700;
+          font-size: 34px;
+          background: rgba(27, 29, 34, 0.08);
+          padding: 0 8px;
+          border-radius: 6px;
+        }
+        /* "where to start": a badge column, then the path (it wraps rather than running under the badge) */
+        .list.ordered .item {
+          display: flex;
+          align-items: center;
+          gap: 28px;
+          padding-left: 0;
+          min-height: 72px;
+          margin-bottom: 26px;
+        }
+        .list.ordered .item::before {
+          display: none;
+        }
+        .list.ordered .item .ono {
+          flex: 0 0 64px;
+          height: 64px;
+          border-radius: 50%;
+          background: #e8431f;
+          color: #ffffff;
+          font-size: 36px;
+          line-height: 64px;
+          text-align: center;
+        }
+        .list.ordered .item .otx {
+          flex: 1;
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+        /* screens */
+        .shot {
+          position: absolute;
+          overflow: hidden;
+          border-radius: 16px;
+          background: #0b0b0b;
+          box-shadow: 0 24px 60px rgba(27, 29, 34, 0.3);
+        }
+        .shot img {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+        }
+        .shot.phone {
+          border-radius: 46px;
+          box-shadow: 0 24px 60px rgba(27, 29, 34, 0.3), 0 0 0 12px #0b0c0e;
+        }
+        /* big numbers */
+        .nums {
+          position: absolute;
+          left: 120px;
+          top: 170px;
+          width: 1680px;
+          display: flex;
+          gap: 40px;
+        }
+        .num {
+          flex: 1;
+          padding: 30px 34px 34px;
+          border-radius: 22px;
+          background: #ffffff;
+          border: 5px solid #1b1d22;
+          box-shadow: 12px 12px 0 #1b1d22;
+        }
+        .num .v {
+          font-family: "Archivo Black", "Arial Black", sans-serif;
+          font-size: 150px;
+          line-height: 1;
+          letter-spacing: -0.05em;
+          color: #e8431f;
+        }
+        .num .l {
+          font-family: "Archivo Black", "Arial Black", sans-serif;
+          font-size: 34px;
+          line-height: 1.12;
+          margin-top: 14px;
+        }
+        .num .l small {
+          display: block;
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 600;
+          font-size: 19px;
+          color: #55585f;
+          margin-top: 8px;
+        }
+        .cite {
+          position: absolute;
+          left: 120px;
+          top: 690px;
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 600;
+          font-size: 22px;
+          color: #55585f;
+        }
+        /* title + the four PRs */
+        .big {
+          position: absolute;
+          left: 120px;
+          top: 250px;
+          width: 1680px;
+        }
+        .big .line {
+          font-family: "Archivo Black", "Arial Black", sans-serif;
+          font-size: 120px;
+          line-height: 1;
+          letter-spacing: -0.04em;
+        }
+        .big .sub {
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 700;
+          font-size: 30px;
+          letter-spacing: 0.08em;
+          color: #55585f;
+          margin-top: 34px;
+        }
+        .prs {
+          position: absolute;
+          left: 120px;
+          top: 210px;
+          width: 1680px;
+          display: flex;
+          gap: 34px;
+        }
+        .pr {
+          flex: 1;
+          height: 440px;
+          padding: 30px;
+          border-radius: 22px;
+          background: #ffffff;
+          border: 5px solid #1b1d22;
+          box-shadow: 12px 12px 0 #1b1d22;
+        }
+        .pr .n {
+          font-family: "Archivo Black", "Arial Black", sans-serif;
+          font-size: 90px;
+          line-height: 1;
+          color: #e8431f;
+        }
+        .pr .h {
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 700;
+          font-size: 28px;
+          margin: 24px 0 14px;
+        }
+        .pr .d {
+          font-family: "Archivo Black", "Arial Black", sans-serif;
+          font-size: 28px;
+          line-height: 1.18;
+        }
+        /* the data-flow diagram */
+        #flow {
+          position: absolute;
+          left: 80px;
+          top: 120px;
+          width: 1760px;
+          height: 700px;
+          overflow: visible;
+        }
+        .node rect {
+          fill: #ffffff;
+          stroke: #1b1d22;
+          stroke-width: 5;
+        }
+        .node text {
+          font-family: "Archivo Black", "Arial Black", sans-serif;
+          font-size: 30px;
+          fill: #1b1d22;
+          text-anchor: middle;
+        }
+        .node .s {
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 600;
+          font-size: 19px;
+          fill: #55585f;
+        }
+        .wire {
+          fill: none;
+          stroke: #1b1d22;
+          stroke-width: 4;
+        }
+        .wl {
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 700;
+          font-size: 19px;
+          fill: #b8321a;
+          text-anchor: middle;
+        }
+        #end img {
+          position: absolute;
+          left: 870px;
+          top: 250px;
+          width: 180px;
+          height: 180px;
+          border-radius: 32px;
+        }
+        #end .line {
+          position: absolute;
+          left: 0;
+          width: 1920px;
+          top: 470px;
+          text-align: center;
+          font-family: "Archivo Black", "Arial Black", sans-serif;
+          font-size: 84px;
+          letter-spacing: -0.03em;
+        }
+      </style>
+      <div id="root" data-composition-id="deck" data-width="1920" data-height="1080">
+        <!-- s2: device -> API -> phone, and the two undos -->
+        <div class="panel" id="p-flow">
+          <svg id="flow" viewBox="0 0 1760 700">
+            <defs>
+              <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#1b1d22" />
+              </marker>
+            </defs>
+            <g class="node" id="n-beam"><rect x="0" y="80" width="250" height="150" rx="18" /><text x="125" y="150">IR beam</text><text class="s" x="125" y="185">in the goal drawer</text></g>
+            <g class="node" id="n-fw"><rect x="350" y="80" width="300" height="150" rx="18" /><text x="500" y="150">Goal counter</text><text class="s" x="500" y="185">ESP32-C6 · flash queue</text></g>
+            <g class="node" id="n-api"><rect x="770" y="80" width="330" height="150" rx="18" /><text x="935" y="150">API</text><text class="s" x="935" y="185">POST goal-events</text></g>
+            <g class="node" id="n-db"><rect x="770" y="400" width="330" height="150" rx="18" /><text x="935" y="470">Postgres</text><text class="s" x="935" y="505">table_goals · version++</text></g>
+            <g class="node" id="n-phone"><rect x="1300" y="80" width="300" height="470" rx="40" /><text x="1450" y="300">Phone</text><text class="s" x="1450" y="335">GET …/live?since=v</text></g>
+            <path class="wire" id="e1" d="M 250 155 L 345 155" marker-end="url(#ah)" />
+            <path class="wire" id="e2" d="M 650 155 L 765 155" marker-end="url(#ah)" />
+            <path class="wire" id="e3" d="M 935 230 L 935 395" marker-end="url(#ah)" />
+            <path class="wire" id="e4" d="M 1100 475 C 1200 475 1200 315 1295 315" marker-end="url(#ah)" />
+            <text class="wl" id="l2" x="707" y="135">HTTPS</text>
+            <text class="wl" id="l4" x="1190" y="580">notify · long-poll</text>
+            <circle id="pk" r="16" fill="#e8431f" />
+            <g id="undo-dev">
+              <path class="wire" d="M 500 230 C 500 330 760 330 800 395" stroke="#e8431f" marker-end="url(#ah)" />
+              <text class="wl" x="420" y="360">undo-events · own goal · 10 s</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const F = window.__FILM;
+          const CODE = window.__CODE;
+          const root = document.getElementById("root");
+          const tl = gsap.timeline({ paused: true });
+          const at = (s, k) => F.scenes[s][0] + F.cues[s][k];
+          const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+          // ---- panel builders ----
+          const make = (html) => {
+            const el = document.createElement("div");
+            el.className = "panel";
+            el.innerHTML = html;
+            root.appendChild(el);
+            return el;
+          };
+          const code = (name, notes) => {
+            const c = CODE[name];
+            const lines = c.html.map((h, i) => `<div class="ln" data-i="${i + 1}"><span class="no">${c.from + i}</span>${h}</div>`).join("");
+            return `<div class="code"><div class="path">${esc(c.path)} · from line ${c.from}</div>${lines}</div>` + (notes ? notesHtml(notes) : "");
+          };
+          const notesHtml = ([kicker, ...items]) =>
+            `<div class="notes"><div class="nk">${kicker}</div>${items.map((x) => `<div class="item">${x}</div>`).join("")}</div>`;
+          const list = (title, items, ordered) =>
+            `<div class="list${ordered ? " ordered" : ""}"><div class="title">${title}</div>${items
+              .map((x, i) => `<div class="item">${ordered ? `<span class="ono">${i + 1}</span><span class="otx">${x}</span>` : x}</div>`)
+              .join("")}</div>`;
+          // a screen: src, the source width shown (px), the box [left, top, width, height], the crop's top and left (source px)
+          const shot = (src, w, box, top, notes, phone, left = 0, full = w) =>
+            `<div class="shot${phone ? " phone" : ""}" style="left:${box[0]}px;top:${box[1]}px;width:${box[2]}px;height:${box[3]}px">` +
+            `<img src="${src}" alt="" style="width:${(full * box[2]) / w}px;top:${-(top || 0) * (box[2] / w)}px;left:${-left * (box[2] / w)}px" /></div>` +
+            (notes ? notesHtml(notes) : "");
+          const nums = (items, cite) =>
+            `<div class="nums">${items.map(([v, l]) => `<div class="num"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("")}</div>` +
+            (cite ? `<div class="cite">${cite}</div>` : "");
+          const PHONE = [600, 130, 470, 610];   // a 390-px phone screen at 1.2x, its top 508 px (CSS) shown
+          const ph = (src, notes) => shot(src, 780, PHONE, 0, notes, true);
+          const S0 = "INTERFACES §0, test counts (2026-10-18)";
+
+          // ---- the panels: [scene, cue, html, code highlights [[cue, from, to]]] ----
+          const P = [
+            ["s1", "title", `<div class="big"><div class="line">Foosball goal counters</div><div class="sub">A REVIEW GUIDE · FOUR PULL REQUESTS · BUILT FROM THE WORKING TREE</div></div>`],
+            ["s1", "prs", `<div class="prs">
+              <div class="pr"><div class="n">1</div><div class="h">api/</div><div class="d">Device API, undo, the live long-poll, seed data</div></div>
+              <div class="pr"><div class="n">2</div><div class="h">frontend-beta/ · docs/</div><div class="d">The phone live view, admin Hardware, docs</div></div>
+              <div class="pr"><div class="n">3</div><div class="h">hardware/</div><div class="d">Firmware, sled CAD, electronics, twin, assembly gate</div></div>
+              <div class="pr"><div class="n">4</div><div class="h">observability/</div><div class="d">Grafana in Aspire, OTLP, dashboards, alerts</div></div></div>`],
+            ["s2", "beam", "FLOW"],
+            ["s3", "auth", code("auth", ["DEVICE AUTH", "Enrol once<small>X-Enrolment-Token → an unclaimed device</small>", "Then verify<small>Authorization: Device &lt;secret&gt; · SHA-256 · constant time</small>"]), [["enrol", 4, 11], ["verify", 13, 16]]],
+            ["s3", "api", list("/api/v3/hardware", ["<code>GET devices/{id}/config</code>", "<code>POST goal-events</code>", "<code>POST undo-events</code>", "<code>POST devices/{id}/status</code>", "Contract: <code>hardware/firmware/openapi.yaml</code> (not in Swagger)"])],
+            ["s3", "codes", nums([["201", "Counted"], ["409", "A retry, already seen"], ["422", "Another device's event"]])],
+            ["s3", "rules", code("undo_rules", ["UNDO REFUSALS · 422 + code", "not_yours", "closed", "already_undone", "too_late<small>Hardware:DeviceUndoWindowSeconds, default 10 s</small>"])],
+            ["s3", "live", code("live", ["LIVE LONG-POLL", "Changed? Answer now.", "Same version? Wait.<small>wait clamped to 0–60 s, default 25</small>"]), [["live", 6, 9], ["live", 11, 12]]],
+            ["s3", "mutate", code("mutate", ["ONE PATH FOR EVERY CHANGE", "Row lock (FOR UPDATE)", "Version++ · commit · notify", "Waiters re-check every 2 s<small>so several API replicas still work</small>"]), [["mutate", 1, 5], ["limit", 10, 13]]],
+            ["s3", "bg", list("Background services", ["<code>TableAutoSubmitBackgroundService</code><br>every 1 s · saves a won game after 10 s", "<code>TableMatchTimeoutBackgroundService</code><br>every 1 min · closes games quiet for 30 min"])],
+            ["s3", "mig", list("Migration AddFoosballHardware · 8 tables", ["<code>devices</code> · <code>foosball_tables</code> · <code>table_matches</code> · <code>table_goals</code>", "<code>table_roster_entries</code> · <code>device_wakes</code> · <code>player_cards</code> · <code>card_link_requests</code>", "Unique: <code>ix_table_goals_event_id</code> (a goal once)", "Unique: <code>ix_devices_table_goal_end</code> (one counter per goal)", "<code>foosball_tables.league_id</code>, required"])],
+            ["s3", "league", code("league", ["ONE LEAGUE PER TABLE", "Its devices follow it", "Another league → 400<small>claim, link, scan-in, auto-rate</small>", "Move it only when idle → 409<small>rated matches stay where they were rated</small>"]), [["league", 3, 6], ["move", 8, 17]]],
+            ["s3", "seed", list("scripts/seed-data.sql", ["Table 1 (Red / White), Table 2 (Blue / Yellow)", "Six placeholder devices: OK, weak, too much light, blocked, low battery, offline, unclaimed", "A live 3 : 2 game with an undone goal", "A finished 10 : 7 game, waiting for its players"])],
+            ["s3", "tests", nums([["294", "API integration tests<small>the whole suite</small>"], ["57", "New hardware tests<small>IntegrationTests/Hardware/ · as the runner counts</small>"]], S0)],
+            ["s3", "start", list("PR 1 · where to start", ["<code>api/docs/hardware-api.md</code>", "<code>Controllers/V3/DeviceApiController.cs</code>", "<code>Auth/DeviceAuthenticationHandler.cs</code>", "<code>Services/V3/TableMatchService.cs</code>"], true)],
+            ["s4", "live", ph("assets/shots/table-goal-pulse-390-dark.png", ["THE PHONE LIVE VIEW", "/&lt;org&gt;/&lt;league&gt;/tables/&lt;id&gt;", "Score, last goal, when"])],
+            ["s4", "hook", code("hook", ["ONE REQUEST AT A TIME", "refetchInterval only starts the next one", "since = the version it has<small>wait=5 per request</small>"])],
+            ["s4", "pulse", ph("assets/shots/table-goal-pulse-390-dark.png", ["A GOAL", "The column pulses"])],
+            ["s4", "undone", ph("assets/shots/table-undone-390-dark.png", ["AN UNDO", "“Goal for … undone · now a : b”"])],
+            ["s4", "actions", code("errcopy", ["NEW GAME", "expectedVersion", "409 → “The score changed”", "Else our own short copy<small>the API's text never reaches the page</small>"]), [["actions", 2, 2], ["actions", 20, 22]]],
+            ["s4", "admin", shot("assets/shots/hardware-device-rows-1280-dark-focus.png", 998, [120, 150, 1120, 557], 0, ["ADMIN · HARDWARE", "Tables and team names", "Claim new devices"])],
+            ["s4", "guard", code("guard", ["ONE QUESTION PER COUNTER", "Whose goalkeeper guards this goal?", "The live line says it back"])],
+            ["s4", "health", shot("assets/shots/hardware-device-rows-1280-dark-focus.png", 998, [120, 150, 1120, 557], 0, ["DEVICE HEALTH", "Battery · silence", "The beam's own checks"])],
+            ["s4", "banner", shot("assets/shots/admin-index-1280-dark.png", 1280, [120, 130, 1120, 650], 60, ["ADMIN OVERVIEW", "Attention first"])],
+            ["s4", "claim", shot("assets/shots/table-cross-league-claim-1280-dark.png", 724, [120, 220, 1120, 278], 20, ["CLAIMING A TABLE GAME", "From the submit page", "Or the table's /t/&lt;code&gt; link", "Only in the table's league"], false, 398, 1280)],
+            ["s4", "tests", nums([["45", "New Vitest tests<small>features/foosball, safe-redirect</small>"], ["7", "New Playwright e2e tests<small>e2e/foosball-tables.e2e.spec.ts · npm run e2e</small>"]])],
+            ["s4", "start", list("PR 2 · where to start", ["<code>…/tables/$tableId.tsx</code> (the phone view)", "<code>features/foosball/live.ts</code>", "<code>routes/admin/$orgSlug/hardware.tsx</code>", "<code>features/foosball/device-health.tsx</code> · <code>beam.tsx</code>"], true)],
+            ["s5", "fw", list("hardware/firmware", ["<code>lib/core/</code>: all behaviour, host-tested", "<code>src/goal/</code>: the ESP32-C6 device layer (thin)", "<code>openapi.yaml</code>: the device contract"])],
+            ["s5", "detect", code("detector", ["THE DETECTOR", "Blocked ≥ min_block_ms", "Counted while still blocked", "Then lockout_ms"])],
+            ["s5", "persist", code("persist", ["PERSIST, THEN BEEP", "Saved to flash first", "No beep = no goal"]), [["persist", 4, 4], ["persist", 9, 9]]],
+            ["s5", "undo", code("fwundo", ["THE UNDO KEY", "Newest own goal, inside the window", "Queued behind its goal", "Answer → the OLED"]), [["undo", 10, 10]]],
+            ["s5", "twin", list("The digital twin · 19 scenarios", ["The firmware's real <code>lib/core</code>, compiled for the host", "Against <code>mock_server.py</code> or the real API", "<code>goal_undo</code> · <code>offline_queue_drain</code> · <code>power_pull_mid_post</code>", "<code>stuck_ball</code> · <code>drawer_light</code> · <code>server_errors</code> · <code>nvs_wipe</code>"])],
+            ["s5", "cad", `<img src="assets/sled/exploded.png" alt="" style="position:absolute;left:160px;top:110px;width:1020px" />` + notesHtml(["MECHANICAL", "sled.py · build123d", "self_check() asserts it"])],
+            ["s5", "gate", nums([["139", "Assembly gate checks<small>every part along its real path · 0 fail</small>"]], S0)],
+            ["s5", "tests", nums([["55", "Firmware native tests"], ["30", "Contract payloads<small>vs openapi.yaml</small>"], ["19", "Twin scenarios"], ["139", "Assembly gate"]], S0)],
+            ["s5", "start", list("PR 3 · where to start", ["<code>hardware/team/INTERFACES.md</code> §0–2", "<code>hardware/firmware/README.md</code>", "<code>firmware/lib/core/goal_app.cpp</code>", "<code>hardware/twin/README.md</code> → <code>src/scenarios.cpp</code>"], true)],
+            ["s6", "obs", code("apphost", ["ASPIRE · GRAFANA", "grafana/otel-lgtm, explicit start", "OTLP on 4318"])],
+            ["s6", "dash", shot("assets/shots/fleet.png", 1600, [120, 130, 1120, 680], 0, ["DASHBOARDS", "Foosball — fleet", "Foosball — device"])],
+            ["s6", "alerts", list("8 alert rules", ["Battery low · no telemetry for 36 h · wrong firmware", "Repeated abnormal resets · daylight two days running", "Beam blocked 10 min in play · sensor dead · margin low", "All to a placeholder webhook"])],
+            ["s6", "lan", list("Local only", ["OTLP has no authentication", "Bound to 127.0.0.1 unless <code>FOOSBALL_OTLP_LAN=true</code>", "Nothing is deployed"])],
+            ["s6", "start", list("PR 4 · where to start", ["<code>observability/README.md</code>", "<code>local-dev/MMRProject.AppHost/AppHost.cs</code>", "<code>observability/grafana/provisioning/alerting/foosball.yaml</code>", "<code>hardware/firmware/lib/core/otlp.cpp</code> · <code>telemetry.h</code>"], true)],
+            ["s7", "notes", list("Look closer", [], false)],
+            ["s8", "end", `<div id="end"><img src="assets/crest.png" alt="" /><div class="line">Thanks for reviewing.</div></div>`],
+          ];
+
+          // ---- show each panel from its cue to the next one's (or its scene's end) ----
+          const flowEl = document.getElementById("p-flow");
+          const els = P.map(([s, k, html, hl]) => {
+            const el = html === "FLOW" ? flowEl : make(html);
+            return { s, k, el, hl, a: at(s, k) };
+          });
+          els.forEach((p, i) => {
+            const next = els[i + 1];
+            const sEnd = F.scenes[p.s][0] + F.scenes[p.s][1];
+            const b = next && next.s === p.s ? next.a : sEnd;
+            // a crossfade: the next panel starts coming in as this one goes (no empty frame between them)
+            tl.fromTo(p.el, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, p.a - 0.15);
+            tl.to(p.el, { opacity: 0, duration: 0.2 }, b - 0.15);
+            (p.hl || []).forEach(([cue, from, to]) => {
+              const lines = [...p.el.querySelectorAll(".ln")].filter((l) => +l.dataset.i >= from && +l.dataset.i <= to);
+              tl.set(lines, { backgroundColor: "rgba(232, 67, 31, 0.24)", borderLeftColor: "#e8431f" }, at(p.s, cue));
+            });
+          });
+
+          // ---- s2: the flow, step by step on the narration ----
+          const s2 = (k) => at("s2", k);
+          gsap.set(["#n-fw", "#n-api", "#n-db", "#n-phone", "#e1", "#e2", "#e3", "#e4", "#l2", "#l4", "#pk", "#undo-dev"], { opacity: 0 });
+          const step = (sel, t) => tl.to(sel, { opacity: 1, duration: 0.3 }, t);
+          step(["#e1", "#n-fw"], s2("fw"));
+          step(["#e2", "#l2", "#n-api"], s2("post"));
+          step(["#e3", "#n-db"], s2("db"));
+          step(["#e4", "#l4", "#n-phone"], s2("notify"));
+          const hop = (x0, y0, x1, y1, t, d) => tl.fromTo("#pk", { attr: { cx: x0, cy: y0 }, opacity: 1 }, { attr: { cx: x1, cy: y1 }, duration: d, ease: "power1.inOut", immediateRender: false }, t);
+          hop(125, 155, 500, 155, s2("beam") + 0.1, 0.5);
+          hop(500, 155, 935, 155, s2("post"), 0.6);
+          hop(935, 155, 935, 475, s2("db"), 0.5);
+          hop(935, 475, 1450, 315, s2("notify"), 0.7);
+          tl.to("#pk", { opacity: 0, duration: 0.3 }, s2("phone") + 0.6);
+          step("#undo-dev", s2("devundo"));
+
+          // ---- s7: the review notes, one by one ----
+          const notes = els.find((p) => p.s === "s7").el.querySelector(".list");
+          [["sb", "The scoreboard is parked, not removed<br><small>still in the API (device long-poll, actions, cards) and the frontend (My badges, Scoreboard role)</small>"],
+           ["chg", "Two changesets mention it, and run long<br><small>.changeset/foosball-table-hardware.md · foosball-tables.md: should be one or two sentences each</small>"],
+           ["poll", "The long-poll's 2 s fallback under load<br><small>TableMatchService.WaitForChangeAsync</small>"]].forEach(([k, html]) => {
+            const it = document.createElement("div");
+            it.className = "item";
+            it.innerHTML = html;
+            notes.appendChild(it);
+            tl.fromTo(it, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.3, ease: "power2.out" }, at("s7", k));
+          });
+
+          window.__timelines["deck"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

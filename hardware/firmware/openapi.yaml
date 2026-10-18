@@ -1,0 +1,1110 @@
+openapi: 3.1.0
+info:
+  title: Foosball goal counter — device API
+  version: 0.1.0
+  description: |
+    The API the table devices use to talk to the server. Two kinds of device share it, both
+    identified by `device_id` and configured by the config pull:
+    - **goal device**: one per goal, two per table. It reports goals, and undoes its own last goals
+      (the undo button, within `undo_window_s`).
+    - **scoreboard**: one per table, at one end. It shows the score and sends the button actions.
+    **Source of truth** for the device ↔ server contract. The firmware's `lib/core/api.*`
+    must match it, and `tools/check_openapi.py` validates the firmware's test payloads against
+    the schemas below.
+
+    The devices are **match-agnostic**. Goal devices report goals and their own status.
+    Scoreboards display the state the backend gives them and forward button presses as actions.
+    The backend owns matches, scores, undo, resets, players and scorers.
+
+    Device behaviour the server can rely on:
+    - The device only ever calls these endpoints. It has no open port, so it is never called.
+    - It is battery powered and Wi-Fi is off between calls. Each goal is sent within ~1–3 s,
+      or queued and retried if the server is unreachable.
+    - `device_id` is `fb-` plus the lowercase hex Wi-Fi MAC. It is stable for the life of the hardware.
+    - All request bodies are `application/json`. The device ignores response bodies, except the
+      config body.
+servers:
+  - url: https://api.example.com/api/v3/hardware
+    description: Placeholder. The real base URL is flashed into each device (`API_BASE_URL`).
+security:
+  - deviceId: []
+    deviceSecret: []
+    enrolmentToken: []
+
+paths:
+  /devices/{device_id}/config:
+    get:
+      operationId: getDeviceConfig
+      summary: Pull this device's configuration
+      description: |
+        Called once per wake (when the table starts being used), before or around the first goal.
+        A 200 body is cached on the device and used until the next successful pull.
+        Any other response (and network errors) → the device keeps its cached config and tries
+        again on its next Wi-Fi session in this wake.
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          description: Configuration. Every key is optional; absent or out-of-range keys use the default.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceConfig"
+        "404":
+          description: |
+            Device not assigned to a table. The device forgets any cached table/goal, uses
+            defaults, and keeps detecting and sending goal events (with `table_id`/`goal` null).
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /goal-events:
+    post:
+      operationId: postGoalEvent
+      summary: Report one goal
+      description: |
+        One request per goal, oldest first. Events are persisted on the device before sending,
+        so they survive power loss and are retried until the server answers definitively.
+
+        **Delivery is at-least-once**: deduplicate on `event_id`. The same event can arrive
+        again if the device lost power or connection before seeing the response.
+
+        How the device treats the response:
+        | Response | Device action |
+        |---|---|
+        | 2xx, 409 | Done (409 = "already have it"). |
+        | 400, 404, 410, 422 | Permanent rejection: log, drop this event, continue with the next (never blocks the queue). Counted in status `dropped_events`. |
+        | 401, 403, 408, 429, 5xx, anything else, network error | Keep queued and retry with exponential backoff (5 s → 5 min). Auth errors are retried because credentials are fixable (enrolment token, admin reset). |
+
+        The queue holds the newest 128 events. Beyond that the oldest is dropped and counted in
+        `dropped_events`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalEvent"
+      responses:
+        "201":
+          description: Recorded.
+        "409":
+          description: Duplicate `event_id`, already recorded. Treated as success.
+        "400":
+          description: Malformed. The device drops the event.
+        "422":
+          description: Rejected (e.g. unknown device). The device drops the event.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: Temporarily unavailable. The device retries with backoff.
+
+  /undo-events:
+    post:
+      operationId: postUndoEvent
+      summary: The goal counter's undo button
+      description: |
+        A 1 s hold on the goal counter's button undoes **a goal this device counted**, named by
+        `undoes_event_id`, if it is still inside `undo_window_s` (ux/goal-counter-phase1-2026-10-17.md B1).
+        Pressed again, the device names its goal before that one (a double count).
+        - The device checks the window itself before it sends anything (it answers "no" at once).
+        - The server enforces it with its own clock: from the goal's arrival to the undo's arrival.
+        - It is undone like the scoreboard's undo: a finished match goes live again, and a pending auto-submit is cancelled.
+
+        The device queues it with its goals, so it always arrives after the goal it undoes, survives power loss
+        and is retried like a goal event (same response table as `/goal-events`).
+
+        **Dedupe on `event_id` first, before any other check.** A seen undo → 409 (done). Otherwise the
+        retry of an undo that worked, but whose 201 was lost, would arrive late, be refused, and the device
+        would buzz "no" after a good undo.
+
+        A refused undo is not stored, and its retry is judged again. The device does not count refusals in
+        `dropped_events`. It plays its "no" knock if it is still awake.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UndoEvent"
+      responses:
+        "201":
+          description: Undone.
+        "409":
+          description: Duplicate `event_id`, already applied. Treated as success.
+        "422":
+          description: Refused. The device drops it and plays "no".
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    enum: [not_yours, too_late, already_undone, closed]
+                    description: |
+                      `not_yours`: not a goal this device sent (unknown ids too). `too_late`: more than
+                      `undo_window_s` between the goal's and the undo's arrival. `already_undone`: by
+                      this device, the scoreboard or the app. `closed`: the match was submitted or replaced.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: Temporarily unavailable. The device retries with backoff.
+
+  /devices/{device_id}/status:
+    post:
+      operationId: postDeviceStatus
+      summary: Report device health; heartbeat; signals "table idle"
+      description: |
+        Sent by both roles (`reason` says why):
+        - `sleep`: the device goes to sleep after `idle_timeout_s` with no goal and no table
+          movement. **This is the "table idle" signal**: a backend can use it to close or abort
+          a match that was abandoned without a final score.
+        - `heartbeat`: a timer wake **at least every 24 h**, even when the table is unused. If one
+          fails, the device retries after 1 h, 2 h, 4 h ... up to 24 h.
+        - `cutoff`: sent once when the battery reaches the cutoff voltage, just before the device
+          stops (`low_batt: true`). After that it is silent until the cells are changed.
+        - `wrong_board`: no longer sent (the D7 role strap was removed with the scoreboard image,
+          hardware review 2). Kept in the enum for older firmware.
+
+        **Alerting (recommended for the backend).** Notify when `low_batt` is true, and when a
+        device has sent **nothing for more than 36 h**: a dead battery is silent. The same
+        numbers also go to the observability stack as OTLP metrics (INTERFACES §10).
+
+        Scoreboards send it too. For them `queued_events` and `dropped_events` are 0 and
+        `beam_blocked` is false.
+
+        Best effort and **not retried**, except the heartbeat backoff above. A backend closing
+        abandoned matches should also apply its own timeout.
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceStatus"
+      responses:
+        "204":
+          description: Recorded (any 2xx is accepted).
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /devices/{device_id}/scoreboard:
+    get:
+      operationId: getScoreboardState
+      summary: Scoreboard state for this device's table (long-poll)
+      description: |
+        Returns the state of the table this scoreboard is assigned to, **as seen from this
+        scoreboard**. `left` and `right` are already ordered for its end of the table, so the
+        device just draws them. The backend decides the orientation.
+
+        **Long-poll.** The device sends the `version` it is displaying as `since`:
+        - The server holds the request until the state's `version` differs from `since`, then
+          answers 200 at once.
+        - If nothing changes within `wait` seconds, it answers **304** with no body. The device
+          then asks again straight away.
+        - Without `since` (first call after waking), it answers 200 immediately.
+
+        The device stays associated with Wi-Fi in power-save mode and reuses one keep-alive
+        connection for these calls. That gives display latency of about the server's notice time
+        plus ~0.3 s, at ~1.5 mA average while the table is in use.
+
+        Errors and timeouts: the device keeps showing the last state, marks it as offline, and
+        retries with backoff (2 s → 30 s).
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+        - name: since
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0 }
+          description: The `version` the device is currently displaying.
+        - name: wait
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, maximum: 60, default: 25 }
+          description: |
+            Longest hold in seconds. The device sends 25, so its 35 s HTTP timeout never fires
+            first. The server may answer sooner, but never later.
+      responses:
+        "200":
+          description: Current state (changed, or no `since` given).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoreboardState"
+        "304":
+          description: No change within `wait`. No body.
+        "404":
+          description: |
+            Not assigned to a table. The device shows "not assigned" with its device_id and
+            asks again every 30 s.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /devices/{device_id}/scoreboard/actions:
+    post:
+      operationId: postScoreboardAction
+      summary: A button action or card scan from the scoreboard
+      description: |
+        Sent when a player confirms an action on the scoreboard, or taps a card on its reader. Actions are interactive, not
+        queued: if the request fails, the device shows "no connection" and the player can press
+        again.
+
+        **`expected_version` makes actions safe to race and to retry.** It is the state `version`
+        the player was looking at.
+        - If the state has moved on since then (a goal came in, another client such as the app already undid,
+          or this is a retry of an action that already succeeded), the server must answer
+          **409** with the current state and do nothing.
+        - So a racing or retried Undo undoes one goal, not two.
+
+        On success the server answers 200 with the new state. The device draws it directly
+        instead of waiting for its long-poll. Any held long-poll from either scoreboard also
+        returns.
+
+        **`scan` (scan-in roster, ux/SCOREBOARD-UI.md "Scan-in"):** a tap is a fact, not an
+        edit, so `expected_version` is ignored and a scan never gets 409. The answer is always 200
+        with the current state plus `scan` (the outcome, for a short toast). The board sends a scan
+        when the card is taken away again, and only if it was in the field for at most 5 s. A tag left
+        in the field (e.g. the table's own NTAG) is never sent, nor is a phone's random UID (4 bytes
+        starting 0x08). Scans are not queued: one that fails shows "Not sent" and the player taps
+        again. The device never logs or stores a UID. A scan (known or unknown card) on a finished
+        match opens the Lobby: the finished match is confirmed as by New game, `match` becomes null
+        and the roster starts afresh (with the player, or with the unknown card's `link`).
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScoreboardAction"
+      responses:
+        "200":
+          description: Applied. Body is the new state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoreboardState"
+        "409":
+          description: |
+            The state changed since `expected_version`. The action was not applied. The body is
+            the current state, which the device shows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoreboardState"
+        "404":
+          description: Not assigned to a table, or `goal_id`/`player_id` unknown. The device shows the error briefly.
+        "422":
+          description: |
+            Not possible now (e.g. undo with no goals, `generate_teams` while `roster.can_generate`
+            is false and no teams are made, a `manual` split that isn't the roster). The device shows
+            the error briefly.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    # Device auth (INTERFACES §11). All three headers on every request; the device never needs to
+    # know whether it is registered yet.
+    deviceId:
+      type: apiKey
+      in: header
+      name: X-Device-Id
+      description: The device's id (`fb-` + Wi-Fi MAC hex).
+    deviceSecret:
+      type: http
+      scheme: Device
+      description: |
+        `Authorization: Device <secret>`: 64 lowercase hex characters (256 bits), created once on
+        the device's first boot from the hardware RNG and kept in NVS. Never logged.
+        Server: store SHA-256 of it and compare in constant time. A known device with the wrong
+        secret gets 401; that happens after an NVS wipe (new secret) until an admin resets the
+        device, after which it registers again on its next request.
+    enrolmentToken:
+      type: apiKey
+      in: header
+      name: X-Enrolment-Token
+      description: |
+        The organisation's enrolment token (an Owner creates and rotates it in admin), flashed from
+        the secrets file. Checked **only for unknown devices**: an unknown device with a valid
+        token is registered as **unclaimed** in that organisation, with its secret's hash. An
+        unclaimed device is answered normally but affects no match: config 404, goal events 201
+        (stored), scoreboard 404, status 204. An admin claims it and assigns table, role and end.
+
+  parameters:
+    DeviceId:
+      name: device_id
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/DeviceId"
+
+  responses:
+    Unauthorized:
+      description: |
+        Bad or missing credentials (wrong secret for a known device, or unknown device without a valid
+        enrolment token). The device keeps everything queued, retries with backoff and logs
+        "auth rejected"; it never drops goals over it.
+
+  schemas:
+    DeviceId:
+      type: string
+      pattern: "^fb-[0-9a-f]{12}$"
+      examples: ["fb-a0b1c2d3e4f5"]
+
+    DeviceConfig:
+      type: object
+      description: |
+        Unknown keys are ignored. A key that is absent, has the wrong type, or is out of range
+        uses the default.
+      properties:
+        role:
+          type: string
+          enum: [goal, scoreboard]
+          description: |
+            What this device is. The firmware reports a mismatch with the build it runs on
+            (goal or scoreboard firmware) in its log.
+        table_id:
+          type: string
+          description: Opaque. Echoed in goal events.
+        goal:
+          type: string
+          description: Goal devices only. Opaque (e.g. "home"/"away"). Echoed in goal events.
+        end:
+          type: string
+          description: |
+            Scoreboards only: the end of the table it sits on, as a `goal` value (e.g. "home").
+            The device does not interpret it. The backend uses it to order `left`/`right` in
+            the scoreboard state.
+        config_version:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+          default: 0
+        idle_timeout_s:
+          type: integer
+          minimum: 30
+          maximum: 86400
+          default: 300
+          description: |
+            No goal and no table movement for this long → status POST, then sleep. Scoreboards
+            also count button presses as activity.
+        min_block_ms:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 5
+          description: The beam must stay blocked this long to count a goal.
+        lockout_ms:
+          type: integer
+          minimum: 0
+          maximum: 60000
+          default: 1500
+          description: After a goal, the detector re-arms this long after the beam clears (ignores roll-backs).
+        stuck_after_s:
+          type: integer
+          minimum: 1
+          maximum: 3600
+          default: 10
+          description: The beam blocked this long → `beam_blocked` in status.
+        vbat_scale:
+          type: number
+          minimum: 0.8
+          maximum: 1.2
+          description: |
+            Optional override of the per-device trim of `battery_mv` (meter / reported). Normally left out:
+            each device is calibrated over USB serial at assembly (`cal <mV>`, stored on the device).
+        sound_volume:
+          type: integer
+          minimum: 0
+          maximum: 3
+          default: 2
+          description: |
+            The table's sound (`FoosballTable.sound_volume`, admin "Table sound"): 0 off, 1 low,
+            2 medium, 3 high. Sent to every device of the table: the scoreboard and the goal counters'
+            buzzers (goal chirp, undo, "no") use it. Missing or out of range = 2. A change bumps `config_version` and applies at the
+            device's next config pull (next wake).
+        undo_window_s:
+          type: integer
+          minimum: 1
+          maximum: 300
+          default: 10
+          description: |
+            Goal counters: the undo button undoes this device's own goals this young (seconds from the goal).
+            The device checks it before it sends (a "no" at once), and the server enforces the same value on
+            `/undo-events`.
+        batt_warn_mv:
+          type: integer
+          minimum: 3000
+          maximum: 5000
+          description: |
+            Goal counters, optional: the pack voltage (mV, radio-off reading) below which status says
+            `low_batt: true`. Missing = the firmware default (3750, hardware review 2).
+        batt_cutoff_mv:
+          type: integer
+          minimum: 3000
+          maximum: 5000
+          description: |
+            Goal counters, optional: below this the device sends one `cutoff` status and stops until the cells
+            are changed. Missing = the firmware default (3650: keeps the 3.3 V rail >= 3.0 V at a Wi-Fi burst).
+            Tuned per fleet after the bench gate; the device uses its cached config from the last wake.
+        batt_resume_mv:
+          type: integer
+          minimum: 3000
+          maximum: 5000
+          description: |
+            Goal counters, optional: after a cutoff, the device runs again only at or above this (rested NiMH
+            bounces back about 0.1 V per cell). Missing = the firmware default (3950).
+        # Goal counters: beam health + beam modes (hardware/electronics/beam-health-2026-10-16.md, the
+        # circuit; hardware/firmware/beam-health-firmware-2026-10-16.md, the check). Defaults are EST
+        # until the bench. Light is in µA at the receiver, so one threshold means the same in every mode.
+        beam_mode:
+          type: string
+          enum: [a, a_boost, b, auto]
+          default: a
+          description: |
+            a = dark drawer (LED 1 mA, 220 k pull-up), the default. a_boost = weak optics (LED +5.3 mA).
+            b = daylight (LED boost + 68 k pull-up, 52 k in all: tolerates ~4.2× the ambient of a). auto = the
+            firmware picks from the day's ambient baseline (thresholds below); a failed try of b
+            reports `ambient_high`.
+        beam_check_s:
+          type: integer
+          minimum: 0
+          maximum: 3600
+          default: 60
+          description: Health check period while the table is in use; 0 = off (also stops auto). 1–9 is out of range.
+        beam_settle_ms:
+          { type: integer, minimum: 1, maximum: 20, default: 3, description: Receiver settle time after each LED / pull-up change. }
+        beam_ambient_max_pct:
+          { type: number, minimum: 1, maximum: 100, default: 60,
+            description: "`ambient_high` above this % of the active mode's ambient tolerance (a: 3.75 µA, b: 41 µA)." }
+        beam_margin_min:
+          { type: number, minimum: 1, maximum: 20, default: 2,
+            description: "`low_margin` below this lit margin (×) in the active mode." }
+        beam_drift_pct:
+          { type: number, minimum: 0, maximum: 100, default: 30,
+            description: "`low_margin` when the 1 mA lit reading falls this far below its baseline; 0 = off." }
+        beam_dead_delta_ua:
+          { type: number, minimum: 0, maximum: 1000, default: 2,
+            description: The LED moves the receiver by less → counts toward `sensor_dead`. }
+        beam_dead_checks:
+          { type: integer, minimum: 1, maximum: 100, default: 3, description: Consecutive checks before `sensor_dead`. }
+        beam_baseline_min:
+          { type: integer, minimum: 0, maximum: 1440, default: 120,
+            description: Time constant (minutes, real time incl. sleep) of the tracked baselines; 0 = the latest reading. }
+        beam_report_s:
+          { type: integer, minimum: 60, maximum: 86400, default: 600,
+            description: "Summary log record period; also the minimum gap between `reason: beam` statuses." }
+        beam_ambient_switch_ua:
+          { type: number, minimum: 0, maximum: 100, default: 1.5, description: "auto: a → b when the ambient baseline passes this." }
+        beam_ambient_return_ua:
+          { type: number, minimum: 0, maximum: 100, default: 0.75, description: "auto: b → a when it falls below this." }
+        beam_mode_min_dwell_s:
+          { type: integer, minimum: 0, maximum: 86400, default: 300, description: "auto: minimum time in a mode." }
+        beam_r_pu_a_ohm:
+          { type: number, minimum: 1000, maximum: 10000000, default: 220000, description: Fitted R_PU (for the µA conversion). }
+        beam_r_pu_b_ohm:
+          { type: number, minimum: 1000, maximum: 10000000, default: 68000, description: Fitted R_PU_B. }
+        beam_led_ma:
+          type: array
+          items: { type: number, minimum: 0.1, maximum: 20 }
+          minItems: 2
+          maxItems: 2
+          default: [1.0, 5.3]
+          description: The LED current from D9 and the boost from D10, as fitted (mA).
+      examples:
+        - { role: goal, table_id: "table-1", goal: "home", config_version: 3, idle_timeout_s: 300,
+            min_block_ms: 5, lockout_ms: 1500, stuck_after_s: 10, sound_volume: 2 }
+        - { role: scoreboard, table_id: "table-1", end: "home", config_version: 3, idle_timeout_s: 300,
+            sound_volume: 2 }
+        - { role: goal, table_id: "table-1", goal: "away", config_version: 4, beam_mode: auto, beam_check_s: 60,
+            beam_ambient_switch_ua: 1.5, beam_led_ma: [1.0, 3.1] }
+        - { role: goal, table_id: "table-1", goal: "away", config_version: 5, beam_mode: a_boost,
+            batt_warn_mv: 3800, batt_cutoff_mv: 3700, batt_resume_mv: 4000 }
+
+    GoalEvent:
+      type: object
+      additionalProperties: false
+      required: [event_id, device_id, seq, occurred_at, uptime_ms, table_id, goal, battery_mv,
+                 firmware_version]
+      properties:
+        event_id:
+          type: string
+          pattern: "^fb-[0-9a-f]{12}-[0-9a-f]{8}-[0-9]+$"
+          description: |
+            `{device_id}-{epoch}-{seq}`, where epoch is 8 hex digits. Globally unique and the
+            dedupe key. The epoch is random, created when the device's storage is first
+            initialised, so ids stay unique even if storage is wiped and `seq` restarts.
+        device_id:
+          $ref: "#/components/schemas/DeviceId"
+        seq:
+          type: integer
+          minimum: 0
+          maximum: 4294967295
+          description: |
+            Per-device counter, increasing by 1 per event (goal or undo, shared with `UndoEvent.seq`) within one
+            epoch. Gaps mean dropped events, or refused undos.
+        occurred_at:
+          type: [string, "null"]
+          format: date-time
+          description: UTC, millisecond precision. Null if the clock wasn't NTP-synced yet in this wake; use the receive time.
+        uptime_ms:
+          type: integer
+          minimum: 0
+          maximum: 4294967295
+          description: Milliseconds since this wake.
+        table_id:
+          type: [string, "null"]
+          description: From config. Null if unassigned.
+        goal:
+          type: [string, "null"]
+          description: From config. Null if unassigned.
+        battery_mv:
+          $ref: "#/components/schemas/BatteryMv"
+        firmware_version:
+          type: string
+      examples:
+        - { event_id: "fb-a0b1c2d3e4f5-9c41e07a-123", device_id: "fb-a0b1c2d3e4f5", seq: 123,
+            occurred_at: "2026-10-14T19:42:03.512Z", uptime_ms: 81234, table_id: "table-1",
+            goal: "home", battery_mv: 3870, firmware_version: "0.1.0" }
+
+    UndoEvent:
+      type: object
+      additionalProperties: false
+      required: [event_id, device_id, seq, occurred_at, uptime_ms, table_id, goal, undoes_event_id, battery_mv,
+                 firmware_version]
+      description: As `GoalEvent` (same `event_id` scheme and `seq` counter), plus the goal it undoes.
+      properties:
+        event_id:
+          type: string
+          pattern: "^fb-[0-9a-f]{12}-[0-9a-f]{8}-[0-9]+$"
+          description: This undo's own id, and the dedupe key.
+        device_id:
+          $ref: "#/components/schemas/DeviceId"
+        seq:
+          type: integer
+          minimum: 0
+          maximum: 4294967295
+        occurred_at:
+          type: [string, "null"]
+          format: date-time
+          description: "When the hold was reached. Null if not NTP-synced (informational: the window uses arrival times)."
+        uptime_ms:
+          type: integer
+          minimum: 0
+          maximum: 4294967295
+        table_id:
+          type: [string, "null"]
+        goal:
+          type: [string, "null"]
+        undoes_event_id:
+          type: string
+          pattern: "^fb-[0-9a-f]{12}-[0-9a-f]{8}-[0-9]+$"
+          description: The `event_id` of this device's goal to undo.
+        battery_mv:
+          $ref: "#/components/schemas/BatteryMv"
+        firmware_version:
+          type: string
+      examples:
+        - { event_id: "fb-a0b1c2d3e4f5-9c41e07a-124", device_id: "fb-a0b1c2d3e4f5", seq: 124,
+            occurred_at: "2026-10-14T19:42:06.020Z", uptime_ms: 83742, table_id: "table-1", goal: "home",
+            undoes_event_id: "fb-a0b1c2d3e4f5-9c41e07a-123", battery_mv: 3870, firmware_version: "0.1.0" }
+
+    DeviceStatus:
+      type: object
+      additionalProperties: false
+      required: [device_id, role, reason, battery_mv, firmware_version, uptime_ms, queued_events, dropped_events,
+                 beam_blocked, low_batt, metrics]
+      properties:
+        device_id:
+          $ref: "#/components/schemas/DeviceId"
+        role:
+          type: string
+          enum: [goal, scoreboard]
+          description: From the board's hardware strap, which wins over the config `role` (see `metrics.config_role`).
+        reason:
+          type: string
+          enum: [sleep, heartbeat, cutoff, wrong_board, beam]
+          description: "`beam`: sent mid-session when the goal counter's beam health got worse (at most once per `beam_report_s`)."
+        battery_mv:
+          $ref: "#/components/schemas/BatteryMv"
+        firmware_version:
+          type: string
+        uptime_ms:
+          type: integer
+          minimum: 0
+          maximum: 4294967295
+          description: Milliseconds since this wake (≈ how long the table was in use, plus `idle_timeout_s`).
+        queued_events:
+          type: integer
+          minimum: 0
+          description: Goal events still waiting to be delivered.
+        dropped_events:
+          type: integer
+          minimum: 0
+          description: Lifetime count of events dropped (queue overflow or permanent rejection). Not reset.
+        beam_blocked:
+          type: boolean
+          description: The beam has been blocked ≥ `stuck_after_s` (ball stuck in the gate, or misaligned).
+        low_batt:
+          type: boolean
+          description: Battery below the warning level (firmware `LOW_BATT_WARN_MV`, provisional). Replace cells soon.
+        beam:
+          type: object
+          additionalProperties: false
+          description: |
+            Goal counters only: beam health. Light at the receiver in µA; null = no check yet this wake,
+            or no ADC fitted. `ball_ua` is the most light seen with a ball in the beam (since the last
+            summary): near the mode's tolerance, balls may read as clear.
+          required: [health, mode, amb_ua, lit1_ua, margin, ball_ua, baseline_amb_ua, baseline_lit1_ua, checked_s]
+          properties:
+            health: { type: string, enum: [ok, low_margin, ambient_high, blocked, sensor_dead] }
+            mode: { type: string, enum: [a, a_boost, b], description: The active mode (auto resolves to one of these). }
+            amb_ua: { type: [number, "null"], minimum: 0, description: Ambient with the LED off. }
+            lit1_ua: { type: [number, "null"], minimum: 0, description: Lit at 1 mA (the margin reading). }
+            margin: { type: [number, "null"], minimum: 0, description: Lit light over what the active mode needs (×). }
+            ball_ua: { type: [number, "null"], minimum: 0 }
+            baseline_amb_ua: { type: [number, "null"], minimum: 0 }
+            baseline_lit1_ua: { type: [number, "null"], minimum: 0 }
+            checked_s: { type: [integer, "null"], minimum: 0, description: Seconds since the last check. }
+        metrics:
+          type: object
+          additionalProperties: false
+          description: Diagnostics. Counters run since power-on (they live in RTC memory, so they survive sleep).
+          required: [reset_reason, config_role, wake_count, goals, short_blocks, stuck_events, wifi_connect_ms,
+                     rssi, wifi_retries, free_heap, min_free_heap, log_dropped]
+          properties:
+            reset_reason:
+              type: string
+              description: Why the chip last started (poweron, deepsleep, brownout, panic, task_wdt, sw, ...).
+            config_role:
+              type: [string, "null"]
+              description: The config's `role` when it disagrees with the strap (the strap wins); otherwise null.
+            wake_count: { type: integer, minimum: 0 }
+            goals: { type: integer, minimum: 0, description: Goals counted. }
+            short_blocks: { type: integer, minimum: 0, description: Beam blocks shorter than `min_block_ms` (glitches) rejected. }
+            stuck_events: { type: integer, minimum: 0, description: Times the beam stayed blocked ≥ `stuck_after_s`. }
+            wifi_connect_ms: { type: [integer, "null"], minimum: 0, description: Last connect duration. }
+            rssi: { type: [integer, "null"], maximum: 0, description: Last RSSI in dBm. }
+            wifi_retries: { type: integer, minimum: 0, description: Failed connect attempts. }
+            free_heap: { type: integer, minimum: 0 }
+            min_free_heap: { type: integer, minimum: 0 }
+            log_dropped: { type: integer, minimum: 0, description: Log records dropped because the buffer was full. }
+      examples:
+        - { device_id: "fb-a0b1c2d3e4f5", role: goal, reason: heartbeat, battery_mv: 3870, firmware_version: "0.1.0",
+            uptime_ms: 4200, queued_events: 0, dropped_events: 0, beam_blocked: false, low_batt: false,
+            metrics: { reset_reason: deepsleep, config_role: null, wake_count: 37, goals: 412, short_blocks: 3,
+                       stuck_events: 0, wifi_connect_ms: 640, rssi: -61, wifi_retries: 1, free_heap: 182000,
+                       min_free_heap: 151000, log_dropped: 0 } }
+
+    ScoreboardState:
+      type: object
+      required: [version, table_name, table_url, needs_claim, claim_url, match]
+      description: |
+        Everything a scoreboard draws (screens in `ux/SCOREBOARD-UI.md`). Extra keys are ignored
+        by the device.
+      properties:
+        version:
+          type: integer
+          minimum: 0
+          description: |
+            Increases on every change to anything below (goal, undo, scorer, roster, new game).
+            It is the long-poll and `expected_version` token. It must never repeat for a table.
+        table_name:
+          type: [string, "null"]
+          description: Display name, e.g. "Table 3". Not shown in v1.
+        table_url:
+          type: [string, "null"]
+          format: uri
+          maxLength: 120
+          description: |
+            The table's short link (`<base>/t/<code>`, stable). Not shown by the board (the table's NFC
+            stickers carry it). null = no public frontend URL configured.
+        needs_claim:
+          type: boolean
+          description: |
+            The shown match is finished and not yet claimed or confirmed in the app. While true, the
+            finished and idle screens show `claim_url` as a QR code ("Log this game").
+        claim_url:
+          type: [string, "null"]
+          format: uri
+          maxLength: 120
+          description: |
+            This match's short link (`<base>/t/<code>`) for claiming/confirming it in the app.
+            Non-null iff `needs_claim` (and a public frontend URL is configured). A change bumps `version`.
+            The board shows it as a QR code on the idle and finished screens; it is the only QR the board
+            shows, and the device never builds or hard-codes a URL. **Keep it short:** up to 53
+            characters it gets 3 px modules (ECC M, or L when M doesn't fit), up to 154 characters
+            2 px; anything longer shows no QR (the device logs it). Target ~60 characters including
+            the host.
+        match:
+          oneOf:
+            - $ref: "#/components/schemas/Match"
+            - type: "null"
+          description: |
+            The live match, or the most recent finished one (shown on the idle screen as "Last
+            game"). Null if there is none (e.g. a new table, or the last game was discarded and
+            no new one has started): the board shows 0 : 0.
+        roster:
+          oneOf:
+            - $ref: "#/components/schemas/Roster"
+            - type: "null"
+          description: |
+            The line-up for the next match, built by card scans (scan-in). **Present, possibly with
+            no players, whenever the table has no started match**: no match, a 0:0 linked match
+            (teams made), or a finished match. Null once a goal is scored, and always null when the
+            table can't scan (no default league, or no card key configured). The board shows the idle
+            hint "Press any key, then tap your badge" only while the last state had a roster.
+            Changes bump `version`.
+        scan:
+          $ref: "#/components/schemas/ScanResult"
+      examples:
+        - version: 42
+          table_name: "Table 3"
+          table_url: "https://app.example.com/t/k3v9x2q7pa"
+          needs_claim: false
+          claim_url: null
+          match:
+            id: "m-1817"
+            status: live
+            started_at: "2026-10-14T19:30:00Z"
+            ended_at: null
+            winner: null
+            can_undo: true
+            can_swap: false
+            left:  { name: "RED",  score: 8, players: [{ id: "p-1", name: "Alice" }, { id: "p-2", name: "Bob" }] }
+            right: { name: "BLUE", score: 5, players: [{ id: "p-3", name: "Carol" }, { id: "p-4", name: "Dave" }] }
+            last_goal: { id: "g-991", side: left, scorer: null, own_goal: false, age_s: 2,
+                         occurred_at: "2026-10-14T19:42:03.512Z" }
+        - version: 43  # the winning goal of a linked match: auto-submit in 10 s
+          table_name: "Table 3"
+          table_url: "https://app.example.com/t/k3v9x2q7pa"
+          needs_claim: true
+          claim_url: "https://app.example.com/t/m7c2w9d4kq"
+          match:
+            id: "m-1817"
+            status: finished
+            started_at: "2026-10-14T19:30:00Z"
+            ended_at: "2026-10-14T19:39:26Z"
+            winner: left
+            can_undo: true
+            can_swap: false
+            submit_in_s: 10
+            left:  { name: "RED",  score: 10, players: [{ id: "p-1", name: "Alice" }, { id: "p-2", name: "Bob" }] }
+            right: { name: "BLUE", score: 5, players: [{ id: "p-3", name: "Carol" }, { id: "p-4", name: "Dave" }] }
+            last_goal: { id: "g-993", side: left, scorer: null, own_goal: false, age_s: 0,
+                         occurred_at: "2026-10-14T19:39:26.104Z" }
+            summary: { duration_s: 566, mvp_name: null }
+        - version: 57  # scan-in: the answer to an unknown card's scan
+          table_name: "Table 3"
+          table_url: "https://app.example.com/t/k3v9x2q7pa"
+          needs_claim: false
+          claim_url: null
+          match: null
+          roster:
+            league_name: "Office league"
+            team_size: 2
+            players: [{ id: "p-1", name: "Alice", color: 3 }, { id: "p-3", name: "Carol", color: 5 }]
+            can_generate: false
+            link: { url: "https://app.example.com/t/x7q2m9k4ab", expires_in_s: 600 }
+          scan: { result: unknown_card }
+
+    Match:
+      type: object
+      required: [id, status, started_at, ended_at, winner, can_undo, can_swap, left, right, last_goal]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [live, finished]
+          description: |
+            `live`: score screen with Undo / New game. `finished`: the winner's half is inverted
+            and New game starts one without asking. Finishing a match (first to N, saved or
+            discarded via New game, abandoned table) is the backend's decision.
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: [string, "null"]
+          format: date-time
+        winner:
+          enum: [left, right, null]
+          description: Set when `status` is `finished` and the game was won. Otherwise null.
+        can_swap:
+          type: boolean
+          description: |
+            Offer K2 "⇄ Swap sides": at 0 : 0, when a roster is linked to the table's match (the
+            names may be on the wrong halves). `swap_sides` mirrors left/right; pressing it again
+            swaps back. Disappears with the first goal.
+        teams_mode:
+          enum: [fair, random, manual, null]
+          description: |
+            How the teams were made: the `mode` of the `generate_teams` that made them (kept by a
+            rematch and a discard back to teams). Null when they were linked another way (the app)
+            or there are none. The board's Teams strip: "Fair teams", "Random teams", "Teams
+            chosen", or "Teams made" (null, and always in 1v1); K3 "Again" only on random 2v2.
+        can_undo:
+          type: boolean
+          description: "Whether the Undo key is offered (e.g. false at 0:0, or after auto-submit)."
+        submit_in_s:
+          type: [integer, "null"]
+          minimum: 0
+          description: |
+            Auto-submit: on a finished match, the seconds until the server submits it (computed at
+            response time, like `age_s`, so device clocks don't matter); null = nothing pending
+            (an unlinked match awaiting a claim, already submitted, or the feature off). Absent on
+            live matches. At submit the server bumps `version` and sets `needs_claim` false,
+            `claim_url` null, `submit_in_s` null and `can_undo` false; the match keeps its players
+            (Rematch still works) and `assign_scorer` still works, so the 15 s who-scored window can
+            outlast the deadline. An undo after submit answers 422.
+        left:
+          $ref: "#/components/schemas/Team"
+        right:
+          $ref: "#/components/schemas/Team"
+        last_goal:
+          oneOf:
+            - $ref: "#/components/schemas/Goal"
+            - type: "null"
+          description: The goal the Undo key would remove. Null if there is none.
+        summary:
+          type: object
+          required: [duration_s, mvp_name]
+          description: |
+            Only when `status` is finished (absent otherwise): the Finished screen's one summary line,
+            "9:26 · MVP Alice", in the strip over the half that didn't win (centred with no winner).
+          properties:
+            duration_s:
+              type: [integer, "null"]
+              minimum: 0
+              description: |
+                First to last counted goal (each gap capped at 5 min); null below 2 goals. The board
+                shows m:ss, h:mm:ss from 1 h, and leaves it out when null.
+            mvp_name:
+              type: [string, "null"]
+              maxLength: 24
+              description: |
+                The MVP, 2v2 only, and only when >= 70 % of counted goals have a known scorer (a tie
+                that impact can't break = null). The board shortens it with an ellipsis.
+
+    Team:
+      type: object
+      description: |
+        One half of the board. `left` is the team standing on the viewer's left when looking
+        along the table from this board's end (config `end`).
+      required: [score, players]
+      properties:
+        name:
+          type: string
+          maxLength: 12
+          description: Optional team name. Not shown (position is the label).
+        score:
+          type: integer
+          minimum: 0
+        end_label:
+          type: string
+          maxLength: 12
+          description: |
+            The table's name for the end this team plays at (e.g. "Window"), the same words the
+            app's claim page uses. Shown under the score when `players` is empty (an unclaimed match).
+        players:
+          type: array
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/Player"
+          description: |
+            The team's roster. Team size comes only from here (1v1 and 2v2, never hard-coded).
+            Empty means an anonymous game: no names are shown and "who scored?" never opens.
+
+    Player:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          maxLength: 24
+          description: Display name. The board shortens it with an ellipsis to fit.
+        color:
+          type: integer
+          minimum: 0
+          maximum: 5
+          description: |
+            Palette index, stable per member: 0 red, 1 yellow, 2 green, 3 cyan, 4 blue, 5 magenta (ux;
+            the app shows the same hues). The board shows it on the player's key LED. Absent = no
+            colour (the LED shows white).
+
+    Roster:
+      type: object
+      description: |
+        Scan-in roster (`api/docs/hardware-roster-proposal.md`). With no match, or a finished one:
+        the Lobby. With a 0:0 linked match: Teams (its `left`/`right` players are the roster).
+      required: [league_name, team_size, players, can_generate, link]
+      properties:
+        league_name:
+          type: string
+          maxLength: 24
+        team_size:
+          type: integer
+          minimum: 1
+          maximum: 2
+          description: Players per team (the table's default league). The board has room for 2 a side.
+        players:
+          type: array
+          maxItems: 4
+          description: In join order. At most 2 × `team_size`.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Player"
+            required: [color]
+        can_generate:
+          type: boolean
+          description: "Exactly 2 × `team_size` players, so `generate_teams` is possible."
+        link:
+          oneOf:
+            - type: object
+              required: [url, expires_in_s]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  maxLength: 120
+                  description: |
+                    Short link (`<base>/t/<code>`) to link the last unknown card to a player. Shown as
+                    a QR code; the same length rules as `claim_url` apply.
+                expires_in_s:
+                  type: integer
+                  minimum: 0
+            - type: "null"
+          description: The unknown-card QR, or null.
+
+    ScanResult:
+      type: object
+      description: |
+        Only in the answer to a `scan` action: what the tap did, for a short toast.
+        Anything that must survive a redraw is in the state itself.
+      required: [result]
+      properties:
+        result:
+          type: string
+          enum: [joined, already_in, unknown_card, roster_full, locked, busy, no_league, unavailable]
+        player:
+          $ref: "#/components/schemas/Player"
+
+    Goal:
+      type: object
+      required: [id, side, scorer, own_goal, age_s, occurred_at]
+      properties:
+        id:
+          type: string
+        side:
+          type: string
+          enum: [left, right]
+          description: The team credited with the goal, relative to this scoreboard.
+        scorer:
+          oneOf:
+            - $ref: "#/components/schemas/Player"
+            - type: "null"
+          description: Who scored. For an own goal, a player of the other team. Null until assigned.
+        own_goal:
+          type: boolean
+        age_s:
+          type: integer
+          minimum: 0
+          description: |
+            Seconds since the goal, computed by the server when it sends the response. The device
+            counts on from there, so the window is the server's, and the device
+            needs no synced clock. The board opens "who scored?" while `scorer` is null,
+            `age_s` < 15, and a team has ≥ 2 players.
+        occurred_at:
+          type: string
+          format: date-time
+
+    ScoreboardAction:
+      type: object
+      additionalProperties: false
+      required: [type, expected_version]
+      properties:
+        type:
+          type: string
+          enum: [undo_last_goal, new_game, assign_scorer, swap_sides, scan, remove_player, generate_teams]
+          description: |
+            Scan-in: `scan` adds the card's player to the roster. `remove_player` takes `player_id` off
+            the roster; removing from made teams dissolves them (back to the Lobby). `generate_teams`
+            splits the full roster (`roster.can_generate`) into the table's 0:0 linked match, by `mode`.
+            While random teams are shown (0 : 0, no goal, `teams_mode` random), `generate_teams`
+            `{mode: random}` is "Again": a new random split, a different pairing from the current one.
+            The match id may stay or change; the board handles both.
+        expected_version:
+          type: integer
+          minimum: 0
+          description: |
+            The state `version` the player was looking at (see the endpoint description). Ignored
+            for `scan` (the board sends its latest version, 0 before its first state).
+        mode:
+          type: string
+          enum: [fair, random, manual]
+          default: fair
+          description: |
+            `generate_teams` only. `fair`: balanced by MMR, deterministic (the same roster gives the
+            same teams); 1v1 boards always send it. `random`: a random split. `manual`: exactly
+            `teams`. The server sets the match's `teams_mode` to it.
+        teams:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: array
+            items:
+              type: string
+          description: |
+            `generate_teams` with `mode: manual` only: player ids as [left, right], seen from the
+            sending board (as `match.left` / `match.right`). Together exactly the roster, each
+            `team_size` long; otherwise 422.
+        uid:
+          type: string
+          pattern: "^([0-9A-Fa-f]{8}|[0-9A-Fa-f]{14}|[0-9A-Fa-f]{20})$"
+          description: |
+            `scan` only: the card's UID as hex (4, 7 or 10 bytes; the board sends upper case). Personal
+            identifier: the server stores only its keyed hash and never logs it.
+        save:
+          type: boolean
+          description: |
+            `new_game` only. For a live match: true ends and keeps it, false discards it; a discard
+            with a linked roster returns to its teams (0:0 linked match, roster kept). On a finished
+            match (the board sends true): with players it is a **rematch**, a new 0:0 linked match
+            with the same teams and the roster = those players; without players, no match (Lobby).
+        goal_id:
+          type: string
+          description: "`assign_scorer` only: the goal (`last_goal.id`)."
+        player_id:
+          type: [string, "null"]
+          description: |
+            `assign_scorer`: the scorer, or null to clear it. A player of the team that
+            conceded records an own goal; the server derives `own_goal`. `remove_player`: the roster
+            player to remove.
+      allOf:
+        - if: { properties: { type: { const: assign_scorer } } }
+          then: { required: [goal_id, player_id] }
+        - if: { properties: { type: { const: new_game } } }
+          then: { required: [save] }
+        - if: { properties: { type: { const: scan } } }
+          then: { required: [uid] }
+        - if: { properties: { type: { const: remove_player } } }
+          then: { required: [player_id] }
+        - if: { properties: { mode: { const: manual } }, required: [mode] }
+          then: { required: [teams] }
+      examples:
+        - { type: undo_last_goal, expected_version: 42 }
+        - { type: new_game, expected_version: 42, save: false }
+        - { type: swap_sides, expected_version: 42 }
+        - { type: assign_scorer, expected_version: 42, goal_id: "g-991", player_id: "p-3" }
+        - { type: scan, expected_version: 42, uid: "04A2B3C4D5E680" }
+        - { type: remove_player, expected_version: 42, player_id: "p-3" }
+        - { type: generate_teams, expected_version: 43, mode: fair }
+        - { type: generate_teams, expected_version: 43, mode: manual, teams: [["p-1", "p-3"], ["p-2", "p-4"]] }
+
+    BatteryMv:
+      type: [integer, "null"]
+      minimum: 0
+      description: Pack voltage in mV, measured with the radio off. Null if not measured or USB-powered with no cells.

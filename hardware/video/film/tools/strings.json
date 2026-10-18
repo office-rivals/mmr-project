@@ -1,0 +1,38 @@
+{
+ "en": {
+  "chrome": "MMR PROJECT · FOOSBALL GOAL COUNTER",
+  "t": {
+   "sensor": "GOAL SENSOR",
+   "wifi": "WI-FI",
+   "server": "MMR SERVER",
+   "app": "MMR APP",
+   "app_head": "MMR · TABLE 3",
+   "card_goal": "GOAL",
+   "card1": "table 3 · 20:41:07",
+   "card2": "table 3 · 20:52:13",
+   "saved": "SAVED ON DEVICE",
+   "s3_wifi": false
+  },
+  "captions": {
+   "L2": "Was that 5 or 6?",
+   "L3": "Typed in from memory.",
+   "L4": "There must be a <em>lazier</em> way.",
+   "L5": "Ball blocks the beam: <em>goal.</em>",
+   "L7": "The ball does the bookkeeping.",
+   "L10": "No custom PCB. We're <em>lazy.</em>",
+   "L16": "Goal counters don't gossip.",
+   "L17": "Pull the batteries: nothing lost.",
+   "L19": "It sleeps more than we do.",
+   "L20": "The app suggests the score.",
+   "L22": "Why? Because we're <em>lazy.</em>",
+   "L23": "And because we <em>can.</em>",
+   "L13": "No chirp, no <em>goal.</em>",
+   "L24": "Hold to <em>undo.</em>"
+  },
+  "say_as": {
+   "M M R": "MMR",
+   "E S P thirty-two": "ESP32",
+   "A I": "AI"
+  }
+ }
+}

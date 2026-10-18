@@ -1,0 +1,16 @@
+#!/bin/sh
+# Send a message to another agent: append to team/log.md, then deliver via herdr.
+# usage: AGENT_NAME=<you> team/msg <to> "<message>"   (or pipe the message on stdin)      (<to>: lead | firmware | electronics | mechanical | all)
+set -eu
+to=$1; shift
+[ $# -eq 0 ] && set -- "$(cat)"   # no message argument: read it from stdin (safe for quotes and $)
+dir=$(cd "$(dirname "$0")" && pwd)
+from=${AGENT_NAME:?set AGENT_NAME=<you>}
+printf '\n## %s  %s -> %s\n%s\n' "$(date '+%Y-%m-%d %H:%M')" "$from" "$to" "$*" >> "$dir/log.md"
+[ "$to" = all ] && targets="lead firmware electronics mechanical video ux twin backend admin-ui observability assembly-review presenter analytics coach" || targets=$to
+for t in $targets; do
+  [ "$t" = "$from" ] && continue
+  [ "$t" = lead ] && continue   # lead reads its messages from log.md (a watcher), so no typed copy
+  herdr agent prompt "$t" "[msg from $from] $*" >/dev/null 2>&1 \
+    || echo "could not deliver to $t (busy at a prompt or offline) - it is still in team/log.md" >&2
+done

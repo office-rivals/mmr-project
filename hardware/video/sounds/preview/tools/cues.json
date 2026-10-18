@@ -1,0 +1,237 @@
+{
+  "total": 44.0,
+  "title": 0.2,
+  "cards": [
+    [
+      "goal",
+      "Goal",
+      "A new goal reaches the board",
+      "A5 → D6 · bell · 450 ms · 0 dB"
+    ],
+    [
+      "won",
+      "Won",
+      "The goal that ends the game",
+      "A5 D6 F♯6 A6 → D major · 1.4 s · +2 dB"
+    ],
+    [
+      "undo",
+      "Undo",
+      "The server confirms this board's Undo",
+      "D6 → A5 · felt · 450 ms · −4 dB"
+    ],
+    [
+      "scan",
+      "Scan",
+      "A badge touches the target",
+      "D7 tick · 70 ms · −10 dB"
+    ],
+    [
+      "joined",
+      "Joined",
+      "The server says you're in",
+      "F♯6 → A6 → D7 · 350 ms · −6 dB"
+    ],
+    [
+      "not_joined",
+      "Not joined",
+      "Any other scan result",
+      "E5 + B5 · felt · 200 ms · −8 dB"
+    ],
+    [
+      "saved",
+      "Saved",
+      "The auto-submit lands (optional)",
+      "D6 + F♯6 swell · 650 ms · −10 dB"
+    ]
+  ],
+  "card0": 2.6,
+  "card_step": 2.4,
+  "card_sound": 0.5,
+  "story0": 19.6,
+  "story": [
+    [
+      19.6,
+      "lobby",
+      null,
+      "A game, start to finish."
+    ],
+    [
+      20.4,
+      null,
+      "scan",
+      "Alice taps her badge."
+    ],
+    [
+      20.7,
+      "alice-joined",
+      "joined",
+      null
+    ],
+    [
+      21.8,
+      null,
+      "scan",
+      "Bob taps in."
+    ],
+    [
+      22.1,
+      "bob-joined",
+      "joined",
+      null
+    ],
+    [
+      23.2,
+      null,
+      "scan",
+      "A badge nobody knows."
+    ],
+    [
+      23.5,
+      "unknown",
+      "not_joined",
+      null
+    ],
+    [
+      24.8,
+      null,
+      "scan",
+      "Carol taps in."
+    ],
+    [
+      25.1,
+      "carol-joined",
+      "joined",
+      null
+    ],
+    [
+      26.2,
+      null,
+      "scan",
+      "Dave taps in. All in!"
+    ],
+    [
+      26.5,
+      "dave-joined",
+      "joined",
+      null
+    ],
+    [
+      27.6,
+      "key3",
+      null,
+      "Fair teams. Keys only click."
+    ],
+    [
+      27.9,
+      "teams",
+      null,
+      null
+    ],
+    [
+      28.9,
+      "live-7-5",
+      null,
+      "Later: 7 : 5."
+    ],
+    [
+      29.8,
+      "goal",
+      "goal",
+      "A goal arrives."
+    ],
+    [
+      31.2,
+      "live-8-5",
+      null,
+      null
+    ],
+    [
+      31.8,
+      "key0",
+      null,
+      "Not a goal? Undo."
+    ],
+    [
+      32.0,
+      "undo",
+      null,
+      null
+    ],
+    [
+      32.8,
+      "key3",
+      null,
+      null
+    ],
+    [
+      33.0,
+      "live-7-5",
+      "undo",
+      null
+    ],
+    [
+      34.0,
+      "live-9-7",
+      null,
+      "Later: 9 : 7."
+    ],
+    [
+      34.8,
+      null,
+      "won",
+      "The winning goal."
+    ],
+    [
+      35.1,
+      "saving-8",
+      null,
+      null
+    ],
+    [
+      36.2,
+      null,
+      null,
+      "Saving… (shown at 2× speed)"
+    ],
+    [
+      36.6,
+      "saving-6",
+      null,
+      null
+    ],
+    [
+      37.6,
+      "saving-4",
+      null,
+      null
+    ],
+    [
+      38.6,
+      "saving-2",
+      null,
+      null
+    ],
+    [
+      39.8,
+      "saved",
+      "saved",
+      "Saved to MMR. Undo is gone."
+    ],
+    [
+      42.0,
+      "end",
+      null,
+      null
+    ]
+  ],
+  "music_buzzer": {
+    "goal": "A6 → D7 · square · 220 ms · 0 dB",
+    "won": "A6 D7 F♯7, then the chord rolled · 810 ms · 0 dB",
+    "undo": "D7 → A6 · 300 ms · −4 dB",
+    "scan": "D7 · 30 ms · −10 dB",
+    "joined": "F♯6 → A6 → D7 · 170 ms · −6 dB",
+    "not_joined": "E6 · 140 ms · −8 dB",
+    "saved": "D7 swell · 400 ms · −10 dB"
+  }
+}

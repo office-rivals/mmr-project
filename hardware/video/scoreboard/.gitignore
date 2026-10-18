@@ -1,0 +1,18 @@
+# Local TTS / ASR environment (Kokoro, Chatterbox, Parakeet)
+.venv/
+# HyperFrames Studio caches and local state
+.hyperframes/
+.thumbnails/
+.waveform-cache/
+node_modules/
+# Generated audio. The mixed tracks rebuild in ~1 min (tools/retime.py + tools/sound.py), so they stay out.
+assets/audio/**/*.wav
+# ...but the per-line narration IS committed (~8 MB per language): it is the approved take, and the Danish
+# takes are picked from random seeds (tools/vo.py), so they can't be regenerated bit-for-bit.
+!assets/audio/*/vo/
+!assets/audio/*/vo/*.wav
+# transient TTS takes while tools/vo.py runs
+assets/audio/*/vo/*.raw.wav
+assets/audio/*/vo/*.s[0-9]*.wav
+# Review stills (regenerable from the composition)
+boards/

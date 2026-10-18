@@ -1,0 +1,215 @@
+1
+00:00:00,200 --> 00:00:02,200
+This is how we keep score today:
+
+2
+00:00:02,200 --> 00:00:05,009
+one bead per goal, pushed by hand…
+
+3
+00:00:05,009 --> 00:00:08,836
+After the match: a brief forensic investigation.
+
+4
+00:00:08,836 --> 00:00:12,356
+Then someone types the result into the MMR app.
+
+5
+00:00:12,356 --> 00:00:13,876
+With great confidence.
+
+6
+00:00:13,876 --> 00:00:15,743
+And probably wrong.
+
+7
+00:00:15,743 --> 00:00:16,743
+We're engineers.
+
+8
+00:00:16,743 --> 00:00:19,306
+We can easily be lazier than this.
+
+9
+00:00:19,306 --> 00:00:22,506
+So: a small box in each goal's ball drawer.
+
+10
+00:00:22,506 --> 00:00:24,106
+Every single ball rolls
+
+11
+00:00:24,106 --> 00:00:26,321
+through an infrared beam.
+
+12
+00:00:27,173 --> 00:00:29,413
+The beam sits at the ball's centre.
+
+13
+00:00:29,413 --> 00:00:32,472
+Even the saddest roll can't sneak past.
+
+14
+00:00:32,472 --> 00:00:34,072
+Nobody has to watch.
+
+15
+00:00:34,072 --> 00:00:36,001
+Nobody has to argue.
+
+16
+00:00:36,001 --> 00:00:40,481
+Inside sits a tiny ESP32 that counts the balls.
+
+17
+00:00:40,481 --> 00:00:42,303
+No AI involved.
+
+18
+00:00:42,303 --> 00:00:45,661
+A motion sensor wakes it when the table moves.
+
+19
+00:00:45,661 --> 00:00:48,621
+Plus an infrared LED, a light sensor,
+
+20
+00:00:48,621 --> 00:00:50,832
+and three AA batteries.
+
+21
+00:00:50,832 --> 00:00:53,472
+It all lives in a 3D-printed sled,
+
+22
+00:00:53,472 --> 00:00:54,752
+in two halves.
+
+23
+00:00:54,752 --> 00:00:57,049
+They go in where the balls come out.
+
+24
+00:00:57,049 --> 00:01:00,770
+A slanted wall sends every ball past the beam.
+
+25
+00:01:00,770 --> 00:01:02,690
+Every goal gets a little chirp.
+
+26
+00:01:02,690 --> 00:01:03,570
+No chirp?
+
+27
+00:01:03,570 --> 00:01:05,195
+Then it didn't count.
+
+28
+00:01:05,195 --> 00:01:06,875
+Counted a hand by mistake?
+
+29
+00:01:06,875 --> 00:01:09,115
+Hold the undo button for a second.
+
+30
+00:01:09,115 --> 00:01:09,755
+Gone.
+
+31
+00:01:09,755 --> 00:01:11,355
+You get ten seconds.
+
+32
+00:01:11,355 --> 00:01:14,014
+After that, it's your phone's problem.
+
+33
+00:01:14,014 --> 00:01:15,214
+When the table moves,
+
+34
+00:01:15,214 --> 00:01:17,774
+it wakes and joins the Wi-Fi.
+
+35
+00:01:17,774 --> 00:01:20,700
+Score, and the server knows instantly.
+
+36
+00:01:20,700 --> 00:01:22,620
+The server does the bookkeeping.
+
+37
+00:01:22,620 --> 00:01:25,850
+The device itself doesn't even know the score.
+
+38
+00:01:25,850 --> 00:01:27,530
+Even the two goal counters
+
+39
+00:01:27,530 --> 00:01:30,410
+on the same table never talk to each other.
+
+40
+00:01:30,410 --> 00:01:32,173
+Only to the server.
+
+41
+00:01:32,173 --> 00:01:34,653
+Someone yanks the batteries mid-match?
+
+42
+00:01:34,653 --> 00:01:37,313
+Every goal is saved before it's sent.
+
+43
+00:01:37,313 --> 00:01:39,153
+Three AA batteries.
+
+44
+00:01:39,153 --> 00:01:40,273
+By our estimate,
+
+45
+00:01:40,273 --> 00:01:42,433
+a set lasts about one and a half
+
+46
+00:01:42,433 --> 00:01:44,527
+to three and a half months.
+
+47
+00:01:44,527 --> 00:01:47,997
+Only the motion sensor isn't allowed to sleep.
+
+48
+00:01:47,997 --> 00:01:48,877
+After the match,
+
+49
+00:01:48,877 --> 00:01:50,797
+the app already knows the score.
+
+50
+00:01:50,797 --> 00:01:52,580
+You just tap.
+
+51
+00:01:53,463 --> 00:01:56,270
+Was any of this strictly necessary?
+
+52
+00:01:56,270 --> 00:01:58,097
+Nooope.
+
+53
+00:01:58,827 --> 00:02:01,004
+Because we're lazy.
+
+54
+00:02:01,161 --> 00:02:03,546
+And because we can.

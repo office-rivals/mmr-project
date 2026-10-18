@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Teaser</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/theme.css" />
+    <!-- Cue times (seconds), written by tools/sound.py from tools/cues.json: the sound track uses the same file -->
+    <script src="assets/cues.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #f2efe8;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #f2efe8;
+        color: #1b1d22;
+      }
+      #bg-grid {
+        position: absolute;
+        inset: -80px;
+        background-image:
+          linear-gradient(rgba(27, 29, 34, 0.07) 2px, transparent 2px),
+          linear-gradient(90deg, rgba(27, 29, 34, 0.07) 2px, transparent 2px);
+        background-size: 80px 80px;
+      }
+      #bg-glow {
+        position: absolute;
+        width: 1400px;
+        height: 1400px;
+        right: -400px;
+        top: -500px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(232, 67, 31, 0.16), rgba(232, 67, 31, 0) 65%);
+      }
+      .wipe {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: #e8431f;
+      }
+      .grp {
+        position: absolute;
+        inset: 0;
+      }
+      .svg {
+        position: absolute;
+        display: block;
+        overflow: visible;
+      }
+      /* The one line on screen, bottom left (as in the films); the aside is the mono joke under it. */
+      .cap {
+        position: absolute;
+        left: 120px;
+        bottom: 150px;
+        font-family: var(--display);
+        font-size: 84px;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+        white-space: nowrap;
+        opacity: 0;
+      }
+      .cap em,
+      .big em {
+        font-style: normal;
+        color: #e8431f;
+      }
+      .aside {
+        position: absolute;
+        left: 120px;
+        bottom: 84px;
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 32px;
+        letter-spacing: 0.02em;
+        color: #b8321a;
+        white-space: nowrap;
+        opacity: 0;
+      }
+      .big {
+        position: absolute;
+        left: 0;
+        width: 1920px;
+        text-align: center;
+        font-family: var(--display);
+        letter-spacing: -0.03em;
+        line-height: 1.04;
+        opacity: 0;
+      }
+      #chrome-mark {
+        position: absolute;
+        left: 120px;
+        top: 46px;
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: 0.16em;
+        color: #55585f;
+      }
+      #chrome-rule {
+        position: absolute;
+        left: 120px;
+        right: 120px;
+        bottom: 56px;
+        height: 2px;
+        background: rgba(27, 29, 34, 0.22);
+      }
+
+      /* B3: the vault (a heist-film security camera) */
+      #vault {
+        position: absolute;
+        left: 160px;
+        top: 96px;
+        width: 1600px;
+        height: 690px;
+        border-radius: 24px;
+        background: #15171b;
+        overflow: hidden;
+      }
+      #v-flash {
+        position: absolute;
+        inset: 0;
+        background: #e8431f;
+        opacity: 0;
+      }
+      .v-tag {
+        position: absolute;
+        top: 26px;
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 24px;
+        letter-spacing: 0.14em;
+        color: #9aa0aa;
+      }
+      .v-big {
+        position: absolute;
+        left: 0;
+        top: 110px;
+        width: 1600px;
+        text-align: center;
+        opacity: 0;
+      }
+      #v-alarm {
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 130px;
+        letter-spacing: 0.18em;
+        color: #ffffff;
+      }
+      #v-goal {
+        font-family: var(--display);
+        font-size: 150px;
+        color: #e8431f;
+      }
+      /* B9: metrics */
+      #n34 {
+        position: absolute;
+        left: 170px;
+        top: 110px;
+        width: 560px;
+        font-family: var(--display);
+        font-size: 420px;
+        line-height: 1;
+        letter-spacing: -0.05em;
+        color: #e8431f;
+      }
+      .chip {
+        position: absolute;
+        left: 840px;
+        padding: 16px 38px 20px;
+        border-radius: 22px;
+        background: #ffffff;
+        border: 5px solid #1b1d22;
+        box-shadow: 12px 12px 0 #1b1d22;
+        font-family: var(--display);
+        font-size: 58px;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+        transform-origin: 0% 50%;
+      }
+      /* B10: the team */
+      .agent {
+        position: absolute;
+        width: 236px;
+        height: 70px;
+        margin-left: -118px;
+        margin-top: -35px;
+        border-radius: 14px;
+        background: #ffffff;
+        border: 4px solid #1b1d22;
+        box-shadow: 6px 6px 0 #1b1d22;
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 23px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #ag0 {
+        background: #1b1d22;
+        color: #f2efe8;
+      }
+
+      /* The scoreboard, as drawn in the scoreboard film (mechanical v4, stylised). Rig = 700 x 810 px. */
+      #rig-pos {
+        position: absolute;
+        left: 440px;
+        top: 80px;
+        width: 1040px;
+        height: 710px;
+      }
+      #rig {
+        position: absolute;
+        inset: 0;
+      }
+      #top {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1040px;
+        height: 30px;
+        overflow: visible;
+      }
+      .wall {
+        position: absolute;
+        top: 30px;
+        width: 50px;
+        height: 680px;
+      }
+      #wall-l {
+        left: 0;
+        border-radius: 0 0 0 18px;
+        background: linear-gradient(90deg, #17191d, #23262c);
+      }
+      #wall-r {
+        right: 0;
+        border-radius: 0 0 18px 0;
+        background: linear-gradient(90deg, #23262c, #17191d);
+      }
+      #face {
+        position: absolute;
+        left: 50px;
+        top: 30px;
+        width: 940px;
+        height: 680px;
+        background: linear-gradient(180deg, #2c3038 0%, #262930 60%, #202328 100%);
+        box-shadow: 0 30px 60px rgba(27, 29, 34, 0.28);
+      }
+      #base {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 940px;
+        height: 44px;
+        background: #1b1d22;
+      }
+      /* the anti-glare PC window over the e-paper */
+      #window {
+        position: absolute;
+        left: 30px;
+        top: 24px;
+        width: 580px;
+        height: 446px;
+        border-radius: 16px;
+        background: #30343c;
+        box-shadow: inset 0 0 0 3px #474c56;
+      }
+      #plate {
+        position: absolute;
+        left: 675px;
+        top: 50px;
+        width: 200px;
+        height: 150px;
+        overflow: visible;
+      }
+      .glow {
+        position: absolute;
+        left: 640px;
+        top: 20px;
+        width: 270px;
+        height: 210px;
+        border-radius: 40px;
+        opacity: 0;
+        mix-blend-mode: screen;
+      }
+      #scr {
+        position: absolute;
+        left: 60px;
+        top: 52px;
+        width: 520px;
+        height: 390px;
+        background: #e4e1d8;
+        overflow: hidden;
+        isolation: isolate;
+        box-shadow: 0 0 0 3px #15171b;
+      }
+      #scr img {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 520px;
+        height: 390px;
+        mix-blend-mode: multiply;
+        opacity: 0;
+      }
+      .inv {
+        position: absolute;
+        top: 322px;
+        width: 117px;
+        height: 65px;
+        border-radius: 8px;
+        background: #ffffff;
+        mix-blend-mode: difference;
+        opacity: 0;
+      }
+      #flash {
+        position: absolute;
+        inset: 0;
+        background: #15171b;
+        opacity: 0;
+      }
+      /* LED bar: a glossy opal bar, one segment per key, lit in the player's colour */
+      #strip {
+        position: absolute;
+        left: 65.5px;
+        top: 488px;
+        width: 509px;
+        height: 34px;
+        border-radius: 6px;
+        background: linear-gradient(180deg, #fbfaf6 0%, #e6e2d9 55%, #d2cdc2 100%);
+        box-shadow: inset 0 0 0 2px rgba(27, 29, 34, 0.28);
+        overflow: hidden;
+      }
+      .ledseg {
+        position: absolute;
+        top: 0;
+        height: 34px;
+        opacity: 0;
+      }
+      #strip-shine {
+        position: absolute;
+        z-index: 1;
+        left: 0;
+        top: 4px;
+        width: 509px;
+        height: 7px;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.7) 40%, rgba(255, 255, 255, 0) 80%);
+      }
+      /* MX switches with printed caps 3 mm proud: the cap's front wall shows below it */
+      .well {
+        position: absolute;
+        top: 536px;
+        width: 106px;
+        height: 92px;
+        border-radius: 10px;
+        background: #121316;
+      }
+      .key-side {
+        position: absolute;
+        top: 554px;
+        width: 98px;
+        height: 67px;
+        border-radius: 8px;
+        background: #7e432f;
+      }
+      .key {
+        position: absolute;
+        top: 540px;
+        width: 98px;
+        height: 67px;
+        border-radius: 8px;
+        background: #b5654a;
+        box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), inset 0 3px 0 rgba(255, 255, 255, 0.2);
+      }
+      #card {
+        position: absolute;
+        left: 1141px;
+        top: 159px;
+        width: 200px;
+        height: 128px;
+        border-radius: 14px;
+        background: #f7f5f0;
+        border: 5px solid #1b1d22;
+        transform-origin: 50% 50%;
+      }
+      #card-slot {
+        position: absolute;
+        left: 78px;
+        top: 9px;
+        width: 34px;
+        height: 9px;
+        border-radius: 5px;
+        background: #1b1d22;
+      }
+      #card-photo {
+        position: absolute;
+        left: 18px;
+        top: 30px;
+        width: 58px;
+        height: 72px;
+        border-radius: 8px;
+        background: #d8d2c4;
+      }
+      .card-line {
+        position: absolute;
+        left: 92px;
+        height: 10px;
+        border-radius: 5px;
+        background: #1b1d22;
+      }
+      #ghost {
+        position: absolute;
+        left: 440px;
+        top: 80px;
+        width: 1040px;
+        height: 710px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="44.5" data-width="1920" data-height="1080">
+      <div id="bg" class="clip" data-start="0" data-duration="44.5" data-track-index="0">
+        <div id="bg-grid"></div>
+        <div id="bg-glow"></div>
+      </div>
+
+      <div id="stage" class="clip" data-start="0" data-duration="44.5" data-track-index="1">
+        <!-- B1-B2: the table's bead counter (goal-counter film) -->
+        <div class="grp" id="g-beads">
+          <svg class="svg" id="beads" viewBox="0 0 1100 560" style="left: 410px; top: 110px; width: 1100px; height: 560px">
+            <line x1="40" y1="170" x2="1060" y2="170" stroke="#1b1d22" stroke-width="10" stroke-linecap="round" />
+            <line x1="40" y1="400" x2="1060" y2="400" stroke="#1b1d22" stroke-width="10" stroke-linecap="round" />
+            <g fill="#1b1d22">
+              <circle cx="660" cy="170" r="34" /><circle cx="710" cy="170" r="34" /><circle cx="760" cy="170" r="34" />
+              <circle cx="810" cy="170" r="34" /><circle cx="860" cy="170" r="34" /><circle cx="910" cy="170" r="34" />
+              <circle cx="960" cy="170" r="34" /><circle cx="1010" cy="170" r="34" />
+              <circle cx="90" cy="400" r="34" /><circle cx="140" cy="400" r="34" /><circle cx="190" cy="400" r="34" />
+              <circle cx="240" cy="400" r="34" />
+              <circle cx="810" cy="400" r="34" /><circle cx="860" cy="400" r="34" /><circle cx="910" cy="400" r="34" />
+              <circle cx="960" cy="400" r="34" /><circle cx="1010" cy="400" r="34" />
+            </g>
+            <g fill="#e8431f">
+              <circle id="bd0" cx="90" cy="170" r="34" /><circle id="bd1" cx="140" cy="170" r="34" />
+              <circle id="bd2" cx="190" cy="170" r="34" /><circle id="bd3" cx="240" cy="170" r="34" />
+            </g>
+          </svg>
+        </div>
+
+        <!-- The goal counter: a stylised sled (mechanical v4 concept), top view, the pull-out opening at the bottom:
+             battery block (3 x AA) + board on the left, V-wall into the 40 mm gate and its beam along the right wall,
+             balls queueing below the beam -->
+        <svg width="0" height="0" style="position: absolute">
+          <defs>
+            <g id="sled-art">
+              <rect x="30" y="20" width="240" height="400" rx="14" fill="#e7e2d7" stroke="#1b1d22" stroke-width="6" />
+              <rect x="105" y="418" width="90" height="30" rx="10" fill="#1b1d22" />
+              <rect x="44" y="150" width="128" height="250" rx="10" fill="#1b1d22" />
+              <g fill="#d9b56a" stroke="#1b1d22" stroke-width="3">
+                <rect x="56" y="168" width="30" height="150" rx="8" /><rect x="93" y="168" width="30" height="150" rx="8" /><rect x="130" y="168" width="30" height="150" rx="8" />
+              </g>
+              <rect x="60" y="334" width="96" height="50" rx="4" fill="#b5654a" />
+              <line x1="44" y1="44" x2="180" y2="134" stroke="#1b1d22" stroke-width="12" stroke-linecap="round" />
+              <rect x="172" y="130" width="14" height="270" fill="#1b1d22" />
+              <rect x="180" y="182" width="12" height="16" fill="#e8431f" />
+              <rect x="252" y="182" width="14" height="16" fill="#f2efe8" stroke="#e8431f" stroke-width="3" />
+              <line x1="192" y1="190" x2="252" y2="190" stroke="#e8431f" stroke-width="5" stroke-dasharray="8 5" />
+              <circle cx="226" cy="330" r="26" fill="#ffffff" stroke="#1b1d22" stroke-width="4" />
+              <circle cx="226" cy="385" r="26" fill="#ffffff" stroke="#1b1d22" stroke-width="4" />
+            </g>
+          </defs>
+        </svg>
+
+        <!-- B3: a beam of light, as a museum-vault laser on a security camera -->
+        <div class="grp" id="g-vault">
+          <div id="vault">
+            <svg class="svg" viewBox="0 0 1600 690" style="left: 0; top: 0; width: 1600px; height: 690px">
+              <line x1="0" y1="562" x2="1600" y2="562" stroke="#3a3d45" stroke-width="4" />
+              <rect x="770" y="18" width="60" height="34" rx="6" fill="#2a2d34" />
+              <rect x="770" y="560" width="60" height="12" rx="3" fill="#2a2d34" />
+              <g id="v-beam">
+                <line x1="800" y1="52" x2="800" y2="560" stroke="#e8431f" stroke-width="34" stroke-opacity="0.18" />
+                <line x1="800" y1="52" x2="800" y2="560" stroke="#e8431f" stroke-width="14" stroke-opacity="0.45" />
+                <line x1="800" y1="52" x2="800" y2="560" stroke="#ffd7cc" stroke-width="4" />
+              </g>
+              <circle cx="800" cy="52" r="8" fill="#ff4a2a" />
+              <circle id="v-rx" cx="800" cy="560" r="8" fill="#ff4a2a" />
+              <g id="v-ball"><g transform="translate(0 494)"><g id="v-spin">
+                <circle cx="0" cy="0" r="66" fill="#f2efe8" stroke="#9aa0aa" stroke-width="4" />
+                <line x1="-66" y1="0" x2="66" y2="0" stroke="#bdb6a6" stroke-width="6" />
+              </g></g></g>
+            </svg>
+            <div id="v-flash"></div>
+            <div class="v-tag" style="left: 36px">CAM 03 · GOAL</div>
+            <div class="v-tag" id="v-rec" style="right: 40px; color: #e8431f">● REC</div>
+            <div class="v-big" id="v-alarm">INTRUDER</div>
+            <div class="v-big" id="v-goal">GOAL +1</div>
+          </div>
+        </div>
+
+        <!-- B4: the system, top-down: a goal counter in each goal's drawer, one scoreboard on the end shelf,
+             and the server. Devices only ever talk to the server (team/INTERFACES.md), never to each other. -->
+        <div class="grp" id="g-sys">
+          <svg class="svg" viewBox="0 0 1920 1080" style="left: 0; top: 0; width: 1920px; height: 1080px">
+            <g stroke="#1b1d22" stroke-width="4" stroke-opacity="0.3">
+              <line x1="530" y1="586" x2="905" y2="330" /><line x1="1390" y1="586" x2="1015" y2="330" /><line x1="878" y1="232" x2="590" y2="472" />
+            </g>
+            <g transform="translate(960 232) scale(0.75)">
+              <g id="s-rack">
+                <rect x="-110" y="-130" width="220" height="70" rx="12" fill="#1b1d22" />
+                <rect x="-110" y="-35" width="220" height="70" rx="12" fill="#1b1d22" />
+                <rect x="-110" y="60" width="220" height="70" rx="12" fill="#1b1d22" />
+                <g transform="translate(-55 -95)"><circle r="27" fill="#2a2d34" /><g id="fan0" fill="#9aa0aa"><ellipse rx="22" ry="7" /><ellipse rx="7" ry="22" /></g></g>
+                <g transform="translate(-55 0)"><circle r="27" fill="#2a2d34" /><g id="fan1" fill="#9aa0aa"><ellipse rx="22" ry="7" /><ellipse rx="7" ry="22" /></g></g>
+                <g transform="translate(-55 95)"><circle r="27" fill="#2a2d34" /><g id="fan2" fill="#9aa0aa"><ellipse rx="22" ry="7" /><ellipse rx="7" ry="22" /></g></g>
+                <g fill="#e8431f">
+                  <circle id="l0" cx="30" cy="-95" r="7" /><circle id="l1" cx="52" cy="-95" r="7" /><circle id="l2" cx="74" cy="-95" r="7" />
+                  <circle id="l3" cx="30" cy="0" r="7" /><circle id="l4" cx="52" cy="0" r="7" /><circle id="l5" cx="74" cy="0" r="7" />
+                  <circle id="l6" cx="30" cy="95" r="7" /><circle id="l7" cx="52" cy="95" r="7" /><circle id="l8" cx="74" cy="95" r="7" />
+                </g>
+              </g>
+            </g>
+            <text x="1070" y="242" font-family="IBM Plex Mono, monospace" font-weight="700" font-size="24" letter-spacing="2" fill="#1b1d22">MMR SERVER</text>
+            <!-- the table, top view -->
+            <rect x="610" y="480" width="700" height="290" rx="16" fill="#e7e2d7" stroke="#1b1d22" stroke-width="6" />
+            <line x1="960" y1="484" x2="960" y2="766" stroke="#1b1d22" stroke-width="3" />
+            <circle cx="960" cy="625" r="40" fill="none" stroke="#1b1d22" stroke-width="3" />
+            <g stroke="#55585f" stroke-width="6" stroke-opacity="0.45">
+              <line x1="670" y1="462" x2="670" y2="788" /><line x1="750" y1="462" x2="750" y2="788" /><line x1="830" y1="462" x2="830" y2="788" /><line x1="900" y1="462" x2="900" y2="788" />
+              <line x1="1020" y1="462" x2="1020" y2="788" /><line x1="1090" y1="462" x2="1090" y2="788" /><line x1="1170" y1="462" x2="1170" y2="788" /><line x1="1250" y1="462" x2="1250" y2="788" />
+            </g>
+            <rect x="604" y="590" width="14" height="70" fill="#e8431f" /><rect x="1302" y="590" width="14" height="70" fill="#e8431f" />
+            <!-- a goal counter in each goal's drawer, opening outwards -->
+            <use href="#sled-art" transform="translate(530 625) rotate(90) scale(0.26) translate(-150 -230)" />
+            <use href="#sled-art" transform="translate(1390 625) rotate(-90) scale(0.26) translate(-150 -230)" />
+            <circle id="gcl-f" cx="530" cy="625" r="74" fill="none" stroke="#e8431f" stroke-width="8" opacity="0" />
+            <circle id="gcr-f" cx="1390" cy="625" r="74" fill="none" stroke="#e8431f" stroke-width="8" opacity="0" />
+            <text x="530" y="712" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="700" font-size="20" fill="#1b1d22">GOAL COUNTER</text>
+            <text x="1390" y="712" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="700" font-size="20" fill="#1b1d22">GOAL COUNTER</text>
+            <!-- the scoreboard on the end shelf -->
+            <rect x="470" y="474" width="120" height="92" rx="10" fill="#22252b" />
+            <rect x="482" y="484" width="96" height="58" fill="#e4e1d8" />
+            <g font-family="IBM Plex Mono, monospace" font-weight="700" font-size="28" fill="#1b1d22" text-anchor="middle">
+              <text id="sb0" x="530" y="523">0 : 0</text><text id="sb1" x="530" y="523" opacity="0">1 : 0</text><text id="sb2" x="530" y="523" opacity="0">1 : 1</text>
+            </g>
+            <circle id="sb-f" cx="530" cy="520" r="70" fill="none" stroke="#e8431f" stroke-width="8" opacity="0" />
+            <text x="530" y="458" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="700" font-size="20" fill="#1b1d22">SCOREBOARD</text>
+            <!-- no gossip -->
+            <line id="gossip" x1="596" y1="680" x2="1324" y2="680" stroke="#55585f" stroke-width="6" stroke-dasharray="16 12" />
+            <g id="nope" stroke="#e8431f" stroke-width="16" stroke-linecap="round"><line x1="920" y1="640" x2="1000" y2="720" /><line x1="1000" y1="640" x2="920" y2="720" /></g>
+            <circle id="s-ball" cx="960" cy="625" r="13" fill="#ffffff" stroke="#1b1d22" stroke-width="4" />
+            <circle id="s-ball2" cx="960" cy="625" r="13" fill="#ffffff" stroke="#1b1d22" stroke-width="4" />
+            <g id="pkA"><rect x="-48" y="-22" width="96" height="44" rx="8" fill="#ffffff" stroke="#1b1d22" stroke-width="4" /><text x="0" y="8" text-anchor="middle" font-family="Archivo Black, Arial Black, sans-serif" font-size="22" fill="#e8431f">GOAL</text></g>
+            <g id="pkB"><rect x="-48" y="-22" width="96" height="44" rx="8" fill="#ffffff" stroke="#1b1d22" stroke-width="4" /><text x="0" y="8" text-anchor="middle" font-family="Archivo Black, Arial Black, sans-serif" font-size="22" fill="#e8431f">GOAL</text></g>
+          </svg>
+        </div>
+
+        <!-- B9: metrics (analytics/METRICS.md) -->
+        <div class="grp" id="g-metrics">
+          <div id="n34">0</div>
+          <div class="chip" id="chip0" style="top: 170px">MVP</div>
+          <div class="chip" id="chip1" style="top: 330px">Comebacks</div>
+          <div class="chip" id="chip2" style="top: 490px">Own goal of the month</div>
+        </div>
+
+        <!-- B10: the team (team/briefs: lead + 12) -->
+        <div class="grp" id="g-org">
+          <svg class="svg" id="org-lines" viewBox="0 0 1920 1080" style="left: 0; top: 0; width: 1920px; height: 1080px"></svg>
+        </div>
+
+        <!-- B5-B8, B13: the scoreboard (scoreboard film) and its digital twin -->
+        <svg class="svg" id="ghost" viewBox="0 0 1040 710">
+          <g fill="rgba(232, 67, 31, 0.06)" stroke="#e8431f" stroke-width="4" stroke-dasharray="14 9">
+            <polygon points="0,30 1040,30 990,0 50,0" />
+            <rect x="0" y="30" width="1040" height="680" rx="18" />
+            <rect x="80" y="54" width="580" height="446" rx="16" />
+            <rect x="110" y="82" width="520" height="390" />
+            <rect x="725" y="80" width="200" height="150" rx="16" />
+            <rect x="115.5" y="518" width="509" height="34" rx="6" />
+            <rect x="133.8" y="570" width="98" height="67" rx="8" /><rect x="258.6" y="570" width="98" height="67" rx="8" /><rect x="383.4" y="570" width="98" height="67" rx="8" /><rect x="508.2" y="570" width="98" height="67" rx="8" />
+          </g>
+          <text x="370" y="290" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="700" font-size="44" fill="#e8431f">10 : 7</text>
+          <text x="825" y="165" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="700" font-size="30" fill="#e8431f">badge</text>
+        </svg>
+        <div id="rig-pos">
+          <!-- Scoreboard v5 (mechanical/out/scoreboard_preview.png), stylised and seen from the front: the window
+               with the e-paper on the left, the LED bar and 4 keys under it, the badge target in the right wing,
+               the phone tag on the left wall, the speaker grille on the right wall. -->
+          <div id="rig">
+            <svg id="top" viewBox="0 0 1040 30">
+              <polygon points="0,30 1040,30 990,0 50,0" fill="#33363d" />
+              <line x1="50" y1="29" x2="990" y2="29" stroke="#4a4e57" stroke-width="3" />
+            </svg>
+            <div class="wall" id="wall-l">
+              <svg viewBox="0 0 50 120" style="position: absolute; left: 5px; top: 240px; width: 40px; height: 96px">
+                <g fill="none" stroke="#5c616c" stroke-width="3" stroke-linecap="round">
+                  <rect x="14" y="40" width="22" height="38" rx="5" />
+                  <path d="M 18 30 Q 25 24 32 30" /><path d="M 13 22 Q 25 12 37 22" />
+                </g>
+              </svg>
+            </div>
+            <div class="wall" id="wall-r">
+              <svg viewBox="0 0 50 680" style="position: absolute; left: 0; top: 0; width: 50px; height: 680px">
+                <g fill="#101114"><circle cx="15" cy="380" r="2.6" /><circle cx="15" cy="390" r="2.6" /><circle cx="15" cy="400" r="2.6" /><circle cx="15" cy="410" r="2.6" /><circle cx="15" cy="420" r="2.6" /><circle cx="15" cy="430" r="2.6" /><circle cx="15" cy="440" r="2.6" /><circle cx="15" cy="450" r="2.6" /><circle cx="15" cy="460" r="2.6" /><circle cx="15" cy="470" r="2.6" /><circle cx="15" cy="480" r="2.6" /><circle cx="15" cy="490" r="2.6" /><circle cx="15" cy="500" r="2.6" /><circle cx="15" cy="510" r="2.6" /><circle cx="15" cy="520" r="2.6" /><circle cx="15" cy="530" r="2.6" /><circle cx="25" cy="380" r="2.6" /><circle cx="25" cy="390" r="2.6" /><circle cx="25" cy="400" r="2.6" /><circle cx="25" cy="410" r="2.6" /><circle cx="25" cy="420" r="2.6" /><circle cx="25" cy="430" r="2.6" /><circle cx="25" cy="440" r="2.6" /><circle cx="25" cy="450" r="2.6" /><circle cx="25" cy="460" r="2.6" /><circle cx="25" cy="470" r="2.6" /><circle cx="25" cy="480" r="2.6" /><circle cx="25" cy="490" r="2.6" /><circle cx="25" cy="500" r="2.6" /><circle cx="25" cy="510" r="2.6" /><circle cx="25" cy="520" r="2.6" /><circle cx="25" cy="530" r="2.6" /><circle cx="35" cy="380" r="2.6" /><circle cx="35" cy="390" r="2.6" /><circle cx="35" cy="400" r="2.6" /><circle cx="35" cy="410" r="2.6" /><circle cx="35" cy="420" r="2.6" /><circle cx="35" cy="430" r="2.6" /><circle cx="35" cy="440" r="2.6" /><circle cx="35" cy="450" r="2.6" /><circle cx="35" cy="460" r="2.6" /><circle cx="35" cy="470" r="2.6" /><circle cx="35" cy="480" r="2.6" /><circle cx="35" cy="490" r="2.6" /><circle cx="35" cy="500" r="2.6" /><circle cx="35" cy="510" r="2.6" /><circle cx="35" cy="520" r="2.6" /><circle cx="35" cy="530" r="2.6" /></g>
+              </svg>
+            </div>
+            <div id="face">
+              <div id="window"></div>
+              <div id="scr">
+                <img id="scr-idle" src="assets/screens/idle.png" alt="" />
+                <img id="scr-lobby" src="assets/screens/lobby.png" alt="" />
+                <img id="scr-bob-joined" src="assets/screens/bob-joined.png" alt="" />
+                <img id="scr-allin-modes" src="assets/screens/allin-modes.png" alt="" />
+                <img id="scr-teams-made" src="assets/screens/teams-made.png" alt="" />
+                <img id="scr-live-9-7" src="assets/screens/live-9-7.png" alt="" />
+                <img id="scr-saving-8" src="assets/screens/saving-8.png" alt="" />
+                <img id="scr-saving-6" src="assets/screens/saving-6.png" alt="" />
+                <img id="scr-saving-4" src="assets/screens/saving-4.png" alt="" />
+                <img id="scr-saving-2" src="assets/screens/saving-2.png" alt="" />
+                <img id="scr-saved" src="assets/screens/saved.png" alt="" />
+                <div class="inv" id="inv0" style="left: 14.3px"></div>
+                <div class="inv" id="inv1" style="left: 139.1px"></div>
+                <div class="inv" id="inv2" style="left: 263.9px"></div>
+                <div class="inv" id="inv3" style="left: 388.7px"></div>
+                <div id="flash"></div>
+              </div>
+              <svg id="plate" viewBox="-118 -88 236 177">
+                <rect x="-118" y="-88" width="236" height="177" rx="18" fill="#ddd3bb" />
+                <g fill="none" stroke="#5a5142" stroke-width="5">
+                  <rect x="-86" y="-74" width="172" height="112" rx="14" />
+                  <rect x="-17" y="-64" width="34" height="9" rx="4" />
+                  <circle cx="-44" cy="-22" r="14" />
+                  <path d="M -70 26 Q -44 -4 -18 26" />
+                  <line x1="6" y1="-26" x2="62" y2="-26" />
+                  <line x1="6" y1="-2" x2="48" y2="-2" />
+                </g>
+                <text x="0" y="74" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="700" font-size="34" fill="#5a5142">badge</text>
+              </svg>
+              <div id="glows"></div>
+              <div id="strip"><div id="strip-shine"></div></div>
+              <div class="well" style="left: 78.8px"></div>
+              <div class="well" style="left: 203.6px"></div>
+              <div class="well" style="left: 328.4px"></div>
+              <div class="well" style="left: 453.2px"></div>
+              <div class="key-side" style="left: 83.8px"></div>
+              <div class="key-side" style="left: 208.6px"></div>
+              <div class="key-side" style="left: 333.4px"></div>
+              <div class="key-side" style="left: 458.2px"></div>
+              <div class="key" id="k0" style="left: 83.8px"></div>
+              <div class="key" id="k1" style="left: 208.6px"></div>
+              <div class="key" id="k2" style="left: 333.4px"></div>
+              <div class="key" id="k3" style="left: 458.2px"></div>
+              <div id="base"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="card" data-layout-allow-overflow>
+          <div id="card-slot"></div>
+          <div id="card-photo"></div>
+          <div class="card-line" style="top: 46px; width: 80px"></div>
+          <div class="card-line" style="top: 70px; width: 56px"></div>
+        </div>
+
+        <!-- B13-B14: the goal counter beside the board; the bead rail's last word -->
+        <svg class="svg" id="e-sled" viewBox="0 0 300 460" style="left: 560px; top: 95px; width: 290px; height: 445px"><use href="#sled-art" /></svg>
+        <svg class="svg" id="mini" viewBox="0 0 560 80" style="left: 1240px; top: 916px; width: 560px; height: 80px">
+          <line x1="10" y1="40" x2="550" y2="40" stroke="#1b1d22" stroke-width="6" stroke-linecap="round" />
+          <g fill="#1b1d22"><circle cx="380" cy="40" r="20" /><circle cx="420" cy="40" r="20" /><circle cx="460" cy="40" r="20" /><circle cx="500" cy="40" r="20" /></g>
+          <circle id="mini-bead" cx="340" cy="40" r="20" fill="#e8431f" />
+        </svg>
+      </div>
+
+      <div id="chrome" class="clip" data-start="0" data-duration="44.5" data-track-index="4">
+        <div id="chrome-mark">MMR PROJECT</div>
+        <div id="chrome-rule"></div>
+      </div>
+
+      <div id="caps" class="clip" data-start="0" data-duration="44.5" data-track-index="2"></div>
+
+      <div id="wipes" class="clip" data-start="0" data-duration="44.5" data-track-index="3">
+        <div class="wipe" id="w1"></div>
+        <div class="wipe" id="w2"></div>
+      </div>
+
+      <!-- Sound effects only (tools/sound.py; see AUDIO-CREDITS.md) -->
+      <audio id="audio-sfx" src="assets/audio/sfx.wav" data-start="0" data-duration="44.5" data-track-index="6" data-volume="1"></audio>
+    </div>
+    <script>
+      // Every time is a cue from tools/cues.json (window.__T); the SFX track is placed from the same cues, so a
+      // line or visual lands with its sound. The board follows ux/SCOREBOARD-UI.md as in the scoreboard film.
+      const T = window.__T;
+      const tl = gsap.timeline({ paused: true });
+      const $ = (id) => document.getElementById(id);
+      tl.fromTo("#bg-grid", { x: 0, y: 0 }, { x: -80, y: -40, duration: T.total, ease: "none" }, 0);
+      tl.fromTo("#bg-glow", { scale: 0.9, opacity: 0.8 }, { scale: 1.1, opacity: 1, duration: T.total / 3, ease: "sine.inOut", yoyo: true, repeat: 2 }, 0);
+
+      // ---- words: [in, out, html, class] ----
+      const WORDS = [
+        [T.b1, T.b2, "Foosball. Scored with beads.", "cap"],
+        [T.aside1, T.b2, "since forever", "aside"],
+        [T.b2, T.b2out, "The beads worked fine.", "cap"],
+        [T.better, T.b3, "But we can do better.", "cap"],
+        [T.b3, T.roll, "A beam of light.", "cap"],
+        [T.roll, T.b4, "To count a ball.", "cap"],
+        [T.b4, T.srv, "A server.", "cap"],
+        [T.srv, T.b5, "For a table game.", "cap"],
+        [T.nope, T.b5, "they don't gossip", "aside"],
+        [T.b5, T.foos, "A badge reader.", "cap"],
+        [T.foos, T.b6, "For foosball.", "cap"],
+        [T.b6, T.rnd, "Teams? Pick your own.", "cap"],
+        [T.aside6, T.fair, "friendship-preserving mode included", "aside"],
+        [T.rnd, T.fair, "Or random.", "cap"],
+        [T.fair, T.b7, "Or fair, by <em>MMR</em>.", "cap"],
+        [T.b7, T.b8, "Auto-saved 10 s after the win.", "cap"],
+        [T.aside7, T.b8, "undo until then", "aside"],
+        [T.b8, T.of, "A digital twin.", "cap"],
+        [T.of, T.b9, "Of a foosball table.", "cap"],
+        [T.b9, T.b10, "<em>34</em> metrics.", "cap"],
+        [T.b10, T.clear, "Built by <em>14</em> AI agents.", "cap"],
+        [T.aside10, T.clear, "one of them made this", "aside"],
+        [T.b12, T.b13 - 0.2, "Just because we can.", "big", "top: 420px; font-size: 124px"],
+        [T.b13, T.total, "Coming to a foosball table<br>near you.", "big", "top: 600px; font-size: 92px"],
+        [T.b14, T.total, "The beads have been informed.", "aside"],
+      ];
+      WORDS.forEach(([a, b, html, cls, style], i) => {
+        const el = document.createElement("div");
+        el.className = cls;
+        el.id = "w-" + i;
+        el.innerHTML = html;
+        if (style) el.style.cssText = style;
+        $("caps").appendChild(el);
+        if (cls === "big") tl.fromTo(el, { opacity: 0, scale: 1.12 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" }, a);
+        else tl.fromTo(el, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.2, ease: "power3.out" }, a);
+        if (b < T.total - 0.1) tl.to(el, { opacity: 0, duration: 0.15, ease: "power1.in" }, b - 0.15);
+      });
+
+      const AWAY = { x: 1150, y: 300, scale: 1.5, rotation: 12 };   // the badge card, off frame (front right)
+          const NEAR = { x: 40, y: 18, scale: 1.12, rotation: -4 };    // just in front of the target
+          const ON = { x: 0, y: 0, scale: 1, rotation: 0 };            // pressed on the target (right wing)
+          // initial states (a set at 0 doesn't render while the playhead sits at 0)
+      gsap.set(["#g-vault", "#g-sys", "#g-metrics", "#g-org", "#ghost", "#e-sled", "#mini"], { opacity: 0 });
+      gsap.set("#rig-pos", { scale: 0.92, transformOrigin: "50% 0%", opacity: 0 });
+      gsap.set("#ghost", { scale: 0.7, transformOrigin: "50% 0%" });
+      gsap.set("#card", AWAY);
+      const enter = (sel, t, d = 0.3) => tl.to(sel, { opacity: 1, duration: d, ease: "none" }, t);
+      const leave = (sel, t, d = 0.2) => tl.to(sel, { opacity: 0, duration: d, ease: "none" }, t);
+
+      // ---- B1-B2: beads, one per goal, slid by hand; then nothing; then gone ----
+      tl.fromTo("#beads", { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0);
+      ["#bd3", "#bd2", "#bd1", "#bd0"].forEach((b, i) => {
+        const land = T["clack" + i];
+        tl.fromTo(b, { x: 0 }, { x: 370, duration: 0.22, ease: "power3.in", immediateRender: false }, land - 0.22);
+      });
+      tl.to("#beads", { x: -1700, rotation: -10, duration: 0.45, ease: "power3.in" }, T.away);   // after "But we can do better."
+
+      // accent wipes where the act changes: into the tech, and into the punchline's end card
+      [[T.b3, "#w1"], [T.b13, "#w2"]].forEach(([t, id]) => {
+        tl.set(id, { scaleX: 0, transformOrigin: "left center" }, 0);
+        tl.fromTo(id, { scaleX: 0 }, { scaleX: 1, duration: 0.22, ease: "power3.in", immediateRender: false }, t - 0.22);
+        tl.set(id, { transformOrigin: "right center" }, t);
+        tl.to(id, { scaleX: 0, duration: 0.28, ease: "power3.out" }, t);
+      });
+
+      // ---- B3: a beam of light, to count a ball: a vault laser, an intruder, a goal ----
+      enter("#g-vault", T.b3, 0.01);
+      tl.fromTo("#v-rec", { opacity: 1 }, { opacity: 0.15, duration: 0.4, ease: "steps(1)", yoyo: true, repeat: 9, immediateRender: false }, T.b3);
+      gsap.set("#v-beam", { opacity: 0 });
+      tl.fromTo("#v-beam", { opacity: 0 }, { opacity: 1, duration: 0.06, ease: "none", yoyo: true, repeat: 4, immediateRender: false }, T.b3 + 0.2);
+      gsap.set("#v-ball", { x: -120 });
+      gsap.set("#v-spin", { transformOrigin: "50% 50%" });
+      tl.to("#v-ball", { x: 800, duration: T.cut + 0.1 - T.roll, ease: "power1.inOut" }, T.roll);
+      tl.to("#v-spin", { rotation: 790, duration: T.cut + 0.1 - T.roll, ease: "power1.inOut" }, T.roll);
+      tl.to("#v-beam", { opacity: 0.2, duration: 0.04 }, T.cut);
+      tl.set("#v-rx", { fill: "#4a1a12" }, T.cut);
+      tl.fromTo(["#v-flash", "#v-alarm"], { opacity: 0 }, { opacity: (i) => (i ? 1 : 0.55), duration: 0.11, ease: "steps(1)", yoyo: true, repeat: 5, immediateRender: false }, T.cut);
+      tl.set(["#v-flash", "#v-alarm"], { opacity: 0 }, T.resolve);
+      tl.fromTo("#v-goal", { opacity: 0, scale: 1.4 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(3)", immediateRender: false }, T.resolve);
+      tl.to("#v-ball", { x: 1750, duration: 0.6, ease: "power2.in" }, T.resolve + 0.25);
+      tl.to("#v-spin", { rotation: 2300, duration: 0.6, ease: "power2.in" }, T.resolve + 0.25);
+      tl.to("#v-beam", { opacity: 1, duration: 0.05 }, T.resolve + 0.45);
+      tl.set("#v-rx", { fill: "#ff4a2a" }, T.resolve + 0.45);
+      leave("#g-vault", T.b4 - 0.15, 0.15);
+
+      // ---- B4: a server, for a table game: each goal's journey, goal counter -> server -> scoreboard ----
+      enter("#g-sys", T.b4, 0.25);
+      gsap.set("#s-rack", { y: -500 });
+      tl.fromTo("#s-rack", { y: -500 }, { y: 0, duration: T.rack - T.b4, ease: "power3.in", immediateRender: false }, T.b4);
+      ["#fan0", "#fan1", "#fan2"].forEach((f) => {
+        gsap.set(f, { transformOrigin: "50% 50%" });
+        tl.fromTo(f, { rotation: 0 }, { rotation: 540, duration: T.srv - T.rack, ease: "power1.in", immediateRender: false }, T.rack);
+        tl.to(f, { rotation: 3420, duration: T.back2 - T.srv, ease: "none" }, T.srv);
+        tl.to(f, { rotation: 4500, duration: T.b5 - T.back2, ease: "power1.out" }, T.back2);
+      });
+      const busy = (a, b) => {   // the rack "thinks": its lights flicker
+        let k = 0;
+        for (let t = a; t < b; t += 0.08, k++) for (let j = 0; j < 9; j++) tl.set("#l" + j, { fill: (k * 7 + j * 3) % 5 < 2 ? "#ffffff" : "#e8431f" }, t);
+        for (let j = 0; j < 9; j++) tl.set("#l" + j, { fill: "#e8431f" }, b);
+      };
+      const journey = (ball, dx, flash, pk, from, beam, back, arrive, scoreOut, scoreIn) => {
+        gsap.set(ball, { opacity: 0 });
+        tl.fromTo(ball, { x: 0, opacity: 1 }, { x: dx, duration: beam - from, ease: "power1.in", immediateRender: false }, from);
+        tl.set(ball, { opacity: 0 }, beam);
+        tl.fromTo(flash, { opacity: 1 }, { opacity: 0, duration: 0.5, immediateRender: false }, beam);
+        const [x0, y0] = dx > 0 ? [1390, 586] : [530, 586];
+        gsap.set(pk, { x: x0, y: y0, opacity: 0 });
+        tl.set(pk, { x: x0, y: y0, opacity: 1 }, beam);
+        tl.to(pk, { x: dx > 0 ? 1015 : 905, y: 330, duration: 0.45, ease: "power2.inOut" }, beam + 0.05);
+        tl.set(pk, { opacity: 0 }, beam + 0.5);
+        busy(beam + 0.5, back);
+        tl.set(pk, { x: 878, y: 232, opacity: 1 }, back);
+        tl.to(pk, { x: 590, y: 472, duration: arrive - back - 0.05, ease: "power2.inOut" }, back);
+        tl.set(pk, { opacity: 0 }, arrive - 0.03);
+        tl.set(scoreOut, { opacity: 0 }, arrive);
+        tl.set(scoreIn, { opacity: 1 }, arrive);
+        tl.fromTo("#sb-f", { opacity: 1 }, { opacity: 0, duration: 0.5, immediateRender: false }, arrive);
+      };
+      journey("#s-ball", 345, "#gcr-f", "#pkA", T.drop, T.beam2, T.back2, T.arrive, "#sb0", "#sb1");
+      gsap.set(["#gossip", "#nope"], { opacity: 0 });
+      tl.to("#gossip", { opacity: 1, duration: 0.2, ease: "none" }, T.gossip);
+      tl.fromTo("#nope", { opacity: 0, scale: 0.3, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(3)", immediateRender: false }, T.nope);
+      journey("#s-ball2", -345, "#gcl-f", "#pkB", T.drop2, T.beam3, T.back3, T.arrive2, "#sb1", "#sb2");
+      leave("#g-sys", T.b5 - 0.2);
+
+      // ---- the board (helpers as in the scoreboard film; call in film order) ----
+      const COL = { white: "#ffffff", blue: "#3d7bff", yellow: "#ffd23f", green: "#3ddc6a", magenta: "#ff3fd2" };
+      const SEG = [[0, 129.7], [129.7, 254.5], [254.5, 379.3], [379.3, 509]];
+      SEG.forEach(([x0, x1], i) => {
+        const kx = 67.3 + i * 124.8 - x0;
+        for (const c in COL) {
+          const el = document.createElement("div");
+          el.className = "ledseg";
+          el.id = `led${i}-${c}`;
+          el.style.left = x0 + "px";
+          el.style.width = x1 - x0 + "px";
+          el.style.background = `radial-gradient(ellipse 70px 30px at ${kx}px 50%, #ffffff 0%, ${COL[c]} 32%, ${COL[c]}bb 70%, ${COL[c]}66 100%)`;
+          $("strip").appendChild(el);
+        }
+      });
+      for (const c of [...Object.keys(COL), "pulse"]) {
+        const el = document.createElement("div");
+        el.className = "glow";
+        el.id = "glow-" + c;
+        const col = c === "pulse" ? "#ffffff" : COL[c];
+        el.style.background = `radial-gradient(closest-side, ${col} 0%, ${col}cc 45%, ${col}00 100%)`;
+        $("glows").appendChild(el);
+      }
+      let cur = null;
+      function show(t, name, full) {
+        const next = $("scr-" + name);
+        if (!full) {
+          tl.to(next, { opacity: 1, duration: 0.12, ease: "none" }, t);
+          if (cur) tl.to(cur, { opacity: 0, duration: 0.12, ease: "none" }, t);
+        } else {   // e-paper full refresh: black / white / black, then the new image
+          tl.set("#flash", { opacity: 1, backgroundColor: "#15171b" }, t);
+          tl.set("#flash", { backgroundColor: "#f4f2ec" }, t + 0.14);
+          tl.set("#flash", { backgroundColor: "#15171b" }, t + 0.27);
+          tl.set(next, { opacity: 1 }, t + 0.27);
+          if (cur) tl.set(cur, { opacity: 0 }, t + 0.27);
+          tl.set("#flash", { opacity: 0 }, t + 0.4);
+        }
+        cur = next;
+      }
+      const led = [null, null, null, null];
+      function setLed(t, i, c) {
+        if (led[i] === c) return;
+        if (led[i]) tl.to(`#led${i}-${led[i]}`, { opacity: 0, duration: 0.08, ease: "none" }, t);
+        if (c) tl.to(`#led${i}-${c}`, { opacity: 1, duration: 0.08, ease: "none" }, t);
+        led[i] = c;
+      }
+      const setLeds = (t, cs) => cs.forEach((c, i) => setLed(t, i, c));
+      function blink(t, idx, cs, n, period) {
+        const keep = idx.map((i) => led[i]);
+        for (let k = 0; k < n; k++) {
+          idx.forEach((i, j) => setLed(t + k * period, i, cs[j]));
+          idx.forEach((i) => setLed(t + k * period + period / 2, i, null));
+        }
+        idx.forEach((i, j) => setLed(t + n * period, i, keep[j]));
+      }
+      function press(t, i) {   // switch click is in the audio; label inverts; LED white 0.2 s
+        tl.to("#k" + i, { y: 11, duration: 0.06, ease: "power2.in" }, t);
+        tl.to("#k" + i, { y: 0, duration: 0.14, ease: "power2.out" }, t + 0.14);
+        const was = led[i];
+        setLed(t + 0.04, i, "white");
+        setLed(t + 0.24, i, was);
+        tl.set("#inv" + i, { opacity: 1 }, t + 0.04);
+        tl.set("#inv" + i, { opacity: 0 }, t + 0.35);
+      }
+      function glow(t, c, dur, level = 1) {
+        tl.to("#glow-" + c, { opacity: level, duration: 0.08, ease: "none" }, t);
+        tl.to("#glow-" + c, { opacity: 0, duration: 0.2, ease: "none" }, t + dur);
+      }
+
+      // ---- B5: a badge reader, for foosball ----
+      show(0, "lobby", false);
+      tl.fromTo("#rig-pos", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power3.out", immediateRender: false }, T.b5);
+      tl.fromTo("#glow-pulse", { opacity: 0 }, { opacity: 0.45, duration: 0.2, ease: "sine.inOut", immediateRender: false }, T.b5 + 0.2);
+      tl.to("#glow-pulse", { opacity: 0, duration: 0.2, ease: "sine.inOut" }, T.b5 + 0.4);
+      tl.fromTo("#card", AWAY, { ...NEAR, duration: 0.2, ease: "power3.out", immediateRender: false }, T.tap);
+      tl.to("#card", { ...ON, duration: 0.15, ease: "power2.in" }, T.touch - 0.15);
+      glow(T.touch, "white", T.lift - T.touch);
+      tl.to("#card", { ...AWAY, duration: 0.35, ease: "power2.in" }, T.lift);
+      show(T.joined, "bob-joined");
+      glow(T.joined, "yellow", 1.0);
+      setLeds(T.joined, ["blue", "yellow", null, null]);
+      show(T.dave, "allin-modes");   // (Carol and Dave tapped in off-screen; Dave's chirp is in the audio, softer)
+      glow(T.dave, "magenta", 0.4);
+      setLeds(T.dave, ["blue", "yellow", "green", "magenta"]);
+
+      // ---- B6: three ways to make teams; each key label lights in turn, then Fair is pressed ----
+      // (key labels provisional until ux's spec: K2 Choose / K3 Random / K4 Fair)
+      function hl(t0, t1, i) {
+        const was = led[i];
+        setLed(t0, i, "white");
+        setLed(t1, i, was);
+        tl.set("#inv" + i, { opacity: 1 }, t0);
+        tl.set("#inv" + i, { opacity: 0 }, t1);
+      }
+      hl(T.b6 + 0.05, T.rnd, 1);
+      hl(T.rnd, T.fair, 2);
+      hl(T.fair, T.make, 3);
+      press(T.make, 3);
+      show(T.made, "teams-made");
+      setLeds(T.made, ["green", "magenta", "blue", "yellow"]);   // Carol · Dave | Alice · Bob
+
+      // ---- B7: the win, saved 10 s later ----
+      setLeds(T.b7 - 0.3, [null, null, null, null]);
+      show(T.b7 - 0.3, "live-9-7", true);
+      blink(T.won, [0, 1], ["blue", "yellow"], 4, 0.25);   // the screen's winners, Alice · Bob, are on the left
+      show(T.save8, "saving-8");
+      show(T.save6, "saving-6");
+      show(T.save4, "saving-4");
+      show(T.save2, "saving-2");
+      show(T.saved, "saved");
+
+      // ---- B8: a digital twin ----
+      tl.to("#rig-pos", { x: -430, scale: 0.7, duration: 0.45, ease: "power3.inOut" }, T.b8);
+      tl.fromTo("#ghost", { x: -430, opacity: 0 }, { x: 430, opacity: 1, duration: 0.55, ease: "power3.out", immediateRender: false }, T.ghost);
+      leave(["#rig-pos", "#ghost"], T.b9 - 0.2);
+
+      // ---- B9: 34 metrics ----
+      enter("#g-metrics", T.b9, 0.15);
+      tl.to("#n34", { textContent: 34, snap: { textContent: 1 }, duration: 0.6, ease: "power1.out" }, T.b9);
+      [T.mvp, T.comeback, T.ogm].forEach((t, i) => {
+        tl.fromTo("#chip" + i, { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2.5)", immediateRender: false }, t);
+        gsap.set("#chip" + i, { opacity: 0 });
+      });
+      tl.to("#chip2", { rotation: 9, y: 46, color: "#55585f", duration: 0.7, ease: "bounce.out" }, T.droop);
+      leave("#g-metrics", T.b10 - 0.2);
+
+      // ---- B10: built by 14 AI agents: all 13 report to lead (and talk to each other) ----
+      const AG = ["lead", "mechanical", "electronics", "firmware", "ux", "backend", "admin-ui", "observability", "twin", "assembly-review", "analytics", "coach", "presenter", "video"];
+      const pos = AG.map((_, i) => (i === 0 ? [960, 440] : [960 + 650 * Math.cos((((i - 1) * 360) / 13 - 90) * Math.PI / 180), 440 + 290 * Math.sin((((i - 1) * 360) / 13 - 90) * Math.PI / 180)]));
+      const ring = pos.slice(1).map(([x, y]) => `${x},${y}`).join(" ");
+      let spokes = "";
+      for (let i = 1; i < AG.length; i++) spokes += `<line id="sp${i}" x1="960" y1="440" x2="${pos[i][0]}" y2="${pos[i][1]}" />`;
+      $("org-lines").innerHTML = `<polygon id="org-ring" points="${ring}" fill="none" stroke="#55585f" stroke-width="3" stroke-dasharray="6 9" opacity="0.5" /><g stroke="#1b1d22" stroke-width="4">${spokes}</g>`;
+      AG.forEach((name, i) => {
+        const el = document.createElement("div");
+        el.className = "agent";
+        el.id = "ag" + i;
+        el.textContent = name;
+        el.style.left = pos[i][0] + "px";
+        el.style.top = pos[i][1] + "px";
+        $("g-org").appendChild(el);
+        gsap.set(el, { opacity: 0 });
+        const t = T.cards + i * 0.11;
+        tl.fromTo(el, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.18, ease: "back.out(2)", immediateRender: false }, t);
+        if (i) {
+          gsap.set("#sp" + i, { opacity: 0 });
+          tl.to("#sp" + i, { opacity: 1, duration: 0.12, ease: "none" }, t);
+        }
+      });
+      enter("#g-org", T.b10, 0.01);
+      gsap.set("#org-ring", { opacity: 0 });
+      tl.to("#org-ring", { opacity: 0.5, duration: 0.3, ease: "none" }, T.cards + 1.55);
+      tl.to("#ag13", { backgroundColor: "#e8431f", color: "#ffffff", scale: 1.12, duration: 0.2, ease: "back.out(3)" }, T.me);
+      leave("#g-org", T.clear - 0.3, 0.3);
+
+      // ---- B13-B14: coming to a table near you; the beads have been informed ----
+      tl.set("#rig-pos", { x: 260, scale: 0.55 }, T.b13 - 0.05);
+      show(T.b13 - 0.05, "idle");
+      enter(["#rig-pos", "#e-sled"], T.b13, 0.01);
+      enter("#mini", T.b14, 0.25);
+      tl.fromTo("#mini-bead", { x: 0 }, { x: -280, duration: 0.22, ease: "power3.in", immediateRender: false }, T.back - 0.22);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,155 @@
+1
+00:00:01,100 --> 00:00:02,620
+This is the scoreboard.
+
+2
+00:00:02,620 --> 00:00:03,500
+It sleeps,
+
+3
+00:00:03,500 --> 00:00:06,899
+but the e-paper still shows the last game.
+
+4
+00:00:07,753 --> 00:00:11,381
+Press any key, or bump the table, and it wakes.
+
+5
+00:00:12,373 --> 00:00:13,973
+Tap your badge on the right.
+
+6
+00:00:13,973 --> 00:00:14,733
+Bip.
+
+7
+00:00:14,733 --> 00:00:15,493
+Bidi-ding.
+
+8
+00:00:15,493 --> 00:00:16,373
+Bob's in,
+
+9
+00:00:16,373 --> 00:00:19,302
+and the badge target glows in his colour.
+
+10
+00:00:21,452 --> 00:00:22,012
+All in?
+
+11
+00:00:22,012 --> 00:00:23,692
+Pick your teams, draw them at random,
+
+12
+00:00:23,692 --> 00:00:25,852
+or let MMR make them fair.
+
+13
+00:00:25,852 --> 00:00:26,812
+Wrong ends?
+
+14
+00:00:26,812 --> 00:00:28,595
+Swap sides.
+
+15
+00:00:29,245 --> 00:00:30,365
+Then just play.
+
+16
+00:00:30,365 --> 00:00:33,684
+Goals turn up by themselves, with a little ding.
+
+17
+00:00:33,684 --> 00:00:34,404
+Who scored?
+
+18
+00:00:34,404 --> 00:00:36,004
+Press a name, or don't.
+
+19
+00:00:36,004 --> 00:00:37,204
+Carol, apparently.
+
+20
+00:00:37,204 --> 00:00:38,757
+Own goal.
+
+21
+00:00:38,807 --> 00:00:39,607
+Not a goal?
+
+22
+00:00:39,607 --> 00:00:43,582
+Undo asks first, then plays the ding backwards.
+
+23
+00:00:45,632 --> 00:00:47,712
+The winning goal gets a little celebration.
+
+24
+00:00:47,712 --> 00:00:51,472
+Ten seconds to undo, then it's in MMR.
+
+25
+00:00:51,472 --> 00:00:52,832
+Same four again?
+
+26
+00:00:52,832 --> 00:00:54,375
+Rematch.
+
+27
+00:00:56,832 --> 00:00:59,472
+An unknown badge gets a QR code.
+
+28
+00:00:59,472 --> 00:01:00,592
+Scan it yourself,
+
+29
+00:01:00,592 --> 00:01:02,512
+or let a colleague do it for you.
+
+30
+00:01:02,512 --> 00:01:05,191
+Link the badge, and you're in.
+
+31
+00:01:06,341 --> 00:01:08,661
+Volume lives in the admin settings:
+
+32
+00:01:08,661 --> 00:01:10,741
+Off, Low, Medium, High.
+
+33
+00:01:10,741 --> 00:01:12,421
+No secret key combo.
+
+34
+00:01:12,421 --> 00:01:14,358
+We know our colleagues.
+
+35
+00:01:15,508 --> 00:01:17,108
+Three AA batteries,
+
+36
+00:01:17,108 --> 00:01:19,428
+about two and a half to three months a set,
+
+37
+00:01:19,428 --> 00:01:20,548
+by our estimate.
+
+38
+00:01:20,548 --> 00:01:23,312
+When they're flat, it says so.
+
+39
+00:01:23,662 --> 00:01:26,687
+It keeps score, so you don't have to.

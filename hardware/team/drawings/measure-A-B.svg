@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" font-family="Helvetica, Arial, sans-serif">
+  <rect width="1200" height="760" fill="#ffffff"/>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#d6411f"/>
+    </marker>
+    <pattern id="wood" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill="#e8d3b0"/><line x1="0" y1="0" x2="0" y2="8" stroke="#c9ad80" stroke-width="2"/>
+    </pattern>
+  </defs>
+
+  <!-- LEFT: view looking INTO the opening -->
+  <text x="40" y="44" font-size="24" font-weight="700">1. Looking into the opening</text>
+  <text x="40" y="72" font-size="16" fill="#555">(the tunnel cut across, as you see it standing at the hole)</text>
+
+  <!-- black frame -->
+  <rect x="60" y="110" width="520" height="300" rx="34" fill="#2a2a2a"/>
+  <rect x="90" y="140" width="460" height="240" rx="22" fill="#f6efe3"/>
+  <!-- tunnel floor -->
+  <rect x="90" y="360" width="460" height="20" fill="url(#wood)"/>
+  <!-- left wooden block -->
+  <rect x="90" y="140" width="80" height="220" fill="url(#wood)" stroke="#8a6d45" stroke-width="2"/>
+  <text x="130" y="255" font-size="15" text-anchor="middle" transform="rotate(-90 130 255)">left wooden block</text>
+  <!-- right wall strip -->
+  <rect x="510" y="330" width="40" height="30" fill="#c9ad80" stroke="#8a6d45" stroke-width="2"/>
+  <text x="530" y="320" font-size="14" text-anchor="middle">strip</text>
+  <!-- ball for scale -->
+  <circle cx="440" cy="330" r="30" fill="#ffffff" stroke="#999" stroke-width="2"/>
+  <text x="440" y="335" font-size="13" text-anchor="middle" fill="#777">ball</text>
+
+  <!-- A' arrow: block face to strip face, at floor level -->
+  <line x1="172" y1="395" x2="508" y2="395" stroke="#d6411f" stroke-width="3" marker-start="url(#a)" marker-end="url(#a)"/>
+  <line x1="170" y1="360" x2="170" y2="405" stroke="#d6411f" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <line x1="510" y1="360" x2="510" y2="405" stroke="#d6411f" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <rect x="270" y="410" width="120" height="34" rx="6" fill="#d6411f"/>
+  <text x="330" y="434" font-size="20" font-weight="700" fill="#fff" text-anchor="middle">A</text>
+
+  <!-- B' : strip height h and width w (zoom) -->
+  <g transform="translate(610,250)">
+    <text x="0" y="-20" font-size="18" font-weight="700">B  (zoom on the strip)</text>
+    <rect x="160" y="0" width="30" height="150" fill="url(#wood)" stroke="#8a6d45" stroke-width="2"/>
+    <text x="210" y="80" font-size="14">right wall</text>
+    <rect x="0" y="150" width="190" height="20" fill="url(#wood)" stroke="#8a6d45" stroke-width="2"/>
+    <text x="10" y="195" font-size="14">floor</text>
+    <rect x="90" y="100" width="70" height="50" fill="#c9ad80" stroke="#8a6d45" stroke-width="2"/>
+    <!-- h -->
+    <line x1="75" y1="102" x2="75" y2="148" stroke="#d6411f" stroke-width="3" marker-start="url(#a)" marker-end="url(#a)"/>
+    <text x="40" y="132" font-size="20" font-weight="700" fill="#d6411f">h</text>
+    <!-- w -->
+    <line x1="92" y1="88" x2="158" y2="88" stroke="#d6411f" stroke-width="3" marker-start="url(#a)" marker-end="url(#a)"/>
+    <text x="118" y="78" font-size="20" font-weight="700" fill="#d6411f">w</text>
+  </g>
+
+  <!-- RIGHT/BOTTOM: top view, where to measure -->
+  <text x="40" y="500" font-size="24" font-weight="700">2. Where to measure A (seen from above)</text>
+  <!-- tunnel outline -->
+  <rect x="60" y="530" width="1060" height="180" fill="#f6efe3" stroke="#555" stroke-width="2"/>
+  <!-- frame at left -->
+  <rect x="40" y="520" width="30" height="200" fill="#2a2a2a"/>
+  <text x="20" y="745" font-size="15">black frame (the opening)</text>
+  <!-- left block along the TOP edge (left wall when looking in) -->
+  <rect x="70" y="530" width="560" height="38" fill="url(#wood)" stroke="#8a6d45" stroke-width="2"/>
+  <text x="300" y="555" font-size="15">left wooden block (ends ~28 cm in)</text>
+  <!-- strip along bottom (right wall) -->
+  <rect x="70" y="692" width="1050" height="18" fill="#c9ad80" stroke="#8a6d45" stroke-width="1.5"/>
+  <text x="1120" y="735" font-size="15" text-anchor="end">strip along the right wall</text>
+  <!-- goal opening zone -->
+  <rect x="640" y="570" width="470" height="115" fill="#fbe3dc" stroke="#d6411f" stroke-dasharray="6 4"/>
+  <text x="875" y="630" font-size="15" text-anchor="middle" fill="#a3311a">where the ball drops in</text>
+  <!-- 5 cm and 20 cm lines -->
+  <line x1="170" y1="570" x2="170" y2="690" stroke="#d6411f" stroke-width="3" marker-start="url(#a)" marker-end="url(#a)"/>
+  <text x="182" y="640" font-size="18" font-weight="700" fill="#d6411f">A at 5 cm in</text>
+  <line x1="470" y1="570" x2="470" y2="690" stroke="#d6411f" stroke-width="3" marker-start="url(#a)" marker-end="url(#a)"/>
+  <text x="482" y="640" font-size="18" font-weight="700" fill="#d6411f">A at 20 cm in</text>
+</svg>

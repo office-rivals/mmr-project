@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Short teaser</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <!-- Cue times (seconds), written by tools/sound.py: the sound track is placed from the same numbers -->
+    <script src="assets/cues.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #000;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+      }
+      .grp {
+        position: absolute;
+        inset: 0;
+        visibility: hidden;
+      }
+      .svg {
+        position: absolute;
+        overflow: visible;
+      }
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, 0.85) 100%);
+      }
+
+      /* 1: the tunnel and the beam */
+      #glow {
+        position: absolute;
+        left: 260px;
+        top: 360px;
+        width: 1400px;
+        height: 480px;
+        border-radius: 50%;
+        background: radial-gradient(ellipse at 50% 50%, rgba(232, 67, 31, 0.32), rgba(232, 67, 31, 0) 70%);
+        opacity: 0;
+      }
+      #shadow {
+        position: absolute;
+        left: 660px;
+        top: 300px;
+        width: 600px;
+        height: 600px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #000 0%, #000 55%, rgba(0, 0, 0, 0.7) 66%, rgba(0, 0, 0, 0) 72%);
+      }
+
+      /* 2: a sliver of e-paper */
+      #slit {
+        position: absolute;
+        left: 360px;
+        top: 330px;
+        width: 1200px;
+        height: 420px;
+        overflow: hidden;
+        transform: rotate(-4deg);
+      }
+      #slit img {
+        position: absolute;
+        left: 0;
+        top: -135px;
+        width: 1200px;
+        height: 900px;
+        image-rendering: pixelated;
+      }
+      .ep {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+      }
+      #ep-paper {
+        opacity: 1;
+        background: #d8d4c8;
+        mix-blend-mode: multiply;
+      }
+      #ep-light {
+        opacity: 1;
+        background: linear-gradient(100deg, rgba(0, 0, 0, 0) 20%, rgba(0, 0, 0, 0.75) 100%);
+      }
+
+      /* 3: one key light */
+      #face {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        background: linear-gradient(180deg, #0b0b0d 0%, #121316 100%);
+      }
+      #keys {
+        position: absolute;
+        inset: 0;
+        transform: rotate(-6deg);
+      }
+      #led {
+        position: absolute;
+        left: -400px;
+        top: 250px;
+        width: 2720px;
+        height: 64px;
+        border-radius: 12px;
+        background: #17181b;
+      }
+      #led-on {
+        position: absolute;
+        left: 1000px;
+        top: 0;
+        width: 640px;
+        height: 64px;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #ffd2bf 0%, #ff6a3d 45%, #e8431f 100%);
+        box-shadow: 0 0 60px 18px rgba(232, 67, 31, 0.55), 0 0 160px 60px rgba(232, 67, 31, 0.25);
+        opacity: 0;
+      }
+      .cap {
+        position: absolute;
+        left: 500px;
+        top: 400px;
+        width: 840px;
+        height: 560px;
+        border-radius: 40px;
+        background: #1e1512;
+        box-shadow: inset 0 -26px 0 rgba(0, 0, 0, 0.35);
+      }
+      #cap-lit {
+        position: absolute;
+        inset: 0;
+        border-radius: 40px;
+        background: linear-gradient(180deg, #c4704f 0%, #8a4430 40%, #3a2019 100%);
+        box-shadow: inset 0 -26px 0 rgba(0, 0, 0, 0.35), inset 0 14px 0 rgba(255, 220, 200, 0.25);
+        opacity: 0;
+      }
+
+      /* 4: a badge tap */
+      #plate {
+        left: 900px;
+        top: 160px;
+        width: 1180px;
+        height: 885px;
+      }
+      #ring {
+        position: absolute;
+        left: 1060px;
+        top: 260px;
+        width: 860px;
+        height: 560px;
+        border-radius: 70px;
+        border: 10px solid #e8431f;
+        opacity: 0;
+      }
+      #card {
+        position: absolute;
+        left: 1100px;
+        top: 300px;
+        width: 760px;
+        height: 480px;
+        border-radius: 34px;
+        background: linear-gradient(120deg, #4a4740 0%, #24231f 70%);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8);
+      }
+      #card-slot {
+        position: absolute;
+        left: 330px;
+        top: 34px;
+        width: 100px;
+        height: 22px;
+        border-radius: 11px;
+        background: #121110;
+      }
+
+      /* 6-7: the line, the mark */
+      .line {
+        position: absolute;
+        left: 0;
+        width: 1920px;
+        text-align: center;
+        color: #f2efe8;
+      }
+      #title {
+        top: 455px;
+        font-family: "Archivo Black", "Arial Black", sans-serif;
+        font-size: 104px;
+        letter-spacing: -0.03em;
+      }
+      .beam {
+        position: absolute;
+        height: 4px;
+        border-radius: 2px;
+        background: #ffd7cc;
+        box-shadow: 0 0 10px 3px rgba(232, 67, 31, 0.9), 0 0 34px 10px rgba(232, 67, 31, 0.45);
+      }
+      #crest {
+        position: absolute;
+        left: 870px;
+        top: 330px;
+        width: 180px;
+        height: 180px;
+        border-radius: 32px;
+      }
+      #mark {
+        top: 560px;
+        font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
+        font-weight: 700;
+        font-size: 40px;
+        letter-spacing: 0.3em;
+        text-indent: 0.3em;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="11" data-width="1920" data-height="1080">
+      <div id="stage" class="clip" data-start="0" data-duration="11" data-track-index="1">
+        <!-- 1: a dark tunnel; the IR beam flickers on; the ball's shadow comes up the tunnel and breaks it -->
+        <div class="grp" id="g-tunnel">
+          <svg class="svg" viewBox="0 0 1920 1080" style="left: 0; top: 0; width: 1920px; height: 1080px">
+            <defs>
+              <linearGradient id="wall" x1="0" x2="1"><stop offset="0" stop-color="#101114" /><stop offset="1" stop-color="#050506" /></linearGradient>
+              <linearGradient id="wallr" x1="1" x2="0"><stop offset="0" stop-color="#101114" /><stop offset="1" stop-color="#050506" /></linearGradient>
+            </defs>
+            <polygon points="0,0 860,460 860,640 0,1080" fill="url(#wall)" />
+            <polygon points="1920,0 1060,460 1060,640 1920,1080" fill="url(#wallr)" />
+            <polygon points="0,1080 860,640 1060,640 1920,1080" fill="#0a0a0c" />
+            <rect x="860" y="460" width="200" height="180" fill="#020203" />
+            <g stroke="#1c1d21" stroke-width="3" fill="none">
+              <polyline points="430,230 430,850 1490,850 1490,230" />
+              <polyline points="650,345 650,750 1270,750 1270,345" />
+            </g>
+            <rect x="400" y="572" width="34" height="60" rx="6" fill="#1b1c20" />
+            <rect x="1486" y="572" width="34" height="60" rx="6" fill="#1b1c20" />
+          </svg>
+          <div id="glow"></div>
+          <svg class="svg" id="beam" viewBox="0 0 1920 1080" style="left: 0; top: 0; width: 1920px; height: 1080px; opacity: 0">
+            <line x1="432" y1="602" x2="1488" y2="602" stroke="#e8431f" stroke-width="34" stroke-opacity="0.16" />
+            <line x1="432" y1="602" x2="1488" y2="602" stroke="#e8431f" stroke-width="12" stroke-opacity="0.45" />
+            <line x1="432" y1="602" x2="1488" y2="602" stroke="#ffd7cc" stroke-width="3" />
+            <circle cx="432" cy="602" r="7" fill="#ff4a2a" />
+          </svg>
+          <div id="shadow"></div>
+          <svg class="svg" viewBox="0 0 1920 1080" style="left: 0; top: 0; width: 1920px; height: 1080px">
+            <circle id="rx" cx="1488" cy="602" r="7" fill="#ff4a2a" opacity="0" />
+            <circle id="rx-ring" cx="1488" cy="602" r="30" fill="none" stroke="#ff4a2a" stroke-width="4" opacity="0" />
+          </svg>
+        </div>
+
+        <!-- 2: a sliver of e-paper at 9 : 7; a full refresh flashes it; 10 : 7 -->
+        <div class="grp" id="g-paper">
+          <div id="slit" data-layout-allow-overflow>
+            <img id="ep-a" src="assets/live-9-7.png" alt="" />
+            <img id="ep-b" src="assets/saving-8.png" alt="" style="opacity: 0" />
+            <div class="ep" id="ep-paper"></div>
+            <div class="ep" id="ep-black" style="background: #1e1f22"></div>
+            <div class="ep" id="ep-white" style="background: #d8d4c8"></div>
+            <div class="ep" id="ep-light"></div>
+          </div>
+        </div>
+
+        <!-- 3: one key, close; its light comes on -->
+        <div class="grp" id="g-key">
+          <div id="face"></div>
+          <div id="keys">
+            <div id="led"><div id="led-on"></div></div>
+            <div class="cap" style="left: -500px"></div>
+            <div class="cap" id="cap"><div id="cap-lit"></div></div>
+            <div class="cap" style="left: 1500px"></div>
+          </div>
+        </div>
+
+        <!-- 4: a badge on the plate -->
+        <div class="grp" id="g-badge">
+          <svg class="svg" id="plate" viewBox="-118 -88 236 177">
+            <rect x="-118" y="-88" width="236" height="177" rx="18" fill="#141518" />
+            <g id="plate-ink" fill="none" stroke="#33353b" stroke-width="5">
+              <rect x="-86" y="-74" width="172" height="112" rx="14" />
+              <rect x="-17" y="-64" width="34" height="9" rx="4" />
+              <circle cx="-44" cy="-22" r="14" />
+              <path d="M -70 26 Q -44 -4 -18 26" />
+              <line x1="6" y1="-26" x2="62" y2="-26" />
+              <line x1="6" y1="-2" x2="48" y2="-2" />
+            </g>
+          </svg>
+          <div id="ring"></div>
+          <div id="card"><div id="card-slot"></div></div>
+        </div>
+
+        <!-- 6: the line -->
+        <div class="grp" id="g-title">
+          <div class="line" id="title" data-layout-allow-occlusion>Soon, the table keeps score.</div>
+          <div class="beam" id="t-beam" style="left: 760px; top: 610px; width: 400px"></div>
+        </div>
+
+        <!-- 7: the mark -->
+        <div class="grp" id="g-end">
+          <img id="crest" src="assets/crest.png" alt="" />
+          <div class="line" id="mark" data-layout-allow-occlusion>MMR PROJECT</div>
+          <div class="beam" id="e-beam" style="left: 840px; top: 640px; width: 240px"></div>
+        </div>
+
+        <div id="vignette" data-layout-allow-occlusion></div>
+      </div>
+
+      <!-- Sound effects only (tools/sound.py; see AUDIO-CREDITS.md) -->
+      <audio id="audio-sfx" src="assets/audio/sfx.wav" data-start="0" data-duration="11" data-track-index="6" data-volume="1"></audio>
+    </div>
+    <script>
+      // Every time is a cue from tools/sound.py (window.__T), so each picture lands with its sound. Hard cuts only.
+      const T = window.__T;
+      const tl = gsap.timeline({ paused: true });
+      const cut = (from, to, at) => {
+        if (from) tl.set(from, { visibility: "hidden" }, at);
+        if (to) tl.set(to, { visibility: "visible" }, at);
+      };
+
+      // 1: the beam flickers on (on/off/on/off/on, a tick on every "on"), then the shadow breaks it
+      cut(null, "#g-tunnel", T.beam);
+      T.flicker.forEach((d, i) => tl.set("#beam", { opacity: i % 2 ? 0 : 1 }, T.beam + d));
+      tl.set("#glow", { opacity: 1 }, T.beam + T.flicker[4]);
+      tl.fromTo("#glow", { scale: 0.96 }, { scale: 1.04, duration: 2, ease: "sine.inOut" }, T.beam + T.flicker[4]);
+      tl.set("#rx", { opacity: 1 }, T.beam + T.flicker[4]);
+      // the shadow: small and far at the vanishing point, beam-sized at the crossing, then past the lens
+      tl.fromTo("#shadow", { scale: 0.08, y: -40 }, { scale: 0.62, y: 0, duration: T.cross - T.shadow, ease: "power2.in" }, T.shadow);
+      tl.to("#shadow", { scale: 4.2, y: 520, duration: 0.45, ease: "power2.in" }, T.cross);
+      tl.set(["#beam", "#rx"], { opacity: 0.15 }, T.cross);
+      tl.set(["#beam", "#rx"], { opacity: 1 }, T.cross + 0.16);
+      tl.fromTo("#rx-ring", { opacity: 1, scale: 0.4, transformOrigin: "50% 50%" }, { opacity: 0, scale: 2.2, duration: 0.5, ease: "power2.out" }, T.cross);
+      tl.fromTo("#glow", { opacity: 1.6 }, { opacity: 1, duration: 0.4 }, T.cross + 0.16);
+
+      // 2: e-paper at 9 : 7; refresh (inverted, black, white); 10 : 7
+      cut("#g-tunnel", "#g-paper", T.paper);
+      tl.fromTo("#slit", { scale: 1 }, { scale: 1.07, duration: T.key - T.paper, ease: "none" }, T.paper);
+      tl.set("#ep-a", { filter: "invert(1)" }, T.refresh);
+      tl.set("#ep-black", { opacity: 1 }, T.refresh + 0.12);
+      tl.set("#ep-black", { opacity: 0 }, T.refresh + 0.22);
+      tl.set("#ep-white", { opacity: 1 }, T.refresh + 0.22);
+      tl.set("#ep-a", { opacity: 0 }, T.snap);
+      tl.set("#ep-b", { opacity: 1 }, T.snap);
+      tl.set("#ep-white", { opacity: 0 }, T.snap);
+
+      // 3: one key: pressed, then its light comes on
+      cut("#g-paper", "#g-key", T.key);
+      tl.fromTo("#keys", { scale: 1 }, { scale: 1.05, duration: T.badge - T.key, ease: "none" }, T.key);
+      tl.to("#cap", { y: 10, duration: 0.06 }, T.glow - 0.2);
+      tl.to("#cap", { y: 0, duration: 0.12 }, T.glow - 0.14);
+      tl.to(["#led-on", "#cap-lit"], { opacity: 1, duration: 0.35, ease: "power2.in" }, T.glow);
+
+      // 4: the badge comes in from the right and touches the plate; the target glows
+      cut("#g-key", "#g-badge", T.badge);
+      tl.fromTo("#card", { x: 900, y: 120, rotation: 8 }, { x: 0, y: 0, rotation: 0, duration: T.tap - T.badge, ease: "power3.out" }, T.badge);
+      tl.set("#plate-ink", { attr: { stroke: "#e8431f" } }, T.tap);
+      tl.fromTo("#ring", { opacity: 1, scale: 1 }, { opacity: 0, scale: 1.25, duration: 0.5, ease: "power2.out" }, T.tap);
+      tl.fromTo("#ring", { opacity: 1, scale: 1 }, { opacity: 0, scale: 1.25, duration: 0.5, ease: "power2.out", immediateRender: false }, T.joined);
+      tl.to("#card", { x: 60, y: -20, duration: T.black - T.tap, ease: "sine.out" }, T.tap);
+
+      // 5: black, silence. 6: the line, with the beam under it
+      cut("#g-badge", null, T.black);
+      cut(null, "#g-title", T.title);
+      tl.fromTo("#title", { scale: 1.05 }, { scale: 1, duration: T.end - T.title, ease: "power1.out" }, T.title);
+      tl.fromTo("#t-beam", { scaleX: 0 }, { scaleX: 1, duration: 0.25, ease: "power3.out" }, T.title);
+
+      // 7: the mark; fade to black at the end
+      cut("#g-title", "#g-end", T.end);
+      tl.fromTo("#e-beam", { scaleX: 0 }, { scaleX: 1, duration: 0.25, ease: "power3.out" }, T.end);
+      tl.to("#g-end", { opacity: 0, duration: 0.5, ease: "power1.in" }, T.total - 0.5);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
