@@ -5,7 +5,7 @@ import {
   getRouteApi,
   useLocation,
 } from '@tanstack/react-router';
-import { LayoutDashboard, Trophy, Users } from 'lucide-react';
+import { Cpu, LayoutDashboard, Trophy, Users } from 'lucide-react';
 import { OpenFlagBadge } from '@/components/admin/open-flag-badge';
 import { HttpErrorView } from '@/components/http-error-view';
 import { resolveAdminOrg } from '@/lib/admin';
@@ -60,6 +60,14 @@ function OrgAdminLayout() {
       exact: false,
       badge: openFlagsForOrg(badges, org.id),
     },
+    {
+      to: '/admin/$orgSlug/hardware' as const,
+      href: `${base}/hardware`,
+      label: 'Hardware',
+      icon: Cpu,
+      exact: false,
+      badge: 0,
+    },
   ];
 
   const isActive = (href: string, exact: boolean) =>
@@ -70,7 +78,7 @@ function OrgAdminLayout() {
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
       <aside className="lg:w-56 lg:shrink-0">
-        <nav className="flex flex-row gap-1 overflow-x-auto lg:flex-col">
+        <nav className="flex flex-row flex-wrap gap-1 lg:flex-col">
           {navItems.map((item) => {
             const active = isActive(item.href, item.exact);
             return (

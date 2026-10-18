@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/card';
 import { HttpErrorView } from '@/components/http-error-view';
 import { OpenFlagBadge } from '@/components/admin/open-flag-badge';
+import { DeviceAttentionBanner } from '@/features/foosball/device-health';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { requireAdminOrg } from '@/lib/server/admin';
 import {
@@ -80,6 +81,8 @@ function OrgAdminOverviewPage() {
           Overview of activity in this organization.
         </p>
       </div>
+
+      <DeviceAttentionBanner orgSlug={org.slug} />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>

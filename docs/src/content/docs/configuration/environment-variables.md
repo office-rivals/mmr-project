@@ -19,6 +19,7 @@ The frontend in `frontend-beta/` reads everything at runtime, so one image works
 | `APP_ORIGIN` | Behind a TLS proxy | Public origin, for example `https://app.example.com`, with no path. Used for Clerk and form origin checks. Leave it unset in local development. An invalid value stops startup. |
 | `TRUST_PROXY` | No | Which forwarded headers to trust: `false` (default), `true`, `loopback` or a comma-separated list of proxy IP addresses. Keep `false` when `APP_ORIGIN` is set. An invalid value stops startup. |
 | `CLERK_AUTHORIZED_PARTIES` | Recommended in production | Comma-separated origins allowed to mint session tokens, for example `https://app.example.com`. Each entry must be an HTTP(S) origin without a path. |
+| `GRAFANA_URL` | No | Base URL of the Grafana that receives the foosball devices' telemetry, for example `https://grafana.example.com`. When set, each goal counter on the admin **Hardware** page links to its light-by-hour panel. |
 | `PORT` | No | Port of the production server. Default `3000`. The dev server always uses `5173`. |
 | `HOST` | No | Address the production server binds to. Default `0.0.0.0`. |
 

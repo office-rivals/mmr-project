@@ -18,6 +18,7 @@ import { FlagResultAlert } from '@/components/flag-result-alert';
 import { HttpErrorView } from '@/components/http-error-view';
 import { Leaderboard } from '@/components/leaderboard';
 import { MatchCard } from '@/components/match-card';
+import { goalsHref } from '@/features/foosball/goals';
 import { PageTitle } from '@/components/page-title';
 import { ReportMatchModal } from '@/components/report-match-modal';
 import { SeasonPicker } from '@/components/season-picker';
@@ -495,6 +496,7 @@ function LeagueHomePage() {
                   showMmr={showMmr}
                   now={data.now}
                   viewerId={data.leaguePlayerId}
+                  goalsHref={goalsHref(match, data.orgSlug, data.leagueSlug)}
                 />
               ))}
             </div>
