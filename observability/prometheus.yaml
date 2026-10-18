@@ -1,0 +1,14 @@
+# Replaces /otel-lgtm/prometheus.yaml in grafana/otel-lgtm (see README.md).
+# Differences from the image's default:
+# - every OTLP resource attribute becomes a label, so device.id, foosball.role, foosball.table_id,
+#   foosball.goal and foosball.end are queryable without target_info joins;
+# - a 14-day out-of-order window, so the digital twin can backfill simulated days of history.
+#   Real devices export metrics with the current time and don't need it.
+global:
+  scrape_native_histograms: true
+otlp:
+  promote_all_resource_attributes: true
+  keep_identifying_resource_attributes: true
+storage:
+  tsdb:
+    out_of_order_time_window: 14d

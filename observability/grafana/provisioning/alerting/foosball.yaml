@@ -1,0 +1,222 @@
+# Foosball device alerts (INTERFACES §10), provisioned into Grafana at startup.
+# Devices export metrics only at session end and on the ≤ 24 h heartbeat, so every rule looks back
+# over hours, not at the instant value.
+apiVersion: 1
+
+# Placeholder: the alert channel (Slack / e-mail / app) is undecided. Replace the receiver below, or
+# add a real contact point and point the rules' notification_settings at it.
+contactPoints:
+  - orgId: 1
+    name: foosball-placeholder
+    receivers:
+      - uid: foosball-placeholder
+        type: webhook
+        settings:
+          url: http://alerts.example.invalid/foosball
+
+groups:
+  - orgId: 1
+    name: foosball-devices
+    folder: Foosball
+    interval: 5m
+    rules:
+      - uid: foosball-battery-low
+        title: Battery low
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              # 3.6 = warn level of the low-battery thresholds, INTERFACES §3 (owner electronics); also in both dashboards.
+              expr: min by (device_id, foosball_table_id, foosball_role) (last_over_time(foosball_battery_voltage_volts[36h])) < 3.6
+          - &above_zero
+            refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [0] } }]
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.device_id }} ({{ $labels.foosball_role }}{{ with $labels.foosball_table_id }}, table {{ . }}{{ end }}) battery {{ printf \"%.2f\" $values.A.Value }} V, below the warn level: swap the cells."
+          dashboard: /d/foosball-device?var-device={{ $labels.device_id }}
+        notification_settings: { receiver: foosball-placeholder }
+
+      - uid: foosball-device-silent
+        title: No telemetry for 36 h
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              # Seen in the last 14 days, nothing in the last 36 h (heartbeat is ≤ 24 h).
+              expr: >-
+                max by (device_id, foosball_table_id, foosball_role) (present_over_time(foosball_uptime_milliseconds[14d]))
+                unless on (device_id) present_over_time(foosball_uptime_milliseconds[36h])
+          - *above_zero
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.device_id }} ({{ $labels.foosball_role }}{{ with $labels.foosball_table_id }}, table {{ . }}{{ end }}) sent no telemetry for 36 h: dead battery, Wi-Fi down or a crash loop."
+          dashboard: /d/foosball-device?var-device={{ $labels.device_id }}
+        notification_settings: { receiver: foosball-placeholder }
+
+      - uid: foosball-wrong-board
+        title: Wrong firmware image for the board
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 90000, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: instant
+              # The device reports once, then sleeps 24 h and repeats: look back 25 h.
+              expr: sum by (device_id) (count_over_time({service_name=~"foosball-.+"} |= "wrong board" | foosball_tag="boot" [25h]))
+          - *above_zero
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.device_id }} runs the wrong firmware image for its board (D7 strap): it does nothing until reflashed."
+          dashboard: /d/foosball-device?var-device={{ $labels.device_id }}
+        notification_settings: { receiver: foosball-placeholder }
+
+      - uid: foosball-repeated-resets
+        title: Repeated abnormal resets
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              # One metrics export per wake carries that boot's reset reason; poweron / deepsleep are normal.
+              expr: >-
+                sum by (device_id, foosball_table_id) (count_over_time(
+                  foosball_reset_ratio{foosball_reset_reason=~"panic|int_wdt|task_wdt|wdt|brownout|other"}[24h])) >= 3
+          - *above_zero
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.device_id }} reset abnormally {{ $values.A.Value }} times in 24 h (panic / watchdog / brownout)."
+          dashboard: /d/foosball-device?var-device={{ $labels.device_id }}
+        notification_settings: { receiver: foosball-placeholder }
+
+      # Beam health (goal counters): firmware/beam-health-firmware-2026-10-16.md §4. The device decides each state
+      # from server config; these rules only add time. foosball.beam.health: 0 ok, 1 low_margin, 2 ambient_high,
+      # 3 blocked, 4 sensor_dead (worst wins). A "health <state>" log record is sent on every change.
+
+      - uid: foosball-beam-ambient-repeat
+        title: Daylight on the beam two days running
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 93600, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: instant
+              # ambient_high began within the last 2 h, and also within the same 2 h of the clock yesterday.
+              expr: >-
+                sum by (device_id) (count_over_time({service_name="foosball-goal-counter"} | foosball_tag="beam" |= "health ambient_high" [2h]))
+                and
+                sum by (device_id) (count_over_time({service_name="foosball-goal-counter"} | foosball_tag="beam" |= "health ambient_high" [2h] offset 1d))
+          - *above_zero
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.device_id }}: light reaches the beam receiver at this time of day, two days running. Balls may pass uncounted: shade the drawer or the receiver."
+          dashboard: /d/foosball-device?var-device={{ $labels.device_id }}&viewPanel=panel-15
+        notification_settings: { receiver: foosball-placeholder }
+
+      - uid: foosball-beam-blocked
+        title: Beam blocked for 10 min during play
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 7800, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              queryType: instant
+              # The state 10 min ago was blocked, and since then no other state and no end of the session
+              # ("idle, reporting before sleep"). Logs flush every 5 min, so "10 min" is 10-15 min.
+              expr: >-
+                (last_over_time({service_name="foosball-goal-counter"} | foosball_tag=~"beam|power" |~ "^(health |idle)"
+                | label_format blk=`{{ if hasPrefix "health blocked" __line__ }}1{{ else }}0{{ end }}` | unwrap blk [2h] offset 10m) by (device_id) == 1)
+                unless
+                sum by (device_id) (count_over_time({service_name="foosball-goal-counter"} | foosball_tag=~"beam|power" |~ "^(health |idle)" != "health blocked" [10m]))
+          - *above_zero
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.device_id }}: the goal beam has been blocked for 10 min while the table is in use, so goals are not counted. Empty the drawer; if it stays blocked, check the LED."
+          dashboard: /d/foosball-device?var-device={{ $labels.device_id }}
+        notification_settings: { receiver: foosball-placeholder }
+
+      - uid: foosball-beam-sensor-dead
+        title: Beam sensor dead
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: max by (device_id, foosball_table_id, foosball_role) (last_over_time(foosball_beam_health_ratio[36h])) == 4
+          - *above_zero
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.device_id }}{{ with $labels.foosball_table_id }} (table {{ . }}){{ end }}: the beam LED no longer changes the receiver. Check the receiver and its wiring (if it only happens in daylight, light is flooding the receiver)."
+          dashboard: /d/foosball-device?var-device={{ $labels.device_id }}
+        notification_settings: { receiver: foosball-placeholder }
+
+      - uid: foosball-beam-low-margin
+        title: Beam margin low for over a day
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              # low_margin at the last report and at the last report of the day before, and never ok in between.
+              expr: >-
+                max by (device_id, foosball_table_id, foosball_role) (last_over_time(foosball_beam_health_ratio[1d])) == 1
+                and on (device_id) min by (device_id) (min_over_time(foosball_beam_health_ratio[1d])) >= 1
+                and on (device_id) max by (device_id) (last_over_time(foosball_beam_health_ratio[1d] offset 1d)) == 1
+          - *above_zero
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.device_id }}{{ with $labels.foosball_table_id }} (table {{ . }}){{ end }}: beam margin low for over a day. Clean or realign the beam, or fit the next R_LED (ASSEMBLY §6)."
+          dashboard: /d/foosball-device?var-device={{ $labels.device_id }}
+        notification_settings: { receiver: foosball-placeholder }
