@@ -78,21 +78,22 @@ public record TeamPredictionResponse
     [Required] public required List<PlayerPredictionResponse> Players { get; init; }
 }
 
+/// <summary>
+/// The MMRs are null while the player is still placing this season, since
+/// they would show how a placement match moves their MMR.
+/// </summary>
 public record PlayerPredictionResponse
 {
     [Required] public required Guid LeaguePlayerId { get; init; }
 
-    /// <summary>
-    /// The MMR the player goes into the match with: their current MMR, or for
-    /// their first match of the season the season's reset of it.
-    /// </summary>
-    [Required] public required long Mmr { get; init; }
+    /// <summary>The MMR the player goes into the match with.</summary>
+    public long? Mmr { get; init; }
 
     /// <summary>The player's MMR after the match if their team wins.</summary>
-    [Required] public required long MmrIfWin { get; init; }
+    public long? MmrIfWin { get; init; }
 
     /// <summary>The player's MMR after the match if their team loses.</summary>
-    [Required] public required long MmrIfLose { get; init; }
+    public long? MmrIfLose { get; init; }
 }
 
 public record SubmitActiveMatchResultRequest

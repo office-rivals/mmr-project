@@ -58,10 +58,11 @@ public class V3MatchPredictionService(
             .ToList();
         var playersWithSeasonHistory =
             await MmrCalculationInputs.LoadPlayersWithSeasonHistoryAsync(dbContext, season.Id, playerIds);
+        var seasonMatchCounts = await Placement.LoadSeasonMatchCountsAsync(dbContext, season.Id, playerIds);
 
         foreach (var match in matches)
         {
-            var prediction = await PredictMatchAsync(match, playersWithSeasonHistory);
+            var prediction = await PredictMatchAsync(match, playersWithSeasonHistory, seasonMatchCounts);
             if (prediction is not null)
             {
                 predictions[match.Id] = prediction;
@@ -73,7 +74,8 @@ public class V3MatchPredictionService(
 
     private async Task<MatchPredictionResponse?> PredictMatchAsync(
         V3PendingMatch match,
-        HashSet<Guid> playersWithSeasonHistory)
+        HashSet<Guid> playersWithSeasonHistory,
+        Dictionary<Guid, int> seasonMatchCounts)
     {
         // Mirrors how a submitted result is numbered and split into two teams.
         var teams = match.Teams.OrderBy(t => t.Index).ToList();
@@ -109,12 +111,17 @@ public class V3MatchPredictionService(
             Players = result.Players.Select(p =>
             {
                 var leaguePlayer = playersById[p.Id];
+                if (seasonMatchCounts.GetValueOrDefault(leaguePlayer.Id) < Placement.MatchCount)
+                {
+                    return new PlayerPredictionResponse { LeaguePlayerId = leaguePlayer.Id };
+                }
+
+                // A placed player has played this season, so their result is
+                // diffed against the stored MMR rather than a season reset.
                 return new PlayerPredictionResponse
                 {
                     LeaguePlayerId = leaguePlayer.Id,
-                    // A submission diffs the result against the stored MMR, except
-                    // on a first match of the season, which starts from the reset.
-                    Mmr = playersWithSeasonHistory.Contains(leaguePlayer.Id) ? leaguePlayer.Mmr : p.Mmr,
+                    Mmr = leaguePlayer.Mmr,
                     MmrIfWin = p.MmrIfWin,
                     MmrIfLose = p.MmrIfLose,
                 };
