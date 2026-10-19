@@ -107,6 +107,15 @@ Entities live in `api/MMRProject.Api/Data/Entities/`. The non-obvious parts:
 and links to Clerk via `IdentityUserId`; **PlayerHistory** and
 **MmrCalculation** are per-match snapshots and deltas, not live state.
 
+### Placement matches
+
+A player's first 10 matches of each season are placement matches
+(`Placement.MatchCount` in the API, `RANKED_MATCH_THRESHOLD` in frontend-beta).
+**Never let anyone see how a placement match moves a player's MMR** — not as a
+delta, a chart point, a prediction's stake, or an MMR or team average that
+would let someone work it out. Withhold it in the API response, not only in the
+UI, and apply this to every new feature that shows MMR.
+
 ## Configuration
 
 The AppHost injects everything below except Clerk keys (set those via AppHost
