@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { FlagActionResult } from '@/lib/match-flag-actions';
 import type { MatchFlagResponse, MatchResponse } from '@/api-v3';
@@ -328,7 +329,7 @@ export function ReportMatchModal({
                 <form onSubmit={submitReason}>
                   <div className="space-y-2">
                     <Label htmlFor="reason">Reason for flagging</Label>
-                    <textarea
+                    <Textarea
                       id="reason"
                       name="reason"
                       value={reason}
@@ -336,7 +337,7 @@ export function ReportMatchModal({
                       required
                       maxLength={500}
                       rows={4}
-                      className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="min-h-[100px]"
                       placeholder="Describe why this match should be reviewed..."
                     />
                     <p className="text-xs text-muted-foreground">

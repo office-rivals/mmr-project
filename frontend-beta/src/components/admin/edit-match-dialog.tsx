@@ -11,6 +11,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { getPlayerDisplayName } from '@/lib/utils';
 import type { LeaguePlayerResponse, MatchResponse } from '@/api-v3';
 
@@ -89,8 +96,14 @@ export function EditMatchDialog({
     }
   }, [open, match]);
 
-  const playerName = (id: string) =>
-    getPlayerDisplayName(leaguePlayers.find((lp) => lp.id === id));
+  const playerItems = useMemo(
+    () =>
+      leaguePlayers.map((player) => ({
+        value: player.id,
+        label: getPlayerDisplayName(player),
+      })),
+    [leaguePlayers]
+  );
 
   const duplicate = useMemo(() => {
     const seen = new Set<string>();
@@ -226,26 +239,34 @@ export function EditMatchDialog({
                 <div className="space-y-2">
                   {team.players.map((slot, playerIndex) => (
                     <div key={playerIndex} className="flex items-center gap-2">
-                      <Label className="w-16 text-xs text-muted-foreground">
+                      <Label
+                        htmlFor={`team-${teamIndex}-player-${playerIndex}`}
+                        className="w-16 text-xs text-muted-foreground"
+                      >
                         Player {playerIndex + 1}
                       </Label>
-                      <select
-                        className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+                      <Select
+                        items={playerItems}
                         required
-                        value={slot.leaguePlayerId}
-                        onChange={(event) =>
-                          setSlot(teamIndex, playerIndex, event.target.value)
+                        value={slot.leaguePlayerId || null}
+                        onValueChange={(id) =>
+                          setSlot(teamIndex, playerIndex, id ?? '')
                         }
                       >
-                        <option value="" disabled>
-                          Select a player…
-                        </option>
-                        {leaguePlayers.map((player) => (
-                          <option key={player.id} value={player.id}>
-                            {playerName(player.id)}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger
+                          id={`team-${teamIndex}-player-${playerIndex}`}
+                          className="h-9 flex-1 lg:h-9"
+                        >
+                          <SelectValue placeholder="Select a player…" />
+                        </SelectTrigger>
+                        <SelectContent align="start" sideOffset={4}>
+                          {playerItems.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   ))}
                 </div>

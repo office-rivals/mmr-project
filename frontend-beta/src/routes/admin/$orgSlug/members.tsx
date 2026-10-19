@@ -23,6 +23,14 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NativeSelect } from '@/components/ui/native-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { HttpErrorView } from '@/components/http-error-view';
 import { parseActionSuccessKey } from '@/lib/action-feedback';
 import { describeApiFailure } from '@/lib/api-error-copy';
@@ -343,6 +351,9 @@ function MembersPage() {
   );
 
   const isOwner = org.role === 'Owner';
+  const roles = isOwner
+    ? ['Member', 'Moderator', 'Owner']
+    : ['Member', 'Moderator'];
   const canModerate = isModeratorOrAbove(org.role);
 
   const run = async (
@@ -577,15 +588,15 @@ function MembersPage() {
                   </div>
                   <div className="w-full space-y-2 sm:w-40">
                     <Label htmlFor="role">Role</Label>
-                    <select
-                      id="role"
-                      name="role"
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                    >
-                      <option value="Member">Member</option>
-                      <option value="Moderator">Moderator</option>
-                      {isOwner && <option value="Owner">Owner</option>}
-                    </select>
+                    {/* Native, so the role can be picked before JavaScript
+                        loads; this form posts without it. */}
+                    <NativeSelect id="role" name="role" defaultValue="Member">
+                      {roles.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </NativeSelect>
                   </div>
                 </div>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
@@ -775,27 +786,42 @@ function MembersPage() {
                             name="membershipId"
                             value={member.id}
                           />
-                          <select
+                          <Select
                             key={`${member.id}-${member.role}`}
                             name="role"
-                            className="h-8 rounded-md border border-input bg-background px-2 text-sm"
                             defaultValue={member.role}
-                            onChange={(event) => {
+                            onValueChange={(role) => {
+                              if (!role) return;
                               void run(
                                 updateMemberRoleFn({
                                   data: {
                                     orgSlug: org.slug,
                                     membershipId: member.id,
-                                    role: event.target.value,
+                                    role,
                                   },
                                 })
                               );
                             }}
                           >
-                            <option value="Member">Member</option>
-                            <option value="Moderator">Moderator</option>
-                            {isOwner && <option value="Owner">Owner</option>}
-                          </select>
+                            <SelectTrigger
+                              aria-label={`Role for ${
+                                member.displayName ||
+                                member.username ||
+                                member.email ||
+                                'Unknown'
+                              }`}
+                              className="h-8 w-auto gap-1 px-2 lg:h-8"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent sideOffset={4}>
+                              {roles.map((role) => (
+                                <SelectItem key={role} value={role}>
+                                  {role}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </form>
                         <form
                           method="post"

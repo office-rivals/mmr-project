@@ -11,6 +11,7 @@ import { PlayerAvatar } from '@/components/player-avatar';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { parseActionSuccessKey } from '@/lib/action-feedback';
 import {
@@ -388,13 +389,12 @@ function ChooseForm({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="claim-note">Note for the moderator (optional)</Label>
-        <textarea
+        <Textarea
           id="claim-note"
           name="note"
           rows={3}
           disabled={busy}
           placeholder="Anything that helps them recognize you"
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
 

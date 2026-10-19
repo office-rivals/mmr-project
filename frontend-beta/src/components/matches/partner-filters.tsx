@@ -1,4 +1,11 @@
 import { ChevronDown } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { PartnerOption } from '@/lib/player-stats';
 
 export interface PartnerSelection {
@@ -73,27 +80,38 @@ function PartnerSelect({
   disabled: boolean;
   onChange: (id: string | undefined) => void;
 }) {
+  // The null item is "any", so clearing shows its label rather than a blank.
+  const items = [
+    { value: null, label: anyLabel },
+    ...options.map((option) => ({
+      value: option.leaguePlayerId,
+      label: option.name,
+    })),
+  ];
   return (
-    <label className="relative flex min-h-11 min-w-0 items-center rounded-full border bg-card text-sm focus-within:ring-2 focus-within:ring-ring has-disabled:opacity-60 lg:min-h-0">
-      <span className="pl-3 text-muted-foreground">{label}</span>
-      <select
-        value={value ?? ''}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value || undefined)}
-        // The native picker follows the page theme rather than the OS one.
-        className="max-w-40 min-w-0 appearance-none self-stretch truncate bg-transparent py-1.5 pr-8 pl-1.5 font-medium [color-scheme:light] focus:outline-none dark:[color-scheme:dark]"
+    <Select
+      items={items}
+      value={value ?? null}
+      onValueChange={(id) => onChange(id ?? undefined)}
+      disabled={disabled}
+    >
+      <SelectTrigger
+        aria-label={label}
+        icon={<ChevronDown className="size-4 text-muted-foreground" />}
+        className="h-auto min-h-11 w-auto max-w-full min-w-0 justify-start gap-1.5 rounded-full border-border bg-card py-1.5 pr-2.5 pl-3 focus-visible:ring-offset-0 disabled:opacity-60 lg:h-auto lg:min-h-0"
       >
-        <option value="">{anyLabel}</option>
-        {options.map((option) => (
-          <option key={option.leaguePlayerId} value={option.leaguePlayerId}>
-            {option.name}
-          </option>
+        <span aria-hidden="true" className="text-muted-foreground">
+          {label}
+        </span>
+        <SelectValue className="max-w-40 min-w-0 font-medium" />
+      </SelectTrigger>
+      <SelectContent align="start" sideOffset={6}>
+        {items.map((item) => (
+          <SelectItem key={item.value ?? ''} value={item.value}>
+            {item.label}
+          </SelectItem>
         ))}
-      </select>
-      <ChevronDown
-        aria-hidden="true"
-        className="pointer-events-none absolute right-2.5 size-4 text-muted-foreground"
-      />
-    </label>
+      </SelectContent>
+    </Select>
   );
 }

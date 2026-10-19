@@ -14,15 +14,15 @@ test.describe('native admin forms', () => {
     const member = page
       .getByText('Alice Anderson', { exact: true })
       .locator('xpath=ancestor::div[contains(@class,"rounded-lg")][1]');
-    const select = member.locator('select[name="role"]');
-    const form = select.locator('xpath=ancestor::form');
+    const roleInput = member.locator('input[name="role"]');
+    const form = roleInput.locator('xpath=ancestor::form');
     await expect(form).toHaveAttribute('method', 'post');
     await expect(form).toHaveAttribute('action', MEMBERS);
 
     const membershipId = await form
       .locator('input[name="membershipId"]')
       .inputValue();
-    const originalRole = await select.inputValue();
+    const originalRole = await roleInput.inputValue();
     const nextRole = originalRole === 'Member' ? 'Moderator' : 'Member';
     const postRole = (role: string) =>
       page.request.post(MEMBERS, {
@@ -46,7 +46,7 @@ test.describe('native admin forms', () => {
       await expect(
         page.getByRole('alert').filter({ hasText: 'Role updated successfully' })
       ).toBeVisible();
-      await expect(select).toHaveValue(nextRole);
+      await expect(roleInput).toHaveValue(nextRole);
     } finally {
       expect((await postRole(originalRole)).status()).toBe(303);
     }
@@ -70,6 +70,8 @@ test.describe('native admin forms', () => {
       .getByLabel('Display name (optional)')
       .fill(privateValues.displayName);
     await form.getByLabel('Username (optional)').fill(privateValues.username);
+    // A non-default role proves the picker itself works without JavaScript.
+    await form.getByLabel('Role').selectOption('Moderator');
 
     const posted = page.waitForResponse(
       (response) =>
@@ -78,7 +80,11 @@ test.describe('native admin forms', () => {
     );
     await form.getByRole('button', { name: 'Invite', exact: true }).click();
 
-    expect((await posted).status()).toBe(303);
+    const response = await posted;
+    expect(response.status()).toBe(303);
+    expect(
+      new URLSearchParams(response.request().postData()!).get('role')
+    ).toBe('Moderator');
     await expect(
       page.getByRole('alert').filter({ hasText: 'Member invited successfully' })
     ).toBeVisible();
