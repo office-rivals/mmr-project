@@ -118,18 +118,24 @@ function expectedOdds(prediction: MatchPredictionResponse) {
   );
   const ours = mine.index === 0 ? first : 100 - first;
   const signed = (n: number) => (n < 0 ? `−${-n}` : `+${n}`);
+  // A team with a placing player shows no average.
   const average = (index: number) => {
     const team = prediction.teams.find((t) => t.index === index)!;
+    const mmrs = team.players.map((p) => p.mmr);
+    if (mmrs.some((mmr) => mmr == null)) return null;
     const mean =
-      team.players.reduce((sum, p) => sum + p.mmr, 0) / team.players.length;
+      (mmrs as number[]).reduce((sum, mmr) => sum + mmr, 0) / mmrs.length;
     return `Avg ${Math.round(mean).toLocaleString('en-US')}`;
   };
   return {
     byIndex: `${first}% · ${100 - first}%`,
     ours: `${ours}% win chance`,
     theirs: `${100 - ours}%`,
-    stake: `Win ${signed(me.mmrIfWin - me.mmr)} · Lose ${signed(me.mmrIfLose - me.mmr)}`,
-    averages: [average(0), average(1)],
+    stake:
+      me.mmr != null && me.mmrIfWin != null && me.mmrIfLose != null
+        ? `Win ${signed(me.mmrIfWin - me.mmr)} · Lose ${signed(me.mmrIfLose - me.mmr)}`
+        : 'Placement match',
+    averages: [average(0), average(1)].filter((a) => a != null),
   };
 }
 
@@ -160,6 +166,7 @@ test('a found match shows both teams’ odds, their average MMR and your stake',
   for (const average of expected.averages) {
     await expect(dialog.getByText(average)).toBeVisible();
   }
+  await expect(dialog.getByText(/^Avg /)).toHaveCount(expected.averages.length);
 });
 
 test('a live match shows its odds on the match, on home, in the live bar and on matchmaking', async ({
@@ -176,6 +183,7 @@ test('a live match shows its odds on the match, on home, in the live bar and on 
   for (const average of expected.averages) {
     await expect(page.getByText(average)).toBeVisible();
   }
+  await expect(page.getByText(/^Avg /)).toHaveCount(expected.averages.length);
 
   await gotoAuthed(page, LEAGUE);
   await expect(page.getByRole('link', { name: /Live now/ })).toContainText(
@@ -193,6 +201,30 @@ test('a live match shows its odds on the match, on home, in the live bar and on 
   const cardOdds = card.getByTestId('win-chance');
   await expect(cardOdds).toContainText(expected.ours);
   await expect(cardOdds).toContainText(expected.stake);
+});
+
+test('a placing player sees the odds but no MMR at stake', async ({ page }) => {
+  stageMatch({ active: true });
+  await page.route(`**${QUEUE_API}`, async (route) => {
+    const response = await route.fetch();
+    const status = (await response.json()) as QueueStatusResponse;
+    for (const team of status.activeMatch?.prediction?.teams ?? []) {
+      for (const player of team.players) {
+        if (player.leaguePlayerId !== TEST_USER_PLAYER_ID) continue;
+        player.mmr = player.mmrIfWin = player.mmrIfLose = null;
+      }
+    }
+    await route.fulfill({ response, json: status });
+  });
+
+  await gotoAuthed(page, LEAGUE);
+
+  const live = page
+    .getByRole('region', { name: 'Live match' })
+    .getByTestId('live-win-chance');
+  await expect(live).toContainText('win chance');
+  await expect(live).toContainText('Placement match');
+  await expect(live).not.toContainText('Win +');
 });
 
 test('a live match without a prediction still shows in the live bar', async ({

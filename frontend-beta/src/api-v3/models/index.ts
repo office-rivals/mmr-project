@@ -406,12 +406,16 @@ export interface TeamPredictionResponse {
   players: PlayerPredictionResponse[];
 }
 
+/**
+ * The MMRs are null while the player is still placing this season, since they
+ * would show how a placement match moves their MMR.
+ */
 export interface PlayerPredictionResponse {
   leaguePlayerId: string;
-  /** MMR going into the match (a season's first match starts from its reset). */
-  mmr: number;
-  mmrIfWin: number;
-  mmrIfLose: number;
+  /** MMR going into the match. */
+  mmr: number | null;
+  mmrIfWin: number | null;
+  mmrIfLose: number | null;
 }
 
 export interface SubmitActiveMatchResultRequest {

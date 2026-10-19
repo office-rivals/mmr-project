@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouterState } from '@tanstack/react-router';
 import { AppLink } from '@/components/app-link';
 import { useHydrated } from '@/hooks/use-hydrated';
-import { formatStake, matchOdds } from '@/lib/match-prediction';
+import { matchOdds, stakeLabel } from '@/lib/match-prediction';
 import { queueActionFn, type QueueActionName } from '@/lib/queue-actions';
 import { cn, formatElapsed, getPlayerDisplayName, initials } from '@/lib/utils';
 import { queueQueryKey, useQueueStatus } from './use-queue-status';
@@ -90,6 +90,7 @@ export function LiveStatus({
     );
     const ours = odds?.teams.find((t) => t.index === myTeam?.index);
     const theirs = odds?.teams.find((t) => t !== ours);
+    const stake = odds ? stakeLabel(odds) : null;
     return (
       <section
         aria-label="Live match"
@@ -122,10 +123,10 @@ export function LiveStatus({
               <span className="sr-only">
                 {` for your team, ${theirs.winPercent}% for the opponents`}
               </span>
-              {odds?.stake ? (
+              {stake ? (
                 <>
                   <span className="lg:hidden"> · </span>
-                  <span className="lg:block">{formatStake(odds.stake)}</span>
+                  <span className="lg:block">{stake}</span>
                 </>
               ) : null}
             </span>
