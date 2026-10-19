@@ -1,0 +1,9 @@
+info:
+  name: statistics
+  type: folder
+  seq: 9
+
+request:
+  headers:
+    - name: Authorization
+      value: Bearer {{access_token_set_by_collection_script}}

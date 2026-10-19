@@ -1,0 +1,150 @@
+info:
+  name: V3ActiveMatches_ListActiveMatches
+  type: http
+  seq: 1
+  tags:
+    - V3ActiveMatches
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/active-matches"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/active-matches"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          [
+            {
+              "id": "",
+              "pendingMatchId": "",
+              "startedAt": "",
+              "teams": [
+                {
+                  "index": 0,
+                  "players": [
+                    {
+                      "leaguePlayerId": "",
+                      "displayName": "",
+                      "username": "",
+                      "index": 0
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/active-matches"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          [
+            {
+              "id": "",
+              "pendingMatchId": "",
+              "startedAt": "",
+              "teams": [
+                {
+                  "index": 0,
+                  "players": [
+                    {
+                      "leaguePlayerId": "",
+                      "displayName": "",
+                      "username": "",
+                      "index": 0
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/active-matches"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          [
+            {
+              "id": "",
+              "pendingMatchId": "",
+              "startedAt": "",
+              "teams": [
+                {
+                  "index": 0,
+                  "players": [
+                    {
+                      "leaguePlayerId": "",
+                      "displayName": "",
+                      "username": "",
+                      "index": 0
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
