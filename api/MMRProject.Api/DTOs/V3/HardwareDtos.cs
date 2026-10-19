@@ -30,7 +30,7 @@ public record TableResponse
     [Required] public required TableOccupancyResponse Occupancy { get; init; }
 }
 
-/// <summary>In this order: the first that matches wins (hardware/analytics/METRICS.md §8.2).</summary>
+/// <summary>In this order: the first that matches wins (analytics/METRICS.md §8.2 in office-rivals/mmr-hardware).</summary>
 public enum OccupancyStatus
 {
     /// <summary>No goal counter, or every device is out (dead battery, offline > 36 h). Never shown as free.</summary>
@@ -136,7 +136,7 @@ public enum BeamMode
 
 /// <summary>
 /// A goal counter's beam health config: each field is <c>DeviceConfig.beam_&lt;snake_case name&gt;</c> in
-/// hardware/firmware/openapi.yaml.
+/// firmware/openapi.yaml in office-rivals/mmr-hardware.
 /// Every field is optional: null = the firmware's default. Health thresholds are in µA.
 /// </summary>
 public record BeamConfig : IValidatableObject
@@ -432,7 +432,7 @@ public record OrphanGoalResponse
 }
 
 /// <summary>
-/// A stat with its sample (hardware/analytics/METRICS.md §8.4). <see cref="Value"/> is sent even when
+/// A stat with its sample (analytics/METRICS.md §8.4 in office-rivals/mmr-hardware). <see cref="Value"/> is sent even when
 /// <see cref="Enough"/> is false ("not enough games yet"); null only when nothing was measured.
 /// </summary>
 public record StatValue

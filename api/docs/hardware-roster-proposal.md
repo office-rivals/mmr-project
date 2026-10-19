@@ -1,6 +1,6 @@
 # Proposal: scan-in roster (NFC cards → teams → linked match)
 
-Status: **built**. The current rules are in `hardware-api.md` §Scan-in and `hardware/firmware/openapi.yaml`; this file keeps the reasoning and decisions (other docs link here). Once agreed, it moves into `hardware-api.md` and this file
+Status: **built**. The current rules are in `hardware-api.md` §Scan-in and `firmware/openapi.yaml` in office-rivals/mmr-hardware; this file keeps the reasoning and decisions (other docs link here). Once agreed, it moves into `hardware-api.md` and this file
 goes away.
 
 ## Flow
@@ -158,7 +158,7 @@ Optional and cheap, for players who forgot their card: `POST tables/{tableId}/ro
 when a member is removed, `TeamBalancer`, and `CreateActiveMatchAsync` (see `hardware-api.md` §Cards).
 **Then (after ux's flow):** the device actions, roster state and table, 6 colours, rematch, discard to teams.
 
-**Device contract = `hardware/firmware/openapi.yaml`** (firmware's roster draft). It overrides the
+**Device contract = `firmware/openapi.yaml` in office-rivals/mmr-hardware** (firmware's roster draft). It overrides the
 Device API section above where they differ:
 - The path is the existing `POST devices/{id}/scoreboard/actions`.
 - `scan` always answers 200 with the state plus `scan { result, player? }`, never 409.

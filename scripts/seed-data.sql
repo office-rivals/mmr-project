@@ -22883,7 +22883,7 @@ INSERT INTO foosball_tables
   ('f005ba11-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'Table 2', 'table-2',
    '22222222-2222-2222-2222-222222222222', 'Blue', 'Yellow', 2, 1, now() - interval '30 days');
 
--- last_status is the board's DeviceStatus (hardware/firmware/openapi.yaml).
+-- last_status is the board's DeviceStatus (firmware/openapi.yaml in office-rivals/mmr-hardware).
 INSERT INTO devices
   (id, organization_id, hardware_id, claimed, claimed_at, role, table_id, "end", config_version,
    last_seen_at, awake_since, battery_mv, low_batt, firmware_version, last_status_at, last_status,

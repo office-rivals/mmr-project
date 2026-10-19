@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # Boot the API on a throwaway Postgres and provision the digital twin's devices, so the twin
-# (hardware/twin) can run its scenarios against the real device API.
+# (twin/ in office-rivals/mmr-hardware) can run its scenarios against the real device API.
 #
 #   api/scripts/hardware-twin-stack.sh            # start (or reuse) Postgres + API, seed, print env
 #   api/scripts/hardware-twin-stack.sh stop       # stop the API and remove the database container
 #
+# HARDWARE_DIR is the mmr-hardware checkout (default: ./hardware if present, else ../mmr-hardware).
 # Local only: placeholder secrets, no Clerk (the device API doesn't use it). Override ports with
 # HW_PG_PORT / HW_API_PORT / HW_MMR_PORT, the token with HW_ENROLMENT_TOKEN and the card key with HW_CARD_UID_KEY
 # (random per API start otherwise).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
+if [[ -d "$root/hardware" ]]; then default_hw="$root/hardware"; else default_hw="$root/../mmr-hardware"; fi
+hardware_dir="${HARDWARE_DIR:-$default_hw}"
 pg_port="${HW_PG_PORT:-55491}"
 api_port="${HW_API_PORT:-8091}"
 mmr_port="${HW_MMR_PORT:-8092}"
@@ -68,8 +71,8 @@ done
 
 # Seed: one org (enrolment token = $token), a 2v2 league to 10, one table per twin table, and every
 # device the twin lists, pre-assigned (they enrol on their first request and keep the assignment).
-make -C "$root/hardware/twin" -s >/dev/null
-"$root/hardware/twin/build/twin" devices | python3 "$root/api/scripts/hardware-twin-seed.py" "$token" "$(cat "$state/card_key")" \
+make -C "$hardware_dir/twin" -s >/dev/null
+"$hardware_dir/twin/build/twin" devices | python3 "$root/api/scripts/hardware-twin-seed.py" "$token" "$(cat "$state/card_key")" \
   | docker exec -i "$container" psql -q -v ON_ERROR_STOP=1 -U postgres -d mmr_hardware_twin >/dev/null
 
 cat <<EOF

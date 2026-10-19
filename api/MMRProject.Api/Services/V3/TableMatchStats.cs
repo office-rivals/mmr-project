@@ -3,7 +3,7 @@ using MMRProject.Api.Data.Entities.V3;
 namespace MMRProject.Api.Services.V3;
 
 /// <summary>
-/// Goal-timeline statistics of a table match, as defined in <c>hardware/analytics/METRICS.md</c> (a port of
+/// Goal-timeline statistics of a table match, as defined in <c>analytics/METRICS.md</c> in office-rivals/mmr-hardware (a port of
 /// its reference <c>example.py</c>). Pure functions, so the scoreboard, the app and the stats pages compute
 /// them the same way.
 /// </summary>

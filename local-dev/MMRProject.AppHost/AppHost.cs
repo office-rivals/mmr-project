@@ -78,7 +78,7 @@ var api = builder.AddProject<Projects.MMRProject_Api>("api", launchProfileName: 
 // --- Grafana LGTM (foosball devices) ----------------------------------------
 
 // Grafana + Prometheus + Loki behind one OTel Collector, for the foosball
-// goal counters / scoreboards (hardware/, INTERFACES §10). Dashboards and alert
+// goal counters / scoreboards (office-rivals/mmr-hardware, INTERFACES §10). Dashboards and alert
 // rules are provisioned from observability/ (see observability/README.md).
 // The api and mmr-api keep exporting to the Aspire dashboard. Explicit start:
 // most developers never need it, so it waits for a click in the dashboard.

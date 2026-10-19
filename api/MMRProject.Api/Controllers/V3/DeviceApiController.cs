@@ -14,7 +14,7 @@ using MMRProject.Api.Services.V3;
 namespace MMRProject.Api.Controllers.V3;
 
 /// <summary>
-/// The table devices' API. Contract: hardware/firmware/openapi.yaml (snake_case JSON), so it is left
+/// The table devices' API. Contract: firmware/openapi.yaml in office-rivals/mmr-hardware (snake_case JSON), so it is left
 /// out of the generated Swagger document.
 /// </summary>
 [ApiController]

@@ -8,7 +8,7 @@ namespace MMRProject.Api.Services.V3;
 
 public interface ITableStatsService
 {
-    /// <summary>TS1–TS7 of hardware/analytics/METRICS.md §8.4 for one table.</summary>
+    /// <summary>TS1–TS7 of analytics/METRICS.md §8.4 in office-rivals/mmr-hardware for one table.</summary>
     Task<TableStatsResponse> GetTableStatsAsync(Guid orgId, Guid tableId, DateTimeOffset? from, DateTimeOffset? to, string? tz);
 
     /// <summary>Every table's headline numbers, the combined heatmap and TS8.</summary>
