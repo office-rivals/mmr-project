@@ -136,6 +136,33 @@ describe('ActiveMatchPage prediction', () => {
     expect(text).toContain('54% win chance · Win +11 · Lose −13');
   });
 
+  it('shows a placing viewer the odds but no MMR', () => {
+    const placing: MatchPredictionResponse = {
+      teams: [
+        prediction.teams[0],
+        {
+          ...prediction.teams[1],
+          players: [
+            {
+              leaguePlayerId: 'me',
+              mmr: null,
+              mmrIfWin: null,
+              mmrIfLose: null,
+            },
+            prediction.teams[1].players[1],
+          ],
+        },
+      ],
+    };
+
+    const text = visibleText(renderActiveMatch(placing));
+
+    expect(text).toContain('54% win chance · Placement match');
+    expect(text).toContain('Avg 1,648');
+    expect(text).not.toContain('Avg 1,693');
+    expect(text).not.toContain('Win +');
+  });
+
   it('hides every part of it without a prediction', () => {
     const markup = renderActiveMatch(null);
 

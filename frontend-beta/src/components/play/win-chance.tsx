@@ -1,4 +1,4 @@
-import { formatStake, type MatchOdds } from '@/lib/match-prediction';
+import { stakeLabel, type MatchOdds } from '@/lib/match-prediction';
 import { cn } from '@/lib/utils';
 
 interface WinChanceProps {
@@ -22,7 +22,7 @@ export function WinChance({
 }: WinChanceProps) {
   const ours = odds.teams.find((t) => t.index === teamIndex) ?? odds.teams[0];
   const theirs = odds.teams.find((t) => t !== ours) ?? odds.teams[1];
-  const stake = odds.stake ? formatStake(odds.stake) : null;
+  const stake = stakeLabel(odds);
 
   return (
     <div
@@ -91,7 +91,7 @@ export function TeamAverageMmr({
   className?: string;
 }) {
   const team = odds.teams.find((t) => t.index === teamIndex);
-  if (!team) return null;
+  if (team?.averageMmr == null) return null;
   return (
     <p className={cn('text-xs text-muted-foreground tabular-nums', className)}>
       Avg {format(team.averageMmr)}
