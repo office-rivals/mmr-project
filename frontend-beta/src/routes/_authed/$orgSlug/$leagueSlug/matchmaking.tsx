@@ -14,10 +14,12 @@ import { AppLink } from '@/components/app-link';
 import { Eyebrow } from '@/components/eyebrow';
 import { PageTitle } from '@/components/page-title';
 import { PendingMatchDialog } from '@/components/play/pending-match-dialog';
+import { WinChance } from '@/components/play/win-chance';
 import { PlayerAvatar } from '@/components/player-avatar';
 import { queueQueryKey } from '@/components/shell/matchmaking-button';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { matchOdds } from '@/lib/match-prediction';
 import {
   nativeFormResponse,
   parseNativeFormData,
@@ -580,16 +582,21 @@ function ActiveMatchCard({
     0,
     Math.floor((now - new Date(match.startedAt).getTime()) / 60_000)
   );
-  const mine = (match.teams ?? []).some((t) =>
+  const myTeam = (match.teams ?? []).find((t) =>
     t.players.some((p) => p.leaguePlayerId === me)
   );
+  const mine = myTeam != null;
   const teamNames = (team: PendingMatchTeamResponse | undefined) =>
     (team?.players ?? []).map((player) => (
       <span key={player.leaguePlayerId} className="truncate">
         {getPlayerDisplayName(player)}
       </span>
     ));
-  const [left, right] = match.teams ?? [];
+  // The viewer's team goes first, so the odds read as theirs.
+  const [left, right] = myTeam
+    ? [myTeam, ...match.teams.filter((t) => t !== myTeam)]
+    : (match.teams ?? []);
+  const odds = matchOdds(match.prediction, me);
   return (
     <div
       className={cn(
@@ -611,6 +618,9 @@ function ActiveMatchCard({
           {teamNames(right)}
         </span>
       </div>
+      {odds && left ? (
+        <WinChance compact odds={odds} teamIndex={left.index} neutral={!mine} />
+      ) : null}
       <AppLink
         to={href}
         className="inline-flex items-center gap-1 self-end rounded-sm text-sm font-semibold text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
