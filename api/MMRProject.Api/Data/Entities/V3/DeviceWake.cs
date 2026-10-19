@@ -1,7 +1,7 @@
 namespace MMRProject.Api.Data.Entities.V3;
 
 /// <summary>
-/// One wake of a device, from its <c>sleep</c> status (hardware/analytics/METRICS.md §8.3 v2): the table
+/// One wake of a device, from its <c>sleep</c> status (analytics/METRICS.md §8.3 v2 in office-rivals/mmr-hardware): the table
 /// was in use from <see cref="WokeAt"/> to <see cref="IdleFrom"/>. A lost status loses the row.
 /// </summary>
 // ponytail: no pruning; a busy table writes ~20 small rows a day. Delete rows older than the stats window

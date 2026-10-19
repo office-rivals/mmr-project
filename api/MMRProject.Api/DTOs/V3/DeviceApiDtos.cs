@@ -4,7 +4,7 @@ using MMRProject.Api.Data.Entities.V3;
 
 namespace MMRProject.Api.DTOs.V3;
 
-// Device API (hardware/firmware/openapi.yaml). snake_case on the wire, via DeviceJson.Options.
+// Device API (firmware/openapi.yaml in office-rivals/mmr-hardware). snake_case on the wire, via DeviceJson.Options.
 
 public static class DeviceJson
 {

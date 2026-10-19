@@ -5,7 +5,7 @@ using static MMRProject.Api.Services.V3.TableOccupancy;
 
 namespace MMRProject.Api.IntegrationTests.Hardware;
 
-/// <summary>hardware/analytics/METRICS.md §8.2 (occupancy) and §8.3–8.4 (busy intervals, stats maths).</summary>
+/// <summary>analytics/METRICS.md §8.2 (occupancy) and §8.3–8.4 (busy intervals, stats maths) in office-rivals/mmr-hardware.</summary>
 public class TableOccupancyTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 15, 12, 0, 0, TimeSpan.Zero);

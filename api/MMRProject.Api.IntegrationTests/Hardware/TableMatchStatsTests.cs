@@ -2,7 +2,7 @@ using MMRProject.Api.Services.V3;
 
 namespace MMRProject.Api.IntegrationTests.Hardware;
 
-/// <summary>The worked example of hardware/analytics/METRICS.md §7 (numbers from its example.py).</summary>
+/// <summary>The worked example of analytics/METRICS.md §7 in office-rivals/mmr-hardware (numbers from its example.py).</summary>
 public class TableMatchStatsTests
 {
     private static readonly Guid Alice = Guid.NewGuid(), Bob = Guid.NewGuid(), Carol = Guid.NewGuid(), Dave = Guid.NewGuid();

@@ -6,7 +6,7 @@ using MMRProject.Api.DTOs.V3;
 
 namespace MMRProject.Api.Services.V3;
 
-/// <summary>Is a table in use right now (hardware/analytics/METRICS.md §8.2), from what the devices already send.</summary>
+/// <summary>Is a table in use right now (analytics/METRICS.md §8.2 in office-rivals/mmr-hardware), from what the devices already send.</summary>
 public static class TableOccupancy
 {
     /// <summary>The devices' <c>idle_timeout_s</c>: their default, the server doesn't set it.</summary>

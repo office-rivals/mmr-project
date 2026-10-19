@@ -3,7 +3,7 @@
 The API serves the table hardware (goal counters and scoreboards) and the app screens around it.
 
 - **Device API**: what the devices call. The contract is
-  [`hardware/firmware/openapi.yaml`](../../hardware/firmware/openapi.yaml), which uses snake_case.
+  `firmware/openapi.yaml` in office-rivals/mmr-hardware, which uses snake_case.
   The API serves it under `/api/v3/hardware`, so the devices' `API_BASE_URL` is
   `https://<api-host>/api/v3/hardware`.
 - **App API** (below): the usual v3 conventions, with camelCase JSON, enums as strings, and Clerk JWT
@@ -25,7 +25,7 @@ The API serves the table hardware (goal counters and scoreboards) and the app sc
   (admin control "Table sound: Off / Low / Medium / High"). It reaches every device of the table
   (scoreboard and goal counters' buzzers) as the config key `sound_volume`. Changing it bumps the table's devices' `config_version`. Devices pull config
   once per wake, so the new volume applies from the next wake.
-- **Beam health** (goal counters; `hardware/firmware/beam-health-firmware-2026-10-16.md`): an admin
+- **Beam health** (goal counters; `firmware/beam-health-firmware-2026-10-16.md` in office-rivals/mmr-hardware): an admin
   sets a goal counter's `beamConfig` (mode, health thresholds in µA, fitted resistors). It reaches the
   device as the config keys `beam_<snake_case field>` (`ledMa` → `beam_led_ma`, `mode: 'ABoost'` →
   `beam_mode: "a_boost"`). Fields left out are omitted, so the firmware default applies. A change bumps
@@ -150,8 +150,8 @@ The league is the rated match's league, else the table's league.
 
 ## Scan-in (device API)
 
-Contract: `hardware/firmware/openapi.yaml` (`scan`, `remove_player` and `generate_teams` actions,
-`state.roster`, `state.scan`); ux flow: `hardware/ux/SCOREBOARD-UI.md` §Scan-in. Server rules:
+Contract: `firmware/openapi.yaml` in office-rivals/mmr-hardware (`scan`, `remove_player` and `generate_teams` actions,
+`state.roster`, `state.scan`); ux flow: `ux/SCOREBOARD-UI.md` §Scan-in in office-rivals/mmr-hardware. Server rules:
 
 - **Can scan** when `Hardware:CardUidKey` is set and the table's league has a team size
   of 1 or 2. Otherwise `roster` is null, and a scan answers `unavailable` (no key) or `no_league`.
@@ -187,7 +187,7 @@ Contract: `hardware/firmware/openapi.yaml` (`scan`, `remove_player` and `generat
   gap capped at 5 min), null below 2 goals. `mvp_name` is the top contributor (METRICS §4.1–4.2:
   contribution, on a tie the impact, still tied → null), 2v2 only, and null unless ≥ 70 % of the counted
   goals have a known scorer (own goals included). The maths is in `Services/V3/TableMatchStats.cs`
-  (a port of `hardware/analytics/example.py`; its worked example is a unit test).
+  (a port of `analytics/example.py` in office-rivals/mmr-hardware; its worked example is a unit test).
 - **Players** are league players of the table's league, created on the first scan if
   needed. Moving the table to another league clears its roster, and removing a member deletes their
   roster places.
@@ -268,7 +268,7 @@ match, or this active match is live on another table.
 
 ### Occupancy and stats
 
-Definitions: `hardware/analytics/METRICS.md` §8. Everything comes from what the devices already send.
+Definitions: `analytics/METRICS.md` §8 in office-rivals/mmr-hardware. Everything comes from what the devices already send.
 
 **Occupancy** (`TableResponse.occupancy`, so in `GET /tables`, `/live` and the admin tables). The first
 state that matches wins:
@@ -465,5 +465,5 @@ AssignDeviceRequest  { role: 'Goal' | 'Scoreboard', tableId?, end?: TableEnd /* 
 ```
 
 Battery and heartbeat alerting live in the observability stack (OTLP metrics, see
-`hardware/team/INTERFACES.md` §10). `lastSeenAt`, `batteryMv` and `lowBatt` are only there for the
+`team/INTERFACES.md` §10 in office-rivals/mmr-hardware). `lastSeenAt`, `batteryMv` and `lowBatt` are only there for the
 admin view.
