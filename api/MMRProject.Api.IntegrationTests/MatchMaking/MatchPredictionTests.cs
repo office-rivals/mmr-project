@@ -5,6 +5,7 @@ using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
 using MMRProject.Api.IntegrationTests.Fixtures;
+using MMRProject.Api.Services.V3;
 
 namespace MMRProject.Api.IntegrationTests.MatchMaking;
 
@@ -98,7 +99,7 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
     public async Task Prediction_AgreesWithTheSubmittedResult()
     {
         var (org, league) = await SetupLeagueAsync();
-        var seasoned = await GiveSeasonHistoryAsync(org.Id, league.Id);
+        var placed = await PlaySeasonMatchesAsync(org.Id, league.Id, Placement.MatchCount);
         await QueueAndMatchAsync(org.Id, league.Id);
         AuthenticateAs("p1");
         var pending = (await GetQueueStatusAsync(org.Id, league.Id)).PendingMatch!;
@@ -139,15 +140,36 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
             var won = team.Index == 0;
             foreach (var player in team.Players)
             {
-                var predicted = won ? player.MmrIfWin : player.MmrIfLose;
-                Assert.Equal(predicted, mmrAfter[player.LeaguePlayerId]);
-                if (seasoned.Contains(player.LeaguePlayerId))
+                if (!placed.Contains(player.LeaguePlayerId))
                 {
-                    Assert.Equal(mmrBefore[player.LeaguePlayerId], player.Mmr);
-                    Assert.Equal(predicted - player.Mmr, deltas[player.LeaguePlayerId]);
+                    AssertHidden(player);
+                    continue;
                 }
+
+                var predicted = won ? player.MmrIfWin : player.MmrIfLose;
+                Assert.Equal(mmrBefore[player.LeaguePlayerId], player.Mmr);
+                Assert.Equal(predicted, mmrAfter[player.LeaguePlayerId]);
+                Assert.Equal(predicted - player.Mmr, deltas[player.LeaguePlayerId]);
+                Assert.True(player.MmrIfWin > player.Mmr, "a win raises MMR");
+                Assert.True(player.MmrIfLose < player.Mmr, "a loss lowers MMR");
             }
         }
+    }
+
+    [Fact]
+    public async Task Prediction_HidesMmr_UntilAPlayerHasPlacedThisSeason()
+    {
+        var (org, league) = await SetupLeagueAsync();
+        await PlaySeasonMatchesAsync(org.Id, league.Id, Placement.MatchCount - 1);
+        await QueueAndMatchAsync(org.Id, league.Id);
+
+        AuthenticateAs("p1");
+        var pendingMatch = (await GetQueueStatusAsync(org.Id, league.Id)).PendingMatch!;
+
+        // The odds still show; only the MMRs that would reveal a placement
+        // match's change are withheld.
+        AssertPredictionCovers(pendingMatch.Teams, pendingMatch.Prediction);
+        Assert.All(pendingMatch.Prediction!.Teams.SelectMany(t => t.Players), AssertHidden);
     }
 
     private static void AssertPredictionCovers(List<PendingMatchTeamResponse> teams, MatchPredictionResponse? prediction)
@@ -160,13 +182,15 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
             Assert.Equal(
                 team.Players.Select(p => p.LeaguePlayerId).Order(),
                 predicted.Players.Select(p => p.LeaguePlayerId).Order());
-            Assert.All(predicted.Players, p =>
-            {
-                Assert.True(p.MmrIfWin > p.Mmr, "a win raises MMR");
-                Assert.True(p.MmrIfLose < p.Mmr, "a loss lowers MMR");
-            });
         }
         Assert.Equal(1.0, prediction.Teams.Sum(t => t.WinChance), precision: 9);
+    }
+
+    private static void AssertHidden(PlayerPredictionResponse player)
+    {
+        Assert.Null(player.Mmr);
+        Assert.Null(player.MmrIfWin);
+        Assert.Null(player.MmrIfLose);
     }
 
     private async Task<(Organization Org, League League)> SetupLeagueAsync()
@@ -182,9 +206,9 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
         return (org, league);
     }
 
-    // Two of the four play a manual match first, so the matchmade result mixes
+    // Two of the four play manual matches first, so the matchmade result mixes
     // players with a rating this season and players on their first match.
-    private async Task<HashSet<Guid>> GiveSeasonHistoryAsync(Guid orgId, Guid leagueId)
+    private async Task<HashSet<Guid>> PlaySeasonMatchesAsync(Guid orgId, Guid leagueId, int count)
     {
         var (_, _, p1) = await GetPlayerAsync("p1");
         var (_, _, p2) = await GetPlayerAsync("p2");
@@ -192,17 +216,21 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
         var (_, _, extra2) = await SeedTestUser(orgId, leagueId, "x2", "x2@test.com");
 
         AuthenticateAs("p1");
-        var response = await Client.PostAsJsonAsync(
-            $"api/v3/organizations/{orgId}/leagues/{leagueId}/matches",
-            new SubmitMatchRequest
-            {
-                Teams =
-                [
-                    new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
-                    new SubmitMatchTeamRequest { Players = [extra1.Id, extra2.Id], Score = 6 },
-                ],
-            });
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        for (var i = 0; i < count; i++)
+        {
+            // Each score differs, or the duplicate-submission guard would reject it.
+            var response = await Client.PostAsJsonAsync(
+                $"api/v3/organizations/{orgId}/leagues/{leagueId}/matches",
+                new SubmitMatchRequest
+                {
+                    Teams =
+                    [
+                        new SubmitMatchTeamRequest { Players = [p1.Id, p2.Id], Score = 10 },
+                        new SubmitMatchTeamRequest { Players = [extra1.Id, extra2.Id], Score = i },
+                    ],
+                });
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        }
         return [p1.Id, p2.Id];
     }
 
