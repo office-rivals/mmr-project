@@ -1,3 +1,4 @@
+import type * as React from 'react';
 import { Select as SelectPrimitive } from '@base-ui/react/select';
 import { Check, ChevronsDown, ChevronsUp, ChevronsUpDown } from 'lucide-react';
 
@@ -18,8 +19,9 @@ function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
 function SelectTrigger({
   className,
   children,
+  icon = <ChevronsUpDown className="size-4 text-muted-foreground" />,
   ...props
-}: SelectPrimitive.Trigger.Props) {
+}: SelectPrimitive.Trigger.Props & { icon?: React.ReactElement }) {
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
@@ -30,9 +32,11 @@ function SelectTrigger({
       {...props}
     >
       {children}
-      <SelectPrimitive.Icon
-        render={<ChevronsUpDown className="size-4 text-muted-foreground" />}
-      />
+      {/* As children: through `render`, Base UI's default "▼" text would
+          land inside the svg. */}
+      <SelectPrimitive.Icon className="flex shrink-0">
+        {icon}
+      </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
 }
@@ -63,13 +67,13 @@ function SelectContent({
           )}
           {...props}
         >
-          <SelectPrimitive.ScrollUpArrow className="flex w-full shrink-0 cursor-default items-center justify-center py-1">
+          <SelectPrimitive.ScrollUpArrow className="top-0 z-10 flex w-full cursor-default items-center justify-center bg-background py-1">
             <ChevronsUp className="size-3 text-muted-foreground" />
           </SelectPrimitive.ScrollUpArrow>
-          <SelectPrimitive.List className="overflow-y-auto p-1">
+          <SelectPrimitive.List className="scroll-py-6 overflow-y-auto p-1">
             {children}
           </SelectPrimitive.List>
-          <SelectPrimitive.ScrollDownArrow className="flex w-full shrink-0 cursor-default items-center justify-center py-1">
+          <SelectPrimitive.ScrollDownArrow className="bottom-0 z-10 flex w-full cursor-default items-center justify-center bg-background py-1">
             <ChevronsDown className="size-3 text-muted-foreground" />
           </SelectPrimitive.ScrollDownArrow>
         </SelectPrimitive.Popup>
