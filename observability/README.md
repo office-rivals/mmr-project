@@ -1,8 +1,10 @@
 # Observability: foosball devices
 
 Grafana dashboards and alert rules, as code, for the foosball goal counters and
-scoreboards (`hardware/`). The devices send OpenTelemetry logs and metrics as
-OTLP/HTTP JSON (`hardware/team/INTERFACES.md` §10). Locally they go to
+scoreboards. Their firmware, the digital twin and the interface spec live in the
+private repo `office-rivals/mmr-hardware`, and every path into it below is
+relative to that repo. The devices send OpenTelemetry logs and metrics as
+OTLP/HTTP JSON (`team/INTERFACES.md` §10). Locally they go to
 [`grafana/otel-lgtm`](https://github.com/grafana/docker-otel-lgtm), which bundles
 an OTel Collector, Prometheus, Loki and Grafana in one container. The AppHost
 runs it as the `grafana` resource.
@@ -46,7 +48,7 @@ The OTLP/HTTP endpoint is `http://<host>:4318`. Devices append `/v1/logs` and
   scenario:
 
   ```bash
-  cd hardware/twin && make
+  cd twin && make   # in an mmr-hardware checkout
   ./build/twin --base <rest-base-url> --otlp http://127.0.0.1:4318 \
     --start -3d play --tables 5 --hours 72 --silent 1@24 --low-batt 1 --crash 1 --wrong-board 1
   ```
@@ -60,7 +62,7 @@ The OTLP/HTTP endpoint is `http://<host>:4318`. Devices append `/v1/logs` and
   ```
 
   Then set `OTLP_ENDPOINT` to `http://<your-machine's-LAN-IP>:4318` in the
-  firmware's gitignored `include/secrets.h`, and leave `OTLP_HEADER_NAME` empty.
+  gitignored `firmware/include/secrets.h`, and leave `OTLP_HEADER_NAME` empty.
   Make sure your OS firewall allows inbound TCP 4318.
 
 ## What's on the dashboards
@@ -87,14 +89,14 @@ long window (`last_over_time(…[14d])`), and counters are shown as
   `/d/foosball-device?var-device=<device_id>&viewPanel=panel-15`.
 
 Beam health is decided on the device from server config
-(`firmware/beam-health-firmware-2026-10-16.md` §4). The fleet table shows it as
+(mmr-hardware `firmware/beam-health-firmware-2026-10-16.md` §4). The fleet table shows it as
 the *Beam* column.
 
 ## Alerts
 
 | Rule | Condition | Severity |
 | --- | --- | --- |
-| Battery low | last voltage in 36 h below the warn level (low-battery thresholds, INTERFACES §3) | warning |
+| Battery low | last voltage in 36 h below the warn level (low-battery thresholds, mmr-hardware `team/INTERFACES.md` §3) | warning |
 | No telemetry for 36 h | sent metrics in the last 14 days, none in the last 36 h | critical |
 | Wrong firmware image for the board | a `wrong board` boot log in the last 25 h (the device reports, then sleeps 24 h) | critical |
 | Repeated abnormal resets | ≥ 3 boots with reset reason panic / *wdt / brownout / other in 24 h | warning |

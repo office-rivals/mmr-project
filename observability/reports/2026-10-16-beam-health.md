@@ -1,5 +1,7 @@
 # Beam health in Grafana (2026-10-16)
 
+Paths to firmware/ and team/ are in the private repo `office-rivals/mmr-hardware`.
+
 The goal counters' beam health (`firmware/beam-health-firmware-2026-10-16.md` §4) is now on the dashboards and has
 four alerts. Metric names are as `firmware/lib/core/otlp.cpp` emits them: `foosball_beam_{ambient,lit,ball}_uA`,
 `foosball_beam_{health,mode,margin}_ratio` in Prometheus. Lead reviewed the INTERFACES §10 row and accepted it.
