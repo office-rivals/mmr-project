@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { HttpErrorView } from '@/components/http-error-view';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { parseActionSuccessKey } from '@/lib/action-feedback';
@@ -615,7 +616,7 @@ function MatchFlagsPage() {
                       <span className="text-sm font-medium text-muted-foreground">
                         Reason
                       </span>
-                      <p className="whitespace-pre-wrap text-sm">
+                      <p className="text-sm whitespace-pre-wrap">
                         {flag.reason}
                       </p>
                     </div>
@@ -729,11 +730,10 @@ function MatchFlagsPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="note">Resolution Note (Optional)</Label>
-                    <textarea
+                    <Textarea
                       id="note"
                       name="note"
                       rows={3}
-                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       placeholder="Add a note about why this flag was resolved..."
                       value={resolutionNote}
                       onChange={(event) =>

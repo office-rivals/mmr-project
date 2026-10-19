@@ -20,6 +20,13 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { HttpErrorView } from '@/components/http-error-view';
 import { OpenFlagBadge } from '@/components/admin/open-flag-badge';
 import { failServerAction } from '@/lib/server/action-result';
@@ -99,6 +106,11 @@ const createLeagueFn = createServerFn({ method: 'POST' })
       });
     }
   });
+
+const FORMAT_ITEMS = [
+  { value: '2', label: '2v2' },
+  { value: '1', label: '1v1' },
+];
 
 export const Route = createFileRoute('/admin/$orgSlug/leagues/')({
   loader: ({ params }) => loadLeaguesFn({ data: params.orgSlug }),
@@ -192,15 +204,18 @@ function AdminLeaguesPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="teamSize">Format</Label>
-                <select
-                  id="teamSize"
-                  name="teamSize"
-                  defaultValue="2"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                >
-                  <option value="2">2v2</option>
-                  <option value="1">1v1</option>
-                </select>
+                <Select name="teamSize" defaultValue="2" items={FORMAT_ITEMS}>
+                  <SelectTrigger id="teamSize">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start" sideOffset={4}>
+                    {FORMAT_ITEMS.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="winningScore">Winning score</Label>

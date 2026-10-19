@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Flag, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -71,14 +72,13 @@ export function FlagDialogs({
                 <label htmlFor="reason" className="text-sm font-medium">
                   Reason
                 </label>
-                <textarea
+                <Textarea
                   id="reason"
                   name="reason"
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}
                   rows={3}
                   maxLength={500}
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   placeholder="Describe the issue..."
                 />
                 <p className="text-xs text-muted-foreground">
