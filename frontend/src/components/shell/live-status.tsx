@@ -5,7 +5,7 @@ import { useRouterState } from '@tanstack/react-router';
 import { AppLink } from '@/components/app-link';
 import { PendingMatchDialog } from '@/components/play/pending-match-dialog';
 import { useHydrated } from '@/hooks/use-hydrated';
-import { formatStake, matchOdds } from '@/lib/match-prediction';
+import { matchOdds, stakeLabel } from '@/lib/match-prediction';
 import { queueActionFn, type QueueActionName } from '@/lib/queue-actions';
 import { cn, formatElapsed, getPlayerDisplayName, initials } from '@/lib/utils';
 import { queueQueryKey, useQueueStatus } from './use-queue-status';
@@ -203,6 +203,7 @@ function StatusBody({
     );
     const ours = odds?.teams.find((t) => t.index === myTeam?.index);
     const theirs = odds?.teams.find((t) => t !== ours);
+    const stake = odds ? stakeLabel(odds) : null;
     return (
       <>
         <AppLink
@@ -231,11 +232,11 @@ function StatusBody({
                 </span>
                 {/* The narrow sidebar card gives the stake its own line rather
                     than breaking it mid-phrase. */}
-                {odds?.stake ? (
+                {stake ? (
                   variant === 'card' ? (
-                    <span className="block">{formatStake(odds.stake)}</span>
+                    <span className="block">{stake}</span>
                   ) : (
-                    ` · ${formatStake(odds.stake)}`
+                    ` · ${stake}`
                   )
                 ) : null}
               </span>

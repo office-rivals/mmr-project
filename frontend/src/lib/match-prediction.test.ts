@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { formatMmrChange, formatStake, matchOdds } from './match-prediction';
+import {
+  formatMmrChange,
+  formatStake,
+  matchOdds,
+  stakeLabel,
+} from './match-prediction';
 import type { MatchPredictionResponse } from '@/api-v3';
 
 const prediction: MatchPredictionResponse = {
@@ -45,6 +50,29 @@ describe('matchOdds', () => {
   it('has no stake for someone who is not playing', () => {
     expect(matchOdds(prediction, 'someone-else')?.stake).toBeNull();
     expect(matchOdds(prediction, null)?.stake).toBeNull();
+    expect(matchOdds(prediction, 'someone-else')?.placement).toBe(false);
+  });
+
+  it('hides a placing player’s stake and their team’s average', () => {
+    const placing: MatchPredictionResponse = {
+      teams: [
+        {
+          ...prediction.teams[0],
+          players: [
+            { leaguePlayerId: 'c', mmr: null, mmrIfWin: null, mmrIfLose: null },
+            prediction.teams[0].players[1],
+          ],
+        },
+        prediction.teams[1],
+      ],
+    };
+
+    const theirs = matchOdds(placing, 'c');
+    expect(theirs?.stake).toBeNull();
+    expect(theirs?.placement).toBe(true);
+    expect(theirs?.teams.map((t) => t.averageMmr)).toEqual([1693, null]);
+    // A placed teammate keeps their own stake.
+    expect(matchOdds(placing, 'd')?.stake).toEqual({ win: 14, lose: -10 });
   });
 
   it('is null without a usable prediction', () => {
@@ -66,5 +94,17 @@ describe('formatStake', () => {
   it('signs both changes with a true minus sign', () => {
     expect(formatStake({ win: 11, lose: -13 })).toBe('Win +11 · Lose −13');
     expect(formatMmrChange(0)).toBe('+0');
+  });
+});
+
+describe('stakeLabel', () => {
+  const odds = matchOdds(prediction, 'a')!;
+
+  it('names a placement match instead of its stake', () => {
+    expect(stakeLabel(odds)).toBe('Win +11 · Lose −13');
+    expect(stakeLabel({ ...odds, stake: null, placement: true })).toBe(
+      'Placement match'
+    );
+    expect(stakeLabel({ ...odds, stake: null })).toBeNull();
   });
 });
