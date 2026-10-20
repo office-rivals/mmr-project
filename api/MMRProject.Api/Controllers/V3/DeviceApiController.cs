@@ -80,8 +80,8 @@ public partial class DeviceApiController(ApiDbContext dbContext, ITableMatchServ
             return UnprocessableEntity();
         }
 
-        var recorded = await tableMatchService.RecordGoalAsync(device, request);
-        return recorded ? StatusCode(StatusCodes.Status201Created) : Conflict();
+        var (recorded, score) = await tableMatchService.RecordGoalAsync(device, request);
+        return recorded ? CreatedWithScore(score) : Conflict();
     }
 
     /// <summary>A goal counter's undo button: undoes its own goal within <c>undo_window_s</c>.</summary>
@@ -102,7 +102,7 @@ public partial class DeviceApiController(ApiDbContext dbContext, ITableMatchServ
             return UnprocessableEntity();
         }
 
-        var (duplicate, refusal) = await tableMatchService.RecordUndoAsync(device, request);
+        var (duplicate, refusal, score) = await tableMatchService.RecordUndoAsync(device, request);
         if (refusal is { } code)
         {
             return DeviceJsonResult(new ProblemDetails
@@ -113,7 +113,7 @@ public partial class DeviceApiController(ApiDbContext dbContext, ITableMatchServ
             }, StatusCodes.Status422UnprocessableEntity);
         }
 
-        return duplicate ? Conflict() : StatusCode(StatusCodes.Status201Created);
+        return duplicate ? Conflict() : CreatedWithScore(score);
     }
 
     [HttpPost("devices/{deviceId}/status")]
@@ -204,6 +204,10 @@ public partial class DeviceApiController(ApiDbContext dbContext, ITableMatchServ
             return null;
         }
     }
+
+    /// <summary>201 with the match's score for the counter's screen; empty for an orphan.</summary>
+    private IActionResult CreatedWithScore(EventScoreResponse? score) =>
+        score is null ? StatusCode(StatusCodes.Status201Created) : DeviceJsonResult(score, StatusCodes.Status201Created);
 
     private static JsonResult DeviceJsonResult(object value, int statusCode = StatusCodes.Status200OK) =>
         new(value, DeviceJson.Options) { StatusCode = statusCode };

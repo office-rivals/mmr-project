@@ -301,10 +301,15 @@ public class HardwareTests(PostgresFixture postgres) : IntegrationTestBase(postg
         Assert.Equal(10, JsonDocument.Parse(await (await GetConfig(goalA, t.Token)).Content.ReadAsStringAsync())
             .RootElement.GetProperty("undo_window_s").GetInt32());
 
-        await PostGoal(goalA, t, 1);
+        // A 201 carries the match's score for the counter's screen; end A's goal scores for B.
+        Assert.Equal("""{"score_a":0,"score_b":1,"label_a":"Window","label_b":"Door","status":"live","scores_for":"b"}""",
+            await (await PostGoal(goalA, t, 1)).Content.ReadAsStringAsync());
         Assert.Equal("not_yours", await Refusal(await UndoEvent(goalB, 1, 1, owner: goalA)));
         Assert.Equal("not_yours", await Refusal(await UndoEvent(goalA, 2, 99)));
-        Assert.Equal(HttpStatusCode.Created, (await UndoEvent(goalA, 3, 1)).StatusCode);
+        var undone = await UndoEvent(goalA, 3, 1);
+        Assert.Equal(HttpStatusCode.Created, undone.StatusCode);
+        Assert.Equal("""{"score_a":0,"score_b":0,"label_a":"Window","label_b":"Door","status":"live","scores_for":"b"}""",
+            await undone.Content.ReadAsStringAsync());
         Assert.Equal(0, await Score());
         // The retry of an undo that worked: 409 (done), even once the window has passed.
         await AgeGoal(goalA, 1, 60);
@@ -423,13 +428,15 @@ public class HardwareTests(PostgresFixture postgres) : IntegrationTestBase(postg
         var t = await SetupTableAsync();
         var unclaimed = TestDevice.New();
         await GetConfig(unclaimed, t.Token);
-        Assert.Equal(HttpStatusCode.Created, (await PostGoal(unclaimed, t, 1, tableId: null)).StatusCode);
+        // An orphan's 201 has no score.
+        var orphan = await PostGoal(unclaimed, t, 1, tableId: null);
+        Assert.Equal((HttpStatusCode.Created, ""), (orphan.StatusCode, await orphan.Content.ReadAsStringAsync()));
 
         var goalA = await ClaimAsync(t, DeviceRole.Goal, TableEnd.A);
         var board = await ClaimAsync(t, DeviceRole.Scoreboard, TableEnd.A);
         // Queued for hours, no match it could belong to.
-        Assert.Equal(HttpStatusCode.Created,
-            (await PostGoal(goalA, t, 1, occurredAt: DateTimeOffset.UtcNow.AddHours(-2))).StatusCode);
+        var noMatch = await PostGoal(goalA, t, 1, occurredAt: DateTimeOffset.UtcNow.AddHours(-2));
+        Assert.Equal((HttpStatusCode.Created, ""), (noMatch.StatusCode, await noMatch.Content.ReadAsStringAsync()));
         Assert.Null((await GetBoard(board, t)).Match);
 
         AuthenticateAs("owner");
@@ -483,8 +490,11 @@ public class HardwareTests(PostgresFixture postgres) : IntegrationTestBase(postg
         await PostGoal(goalA, t, 2);
 
         // Goal B's device comes back with a goal it queued during game 1.
-        Assert.Equal(HttpStatusCode.Created,
-            (await PostGoal(goalB, t, 1, occurredAt: DateTimeOffset.UtcNow.AddMinutes(-7))).StatusCode);
+        // Its score is game 1's, where it landed.
+        var queued = await PostGoal(goalB, t, 1, occurredAt: DateTimeOffset.UtcNow.AddMinutes(-7));
+        Assert.Equal(HttpStatusCode.Created, queued.StatusCode);
+        Assert.Equal("""{"score_a":1,"score_b":1,"label_a":"Window","label_b":"Door","status":"finished","scores_for":"a"}""",
+            await queued.Content.ReadAsStringAsync());
 
         var live = (await GetBoard(board, t)).Match!;
         Assert.Equal((0, 1), (live.Left.Score, live.Right.Score));
