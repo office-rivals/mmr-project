@@ -46,11 +46,21 @@ setup('apply seed and sign in', async ({ page }) => {
   await page.locator('input[name=password]').fill(userPassword);
   await page.locator('input[name=password]').press('Enter');
 
-  // After sign-in we land on either the home page (org list) or, when the
-  // seed wires us into a single org/league, on the leaderboard route.
-  await expect(page).toHaveURL(/\/(test-org\/test-league|$)/, {
+  // New Clerk apps verify a sign-in from a new device with an email code; the
+  // +clerk_test address accepts Clerk's fixed test code.
+  const signedIn = /\/(test-org\/test-league|$)/;
+  await expect(page).toHaveURL(new RegExp(`client-trust|${signedIn.source}`), {
     timeout: 15_000,
   });
+  if (page.url().includes('client-trust')) {
+    await page
+      .getByRole('textbox', { name: 'Enter verification code' })
+      .pressSequentially('424242');
+  }
+
+  // After sign-in we land on either the home page (org list) or, when the
+  // seed wires us into a single org/league, on the leaderboard route.
+  await expect(page).toHaveURL(signedIn, { timeout: 15_000 });
 
   await page.context().storageState({ path: authFile });
 });
