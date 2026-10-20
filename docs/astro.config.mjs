@@ -94,6 +94,7 @@ export default defineConfig({
             { label: 'Match submission', slug: 'features/match-submission' },
             { label: 'Matchmaking', slug: 'features/matchmaking' },
             { label: 'Admin operations', slug: 'features/admin-operations' },
+            { label: 'Foosball tables', slug: 'features/foosball-tables' },
             { label: 'Access control and tokens', slug: 'features/access-control-and-tokens' },
           ],
         },

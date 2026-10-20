@@ -26,6 +26,7 @@ export enum MembershipClaimStatus {
 export enum MatchSource {
   Manual = 'Manual',
   Matchmaking = 'Matchmaking',
+  Table = 'Table',
 }
 
 export enum AcceptanceStatus {

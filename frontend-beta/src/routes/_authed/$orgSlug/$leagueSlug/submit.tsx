@@ -9,6 +9,8 @@ import { createServerFn } from '@tanstack/react-start';
 import { HttpErrorView } from '@/components/http-error-view';
 import { LiveMatchBanner } from '@/components/play/live-match-banner';
 import { SubmitMatchPage } from '@/components/play/submit-match-page';
+import { TableClaim } from '@/features/foosball/table-claim';
+import { UnclaimedMatchesBanner } from '@/features/foosball/unclaimed-banner';
 import { HttpError } from '@/lib/http-error';
 import { prefetchQueueStatus } from '@/lib/queue-actions';
 import { failServerAction } from '@/lib/server/action-result';
@@ -222,6 +224,11 @@ const submitMatchFn = createServerFn({ method: 'POST' })
   });
 
 export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/submit')({
+  // Table deep link (QR/NFC): ids only — the score always comes from the API.
+  validateSearch: (search: Record<string, unknown>) => ({
+    table: typeof search.table === 'string' ? search.table : undefined,
+    match: typeof search.match === 'string' ? search.match : undefined,
+  }),
   loader: async ({ context }) => {
     const { orgId, leagueId, leaguePlayerId } = context.league;
     const [data] = await Promise.all([
@@ -258,6 +265,7 @@ function LeagueSubmitRoute({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const search = Route.useSearch();
   const [formMessage, setFormMessage] = useState<string | null>(null);
 
   const submitMatch = useMutation({
@@ -278,32 +286,54 @@ function LeagueSubmitRoute({
     onError: () => setFormMessage('Failed to submit match'),
   });
 
-  return (
-    <SubmitMatchPage
-      orgId={league.orgId}
-      leagueId={league.leagueId}
-      leagueTeamSize={league.leagueTeamSize}
-      leagueWinningScore={league.leagueWinningScore}
+  const page = (
+    <>
+      <UnclaimedMatchesBanner
+        orgId={league.orgId}
+        leagueId={league.leagueId}
+        orgSlug={league.orgSlug}
+        leagueSlug={league.leagueSlug}
+      />
+      <SubmitMatchPage
+        orgId={league.orgId}
+        leagueId={league.leagueId}
+        leagueTeamSize={league.leagueTeamSize}
+        leagueWinningScore={league.leagueWinningScore}
+        players={players}
+        members={members}
+        rematch={rematchFrom(
+          lastMatch,
+          league.leaguePlayerId,
+          players,
+          league.leagueTeamSize
+        )}
+        formMessage={formMessage}
+        submitting={submitMatch.isPending}
+        onSubmit={(input) => submitMatch.mutate(input)}
+        onGoToStep={scrollToStep}
+        banner={
+          <LiveMatchBanner
+            base={`/${league.orgSlug}/${league.leagueSlug}`}
+            orgId={league.orgId}
+            leagueId={league.leagueId}
+            leaguePlayerId={league.leaguePlayerId}
+          />
+        }
+      />
+    </>
+  );
+
+  return search.table ? (
+    <TableClaim
+      key={`${search.table}:${search.match}`}
+      league={league}
+      tableId={search.table}
+      matchId={search.match}
       players={players}
       members={members}
-      rematch={rematchFrom(
-        lastMatch,
-        league.leaguePlayerId,
-        players,
-        league.leagueTeamSize
-      )}
-      formMessage={formMessage}
-      submitting={submitMatch.isPending}
-      onSubmit={(input) => submitMatch.mutate(input)}
-      onGoToStep={scrollToStep}
-      banner={
-        <LiveMatchBanner
-          base={`/${league.orgSlug}/${league.leagueSlug}`}
-          orgId={league.orgId}
-          leagueId={league.leagueId}
-          leaguePlayerId={league.leaguePlayerId}
-        />
-      }
+      fallback={page}
     />
+  ) : (
+    page
   );
 }

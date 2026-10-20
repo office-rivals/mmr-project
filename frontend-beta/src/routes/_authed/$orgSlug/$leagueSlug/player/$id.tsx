@@ -11,6 +11,7 @@ import {
   MatchDateHeader,
   MatchFlagButton,
 } from '@/components/match-card';
+import { goalsHref } from '@/features/foosball/goals';
 import { FlagDialogs } from '@/components/profile/flag-dialogs';
 import { PlayerFilter } from '@/components/profile/player-filter';
 import {
@@ -507,6 +508,11 @@ function PlayerProfilePage() {
                           match={group.match}
                           showMmr
                           viewerId={playerId}
+                          goalsHref={goalsHref(
+                            group.match,
+                            data.orgSlug,
+                            data.leagueSlug
+                          )}
                         />
                       </div>
                       <MatchFlagButton

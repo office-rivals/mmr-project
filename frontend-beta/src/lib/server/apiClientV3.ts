@@ -21,6 +21,7 @@ import {
   InvitesApi,
   OrganizationClaimRequestsApi,
 } from '@/api-v3';
+import { FoosballApi } from '@/features/foosball/api';
 import { auth } from '@clerk/tanstack-react-start/server';
 
 /**
@@ -73,6 +74,7 @@ export const createApiClientV3 = (getToken: () => Promise<string | null>) => {
     organizationClaimRequestsApi: new OrganizationClaimRequestsApi(
       configuration
     ),
+    foosballApi: new FoosballApi(configuration),
   };
 };
 

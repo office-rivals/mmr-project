@@ -1,6 +1,6 @@
 import { useClerk } from '@clerk/tanstack-react-start';
 import { useRouter } from '@tanstack/react-router';
-import { KeyRound, LogOut, Settings, Shield } from 'lucide-react';
+import { IdCard, KeyRound, LogOut, Settings, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -103,6 +103,16 @@ export function SettingsMenu({
             <KeyRound className="h-4 w-4 text-muted-foreground" />
             Personal Access Tokens
           </DropdownMenuItem>
+          {menuOrg && (
+            <DropdownMenuItem
+              onSelect={() =>
+                void router.navigate({ href: `/${menuOrg.slug}/cards` })
+              }
+            >
+              <IdCard className="h-4 w-4 text-muted-foreground" />
+              My badges
+            </DropdownMenuItem>
+          )}
           {hasAdminAccess && (
             <DropdownMenuItem
               onSelect={() => void router.navigate({ href: adminHref })}
