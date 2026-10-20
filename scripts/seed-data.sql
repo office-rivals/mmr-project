@@ -21,6 +21,8 @@
 --   - 3 open match flags on Test League matches (two current-season, one
 --     previous-season), so the admin match-flags page has data to view, edit,
 --     and resolve.
+--   - Foosball hardware in Test Org: 2 tables, 6 devices, a live and a
+--     claimable game (see the block before COMMIT).
 --
 -- Variables (passed via `psql -v`):
 --   identity_user_id   Clerk identity_user_id of the test user
@@ -48,6 +50,14 @@ TRUNCATE
     active_matches,
     queue_entries,
     match_flags,
+    table_goals,
+    table_roster_entries,
+    table_matches,
+    device_wakes,
+    devices,
+    card_link_requests,
+    player_cards,
+    foosball_tables,
     league_players,
     seasons,
     organization_invite_links,
@@ -22847,6 +22857,130 @@ INSERT INTO match_flags
    '08b2f203-d868-56ba-bd20-376b67d31704',
    'Match from a previous season (e2e C).', 0,
    now() - interval '30 minutes', now() - interval '30 minutes');
+
+-- =============================================================================
+-- Foosball hardware (api/docs/hardware-api.md), so every table and device view
+-- has content. Times are relative to now(): after 30 min of UI dev Table 1's
+-- live game times out to finished (Hardware:LiveMatchTimeoutMinutes); re-seed.
+--   - Table 1, /t/table-1, teams Red/White: goal counters fb-0123456789ab (end A,
+--     beam ok) and fb-0123456789ac (end B, low_margin, beam config a_boost), a
+--     scoreboard fb-0123456789af offline for 40 h. A live game at 3:2 with one
+--     goal undone on its counter's undo button.
+--   - Table 2, /t/table-2, teams Blue/Yellow, no scoreboard: fb-0123456789ad
+--     (end A, ambient_high, low battery) and fb-0123456789ae (end B, blocked).
+--     A game that finished 10:7 six minutes ago with no players (claimable).
+--   - fb-0123456789b0: enrolled, not claimed yet.
+--   - Two weeks of wakes per table for the usage stats; one NFC card for the
+--     test user (a placeholder hash no real badge matches).
+-- Enums: role 0 goal / 1 scoreboard, end 0 A / 1 B, match status 0 live /
+-- 1 finished. A counter at end A watches goal A, so its goals score for team B.
+-- =============================================================================
+INSERT INTO foosball_tables
+  (id, organization_id, name, short_code, league_id, end_label_a, end_label_b,
+   sound_volume, state_version, created_at) VALUES
+  ('f005ba11-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Table 1', 'table-1',
+   '22222222-2222-2222-2222-222222222222', 'Red', 'White', 2, 1, now() - interval '30 days'),
+  ('f005ba11-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'Table 2', 'table-2',
+   '22222222-2222-2222-2222-222222222222', 'Blue', 'Yellow', 2, 1, now() - interval '30 days');
+
+-- last_status is the board's DeviceStatus (firmware/openapi.yaml in office-rivals/mmr-hardware).
+INSERT INTO devices
+  (id, organization_id, hardware_id, claimed, claimed_at, role, table_id, "end", config_version,
+   last_seen_at, awake_since, battery_mv, low_batt, firmware_version, last_status_at, last_status,
+   beam_config, created_at)
+SELECT v.id::uuid, '11111111-1111-1111-1111-111111111111', v.hw, v.tbl IS NOT NULL,
+       CASE WHEN v.tbl IS NOT NULL THEN now() - interval '30 days' END, v.role, v.tbl::uuid, v.end_, 1,
+       now() - v.seen, now() - v.awake, v.mv, v.mv < 3750, '0.1.0', now() - v.status_ago,
+       jsonb_build_object(
+         'device_id', v.hw, 'role', CASE WHEN v.role = 1 THEN 'scoreboard' ELSE 'goal' END,
+         'reason', v.reason, 'battery_mv', v.mv, 'firmware_version', '0.1.0', 'uptime_ms', 0,
+         'queued_events', 0, 'dropped_events', 0, 'beam_blocked', v.health IS NOT DISTINCT FROM 'blocked',
+         'low_batt', v.mv < 3750,
+         'metrics', jsonb_build_object(
+           'reset_reason', 'deepsleep', 'config_role', NULL, 'wake_count', 42, 'goals', 380,
+           'short_blocks', 2, 'stuck_events', CASE WHEN v.health = 'blocked' THEN 1 ELSE 0 END,
+           'wifi_connect_ms', 640, 'rssi', -61, 'wifi_retries', 0, 'free_heap', 182000,
+           'min_free_heap', 151000, 'log_dropped', 0))
+       || CASE WHEN v.health IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('beam', jsonb_build_object(
+         'health', v.health, 'mode', v.mode, 'amb_ua', v.amb_ua, 'lit1_ua', v.lit1_ua, 'margin', v.margin,
+         'ball_ua', 3.5, 'baseline_amb_ua', 6.0, 'baseline_lit1_ua', 240.0, 'checked_s', 20)) END,
+       v.beam_config::jsonb, now() - interval '30 days'
+FROM (VALUES
+  ('f005ba11-0000-0000-0001-000000000001', 'fb-0123456789ab', 'f005ba11-0000-0000-0000-000000000001', 0, 0,
+   interval '20 seconds', interval '12 minutes', 3920, interval '13 minutes', 'sleep', 'ok', 'a', 6.0, 236.0, 4.1, NULL),
+  ('f005ba11-0000-0000-0001-000000000002', 'fb-0123456789ac', 'f005ba11-0000-0000-0000-000000000001', 0, 1,
+   interval '20 seconds', interval '12 minutes', 3890, interval '3 minutes', 'beam', 'low_margin', 'a_boost', 7.0, 82.0, 1.2,
+   '{"mode": "a_boost"}'),
+  ('f005ba11-0000-0000-0001-000000000003', 'fb-0123456789af', 'f005ba11-0000-0000-0000-000000000001', 1, 0,
+   interval '40 hours', NULL, 4050, interval '40 hours', 'sleep', NULL, NULL, NULL, NULL, NULL, NULL),
+  ('f005ba11-0000-0000-0001-000000000004', 'fb-0123456789ad', 'f005ba11-0000-0000-0000-000000000002', 0, 0,
+   interval '5 minutes', NULL, 3680, interval '5 minutes', 'sleep', 'ambient_high', 'a', 96.0, 251.0, 2.4, NULL),
+  ('f005ba11-0000-0000-0001-000000000005', 'fb-0123456789ae', 'f005ba11-0000-0000-0000-000000000002', 0, 1,
+   interval '5 minutes', NULL, 3850, interval '5 minutes', 'sleep', 'blocked', 'a', 5.0, 0.4, 0.0, NULL),
+  ('f005ba11-0000-0000-0001-000000000006', 'fb-0123456789b0', NULL, NULL, NULL,
+   interval '1 minute', NULL, 4150, interval '1 minute', 'heartbeat', NULL, NULL, NULL, NULL, NULL, NULL)
+) v(id, hw, tbl, role, end_, seen, awake, mv, status_ago, reason, health, mode, amb_ua, lit1_ua, margin, beam_config);
+
+INSERT INTO table_matches
+  (id, organization_id, table_id, status, short_code, started_at, ended_at, last_activity_at,
+   score_a, score_b, active_match_team_index_at_end_a, owns_active_match, created_at) VALUES
+  ('f005ba11-0000-0000-0002-000000000001', '11111111-1111-1111-1111-111111111111',
+   'f005ba11-0000-0000-0000-000000000001', 0, 'SEEDGAME01', now() - interval '11 minutes', NULL,
+   now() - interval '40 seconds', 3, 2, 0, false, now() - interval '11 minutes'),
+  ('f005ba11-0000-0000-0002-000000000002', '11111111-1111-1111-1111-111111111111',
+   'f005ba11-0000-0000-0000-000000000002', 1, 'SEEDGAME02', now() - interval '26 minutes',
+   now() - interval '6 minutes', now() - interval '6 minutes', 10, 7, 0, false, now() - interval '26 minutes');
+
+-- Table 1: team A's goals come from the end B counter (…ac), team B's from end A (…ab). Its
+-- 2-minute-old goal was undone 6 s later by the undo event fb-0123456789ac-5eed0001-4.
+INSERT INTO table_goals
+  (id, organization_id, event_id, device_id, table_match_id, table_id, scoring_end, seq,
+   occurred_at, received_at, undone_at, undo_event_id, created_at)
+SELECT gen_random_uuid(), '11111111-1111-1111-1111-111111111111', g.hw || '-5eed0001-' || g.seq, g.dev::uuid,
+       'f005ba11-0000-0000-0002-000000000001', 'f005ba11-0000-0000-0000-000000000001', g.scoring_end, g.seq,
+       now() - g.ago, now() - g.ago, now() - g.ago + g.undone_after, g.undo_event_id, now() - g.ago
+FROM (VALUES
+  ('fb-0123456789ac', 'f005ba11-0000-0000-0001-000000000002', 0, 1, interval '10 minutes', NULL::interval, NULL),
+  ('fb-0123456789ab', 'f005ba11-0000-0000-0001-000000000001', 1, 1, interval '8 minutes', NULL, NULL),
+  ('fb-0123456789ac', 'f005ba11-0000-0000-0001-000000000002', 0, 2, interval '6 minutes', NULL, NULL),
+  ('fb-0123456789ab', 'f005ba11-0000-0000-0001-000000000001', 1, 2, interval '4 minutes', NULL, NULL),
+  ('fb-0123456789ac', 'f005ba11-0000-0000-0001-000000000002', 0, 3, interval '2 minutes', interval '6 seconds',
+   'fb-0123456789ac-5eed0001-4'),
+  ('fb-0123456789ac', 'f005ba11-0000-0000-0001-000000000002', 0, 5, interval '40 seconds', NULL, NULL)
+) g(hw, dev, scoring_end, seq, ago, undone_after, undo_event_id);
+
+-- Table 2: 17 goals, 70 s apart, ending on the winner six minutes ago; the even ones up to 14 are
+-- team B's (7, from end A's …ad), the rest team A's (10, from end B's …ae).
+INSERT INTO table_goals
+  (id, organization_id, event_id, device_id, table_match_id, table_id, scoring_end, seq,
+   occurred_at, received_at, created_at)
+SELECT gen_random_uuid(), '11111111-1111-1111-1111-111111111111', d.hw || '-5eed0002-' || n, d.dev::uuid,
+       'f005ba11-0000-0000-0002-000000000002', 'f005ba11-0000-0000-0000-000000000002', d.scoring_end, n,
+       t.at, t.at, t.at
+FROM generate_series(1, 17) n,
+     LATERAL (SELECT now() - interval '6 minutes' - (17 - n) * interval '70 seconds' AS at) t,
+     LATERAL (SELECT * FROM (VALUES
+       ('fb-0123456789ad', 'f005ba11-0000-0000-0001-000000000004', 1),
+       ('fb-0123456789ae', 'f005ba11-0000-0000-0001-000000000005', 0)) v(hw, dev, scoring_end)
+       WHERE v.scoring_end = CASE WHEN n % 2 = 0 AND n <= 14 THEN 1 ELSE 0 END) d;
+
+-- Two wakes a day for the last 14 days on each table's end A counter.
+INSERT INTO device_wakes (id, organization_id, device_id, table_id, woke_at, idle_from, created_at)
+SELECT gen_random_uuid(), '11111111-1111-1111-1111-111111111111', w.dev::uuid, w.tbl::uuid,
+       date_trunc('day', now()) - d * interval '1 day' + w.start,
+       date_trunc('day', now()) - d * interval '1 day' + w.start + w.len + (d % 3) * interval '10 minutes',
+       date_trunc('day', now()) - d * interval '1 day' + w.start + w.len + (d % 3) * interval '10 minutes'
+FROM generate_series(1, 14) d,
+     (VALUES
+       ('f005ba11-0000-0000-0001-000000000001', 'f005ba11-0000-0000-0000-000000000001', interval '12 hours', interval '35 minutes'),
+       ('f005ba11-0000-0000-0001-000000000001', 'f005ba11-0000-0000-0000-000000000001', interval '15 hours 30 minutes', interval '20 minutes'),
+       ('f005ba11-0000-0000-0001-000000000004', 'f005ba11-0000-0000-0000-000000000002', interval '11 hours 45 minutes', interval '25 minutes'),
+       ('f005ba11-0000-0000-0001-000000000004', 'f005ba11-0000-0000-0000-000000000002', interval '16 hours', interval '15 minutes')
+     ) w(dev, tbl, start, len);
+
+INSERT INTO player_cards (id, organization_id, organization_membership_id, uid_hmac, created_at) VALUES
+  ('f005ba11-0000-0000-0003-000000000001', '11111111-1111-1111-1111-111111111111',
+   '55555555-5555-5555-5555-555555555501', decode(repeat('5e', 32), 'hex'), now() - interval '7 days');
 
 COMMIT;
 

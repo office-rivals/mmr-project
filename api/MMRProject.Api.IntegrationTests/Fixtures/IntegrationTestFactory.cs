@@ -34,6 +34,7 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
     {
         builder.UseSetting("Migration:Enabled", "false");
         builder.UseSetting("Authorization:Issuer", "https://test-issuer.example.com");
+        builder.UseSetting("Hardware:CardUidKey", "aW50ZWdyYXRpb24tdGVzdHMtY2FyZC11aWQta2V5LW5vdC1hLXNlY3JldA==");
         builder.UseSetting("ASPNETCORE_URLS", "http://+:80");
 
         builder.ConfigureTestServices(services =>
@@ -57,7 +58,9 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
 
             var bgServices = services
                 .Where(d => d.ServiceType == typeof(IHostedService) &&
-                            d.ImplementationType == typeof(V3MatchMakingBackgroundService))
+                            (d.ImplementationType == typeof(V3MatchMakingBackgroundService) ||
+                             d.ImplementationType == typeof(TableMatchTimeoutBackgroundService) ||
+                             d.ImplementationType == typeof(TableAutoSubmitBackgroundService)))
                 .ToList();
             foreach (var svc in bgServices)
             {

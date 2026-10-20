@@ -75,6 +75,34 @@ var api = builder.AddProject<Projects.MMRProject_Api>("api", launchProfileName: 
     // forwards the key header correctly.
     .WithOtlpExporter(OtlpProtocol.HttpProtobuf);
 
+// --- Grafana LGTM (foosball devices) ----------------------------------------
+
+// Grafana + Prometheus + Loki behind one OTel Collector, for the foosball
+// goal counters / scoreboards (office-rivals/mmr-hardware, INTERFACES §10). Dashboards and alert
+// rules are provisioned from observability/ (see observability/README.md).
+// The api and mmr-api keep exporting to the Aspire dashboard. Explicit start:
+// most developers never need it, so it waits for a click in the dashboard.
+var grafana = builder.AddContainer("grafana", "grafana/otel-lgtm", "0.34.0")
+    .WithExplicitStart()
+    .WithBindMount("../../observability/prometheus.yaml", "/otel-lgtm/prometheus.yaml", isReadOnly: true)
+    .WithBindMount("../../observability/grafana/provisioning/dashboards/foosball.yaml",
+        "/otel-lgtm/grafana/conf/provisioning/dashboards/foosball.yaml", isReadOnly: true)
+    .WithBindMount("../../observability/grafana/provisioning/alerting",
+        "/otel-lgtm/grafana/conf/provisioning/alerting", isReadOnly: true)
+    .WithBindMount("../../observability/grafana/dashboards", "/otel-lgtm/foosball-dashboards", isReadOnly: true)
+    .WithVolume("grafana-lgtm-data", "/data") // keep metrics/logs across runs
+    .WithHttpEndpoint(targetPort: 3000, name: "http")
+    // Fixed port: devices and the digital twin POST OTLP/HTTP here.
+    .WithHttpEndpoint(port: 4318, targetPort: 4318, name: "otlp", isProxied: false);
+
+// Real devices need the OTLP port on the LAN. It is unauthenticated, so this is
+// opt-in (FOOSBALL_OTLP_LAN=true) and only for a trusted network; by default it
+// stays on 127.0.0.1.
+if (bool.TryParse(builder.Configuration["FOOSBALL_OTLP_LAN"], out var otlpLan) && otlpLan)
+{
+    grafana.WithEndpoint("otlp", e => e.TargetHost = "0.0.0.0");
+}
+
 // --- Frontend (SvelteKit / Vite) --------------------------------------------
 
 builder.AddViteApp("frontend", "../../frontend")

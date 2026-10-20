@@ -31,8 +31,13 @@ public partial class ApiDbContext
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.Name).HasColumnName("name");
             entity.Property(e => e.Slug).HasColumnName("slug");
+            entity.Property(e => e.DeviceEnrolmentTokenHash).HasColumnName("device_enrolment_token_hash");
+            entity.Property(e => e.DeviceEnrolmentTokenCreatedAt).HasColumnName("device_enrolment_token_created_at");
 
             entity.HasIndex(e => e.Slug, "ix_organizations_slug").IsUnique();
+            entity.HasIndex(e => e.DeviceEnrolmentTokenHash, "ix_organizations_device_enrolment_token_hash")
+                .IsUnique()
+                .HasFilter("device_enrolment_token_hash IS NOT NULL");
         });
 
         modelBuilder.Entity<OrganizationMembership>(entity =>
