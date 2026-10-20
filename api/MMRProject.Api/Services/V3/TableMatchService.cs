@@ -13,12 +13,12 @@ namespace MMRProject.Api.Services.V3;
 
 public interface ITableMatchService
 {
-    /// <returns>False when <c>event_id</c> was already recorded.</returns>
-    Task<bool> RecordGoalAsync(Device device, GoalEventRequest request);
+    /// <returns>Not recorded when <c>event_id</c> already was; the score of the match it landed in (null for an orphan).</returns>
+    Task<(bool Recorded, EventScoreResponse? Score)> RecordGoalAsync(Device device, GoalEventRequest request);
 
     /// <summary>A goal counter's undo button (only its own goal, within <c>undo_window_s</c>).</summary>
-    /// <returns>Duplicate when this undo <c>event_id</c> was already applied; a refusal when it can't be.</returns>
-    Task<(bool Duplicate, UndoRefusal? Refusal)> RecordUndoAsync(Device device, UndoEventRequest request);
+    /// <returns>Duplicate when this undo <c>event_id</c> was already applied; a refusal when it can't be; else the match's new score (null for an unassigned counter).</returns>
+    Task<(bool Duplicate, UndoRefusal? Refusal, EventScoreResponse? Score)> RecordUndoAsync(Device device, UndoEventRequest request);
 
     Task RecordStatusAsync(Device device, DeviceStatusRequest request, string rawJson);
 
@@ -127,12 +127,14 @@ public class TableMatchService(
 
     // ---- Device side ----
 
-    public async Task<bool> RecordGoalAsync(Device device, GoalEventRequest request)
+    public async Task<(bool Recorded, EventScoreResponse? Score)> RecordGoalAsync(Device device, GoalEventRequest request)
     {
         if (await dbContext.TableGoals.AnyAsync(g => g.EventId == request.EventId))
         {
-            return false;
+            return (false, null);
         }
+
+        EventScoreResponse? score = null;
 
         var now = DateTimeOffset.UtcNow;
         var goal = new TableGoal
@@ -160,10 +162,11 @@ public class TableMatchService(
             }
             else
             {
-                await MutateTableAsync(tableId, async table =>
+                score = await MutateTableAsync(tableId, async table =>
                 {
                     dbContext.TableGoals.Add(goal);
-                    return (true, await ApplyGoalAsync(table, goalEnd, goal, now));
+                    var changed = await ApplyGoalAsync(table, goalEnd, goal, now);
+                    return (goal.TableMatch is { } match ? Score(table, match, goal.ScoringEnd) : null, changed);
                 });
             }
         }
@@ -174,24 +177,34 @@ public class TableMatchService(
                                            })
         {
             dbContext.Entry(goal).State = EntityState.Detached;
-            return false;
+            return (false, null);
         }
 
-        return true;
+        return (true, score);
     }
 
-    public async Task<(bool Duplicate, UndoRefusal? Refusal)> RecordUndoAsync(Device device, UndoEventRequest request)
+    private static EventScoreResponse Score(FoosballTable table, TableMatch match, TableEnd? scoresFor) => new()
+    {
+        ScoreA = match.ScoreA,
+        ScoreB = match.ScoreB,
+        LabelA = table.EndLabelA,
+        LabelB = table.EndLabelB,
+        Status = match.Status,
+        ScoresFor = scoresFor,
+    };
+
+    public async Task<(bool Duplicate, UndoRefusal? Refusal, EventScoreResponse? Score)> RecordUndoAsync(Device device, UndoEventRequest request)
     {
         // Dedupe before any rule, so the retry of an undo that worked never reads as "too late".
         if (await dbContext.TableGoals.AnyAsync(g => g.UndoEventId == request.EventId))
         {
-            return (true, null);
+            return (true, null, null);
         }
 
         // Like its goals: an unassigned counter's undo changes nothing.
         if (device is not { Claimed: true, Role: DeviceRole.Goal })
         {
-            return (false, null);
+            return (false, null, null);
         }
 
         var target = await dbContext.TableGoals.AsNoTracking()
@@ -200,43 +213,43 @@ public class TableMatchService(
             .FirstOrDefaultAsync();
         if (target is null)
         {
-            return (false, UndoRefusal.NotYours);
+            return (false, UndoRefusal.NotYours, null);
         }
 
         if (target.TableId is not { } tableId)
         {
-            return (false, UndoRefusal.Closed);
+            return (false, UndoRefusal.Closed, null);
         }
 
-        return await MutateTableAsync(tableId, async _ =>
+        return await MutateTableAsync(tableId, async table =>
         {
             var now = DateTimeOffset.UtcNow;
             var goal = await dbContext.TableGoals.FirstAsync(g => g.EventId == request.UndoesEventId);
             if (goal.UndoEventId == request.EventId)
             {
-                return ((true, (UndoRefusal?)null), false);
+                return ((true, (UndoRefusal?)null, (EventScoreResponse?)null), false);
             }
 
             if (goal.UndoneAt is not null)
             {
-                return ((false, UndoRefusal.AlreadyUndone), false);
+                return ((false, UndoRefusal.AlreadyUndone, (EventScoreResponse?)null), false);
             }
 
             var match = await CurrentMatchAsync(tableId);
             if (goal.TableMatchId is null || match?.Id != goal.TableMatchId ||
                 match.Status is not (TableMatchStatus.Live or TableMatchStatus.Finished))
             {
-                return ((false, UndoRefusal.Closed), false);
+                return ((false, UndoRefusal.Closed, (EventScoreResponse?)null), false);
             }
 
             if (now - goal.ReceivedAt > TimeSpan.FromSeconds(UndoWindowSeconds))
             {
-                return ((false, UndoRefusal.TooLate), false);
+                return ((false, UndoRefusal.TooLate, (EventScoreResponse?)null), false);
             }
 
             UndoGoal(match, goal, now);
             goal.UndoEventId = request.EventId;
-            return ((false, (UndoRefusal?)null), true);
+            return ((false, (UndoRefusal?)null, (EventScoreResponse?)Score(table, match, goal.ScoringEnd)), true);
         });
     }
 

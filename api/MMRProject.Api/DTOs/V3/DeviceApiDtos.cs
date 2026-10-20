@@ -56,6 +56,20 @@ public record UndoEventRequest
     public string? FirmwareVersion { get; init; }
 }
 
+/// <summary>A goal or undo event's 201: the score of the match it landed in, for the counter's screen.</summary>
+public record EventScoreResponse
+{
+    public required int ScoreA { get; init; }
+    public required int ScoreB { get; init; }
+    /// <summary>The table's <c>end_label_a</c>/<c>end_label_b</c> (team names).</summary>
+    public required string LabelA { get; init; }
+    public required string LabelB { get; init; }
+    /// <summary>live or finished.</summary>
+    public required TableMatchStatus Status { get; init; }
+    /// <summary>The end this counter's goals score for (the opposite of the goal it sits in).</summary>
+    public required TableEnd? ScoresFor { get; init; }
+}
+
 /// <summary>Why an undo event was refused (422 <c>code</c>); the counter knocks "no" for each.</summary>
 public enum UndoRefusal
 {

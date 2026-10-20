@@ -212,6 +212,15 @@ counter's goal).
 
 An unclaimed or unassigned counter's undo → 201 with no effect.
 
+## Score on a goal or undo (device API)
+
+A goal event's or undo event's 201 carries the score of the match it landed in, so the counter can show
+it (`Score` in `firmware/openapi.yaml`, snake_case):
+`{ score_a, score_b, label_a, label_b, status: live|finished, scores_for: a|b }`. The labels are the
+table's `endLabelA`/`endLabelB`, and `scores_for` is the end this counter's goals score for (end A's goal
+scores for B). A queued goal that lands in an earlier finished game gets that game's score. An orphan
+goal, or an unassigned counter's undo, gets an empty 201. 409 duplicates and 422 refusals are unchanged.
+
 ## Device auth (device API only)
 
 Every device request carries:
