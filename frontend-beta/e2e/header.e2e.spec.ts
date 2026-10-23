@@ -259,9 +259,8 @@ test.describe('Header — mobile viewport', () => {
   // iPhone-class logical width. The desktop layout is covered above; this block
   // guards only the mobile-specific concerns: the fixed header staying pinned
   // and full-width, the content clearing it, and the popovers not overflowing a
-  // narrow screen. safe-area insets are 0 under headless Chromium, so the notch
-  // padding itself still has to be eyeballed on a real device — these assert the
-  // --header-height offset and the responsive width clamp around it.
+  // narrow screen. Safe-area insets are 0 under headless Chromium unless a test
+  // emulates them, as the notched-phone test does.
   const MOBILE_WIDTH = 390;
   test.use({ viewport: { width: MOBILE_WIDTH, height: 844 } });
 
@@ -299,6 +298,33 @@ test.describe('Header — mobile viewport', () => {
     expect(headingBox!.y).toBeGreaterThanOrEqual(
       headerBox!.y + headerBox!.height
     );
+  });
+
+  test('content starts just below the bar on a notched phone', async ({
+    page,
+  }) => {
+    // Chromium can emulate an installed iPhone app's insets, which headless
+    // runs otherwise leave at 0. The top inset belongs to the bar only.
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send(
+      'Emulation.setSafeAreaInsetsOverride' as never,
+      {
+        insets: { top: 59, bottom: 34, left: 0, right: 0 },
+      } as never
+    );
+    await page.goto(`${TEST_LEAGUE}/player/${SELF_PLAYER_TEST_LEAGUE}`);
+    const heading = page.locator('h1').first();
+    await expect(heading).toBeVisible();
+
+    const bar = await page.locator('[data-phone-chrome]').first().boundingBox();
+    const headingBox = await heading.boundingBox();
+    expect(bar).not.toBeNull();
+    expect(headingBox).not.toBeNull();
+    const barBottom = bar!.y + bar!.height;
+    expect(barBottom).toBeGreaterThanOrEqual(59 + 64);
+    // Only the content's own 1rem separates the heading from the bar.
+    expect(headingBox!.y).toBeGreaterThanOrEqual(barBottom);
+    expect(headingBox!.y - barBottom).toBeLessThanOrEqual(17);
   });
 
   test('the switcher popover stays within the viewport', async ({ page }) => {
