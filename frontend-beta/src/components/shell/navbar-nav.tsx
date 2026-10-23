@@ -67,10 +67,7 @@ export function NavbarNav({
   );
 }
 
-/**
- * The plus in the middle of the bottom bar. Its tile rises 14px above the bar,
- * into the match-found strip's empty centre when that shows.
- */
+/** The plus in the middle of the bottom bar; its tile rises 14px above it. */
 export function NavbarSubmit({ path }: { path: string }) {
   return (
     <AppLink

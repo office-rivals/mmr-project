@@ -1,6 +1,6 @@
 // The phone bars' footprint on a notched phone: a 44px top bar, a 48px bottom
 // bar with Submit rising out of it, the queue collapsed into a pill in the top
-// bar, and a match found as a tall strip on the bottom bar.
+// bar, and a match found as a dialog in the middle of the screen.
 import { test, expect, type Page } from '@playwright/test';
 import { gotoAuthed } from './helpers';
 
@@ -27,14 +27,22 @@ const QUEUE = {
   ],
 };
 
+// The signed-in test user's player in Test League (scripts/seed-data.sql).
+const VIEWER = '66666666-6666-6666-6666-666666666601';
+const [alice, bob] = QUEUE.queuedPlayers;
 const MATCH_FOUND = {
   queuedPlayers: [],
   pendingMatch: {
     id: 'eeeeeeee-4000-0000-0000-000000000001',
     status: 'Pending',
-    expiresAt: new Date(Date.now() + 40_000).toISOString(),
-    teams: [],
-    acceptances: [],
+    expiresAt: new Date(Date.now() + 25_000).toISOString(),
+    teams: [
+      { index: 0, players: [{ leaguePlayerId: VIEWER, index: 0 }] },
+      { index: 1, players: [{ ...alice, index: 0 }] },
+    ],
+    acceptances: [VIEWER, alice.leaguePlayerId, bob.leaguePlayerId].map(
+      (leaguePlayerId) => ({ leaguePlayerId, status: 'Pending' })
+    ),
   },
 };
 
@@ -154,25 +162,25 @@ test.describe('Phone chrome on a notched phone', () => {
       await stubQueue(page, MATCH_FOUND);
     });
 
-    test('a tall strip docks on the bar with a countdown', async ({ page }) => {
+    test('a dialog in the middle of the screen asks you to accept', async ({
+      page,
+    }) => {
       await gotoAuthed(page, `${LEAGUE_HOME}/leaderboard`);
-      const strip = page.getByRole('region', { name: 'Match found' });
-      await expect(strip).toBeVisible();
-      await expect(strip).toContainText(/Expires in 0:[0-4]\d/);
-      // It never collapses into the pill.
+      const dialog = page.getByRole('dialog', { name: 'Match found!' });
+      await expect(dialog).toBeVisible();
+      const d = await box(dialog);
+      expect(Math.abs(d.x + d.width / 2 - 390 / 2)).toBeLessThanOrEqual(1);
+      expect(Math.abs(d.y + d.height / 2 - HEIGHT / 2)).toBeLessThanOrEqual(1);
+      await expect(
+        dialog.getByRole('button', { name: 'Accept' })
+      ).toBeVisible();
+      await expect(
+        dialog.getByRole('button', { name: 'Decline' })
+      ).toBeVisible();
+      // It replaces the pill rather than adding to it.
       await expect(page.getByRole('button', { name: /in queue/ })).toHaveCount(
         0
       );
-
-      const s = await box(strip);
-      const bar = await box(bottomBar(page));
-      const tile = await box(submitTile(page));
-      expect(s.height).toBe(2 + 64);
-      expect(s.y + s.height).toBe(bar.y);
-      const respond = await box(strip.getByRole('link', { name: 'Respond' }));
-      expect(respond.height).toBe(44);
-      expect(respond.x).toBeGreaterThan(tile.x + tile.width);
-      expect(await contentBottom(page)).toBeLessThanOrEqual(s.y);
     });
   });
 });

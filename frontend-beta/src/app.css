@@ -98,8 +98,7 @@
     /* Shared by the fixed phone bars and the content offsets around them. */
     --header-height: 2.75rem;
     --dock-height: 3rem;
-    /* The dock plus Submit's rise above it, or plus the match-found strip,
-       which the rise sits inside. */
+    /* The dock plus Submit's rise above it. */
     --bottom-chrome: 3.875rem;
     --background: 0 0% 100%;
     --foreground: 20 14.3% 4.1%;
@@ -199,10 +198,6 @@
   html[data-immersive] [data-phone-chrome] {
     display: none;
   }
-}
-
-html:has([data-live-strip]) {
-  --bottom-chrome: 7.125rem;
 }
 
 /* Tailwind 4 spaces preceding siblings; retain the reference's following-sibling model. */

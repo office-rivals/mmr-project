@@ -3,12 +3,14 @@ import { Popover } from '@base-ui/react/popover';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouterState } from '@tanstack/react-router';
 import { AppLink } from '@/components/app-link';
+import { PendingMatchDialog } from '@/components/play/pending-match-dialog';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { queueActionFn, type QueueActionName } from '@/lib/queue-actions';
 import { cn, formatElapsed, getPlayerDisplayName, initials } from '@/lib/utils';
 import { queueQueryKey, useQueueStatus } from './use-queue-status';
 import type {
   ActiveMatchResponse,
+  PendingMatchResponse,
   PendingMatchTeamResponse,
   QueuedPlayerResponse,
 } from '@/api-v3';
@@ -24,32 +26,39 @@ interface LiveStatusProps {
 
 type LiveState =
   | { kind: 'live'; match: ActiveMatchResponse; minutes: number }
-  | { kind: 'pending'; secondsLeft: number }
+  | { kind: 'pending'; match: PendingMatchResponse; secondsLeft: number }
   | { kind: 'queued'; seconds: number; count: number; needed: number | null }
   | { kind: 'waiting'; players: QueuedPlayerResponse[] };
 
 const LABEL = {
   live: 'Live match',
-  pending: 'Match found',
   queued: 'Your queue',
   waiting: 'Queue',
 } as const;
 
 /**
- * Queue, match-found and live-match state for the current league, as a card in
- * the sidebar from `lg` up. On phones only a match found shows here, as a strip
- * on the bottom bar; the other states collapse into `LiveStatusPill`.
+ * Queue and live-match state for the current league, as a card in the sidebar
+ * from `lg` up; on phones these collapse into `LiveStatusPill`. A match found
+ * expires, so at every width it opens the Play page's dialog instead.
  */
 export function LiveStatus(props: LiveStatusProps) {
   const state = useLiveState(props);
   const action = useQueueAction(props.orgId, props.leagueId);
   if (!state) return null;
   if (state.kind === 'pending') {
+    const matchId = state.match.id;
     return (
-      <MatchFound
-        base={props.base}
-        secondsLeft={state.secondsLeft}
-        className={props.className}
+      <PendingMatchDialog
+        open
+        pendingMatch={state.match}
+        myAcceptance={state.match.acceptances.find(
+          (a) => a.leaguePlayerId === props.leaguePlayerId
+        )}
+        secondsRemaining={state.secondsLeft}
+        responding={action.isPending}
+        leaguePlayerId={props.leaguePlayerId}
+        onAccept={() => action.mutate({ action: 'accept', matchId })}
+        onDecline={() => action.mutate({ action: 'decline', matchId })}
       />
     );
   }
@@ -151,56 +160,6 @@ export function LiveStatusPill({
   );
 }
 
-/**
- * A match found expires, so it never collapses: a tall strip on the phone's
- * bottom bar, with Submit's tile rising into its empty centre.
- */
-function MatchFound({
-  base,
-  secondsLeft,
-  className,
-}: {
-  base: string;
-  secondsLeft: number;
-  className?: string;
-}) {
-  return (
-    <section
-      aria-label={LABEL.pending}
-      data-live-strip=""
-      className={cn(
-        // Sits on the bottom bar's 1px top border, not over it.
-        'fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+var(--dock-height)+1px)] z-30 border-t-2 border-primary bg-card bg-linear-to-b from-primary/15 to-primary/15',
-        'lg:static lg:flex lg:flex-col lg:gap-3 lg:rounded-lg lg:border lg:border-primary/50 lg:bg-none lg:p-3',
-        className
-      )}
-    >
-      <div className="mx-auto grid min-h-16 w-full max-w-screen-sm grid-cols-[1fr_4.75rem_1fr] items-center px-3 lg:contents">
-        <span className="col-start-1 flex min-w-0 flex-col gap-1 lg:gap-0.5">
-          <span
-            role="alert"
-            className="text-base leading-5 font-bold text-primary lg:text-[10px] lg:leading-normal lg:tracking-[0.14em] lg:uppercase"
-          >
-            Match found
-          </span>
-          <span className="truncate text-sm leading-4 text-muted-foreground tabular-nums lg:leading-5">
-            Expires in {formatElapsed(secondsLeft)}
-          </span>
-        </span>
-        <AppLink
-          to={`${base}/matchmaking`}
-          className={cn(
-            CTA,
-            'col-start-3 h-11 min-w-24 justify-self-end text-base lg:h-10 lg:min-w-0 lg:text-sm'
-          )}
-        >
-          Respond
-        </AppLink>
-      </div>
-    </section>
-  );
-}
-
 const CTA =
   'inline-flex shrink-0 items-center justify-center rounded-md bg-primary-fill px-4 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-fill/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:opacity-60';
 
@@ -287,7 +246,7 @@ function StatusBody({
             'bg-transparent text-foreground ring-1 ring-border hover:bg-muted'
           )}
           disabled={action.isPending}
-          onClick={() => action.mutate('leave')}
+          onClick={() => action.mutate({ action: 'leave' })}
         >
           Leave
         </button>
@@ -332,7 +291,7 @@ function StatusBody({
         type="button"
         className={cta}
         disabled={action.isPending}
-        onClick={() => action.mutate('join')}
+        onClick={() => action.mutate({ action: 'join' })}
       >
         Join
       </button>
@@ -383,7 +342,11 @@ function useLiveState({
   }
   if (data.pendingMatch) {
     const left = -secondsSince(data.pendingMatch.expiresAt);
-    return { kind: 'pending', secondsLeft: Math.max(0, left) };
+    return {
+      kind: 'pending',
+      match: data.pendingMatch,
+      secondsLeft: Math.max(0, left),
+    };
   }
   if (myEntry) {
     return {
@@ -401,8 +364,8 @@ function useQueueAction(orgId: string, leagueId: string, onDone?: () => void) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
-    mutationFn: (name: QueueActionName) =>
-      queueActionFn({ data: { action: name, orgId, leagueId } }),
+    mutationFn: (input: { action: QueueActionName; matchId?: string }) =>
+      queueActionFn({ data: { ...input, orgId, leagueId } }),
     onSuccess: (result) => {
       if (result.status === 'error') {
         setError(result.message);

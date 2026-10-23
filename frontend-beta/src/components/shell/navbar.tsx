@@ -12,8 +12,7 @@ interface NavbarProps {
 /**
  * The bottom bar on phones and the sidebar link list from `lg` up. Phones get
  * five links; the sidebar swaps Submit (it has its own button) for Leaderboard
- * and Matches. On phones it stacks above the match-found strip, which
- * Submit's tile rises into.
+ * and Matches.
  */
 export function Navbar({ base, orgId, leagueId, profilePath }: NavbarProps) {
   return (

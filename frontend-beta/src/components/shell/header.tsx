@@ -24,9 +24,9 @@ interface HeaderProps extends ShellDefaults {
  * settings triggers stay adjacent in the tab order, apart from the queue pill
  * between them on phones.
  *
- * On phones `<header>` itself is not positioned: the top bar, the bottom bar
- * and the match-found strip are each fixed on their own, because a fixed element
- * nested inside another fixed one can trail the scroll on phones.
+ * On phones `<header>` itself is not positioned: the top bar and the bottom bar
+ * are each fixed on their own, because a fixed element nested inside another
+ * fixed one can trail the scroll on phones.
  */
 export function Header({
   organizations,
