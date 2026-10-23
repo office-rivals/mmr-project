@@ -69,7 +69,7 @@ export function NavbarNav({
 
 /**
  * The plus in the middle of the bottom bar. Its tile rises 14px above the bar,
- * into the live strip's empty centre when the strip shows.
+ * into the match-found strip's empty centre when that shows.
  */
 export function NavbarSubmit({ path }: { path: string }) {
   return (

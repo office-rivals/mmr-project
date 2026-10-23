@@ -1,9 +1,10 @@
+import { useRef } from 'react';
 import { useParams } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
 import { getPlayerDisplayName, initials } from '@/lib/utils';
 import { LeagueSwitcher } from './league-switcher';
-import { LiveStatus } from './live-status';
+import { LiveStatus, LiveStatusPill } from './live-status';
 import { Navbar } from './navbar';
 import { SettingsMenu } from './settings-menu';
 import { useShellLinks, type ShellDefaults } from './use-shell-links';
@@ -20,10 +21,11 @@ interface HeaderProps extends ShellDefaults {
  * The app chrome: a top bar with the bottom navigation on phones, and a left
  * sidebar from `lg` up. It is one element at every width, so each control
  * (switcher, settings, navigation) exists exactly once and the switcher and
- * settings triggers stay adjacent in the tab order.
+ * settings triggers stay adjacent in the tab order, apart from the queue pill
+ * between them on phones.
  *
  * On phones `<header>` itself is not positioned: the top bar, the bottom bar
- * and the live strip are each fixed on their own, because a fixed element
+ * and the match-found strip are each fixed on their own, because a fixed element
  * nested inside another fixed one can trail the scroll on phones.
  */
 export function Header({
@@ -35,6 +37,7 @@ export function Header({
 }: HeaderProps) {
   const params = useParams({ strict: false });
   const links = useShellLinks(defaults);
+  const phoneBar = useRef<HTMLDivElement>(null);
 
   const orgSlug = params.orgSlug ?? defaults.defaultOrgSlug;
   const currentOrg = organizations.find((o) => o.slug === orgSlug);
@@ -54,8 +57,9 @@ export function Header({
 
         {/* From `lg` the settings trigger sits beside the brand, but it stays
             next to the switcher in the DOM so the two remain adjacent in the
-            tab order. */}
+            tab order. On phones the queue pill sits between them. */}
         <div
+          ref={phoneBar}
           data-phone-chrome=""
           className="fixed inset-x-0 top-0 z-30 border-b bg-card pt-[env(safe-area-inset-top)] lg:static lg:z-auto lg:border-b-0 lg:bg-transparent lg:pt-0"
         >
@@ -68,6 +72,16 @@ export function Header({
                 />
               )}
             </div>
+            {links.base && links.orgId && links.leagueId ? (
+              <LiveStatusPill
+                anchor={phoneBar}
+                base={links.base}
+                orgId={links.orgId}
+                leagueId={links.leagueId}
+                leaguePlayerId={links.leaguePlayerId}
+                teamSize={teamSize}
+              />
+            ) : null}
             <div className="lg:absolute lg:top-[calc(env(safe-area-inset-top)+1rem)] lg:right-3">
               <SettingsMenu
                 organizations={organizations}

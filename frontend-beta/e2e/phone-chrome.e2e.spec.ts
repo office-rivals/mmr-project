@@ -1,6 +1,6 @@
 // The phone bars' footprint on a notched phone: a 44px top bar, a 48px bottom
-// bar with Submit rising out of it, and the live strip docked on top of the
-// bottom bar with its content kept either side of Submit.
+// bar with Submit rising out of it, the queue collapsed into a pill in the top
+// bar, and a match found as a tall strip on the bottom bar.
 import { test, expect, type Page } from '@playwright/test';
 import { gotoAuthed } from './helpers';
 
@@ -27,16 +27,29 @@ const QUEUE = {
   ],
 };
 
-const stubQueue = (page: Page) =>
+const MATCH_FOUND = {
+  queuedPlayers: [],
+  pendingMatch: {
+    id: 'eeeeeeee-4000-0000-0000-000000000001',
+    status: 'Pending',
+    expiresAt: new Date(Date.now() + 40_000).toISOString(),
+    teams: [],
+    acceptances: [],
+  },
+};
+
+const stubQueue = (page: Page, json: object) =>
   page.route('**/api/v3/organizations/*/leagues/*/queue', (route) =>
-    route.fulfill({ json: QUEUE })
+    route.fulfill({ json })
   );
 
 const bottomBar = (page: Page) =>
   page.getByRole('navigation', { name: 'Primary' });
 const submitTile = (page: Page) =>
   bottomBar(page).getByRole('link', { name: 'Submit' }).locator('span').first();
-const strip = (page: Page) => page.getByRole('region', { name: 'Queue' });
+const topBar = (page: Page) => page.locator('[data-phone-chrome]').first();
+const queuePill = (page: Page) =>
+  page.getByRole('button', { name: '2 in queue' });
 
 async function box(locator: ReturnType<Page['locator']>) {
   const b = await locator.boundingBox();
@@ -73,7 +86,7 @@ test.describe('Phone chrome on a notched phone', () => {
     page,
   }) => {
     await gotoAuthed(page, LEAGUE_HOME);
-    const top = await box(page.locator('[data-phone-chrome]').first());
+    const top = await box(topBar(page));
     const bottom = await box(bottomBar(page));
     expect(top.y + top.height).toBe(INSETS.top + 44 + BORDER);
     expect(bottom.height).toBe(BORDER + 48 + INSETS.bottom);
@@ -95,57 +108,70 @@ test.describe('Phone chrome on a notched phone', () => {
 
   test.describe('with players in the queue', () => {
     test.beforeEach(async ({ page }) => {
-      await stubQueue(page);
+      await stubQueue(page, QUEUE);
     });
 
-    test('the strip docks on the bar and keeps clear of Submit', async ({
+    test('the queue is a pill in the top bar, leaving the bottom clear', async ({
+      page,
+    }) => {
+      await gotoAuthed(page, `${LEAGUE_HOME}/leaderboard`);
+      await expect(queuePill(page)).toBeVisible();
+      const bar = await box(topBar(page));
+      const pill = await box(queuePill(page));
+      expect(pill.height).toBe(44);
+      expect(pill.y).toBe(INSETS.top);
+      expect(pill.y + pill.height).toBeLessThanOrEqual(bar.y + bar.height);
+      await expect(page.locator('[data-live-strip]')).toHaveCount(0);
+
+      const tile = await box(submitTile(page));
+      expect(await contentBottom(page)).toBeLessThanOrEqual(tile.y);
+    });
+
+    test('the pill opens the queue under the top bar until Escape', async ({
       page,
     }) => {
       await gotoAuthed(page, LEAGUE_HOME);
-      await expect(strip(page)).toBeVisible();
-      const s = await box(strip(page));
+      await queuePill(page).click();
+      const panel = page.getByRole('dialog', { name: 'Queue' });
+      await expect(panel).toBeVisible();
+      const bar = await box(topBar(page));
+      const p = await box(panel);
+      expect(p.y).toBe(bar.y + bar.height);
+      expect(p.x).toBe(0);
+      expect(p.width).toBe(390);
+      await expect(panel).toContainText('Alice Anderson and Bob Brown');
+      const join = await box(panel.getByRole('button', { name: 'Join' }));
+      expect(join.height).toBe(44);
+
+      await page.keyboard.press('Escape');
+      await expect(panel).toBeHidden();
+      await expect(queuePill(page)).toBeFocused();
+    });
+  });
+
+  test.describe('with a match found', () => {
+    test.beforeEach(async ({ page }) => {
+      await stubQueue(page, MATCH_FOUND);
+    });
+
+    test('a tall strip docks on the bar with a countdown', async ({ page }) => {
+      await gotoAuthed(page, `${LEAGUE_HOME}/leaderboard`);
+      const strip = page.getByRole('region', { name: 'Match found' });
+      await expect(strip).toBeVisible();
+      await expect(strip).toContainText(/Expires in 0:[0-4]\d/);
+      // It never collapses into the pill.
+      await expect(page.getByRole('button', { name: /in queue/ })).toHaveCount(
+        0
+      );
+
+      const s = await box(strip);
       const bar = await box(bottomBar(page));
       const tile = await box(submitTile(page));
-      expect(s.height).toBe(BORDER + 44);
+      expect(s.height).toBe(2 + 64);
       expect(s.y + s.height).toBe(bar.y);
-      // The tile rises into the strip's lower half.
-      expect(tile.y).toBeGreaterThan(s.y + s.height / 2);
-
-      const text = await box(strip(page).getByRole('link'));
-      const join = await box(strip(page).getByRole('button', { name: 'Join' }));
-      expect(text.x + text.width).toBeLessThan(tile.x);
-      expect(join.x).toBeGreaterThan(tile.x + tile.width);
-    });
-
-    test('Join and Submit take taps across the whole strip', async ({
-      page,
-    }) => {
-      await gotoAuthed(page, LEAGUE_HOME);
-      await expect(strip(page)).toBeVisible();
-      const s = await box(strip(page));
-      const join = await box(strip(page).getByRole('button', { name: 'Join' }));
-      const tile = await box(submitTile(page));
-      const hit = (x: number, y: number) =>
-        page.evaluate(
-          ([px, py]) =>
-            document
-              .elementFromPoint(px, py)
-              ?.closest('a, button')
-              ?.textContent?.trim() ?? null,
-          [x, y]
-        );
-      // The 32px button's hit area spans the 44px strip.
-      const x = join.x + join.width / 2;
-      expect(await hit(x, s.y + BORDER + 1)).toBe('Join');
-      expect(await hit(x, s.y + s.height - 1)).toBe('Join');
-      // Where the tile overlaps the strip, the tap goes to Submit.
-      expect(await hit(tile.x + tile.width / 2, tile.y + 2)).toBe('Submit');
-    });
-
-    test('content scrolls clear of the strip', async ({ page }) => {
-      await gotoAuthed(page, `${LEAGUE_HOME}/leaderboard`);
-      await expect(strip(page)).toBeVisible();
-      const s = await box(strip(page));
+      const respond = await box(strip.getByRole('link', { name: 'Respond' }));
+      expect(respond.height).toBe(44);
+      expect(respond.x).toBeGreaterThan(tile.x + tile.width);
       expect(await contentBottom(page)).toBeLessThanOrEqual(s.y);
     });
   });
