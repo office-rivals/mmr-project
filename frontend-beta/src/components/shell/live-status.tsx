@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouterState } from '@tanstack/react-router';
 import { AppLink } from '@/components/app-link';
@@ -18,9 +18,9 @@ interface LiveStatusProps {
 }
 
 /**
- * Queue, match-found and live-match state for the current league: a bar above
- * the bottom navigation on phones and a card in the sidebar from `lg` up.
- * The queue state is client-only, so nothing renders until hydration.
+ * Queue, match-found and live-match state for the current league: a strip on
+ * top of the bottom navigation on phones and a card in the sidebar from `lg`
+ * up. The queue state is client-only, so nothing renders until hydration.
  */
 export function LiveStatus({
   base,
@@ -64,18 +64,21 @@ export function LiveStatus({
     return null;
   }
 
-  // From sm the bar keeps to the content column instead of the viewport.
-  const shell = cn(
-    'fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-30 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border bg-card p-2.5 pl-3 shadow-lg sm:inset-x-0 sm:mx-auto sm:max-w-[39rem]',
-    'lg:static lg:inset-auto lg:mx-0 lg:max-w-none lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-3 lg:p-3 lg:shadow-none',
-    className
-  );
+  const shell = (tone?: string) =>
+    cn(
+      // Sits on the bottom bar's 1px top border, not over it.
+      'fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+var(--dock-height)+1px)] z-30 border-t bg-card',
+      'lg:static lg:flex lg:flex-col lg:gap-3 lg:rounded-lg lg:border lg:p-3',
+      tone,
+      className
+    );
   const textLink =
-    'flex min-w-0 flex-1 basis-0 items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:basis-auto';
+    'col-start-1 flex min-w-0 items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+  // A 32px button on phones, with its hit area stretched to the strip's 44px.
   const cta =
-    'inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary-fill px-4 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-fill/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:opacity-60';
+    'relative col-start-3 inline-flex h-8 min-w-20 shrink-0 items-center justify-center justify-self-end rounded-md bg-primary-fill px-4 text-sm font-bold text-primary-foreground transition-colors after:absolute after:inset-x-0 after:-inset-y-1.5 hover:bg-primary-fill/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:opacity-60 lg:h-10 lg:min-w-0 lg:after:hidden';
   const errorText = error ? (
-    <p role="alert" className="w-full text-xs text-red-400">
+    <p role="alert" className="col-span-3 pb-2 text-xs text-red-400 lg:pb-0">
       {error}
     </p>
   ) : null;
@@ -84,53 +87,49 @@ export function LiveStatus({
     const started = new Date(data.activeMatch.startedAt).getTime();
     const minutes = Math.max(0, Math.floor((now - started) / 60_000));
     return (
-      <section
-        aria-label="Live match"
-        className={cn(shell, 'border-green-500/40')}
-      >
+      <StatusShell label="Live match" className={shell('border-green-500/40')}>
         <AppLink
           to={`${base}/active-match/${data.activeMatch.id}`}
           className={cn(textLink, 'grid gap-0.5')}
         >
-          <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] text-green-400 uppercase">
+          <span className="flex items-center gap-1.5 text-[10px] leading-3 font-bold tracking-[0.14em] text-green-400 uppercase lg:leading-normal">
             <span
               aria-hidden="true"
               className="size-1.5 rounded-full bg-green-400 motion-safe:animate-pulse"
             />
             Live · {minutes} min
           </span>
-          <span className="truncate text-sm font-semibold">
+          <span className="truncate text-sm leading-4 font-semibold lg:leading-5">
             {teamsLine(data.activeMatch.teams, leaguePlayerId)}
           </span>
         </AppLink>
         <AppLink
           to={`${base}/active-match/${data.activeMatch.id}`}
+          aria-label="Report result"
           className={cta}
         >
-          Report result
+          <span className="lg:hidden">Report</span>
+          <span className="hidden lg:inline">Report result</span>
         </AppLink>
-      </section>
+      </StatusShell>
     );
   }
 
   if (data.pendingMatch) {
     return (
-      <section
-        aria-label="Match found"
-        className={cn(shell, 'border-primary/50')}
-      >
-        <span className="flex min-w-0 flex-1 basis-0 flex-col gap-0.5 lg:basis-auto">
-          <span className="text-[10px] font-bold tracking-[0.14em] text-primary uppercase">
+      <StatusShell label="Match found" className={shell('border-primary/50')}>
+        <span className="col-start-1 flex min-w-0 flex-col gap-0.5">
+          <span className="text-[10px] leading-3 font-bold tracking-[0.14em] text-primary uppercase lg:leading-normal">
             Match found
           </span>
-          <span className="truncate text-sm text-muted-foreground">
+          <span className="truncate text-sm leading-4 text-muted-foreground lg:leading-5">
             Accept before it expires
           </span>
         </span>
         <AppLink to={`${base}/matchmaking`} className={cta}>
           Respond
         </AppLink>
-      </section>
+      </StatusShell>
     );
   }
 
@@ -143,14 +142,14 @@ export function LiveStatus({
     );
     const missing = needed ? Math.max(0, needed - queued.length) : null;
     return (
-      <section aria-label="Your queue" className={shell}>
+      <StatusShell label="Your queue" className={shell()}>
         <AppLink to={`${base}/matchmaking`} className={textLink}>
           <QueueRing count={queued.length} needed={needed} />
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-sm font-semibold">
+            <span className="text-sm leading-4 font-semibold lg:leading-5">
               In queue · {formatElapsed(seconds)}
             </span>
-            <span className="truncate text-xs text-muted-foreground">
+            <span className="truncate text-xs leading-3.5 text-muted-foreground lg:leading-4">
               {missing
                 ? `${missing} more ${missing === 1 ? 'player' : 'players'} needed`
                 : 'Finding your match'}
@@ -169,7 +168,7 @@ export function LiveStatus({
           Leave
         </button>
         {errorText}
-      </section>
+      </StatusShell>
     );
   }
 
@@ -181,9 +180,12 @@ export function LiveStatus({
         ? `${names.join(', ')} and ${others} more`
         : names.join(' and ');
     return (
-      <section aria-label="Queue" className={shell}>
+      <StatusShell label="Queue" className={shell()}>
         <AppLink to={`${base}/matchmaking`} className={textLink}>
-          <span aria-hidden="true" className="flex shrink-0 -space-x-2">
+          <span
+            aria-hidden="true"
+            className="hidden shrink-0 -space-x-2 lg:flex"
+          >
             {queued.slice(0, 2).map((p) => (
               <span
                 key={p.leaguePlayerId}
@@ -194,14 +196,14 @@ export function LiveStatus({
             ))}
           </span>
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="flex items-center gap-1.5 text-sm font-semibold">
+            <span className="flex items-center gap-1.5 text-sm leading-4 font-semibold lg:leading-5">
               <span
                 aria-hidden="true"
                 className="size-2 rounded-full bg-primary motion-safe:animate-pulse"
               />
               {queued.length} in queue
             </span>
-            <span className="truncate text-xs text-muted-foreground">
+            <span className="truncate text-xs leading-3.5 text-muted-foreground lg:leading-4">
               {who} {queued.length === 1 ? 'wants' : 'want'} a game
             </span>
           </span>
@@ -215,11 +217,33 @@ export function LiveStatus({
           Join
         </button>
         {errorText}
-      </section>
+      </StatusShell>
     );
   }
 
   return null;
+}
+
+/**
+ * On phones Submit's tile rises into the strip's centre, so the text keeps to
+ * the left of it and the action to the right. From `lg` the card stacks them.
+ */
+function StatusShell({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className: string;
+  children: ReactNode;
+}) {
+  return (
+    <section aria-label={label} data-live-strip="" className={className}>
+      <div className="mx-auto grid min-h-11 w-full max-w-screen-sm grid-cols-[1fr_4.75rem_1fr] items-center px-3 lg:contents">
+        {children}
+      </div>
+    </section>
+  );
 }
 
 function QueueRing({
@@ -232,7 +256,10 @@ function QueueRing({
   const circumference = 2 * Math.PI * 16;
   const filled = needed ? Math.min(1, count / needed) : 0;
   return (
-    <span aria-hidden="true" className="relative flex size-10 shrink-0">
+    <span
+      aria-hidden="true"
+      className="relative hidden size-10 shrink-0 lg:flex"
+    >
       <svg viewBox="0 0 40 40" className="size-10 -rotate-90">
         <circle
           cx="20"

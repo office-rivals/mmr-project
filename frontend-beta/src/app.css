@@ -95,8 +95,12 @@
 
 @layer base {
   :root {
-    /* Shared by the fixed shell header and content offsets. */
-    --header-height: 4rem;
+    /* Shared by the fixed phone bars and the content offsets around them. */
+    --header-height: 2.75rem;
+    --dock-height: 3rem;
+    /* The dock plus Submit's rise above it, or plus the live strip, which
+       the rise sits inside. */
+    --bottom-chrome: 3.875rem;
     --background: 0 0% 100%;
     --foreground: 20 14.3% 4.1%;
     --card: 0 0% 100%;
@@ -195,6 +199,10 @@
   html[data-immersive] [data-phone-chrome] {
     display: none;
   }
+}
+
+html:has([data-live-strip]) {
+  --bottom-chrome: 5.75rem;
 }
 
 /* Tailwind 4 spaces preceding siblings; retain the reference's following-sibling model. */

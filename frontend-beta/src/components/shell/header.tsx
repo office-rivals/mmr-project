@@ -23,7 +23,7 @@ interface HeaderProps extends ShellDefaults {
  * settings triggers stay adjacent in the tab order.
  *
  * On phones `<header>` itself is not positioned: the top bar, the bottom bar
- * and the live-status card are each fixed on their own, because a fixed element
+ * and the live strip are each fixed on their own, because a fixed element
  * nested inside another fixed one can trail the scroll on phones.
  */
 export function Header({
