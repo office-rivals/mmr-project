@@ -50,6 +50,9 @@ const playerName = (p: {
  *    shows nothing at all (not even "No players found");
  *  - "Recent players" only appears while the filter is empty.
  *
+ * The open list holds one fixed height and scrolls inside it, so typing never
+ * changes the page's height.
+ *
  * League players are searched by display name and username; org members who are
  * *not yet* league players are searched by those plus email.
  *
@@ -211,7 +214,14 @@ export function TeamMemberField({
             {...list.inputProps}
           />
           {list.open ? (
-            <div {...list.listProps} className="flex flex-col gap-1">
+            // A list that shrank as matches narrowed clamped a phone's scroll
+            // and threw the input down the screen, so it keeps the height of
+            // "Recent players" even when empty. Without anchoring, the page
+            // doesn't follow an option that moves up the list.
+            <div
+              {...list.listProps}
+              className="flex h-[16.5rem] flex-col gap-1 overflow-y-auto [overflow-anchor:none] md:h-[17.5rem]"
+            >
               {filter.length === 0 && latestPlayers.length > 0 ? (
                 <ComboboxList>
                   <ComboboxGroup>
