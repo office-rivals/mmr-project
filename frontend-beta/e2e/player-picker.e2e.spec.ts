@@ -5,7 +5,7 @@
 // The compare filter had no e2e coverage at all, and the submit picker was only
 // covered incidentally by the flows that use it to fill a match. These specs
 // pin the picker interactions themselves.
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 
 // Fixture ids from scripts/seed-data.sql (Test League, team size 2).
 const TEST_LEAGUE_ID = '22222222-2222-2222-2222-222222222222';
@@ -212,6 +212,100 @@ test.describe('Submit — player slot picker', () => {
       await expect(team1.locator('h4')).toHaveCount(1);
     });
   }
+
+  test('arrowing past the visible options scrolls the list, not the page', async ({
+    page,
+  }) => {
+    await gotoHydrated(page, SUBMIT_URL);
+
+    const team1 = page.locator('#team1-step');
+    const you = team1.locator('input[placeholder="Filter..."]').first();
+    await you.click();
+    // Matches the thirteen seeded "Player 0NN"s, far more than fit at once.
+    await you.pressSequentially('pl');
+    const options = team1.locator('[role="option"]');
+    await expect(options.nth(7)).toBeAttached();
+    const scrollY = await page.evaluate(() => window.scrollY);
+
+    // The first match is already highlighted, so this lands on the eighth.
+    for (let i = 0; i < 7; i++) await you.press('ArrowDown');
+
+    await expect(options.nth(7)).toHaveAttribute('data-highlighted');
+    // In-viewport accounts for the list's own clipping, not just the window's.
+    await expect(options.nth(7)).toBeInViewport({ ratio: 1 });
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+  });
+
+  test.describe('on a phone with the keyboard up', () => {
+    // What a 390×844 phone has left above its on-screen keyboard.
+    test.use({ viewport: { width: 390, height: 508 } });
+
+    const inputTop = (input: Locator) =>
+      input.evaluate((el) => el.getBoundingClientRect().top);
+    const pageHeight = (page: Page) =>
+      page.evaluate(() => document.documentElement.scrollHeight);
+
+    // Usernames are mostly three letters, so the third keystroke typically
+    // narrows several matches to one; a shorter page clamped the scroll and
+    // threw the input down the screen.
+    test('narrowing the matches does not move the input', async ({ page }) => {
+      await gotoHydrated(page, SUBMIT_URL);
+
+      const team1 = page.locator('#team1-step');
+      const you = team1.locator('input[placeholder="Filter..."]').first();
+      await you.focus();
+      await you.pressSequentially('al');
+      await expect(team1.locator('[role="option"]')).toHaveCount(4);
+
+      // Scrolled down to read the matches, as far as the input stays in view.
+      // Any further and it is under the fixed header, where the browser
+      // scrolls it back out on the next keystroke whatever the list does.
+      await you.evaluate((el) =>
+        el.scrollIntoView({ block: 'start', behavior: 'instant' })
+      );
+      await expect
+        .poll(() => page.evaluate(() => window.scrollY))
+        .toBeGreaterThan(0);
+      const before = await inputTop(you);
+
+      await you.pressSequentially('i');
+      await expect(team1.locator('[role="option"]')).toHaveCount(1);
+
+      expect(Math.abs((await inputTop(you)) - before)).toBeLessThanOrEqual(1);
+    });
+
+    test('the open list keeps the page one height whatever is typed', async ({
+      page,
+    }) => {
+      await seedRecentPlayers(page, [
+        ALICE_LEAGUE_PLAYER_ID,
+        BOB_LEAGUE_PLAYER_ID,
+      ]);
+      await gotoHydrated(page, SUBMIT_URL);
+
+      const team1 = page.locator('#team1-step');
+      const you = team1.locator('input[placeholder="Filter..."]').first();
+      const options = team1.locator('[role="option"]');
+      await you.focus();
+      await expect(team1.getByText('Recent players')).toBeVisible();
+      const height = await pageHeight(page);
+
+      // A single character shows nothing at all.
+      await you.pressSequentially('a');
+      await expect(options).toHaveCount(0);
+      expect(await pageHeight(page)).toBe(height);
+
+      await you.pressSequentially('l');
+      await expect(options).toHaveCount(4);
+      expect(await pageHeight(page)).toBe(height);
+
+      await you.pressSequentially('iz');
+      await expect(
+        page.getByRole('button', { name: 'Add new player' })
+      ).toBeVisible();
+      expect(await pageHeight(page)).toBe(height);
+    });
+  });
 });
 
 test.describe('Player profile — compare filter', () => {
