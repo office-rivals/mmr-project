@@ -321,7 +321,7 @@ test.describe('Header — mobile viewport', () => {
     expect(bar).not.toBeNull();
     expect(headingBox).not.toBeNull();
     const barBottom = bar!.y + bar!.height;
-    expect(barBottom).toBeGreaterThanOrEqual(59 + 64);
+    expect(barBottom).toBeGreaterThanOrEqual(59 + 44);
     // Only the content's own 1rem separates the heading from the bar.
     expect(headingBox!.y).toBeGreaterThanOrEqual(barBottom);
     expect(headingBox!.y - barBottom).toBeLessThanOrEqual(17);

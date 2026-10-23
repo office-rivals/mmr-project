@@ -61,7 +61,7 @@ function AuthedLayout() {
         {/* `body` already pads the top inset, so only the bar's height is added. */}
         <div
           className={cn(
-            'mx-auto w-full max-w-screen-sm px-4 pt-[calc(var(--header-height)+1rem)] pb-[calc(env(safe-area-inset-bottom)+11rem)] lg:pt-8 lg:pb-12',
+            'mx-auto w-full max-w-screen-sm px-4 pt-[calc(var(--header-height)+1rem)] pb-[calc(env(safe-area-inset-bottom)+var(--bottom-chrome)+0.75rem)] lg:pt-8 lg:pb-12',
             wide ? 'lg:max-w-[72rem] lg:px-10' : 'lg:max-w-screen-md lg:px-8'
           )}
         >
