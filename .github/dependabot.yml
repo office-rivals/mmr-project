@@ -48,6 +48,13 @@ updates:
         patterns:
           - "@tanstack/react-router*"
           - "@tanstack/react-start*"
+      # React refuses to render when react and react-dom differ in version.
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
