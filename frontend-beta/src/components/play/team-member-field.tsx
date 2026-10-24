@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState, type MouseEvent } from 'react';
 import { X } from 'lucide-react';
 import { PlayerAvatar } from '@/components/player-avatar';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,9 @@ import {
 } from '@/components/ui/combobox';
 import { useHydratedInputValue } from '@/hooks/use-hydrated-input-value';
 import { useInlineList } from '@/hooks/use-inline-list';
+import { useMediaQuery } from '@/hooks/use-media-query';
+import { useVisibleViewport } from '@/hooks/use-visible-viewport';
+import { cn } from '@/lib/utils';
 import type {
   LeaguePlayerResponse,
   OrganizationMemberResponse,
@@ -50,6 +53,11 @@ const playerName = (p: {
  *    shows nothing at all (not even "No players found");
  *  - "Recent players" only appears while the filter is empty.
  *
+ * On phones, tapping or typing into the slot turns it into a full-screen
+ * search. An inline list that shrank as matches narrowed made the page shorter
+ * than the scroll position and threw the input down the screen. An autofocused
+ * slot keeps its recents inline until it is touched.
+ *
  * League players are searched by display name and username; org members who are
  * *not yet* league players are searched by those plus email.
  *
@@ -70,6 +78,10 @@ export function TeamMemberField({
   autofocus = false,
 }: TeamMemberFieldProps) {
   const [filter, setFilter] = useState('');
+  // Focus alone (the autofocused slot) leaves the list inline on phones.
+  const [touched, setTouched] = useState(false);
+  const phone = useMediaQuery('(max-width: 47.99rem)');
+  const titleId = useId();
 
   const matches = useMemo(() => {
     const needle = filter.toLowerCase();
@@ -142,6 +154,36 @@ export function TeamMemberField({
     onEscape: () => setFilter(''),
   });
 
+  const fullScreen = phone && list.open && touched;
+  const layer = useVisibleViewport(fullScreen);
+
+  const inputProps = {
+    ...list.inputProps,
+    onFocus: () => {
+      setTouched(false);
+      list.inputProps.onFocus();
+    },
+    onClick: () => {
+      setTouched(true);
+      list.inputProps.onClick();
+    },
+  };
+
+  const cancel = () => {
+    setFilter('');
+    list.setOpen(false);
+    // Puts the keyboard away.
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  };
+
+  // Tapping the search's own background or title would blur the input, and a
+  // blur closes the list.
+  const keepInputFocus = (event: MouseEvent) => {
+    if (!(event.target instanceof HTMLInputElement)) event.preventDefault();
+  };
+
   const select = (optionValue: string) => {
     const player = findPlayer(optionValue);
     const member = player ? undefined : findMember(optionValue);
@@ -178,7 +220,33 @@ export function TeamMemberField({
   );
 
   return (
-    <div className="flex flex-col gap-2">
+    <div
+      role={fullScreen ? 'dialog' : undefined}
+      aria-modal={fullScreen || undefined}
+      aria-labelledby={fullScreen ? titleId : undefined}
+      onMouseDown={fullScreen ? keepInputFocus : undefined}
+      style={fullScreen ? layer : undefined}
+      className={cn(
+        'flex flex-col gap-2',
+        // Between the phone bars and a dialog opened from the list.
+        fullScreen &&
+          'fixed inset-x-0 top-0 z-[45] h-dvh bg-background px-4 pt-[env(safe-area-inset-top)] pb-3'
+      )}
+    >
+      {fullScreen ? (
+        <div className="flex h-11 shrink-0 items-center justify-between">
+          <h2 id={titleId} className="text-base font-bold">
+            Choose a player
+          </h2>
+          <button
+            type="button"
+            onClick={cancel}
+            className="-mr-3 flex h-11 items-center rounded-md px-3 text-base font-semibold text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : null}
       <h4 className="text-xs text-muted-foreground">{label}</h4>
       {value === null ? (
         <Combobox
@@ -196,6 +264,7 @@ export function TeamMemberField({
             // into a chip instead.
             if (details.reason === 'item-press') return;
             setFilter(next);
+            setTouched(true);
             list.setOpen(true);
           }}
           itemToStringLabel={(optionValue: string) => {
@@ -208,10 +277,17 @@ export function TeamMemberField({
             ref={filterRef}
             placeholder="Filter..."
             autoFocus={autofocus || undefined}
-            {...list.inputProps}
+            {...inputProps}
           />
           {list.open ? (
-            <div {...list.listProps} className="flex flex-col gap-1">
+            <div
+              {...list.listProps}
+              className={cn(
+                'flex flex-col gap-1',
+                fullScreen &&
+                  'min-h-0 flex-1 overflow-y-auto overscroll-contain'
+              )}
+            >
               {filter.length === 0 && latestPlayers.length > 0 ? (
                 <ComboboxList>
                   <ComboboxGroup>
