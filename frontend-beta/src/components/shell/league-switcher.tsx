@@ -101,12 +101,13 @@ export function LeagueSwitcher({
       >
         <span
           aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-md border text-xs font-bold text-primary"
+          className="flex size-7 shrink-0 items-center justify-center rounded-md border text-[11px] font-bold text-primary lg:size-8 lg:text-xs"
         >
           {initials(currentOrg.name)}
         </span>
+        {/* Phones keep the bar to one line: the chip stands in for the org. */}
         <span className="flex min-w-0 flex-col leading-tight lg:flex-1">
-          <span className="truncate text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
+          <span className="hidden truncate text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase lg:block">
             {currentOrg.name}
           </span>
           <span className="truncate text-[15px] font-semibold">

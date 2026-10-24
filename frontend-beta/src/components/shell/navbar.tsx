@@ -19,7 +19,7 @@ export function Navbar({ base, orgId, leagueId, profilePath }: NavbarProps) {
     <nav
       aria-label="Primary"
       data-phone-chrome=""
-      className="fixed inset-x-0 bottom-0 z-30 flex justify-center border-t bg-card lg:static lg:z-auto lg:block lg:border-t-0 lg:bg-transparent"
+      className="fixed inset-x-0 bottom-0 z-40 flex justify-center border-t bg-card lg:static lg:z-auto lg:block lg:border-t-0 lg:bg-transparent"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex w-full max-w-screen-sm items-stretch px-1 lg:max-w-none lg:flex-col lg:gap-0.5 lg:px-0">

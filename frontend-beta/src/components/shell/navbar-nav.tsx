@@ -32,7 +32,7 @@ export function NavbarNav({
       to={path}
       activeOptions={{ exact: true, includeSearch: false }}
       className={cn(
-        'group relative flex h-16 min-w-16 flex-1 flex-col items-center justify-center gap-1 rounded-md text-[10px] font-medium tracking-[0.1em] text-muted-foreground uppercase transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+        'group relative flex h-12 min-w-16 flex-1 flex-col items-center justify-center gap-0.5 rounded-md text-[10px] font-medium tracking-[0.1em] text-muted-foreground uppercase transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
         'data-[status=active]:font-semibold data-[status=active]:text-primary',
         'lg:h-11 lg:min-w-0 lg:flex-none lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-sm lg:tracking-normal lg:normal-case lg:hover:bg-muted/60 lg:data-[status=active]:bg-muted',
         show === 'mobile' && 'lg:hidden',
@@ -40,7 +40,7 @@ export function NavbarNav({
       )}
     >
       <span className="relative flex">
-        <Icon aria-hidden="true" className="size-6 lg:size-[18px]" />
+        <Icon aria-hidden="true" className="size-5 lg:size-[18px]" />
         {hasBadge ? (
           <span
             aria-hidden="true"
@@ -50,7 +50,7 @@ export function NavbarNav({
           </span>
         ) : null}
       </span>
-      <span className="lg:hidden">{shortLabel ?? label}</span>
+      <span className="leading-3 lg:hidden">{shortLabel ?? label}</span>
       <span className="hidden lg:inline">{label}</span>
       {hasBadge ? (
         <>
@@ -67,18 +67,20 @@ export function NavbarNav({
   );
 }
 
-/** The raised plus in the middle of the bottom bar. */
+/** The plus in the middle of the bottom bar; its tile rises 14px above it. */
 export function NavbarSubmit({ path }: { path: string }) {
   return (
     <AppLink
       to={path}
       activeOptions={{ exact: true, includeSearch: false }}
-      className="group flex h-16 min-w-16 flex-1 flex-col items-center justify-end gap-1 pb-1.5 text-[10px] font-semibold tracking-[0.1em] text-foreground uppercase focus-visible:outline-none lg:hidden"
+      className="group flex h-12 min-w-16 flex-1 flex-col items-center justify-end gap-0.5 pb-1 text-[10px] font-semibold tracking-[0.1em] text-foreground uppercase focus-visible:outline-none lg:hidden"
     >
-      <span className="-mt-7 flex size-14 items-center justify-center rounded-2xl bg-primary-fill text-primary-foreground shadow-[0_0_0_5px_hsl(var(--background))] transition-colors group-hover:bg-primary/90 group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-background">
-        <Plus aria-hidden="true" className="size-7" strokeWidth={2.5} />
+      <span className="-mt-3.5 flex h-11 w-13 items-center justify-center rounded-xl bg-primary-fill text-primary-foreground shadow-[0_0_0_4px_hsl(var(--background))] transition-colors group-hover:bg-primary/90 group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-background">
+        <Plus aria-hidden="true" className="size-6" strokeWidth={2.5} />
       </span>
-      <span className="group-data-[status=active]:text-primary">Submit</span>
+      <span className="leading-3 group-data-[status=active]:text-primary">
+        Submit
+      </span>
     </AppLink>
   );
 }

@@ -414,7 +414,7 @@ function RandomPage() {
         'fixed inset-x-0 z-20 bg-background lg:top-0 lg:bottom-0 lg:left-60',
         immersive
           ? 'top-0 bottom-0'
-          : 'top-[calc(env(safe-area-inset-top)+var(--header-height))] bottom-[calc(env(safe-area-inset-bottom)+64px)]'
+          : 'top-[calc(env(safe-area-inset-top)+var(--header-height))] bottom-[calc(env(safe-area-inset-bottom)+var(--dock-height))]'
       )}
     >
       <header
