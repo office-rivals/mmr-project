@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoAuthed } from './helpers';
 import { isServerFn } from './server-fns';
 
 const LEAGUE_URL = '/test-org/test-league';
@@ -33,7 +34,8 @@ test.describe('Leaderboard page', () => {
   test('shows the top seven ranked players and links to the standings', async ({
     page,
   }) => {
-    await page.goto(LEAGUE_URL);
+    // The standings link is SSR'd; a click before hydration is lost.
+    await gotoAuthed(page, LEAGUE_URL);
 
     const ranks = page
       .getByRole('table')
