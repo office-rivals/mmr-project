@@ -302,7 +302,12 @@ test.describe('Header — mobile viewport', () => {
 
   test('content starts just below the bar on a notched phone', async ({
     page,
+    browserName,
   }) => {
+    test.skip(
+      browserName !== 'chromium',
+      'Safe-area insets are emulated through CDP, which only Chromium has.'
+    );
     // Chromium can emulate an installed iPhone app's insets, which headless
     // runs otherwise leave at 0. The top inset belongs to the bar only.
     const cdp = await page.context().newCDPSession(page);
