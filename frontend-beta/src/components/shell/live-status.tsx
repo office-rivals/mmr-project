@@ -118,7 +118,9 @@ export function LiveStatusPill({
           ) : state.kind === 'queued' ? (
             <>
               <QueueRing count={state.count} needed={state.needed} small />
-              {formatElapsed(state.seconds)}
+              {state.needed
+                ? `${state.count}/${state.needed}`
+                : `${state.count} in queue`}
             </>
           ) : (
             <>
@@ -230,7 +232,7 @@ function StatusBody({
           <QueueRing count={state.count} needed={state.needed} />
           <span className="flex min-w-0 flex-col gap-0.5">
             <span className="text-sm font-semibold">
-              In queue · {formatElapsed(state.seconds)}
+              In queue for {formatElapsed(state.seconds)}
             </span>
             <span className="truncate text-xs text-muted-foreground">
               {missing
@@ -390,7 +392,9 @@ function useQueueAction(orgId: string, leagueId: string, onDone?: () => void) {
 function pillName(state: Exclude<LiveState, { kind: 'pending' }>): string {
   if (state.kind === 'waiting') return `${state.players.length} in queue`;
   if (state.kind === 'queued') {
-    return `In queue · ${formatElapsed(state.seconds)}`;
+    return state.needed
+      ? `In queue · ${state.count} of ${state.needed} players`
+      : `In queue · ${state.count} players`;
   }
   return `Live match · ${state.minutes} min`;
 }

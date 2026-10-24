@@ -157,6 +157,28 @@ test.describe('Phone chrome on a notched phone', () => {
     });
   });
 
+  test.describe('while you are queuing', () => {
+    test.beforeEach(async ({ page }) => {
+      const me = { ...alice, leaguePlayerId: VIEWER };
+      await stubQueue(page, { queuedPlayers: [me, alice] });
+    });
+
+    test('the pill counts the players toward a full match', async ({
+      page,
+    }) => {
+      await gotoAuthed(page, LEAGUE_HOME);
+      // Test League is 2v2, so a match needs four.
+      const pill = page.getByRole('button', {
+        name: 'In queue · 2 of 4 players',
+      });
+      await expect(pill).toHaveText('2/4');
+      await pill.click();
+      const panel = page.getByRole('dialog', { name: 'Your queue' });
+      await expect(panel).toContainText('2 more players needed');
+      await expect(panel.getByRole('button', { name: 'Leave' })).toBeVisible();
+    });
+  });
+
   test.describe('with a match found', () => {
     test.beforeEach(async ({ page }) => {
       await stubQueue(page, MATCH_FOUND);
