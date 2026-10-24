@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.1
+
+- Patch security advisories in zod, dompurify, vitest and ip-address, and update TanStack Router and Start in the beta.
+- chore(deps-dev): bump eslint from 10.8.1 to 10.12.0 in /frontend
+- chore(deps-dev): bump follow-redirects from 1.16.0 to 1.16.1 in /frontend
+- Update vite to 8.3.4, which patches the launch-editor advisories in the dev server.
+
 ## 1.7.0
 
 - Let members request an existing player from the organization page and let moderators approve or reject those claims from the members admin page.

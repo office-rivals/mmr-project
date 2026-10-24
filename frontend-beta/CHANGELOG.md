@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.0
+
+- Update React and React DOM to 19.3.1, Base UI to 1.9.0, TanStack Query to 5.104.3 and cn to 0.5.0.
+- On phones, tapping a player slot on Submit match now opens a full-screen search, so typing no longer moves the page.
+- The matches partner filters and the admin selects (match players, league format, member roles) now open the app's own styled list instead of the browser's, and the four note fields share one styled Textarea.
+- Patch security advisories in zod, dompurify, vitest and ip-address, and update TanStack Router and Start in the beta.
+- On phones the top and bottom bars are slimmer, and the queue and live-match status collapse into a pill in the top bar that opens on tap. A match found opens the accept dialog in the middle of the screen on any page.
+- chore(deps): bump the tanstack-query group in /frontend-beta with 2 updates
+- chore(deps-dev): bump shadcn from 4.21.3 to 4.21.4 in /frontend-beta
+- chore(deps-dev): bump @types/node from 26.6.3 to 26.6.5 in /frontend-beta
+- chore(deps-dev): bump dotenv from 18.0.6 to 18.0.7 in /frontend-beta
+- chore(deps-dev): bump hono from 4.13.10 to 4.13.13 in /frontend-beta
+- fix(frontend-beta): update dompurify and zod past new advisories
+- chore(deps-dev): bump @vitejs/plugin-react from 6.1.1 to 6.1.2 in /frontend-beta
+- On an iPhone with the app installed to the home screen, pages now start right below the top bar instead of leaving a gap the height of the status bar.
+
 ## 0.4.0
 
 - The show-MMR toggles, the winner and score pickers, and the random-teams mode tabs now use shared Switch, ToggleGroup and Tabs components, so they work with arrow keys. The league page's MMR checkbox is now a switch, like the matches page's.
