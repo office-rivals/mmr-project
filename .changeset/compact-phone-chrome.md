@@ -2,4 +2,4 @@
 "frontend-beta": minor
 ---
 
-On phones the top and bottom bars are slimmer, and the queue and live-match status now sits on top of the bottom bar instead of floating above it, leaving more of the screen for the page.
+On phones the top and bottom bars are slimmer, and the queue and live-match status collapse into a pill in the top bar that opens on tap. A match found opens the accept dialog in the middle of the screen on any page.
