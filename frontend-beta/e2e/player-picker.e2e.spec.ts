@@ -127,6 +127,19 @@ test.describe('Submit — player slot picker', () => {
     await expect(team1.locator('h4')).toHaveCount(2);
   });
 
+  test('from md up the matches stay inline', async ({ page }) => {
+    await gotoHydrated(page, SUBMIT_URL);
+
+    const you = page.locator('#team1-step input[placeholder="Filter..."]');
+    await you.first().click();
+    await you.first().pressSequentially('al');
+
+    await expect(suggestion(page, 'Alice Anderson')).toBeVisible();
+    await expect(
+      page.getByRole('dialog', { name: 'Choose a player' })
+    ).toHaveCount(0);
+  });
+
   test('Escape clears the filter and closes the suggestions', async ({
     page,
   }) => {
@@ -212,6 +225,155 @@ test.describe('Submit — player slot picker', () => {
       await expect(team1.locator('h4')).toHaveCount(1);
     });
   }
+});
+
+test.describe('Submit — player search on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+  const search = (page: Page) =>
+    page.getByRole('dialog', { name: 'Choose a player' });
+  const you = (page: Page) =>
+    page.locator('#team1-step input[placeholder="Filter..."]').first();
+  const options = (page: Page) => page.locator('#team1-step [role="option"]');
+
+  test('the autofocused slot keeps its recents inline until it is touched', async ({
+    page,
+  }) => {
+    await seedRecentPlayers(page, [
+      ALICE_LEAGUE_PLAYER_ID,
+      BOB_LEAGUE_PLAYER_ID,
+    ]);
+    await gotoHydrated(page, SUBMIT_URL);
+
+    await expect(suggestion(page, 'Alice Anderson')).toBeVisible();
+    await expect(search(page)).toHaveCount(0);
+  });
+
+  test('tapping a slot opens a full-screen search over the bars', async ({
+    page,
+  }) => {
+    await gotoHydrated(page, SUBMIT_URL);
+    await you(page).tap();
+
+    await expect(search(page)).toBeVisible();
+    expect(await search(page).boundingBox()).toEqual({
+      x: 0,
+      y: 0,
+      width: 390,
+      height: 844,
+    });
+    await expect(you(page)).toBeFocused();
+    const coversBottomBar = await page.evaluate(() => {
+      const bar = document
+        .querySelector('nav[aria-label="Primary"]')!
+        .getBoundingClientRect();
+      const hit = document.elementFromPoint(
+        bar.x + bar.width / 2,
+        bar.y + bar.height / 2
+      );
+      return hit?.closest('[role="dialog"]') != null;
+    });
+    expect(coversBottomBar).toBe(true);
+  });
+
+  test('picking a match closes the search and fills the slot', async ({
+    page,
+  }) => {
+    await gotoHydrated(page, SUBMIT_URL);
+    await you(page).tap();
+    await you(page).pressSequentially('alia');
+    await suggestion(page, 'Alice Anderson').tap();
+
+    await expect(search(page)).toHaveCount(0);
+    // The teammate slot only appears once "You" holds a player.
+    await expect(page.locator('#team1-step h4')).toHaveCount(2);
+  });
+
+  test('Cancel closes the search without picking', async ({ page }) => {
+    await gotoHydrated(page, SUBMIT_URL);
+    await you(page).tap();
+    await you(page).pressSequentially('al');
+    await search(page).getByRole('button', { name: 'Cancel' }).tap();
+
+    await expect(search(page)).toHaveCount(0);
+    await expect(you(page)).toHaveValue('');
+    await expect(you(page)).not.toBeFocused();
+    await expect(page.locator('#team1-step h4')).toHaveCount(1);
+  });
+
+  test('Escape closes the search and clears the filter', async ({ page }) => {
+    await gotoHydrated(page, SUBMIT_URL);
+    await you(page).tap();
+    await you(page).pressSequentially('al');
+    await you(page).press('Escape');
+
+    await expect(search(page)).toHaveCount(0);
+    await expect(you(page)).toHaveValue('');
+  });
+
+  test('Add new player opens its dialog above the search', async ({ page }) => {
+    await gotoHydrated(page, SUBMIT_URL);
+    await you(page).tap();
+    await you(page).pressSequentially('zzqx');
+    await search(page).getByRole('button', { name: 'Add new player' }).tap();
+
+    const dialog = page.getByRole('dialog', { name: 'Add new player' });
+    await expect(dialog).toBeVisible();
+    const onTop = await dialog.evaluate((el) => {
+      const box = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(
+        box.x + box.width / 2,
+        box.y + box.height / 2
+      );
+      return el.contains(hit);
+    });
+    expect(onTop).toBe(true);
+  });
+
+  test.describe('with the keyboard up', () => {
+    // What a 390×844 phone has left above its on-screen keyboard.
+    test.use({ viewport: { width: 390, height: 508 } });
+
+    const inputTop = (page: Page) =>
+      you(page).evaluate((el) => el.getBoundingClientRect().top);
+    const scrollY = (page: Page) => page.evaluate(() => window.scrollY);
+
+    // Usernames are mostly three letters, so the third keystroke typically
+    // narrows several matches to one.
+    test('narrowing the matches does not move the input', async ({ page }) => {
+      await gotoHydrated(page, SUBMIT_URL);
+      await you(page).tap();
+      await you(page).pressSequentially('al');
+      await expect(options(page)).toHaveCount(4);
+      // Scrolled down to read the matches, which an inline list needed.
+      await you(page).evaluate((el) =>
+        el.scrollIntoView({ block: 'start', behavior: 'instant' })
+      );
+      const before = { top: await inputTop(page), y: await scrollY(page) };
+
+      await you(page).pressSequentially('i');
+      await expect(options(page)).toHaveCount(1);
+
+      expect(await inputTop(page)).toBe(before.top);
+      expect(await scrollY(page)).toBe(before.y);
+    });
+
+    test('a long list scrolls inside the search, not the page', async ({
+      page,
+    }) => {
+      await gotoHydrated(page, SUBMIT_URL);
+      await you(page).tap();
+      // Matches the thirteen seeded "Player 0NN"s, far more than fit at once.
+      await you(page).pressSequentially('pl');
+      await expect(options(page).nth(12)).toBeAttached();
+      const y = await scrollY(page);
+
+      await options(page).last().scrollIntoViewIfNeeded();
+      await expect(options(page).last()).toBeInViewport({ ratio: 1 });
+      expect(await scrollY(page)).toBe(y);
+      await expect(you(page)).toBeInViewport({ ratio: 1 });
+    });
+  });
 });
 
 test.describe('Player profile — compare filter', () => {
