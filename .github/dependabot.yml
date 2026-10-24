@@ -16,6 +16,8 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    # Security updates only: they have their own limit, so they still arrive.
+    open-pull-requests-limit: 0
     ignore:
       # The SvelteKit app is being replaced by frontend-beta, so it stays on its
       # current majors rather than adapting to them (bits-ui 2, for one, stops
