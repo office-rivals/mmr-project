@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoHydrated } from './hydration';
 
 const LEAGUE_URL = '/test-org/test-league';
 
@@ -70,7 +71,7 @@ test.describe('Leaderboard page', () => {
   test('toggling MMR shows the (+/−delta) inline next to each player', async ({
     page,
   }) => {
-    await page.goto(LEAGUE_URL);
+    await gotoHydrated(page, LEAGUE_URL);
 
     const firstCard = page
       .locator('.flex.flex-1.flex-col.items-stretch > div.bg-card')
@@ -90,7 +91,7 @@ test.describe('Leaderboard page', () => {
   test('clicking a leaderboard row opens the user stats modal', async ({
     page,
   }) => {
-    await page.goto(LEAGUE_URL);
+    await gotoHydrated(page, LEAGUE_URL);
 
     const tuserRow = page
       .getByRole('table')
@@ -135,7 +136,7 @@ test.describe('Leaderboard page', () => {
     // Regression: the v3 rewrite of the modal pointed its client-side
     // fetch at /api/v3/... but no SvelteKit endpoint matched that path,
     // so every open showed "Failed to load matches".
-    await page.goto(LEAGUE_URL);
+    await gotoHydrated(page, LEAGUE_URL);
 
     await page.getByRole('button', { name: 'Report match' }).click();
 

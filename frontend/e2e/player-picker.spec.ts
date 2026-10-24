@@ -6,6 +6,7 @@
 // covered incidentally by the flows that use it to fill a match. These specs
 // pin the picker interactions themselves.
 import { test, expect, type Page } from '@playwright/test';
+import { gotoHydrated } from './hydration';
 
 // Fixture ids from scripts/seed-data.sql (Test League, team size 2).
 const TEST_LEAGUE_ID = '22222222-2222-2222-2222-222222222222';
@@ -16,12 +17,8 @@ const BOB_LEAGUE_PLAYER_ID = 'f6a97f23-2a35-58c3-b1e0-6085c728ae2d';
 const SUBMIT_URL = '/test-org/test-league/submit';
 const PROFILE_URL = `/test-org/test-league/player/${TEST_USER_LEAGUE_PLAYER_ID}`;
 
-// The "You" slot is autofocused, so a keypress can land before SvelteKit has
-// hydrated and attached its handlers — the browser then applies its own default
-// (implicit form submission) and the test sees a phantom failure. Waiting for
-// the network to settle is a cheap gate that keeps these specs deterministic.
-const gotoHydrated = (page: Page, url: string) =>
-  page.goto(url, { waitUntil: 'networkidle' });
+// The "You" slot is autofocused, so a keypress before hydration would trigger
+// implicit form submission instead of the picker.
 
 // Suggestions render as PlayerButton, i.e. a <button> element. Matching the
 // element rather than an ARIA role keeps these specs stable if the picker's

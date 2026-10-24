@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoHydrated } from './hydration';
 
 const FLAGS_PAGE = '/admin/test-org/leagues/test-league/match-flags';
 
@@ -36,7 +37,7 @@ test.describe('Admin match flags', () => {
   test('edits the flagged match from the flag, leaving rating history intact', async ({
     page,
   }) => {
-    await page.goto(FLAGS_PAGE);
+    await gotoHydrated(page, FLAGS_PAGE);
 
     const card = cardWithReason(page, FLAG_A_REASON);
     await card.getByTestId('match-flag-edit').click();
@@ -82,7 +83,7 @@ test.describe('Admin match flags', () => {
   });
 
   test('resolves a flag after reviewing the match', async ({ page }) => {
-    await page.goto(FLAGS_PAGE);
+    await gotoHydrated(page, FLAGS_PAGE);
 
     const card = cardWithReason(page, FLAG_B_REASON);
     await expect(card).toBeVisible();
