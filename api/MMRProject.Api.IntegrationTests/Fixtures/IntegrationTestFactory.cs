@@ -87,17 +87,22 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>
 public class StubMMRCalculationApiClient : IMMRCalculationApiClient
 {
     private readonly List<MMRCalculationRequest> _requests = [];
+    private readonly List<MMRPredictionRequest> _predictRequests = [];
     private readonly List<int> _batchSizes = [];
     private int _singleCallCount;
     private int _batchCallCount;
+    private int _predictCallCount;
 
     public bool ThrowOnCalculate { get; set; }
+    public bool ThrowOnPredict { get; set; }
 
     /// When set, batch calls return this many responses regardless of request count.
     /// Used to exercise the count-mismatch failure path.
     public int? BatchResponseCountOverride { get; set; }
 
     public IReadOnlyList<MMRCalculationRequest> Requests => _requests;
+    public IReadOnlyList<MMRPredictionRequest> PredictRequests => _predictRequests;
+    public int PredictCallCount => _predictCallCount;
 
     public int SingleCallCount => _singleCallCount;
     public int BatchCallCount => _batchCallCount;
@@ -141,6 +146,50 @@ public class StubMMRCalculationApiClient : IMMRCalculationApiClient
             responses = responses.Take(cap).ToList();
         }
         return Task.FromResult(responses);
+    }
+
+    // Rates both outcomes with the same placeholder maths as a calculation, so a
+    // test can hold a prediction against the result that is later submitted.
+    public Task<MMRPredictionResponse> PredictMatchAsync(MMRPredictionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        _predictCallCount++;
+
+        if (ThrowOnPredict)
+            throw new HttpRequestException("MMR prediction failed");
+
+        _predictRequests.Add(request);
+
+        MMRCalculationResponse Outcome(int team1Score, int team2Score) => BuildResponse(new MMRCalculationRequest
+        {
+            Team1 = new MMRCalculationTeam { Score = team1Score, Players = request.Team1.Players },
+            Team2 = new MMRCalculationTeam { Score = team2Score, Players = request.Team2.Players },
+        });
+        var before = Outcome(0, 0);
+        var team1Wins = Outcome(1, 0);
+        var team2Wins = Outcome(0, 1);
+
+        var muDifference = request.Team1.Players.Sum(p => p.Mu ?? 25m) - request.Team2.Players.Sum(p => p.Mu ?? 25m);
+        var team1Chance = (double)Math.Clamp(0.5m + muDifference / 20m, 0.05m, 0.95m);
+
+        static MMRTeamPrediction Team(double winChance, MMRCalculationTeamResult before,
+            MMRCalculationTeamResult won, MMRCalculationTeamResult lost) => new()
+        {
+            WinChance = winChance,
+            Players = before.Players.Select(p => new MMRPlayerPrediction
+            {
+                Id = p.Id,
+                Mmr = p.MMR,
+                MmrIfWin = won.Players.Single(w => w.Id == p.Id).MMR,
+                MmrIfLose = lost.Players.Single(l => l.Id == p.Id).MMR,
+            }).ToList(),
+        };
+
+        return Task.FromResult(new MMRPredictionResponse
+        {
+            Team1 = Team(team1Chance, before.Team1, team1Wins.Team1, team2Wins.Team1),
+            Team2 = Team(1 - team1Chance, before.Team2, team2Wins.Team2, team1Wins.Team2),
+        });
     }
 
     private static MMRCalculationResponse BuildBatchResponse(

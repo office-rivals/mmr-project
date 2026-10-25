@@ -25,6 +25,7 @@ public record PendingMatchResponse
     [Required] public required DateTimeOffset ExpiresAt { get; init; }
     [Required] public required List<PendingMatchTeamResponse> Teams { get; init; }
     [Required] public required List<PendingMatchAcceptanceResponse> Acceptances { get; init; }
+    public MatchPredictionResponse? Prediction { get; init; }
 }
 
 public record PendingMatchTeamResponse
@@ -54,6 +55,45 @@ public record ActiveMatchResponse
     [Required] public required Guid PendingMatchId { get; init; }
     [Required] public required DateTimeOffset StartedAt { get; init; }
     [Required] public required List<PendingMatchTeamResponse> Teams { get; init; }
+    public MatchPredictionResponse? Prediction { get; init; }
+}
+
+/// <summary>
+/// What the MMR calculation expects of a match before it is played. Null on a
+/// match when the prediction is unavailable.
+/// </summary>
+public record MatchPredictionResponse
+{
+    [Required] public required List<TeamPredictionResponse> Teams { get; init; }
+}
+
+public record TeamPredictionResponse
+{
+    /// <summary>The <see cref="PendingMatchTeamResponse.Index"/> of the team.</summary>
+    [Required] public required int Index { get; init; }
+
+    /// <summary>From 0 to 1; the teams' chances sum to 1.</summary>
+    [Required] public required double WinChance { get; init; }
+
+    [Required] public required List<PlayerPredictionResponse> Players { get; init; }
+}
+
+/// <summary>
+/// The MMRs are null while the player is still placing this season, since
+/// they would show how a placement match moves their MMR.
+/// </summary>
+public record PlayerPredictionResponse
+{
+    [Required] public required Guid LeaguePlayerId { get; init; }
+
+    /// <summary>The MMR the player goes into the match with.</summary>
+    public long? Mmr { get; init; }
+
+    /// <summary>The player's MMR after the match if their team wins.</summary>
+    public long? MmrIfWin { get; init; }
+
+    /// <summary>The player's MMR after the match if their team loses.</summary>
+    public long? MmrIfLose { get; init; }
 }
 
 public record SubmitActiveMatchResultRequest

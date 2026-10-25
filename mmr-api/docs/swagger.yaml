@@ -1,465 +1,215 @@
 basePath: /api
 definitions:
-  repos.LeaderboardEntry:
+  view.MMRCalculationPlayerRating:
     properties:
-      loses:
+      id:
         type: integer
-      losingStreak:
-        type: integer
-      mmr:
-        type: integer
-      name:
-        type: string
-      userId:
-        type: integer
-      winningStreak:
-        type: integer
-      wins:
-        type: integer
-    type: object
-  view.ClaimUser:
-    properties:
-      userId:
-        type: integer
+      isPreviousSeasonRating:
+        type: boolean
+      mu:
+        description: Use pointers to represent nullable values
+        type: number
+      sigma:
+        description: Use pointers to represent nullable values
+        type: number
     required:
-    - userId
+    - id
     type: object
-  view.CreateUser:
-    properties:
-      displayName:
-        type: string
-      name:
-        type: string
-    required:
-    - name
-    type: object
-  view.Match:
+  view.MMRCalculationRequest:
     properties:
       team1:
-        $ref: '#/definitions/view.MatchTeam'
+        $ref: '#/definitions/view.MMRCalculationTeam'
       team2:
-        $ref: '#/definitions/view.MatchTeam'
+        $ref: '#/definitions/view.MMRCalculationTeam'
     required:
     - team1
     - team2
     type: object
-  view.MatchDetails:
-    properties:
-      date:
-        type: string
-      mmrCalculations:
-        $ref: '#/definitions/view.MatchMMRCalculationDetails'
-      team1:
-        $ref: '#/definitions/view.MatchTeam'
-      team2:
-        $ref: '#/definitions/view.MatchTeam'
-    required:
-    - date
-    - team1
-    - team2
-    type: object
-  view.MatchDetailsV2:
-    properties:
-      date:
-        type: string
-      mmrCalculations:
-        $ref: '#/definitions/view.MatchMMRCalculationDetails'
-      team1:
-        $ref: '#/definitions/view.MatchTeamV2'
-      team2:
-        $ref: '#/definitions/view.MatchTeamV2'
-    required:
-    - date
-    - team1
-    - team2
-    type: object
-  view.MatchMMRCalculationDetails:
+  view.MMRCalculationResponse:
     properties:
       team1:
-        $ref: '#/definitions/view.MatchMMRCalculationTeam'
+        $ref: '#/definitions/view.MMRTeamResult'
       team2:
-        $ref: '#/definitions/view.MatchMMRCalculationTeam'
+        $ref: '#/definitions/view.MMRTeamResult'
     required:
     - team1
     - team2
     type: object
-  view.MatchMMRCalculationTeam:
+  view.MMRCalculationTeam:
     properties:
-      player1MMRDelta:
-        type: integer
-      player2MMRDelta:
-        type: integer
-    required:
-    - player1MMRDelta
-    - player2MMRDelta
-    type: object
-  view.MatchTeam:
-    properties:
-      member1:
-        type: string
-      member2:
-        type: string
+      players:
+        items:
+          $ref: '#/definitions/view.MMRCalculationPlayerRating'
+        type: array
       score:
         type: integer
     required:
-    - member1
-    - member2
+    - players
     - score
     type: object
-  view.MatchTeamV2:
-    properties:
-      member1:
-        type: integer
-      member2:
-        type: integer
-      score:
-        type: integer
-    required:
-    - member1
-    - member2
-    - score
-    type: object
-  view.MatchV2:
+  view.MMRPredictionRequest:
     properties:
       team1:
-        $ref: '#/definitions/view.MatchTeamV2'
+        $ref: '#/definitions/view.MMRPredictionTeam'
       team2:
-        $ref: '#/definitions/view.MatchTeamV2'
+        $ref: '#/definitions/view.MMRPredictionTeam'
     required:
     - team1
     - team2
     type: object
-  view.PlayerHistoryDetails:
+  view.MMRPredictionResponse:
     properties:
-      date:
-        type: string
-      mmr:
-        type: integer
-      name:
-        type: string
-      userId:
+      team1:
+        $ref: '#/definitions/view.MMRTeamPrediction'
+      team2:
+        $ref: '#/definitions/view.MMRTeamPrediction'
+    required:
+    - team1
+    - team2
+    type: object
+  view.MMRPredictionTeam:
+    properties:
+      players:
+        items:
+          $ref: '#/definitions/view.MMRCalculationPlayerRating'
+        type: array
+    required:
+    - players
+    type: object
+  view.MMRTeamPrediction:
+    properties:
+      players:
+        items:
+          $ref: '#/definitions/view.PlayerMMRPrediction'
+        type: array
+      winChance:
+        description: Probability from 0 to 1; the two teams' chances sum to 1.
+        type: number
+    required:
+    - players
+    - winChance
+    type: object
+  view.MMRTeamResult:
+    properties:
+      players:
+        items:
+          $ref: '#/definitions/view.PlayerMMRResult'
+        type: array
+      score:
         type: integer
     required:
-    - date
+    - players
+    - score
+    type: object
+  view.PlayerMMRPrediction:
+    properties:
+      id:
+        type: integer
+      mmr:
+        description: The MMR the player goes into the match with, after any season
+          reset.
+        type: integer
+      mmrIfLose:
+        type: integer
+      mmrIfWin:
+        type: integer
+    required:
+    - id
     - mmr
-    - name
-    - userId
+    - mmrIfLose
+    - mmrIfWin
     type: object
-  view.ProfileDetails:
+  view.PlayerMMRResult:
     properties:
-      userId:
+      id:
         type: integer
-    type: object
-  view.TimeStatisticsEntry:
-    properties:
-      count:
+      mmr:
+        description: New field in the response
         type: integer
-      dayOfWeek:
-        description: 0-6, 0 is Sunday
-        type: integer
-      hourOfDay:
-        description: 0-23
-        type: integer
+      mu:
+        description: Required in the response
+        type: number
+      sigma:
+        description: Required in the response
+        type: number
     required:
-    - count
-    - dayOfWeek
-    - hourOfDay
-    type: object
-  view.UserDetails:
-    properties:
-      displayName:
-        type: string
-      name:
-        type: string
-      userId:
-        type: integer
-    required:
-    - name
-    - userId
+    - id
+    - mmr
+    - mu
+    - sigma
     type: object
 info:
   contact: {}
 paths:
-  /v1/admin/recalculate:
+  /v1/mmr-calculation:
     post:
       consumes:
       - application/json
-      description: Start recalculating matches
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: recalculation done
-          schema:
-            type: string
-      summary: Recalculate matches
-      tags:
-      - Admin
-  /v1/mmr/matches:
-    get:
-      description: Get all matches
+      description: Submit two teams' details for MMR calculation
       parameters:
-      - description: Limit
-        in: query
-        name: limit
-        type: integer
-      - description: Offset
-        in: query
-        name: offset
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/view.MatchDetails'
-            type: array
-      summary: Get matches
-      tags:
-      - Matches
-    post:
-      consumes:
-      - application/json
-      description: Submit a match for MMR calculation
-      parameters:
-      - description: Match object
+      - description: MMR Calculation Request
         in: body
-        name: match
+        name: request
         required: true
         schema:
-          $ref: '#/definitions/view.Match'
+          $ref: '#/definitions/view.MMRCalculationRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: match submitted
+          description: MMR calculation result
           schema:
-            type: string
-      summary: Submit a match
+            $ref: '#/definitions/view.MMRCalculationResponse'
+      summary: Submit an MMR calculation request
       tags:
-      - Matches
-  /v1/profile:
-    get:
-      description: Get profile details of the authenticated user
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/view.ProfileDetails'
-      summary: Get profile
-      tags:
-      - Profile
-  /v1/profile/claim:
-    post:
-      description: Claims a user by ID
-      parameters:
-      - description: User to be claimed
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/view.ClaimUser'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/view.ProfileDetails'
-      summary: Claim user
-      tags:
-      - Profile
-  /v1/stats/leaderboard:
-    get:
-      consumes:
-      - application/json
-      description: Get leaderboard stats including wins, loses, and MMR of users
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/repos.LeaderboardEntry'
-            type: array
-      summary: Get leaderboard stats
-      tags:
-      - Leaderboard
-  /v1/stats/player-history:
-    get:
-      consumes:
-      - application/json
-      description: Get player history including MMR and date
-      parameters:
-      - description: User ID
-        in: query
-        name: userId
-        type: integer
-      - description: Start date
-        in: query
-        name: start
-        type: string
-      - description: End date
-        in: query
-        name: end
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/view.PlayerHistoryDetails'
-            type: array
-      summary: Get player history
-      tags:
-      - Statistics
-  /v1/stats/time-distribution:
-    get:
-      consumes:
-      - application/json
-      description: Get number of matches for each day of week and hour of day
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/view.TimeStatisticsEntry'
-            type: array
-      summary: Get match distribution over time
-      tags:
-      - Statistics
-  /v1/users:
-    get:
-      description: Lists all users
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/view.UserDetails'
-            type: array
-      summary: List users
-      tags:
-      - Users
+      - Calculation
+  /v1/mmr-calculation/batch:
     post:
       consumes:
       - application/json
-      description: Creates a new user
+      description: Submit multiple MMR calculation requests
       parameters:
-      - description: User data
+      - description: MMR Calculation Requests
         in: body
-        name: user
+        name: request
         required: true
         schema:
-          $ref: '#/definitions/view.CreateUser'
+          items:
+            $ref: '#/definitions/view.MMRCalculationRequest'
+          type: array
       produces:
       - application/json
       responses:
         "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/view.UserDetails'
-      summary: Create user
-      tags:
-      - Users
-  /v1/users/{id}:
-    get:
-      description: Get user by ID
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/view.UserDetails'
-      summary: Get user
-      tags:
-      - Users
-  /v1/users/search:
-    get:
-      description: Searches users by name
-      parameters:
-      - description: Name to search for
-        in: query
-        name: query
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
+          description: MMR calculation results
           schema:
             items:
-              $ref: '#/definitions/view.UserDetails'
+              $ref: '#/definitions/view.MMRCalculationResponse'
             type: array
-      summary: Search users
+      summary: Submit multiple MMR calculation requests
       tags:
-      - Users
-  /v2/mmr/matches:
-    get:
-      description: Get all matches
-      parameters:
-      - description: Limit
-        in: query
-        name: limit
-        type: integer
-      - description: Offset
-        in: query
-        name: offset
-        type: integer
-      - description: User ID
-        in: query
-        name: userId
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/view.MatchDetailsV2'
-            type: array
-      summary: Get matches
-      tags:
-      - Matches
+      - Calculation
+  /v1/mmr-calculation/predict:
     post:
       consumes:
       - application/json
-      description: Submit a match for MMR calculation
+      description: Returns each team's chance of winning and each player's MMR if
+        their team wins or loses, rated exactly as a submitted result would be
       parameters:
-      - description: Match object
+      - description: MMR Prediction Request
         in: body
-        name: match
+        name: request
         required: true
         schema:
-          $ref: '#/definitions/view.MatchV2'
+          $ref: '#/definitions/view.MMRPredictionRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: match submitted
+          description: MMR prediction result
           schema:
-            type: string
-      summary: Submit a match
+            $ref: '#/definitions/view.MMRPredictionResponse'
+      summary: Predict an MMR calculation before the match is played
       tags:
-      - Matches
+      - Calculation
 swagger: "2.0"

@@ -28,7 +28,8 @@ public class V3MatchMakingService(
     IUserContextResolver userContextResolver,
     ApiDbContext dbContext,
     IV3MatchesService matchesService,
-    IOrganizationService organizationService
+    IOrganizationService organizationService,
+    IV3MatchPredictionService predictionService
 ) : IV3MatchMakingService
 {
     private const string QueueEntryIndexName = "ix_queue_entries_league_player";
@@ -150,11 +151,14 @@ public class V3MatchMakingService(
             .ThenInclude(om => om.User)
             .FirstOrDefaultAsync();
 
+        var predictions = await predictionService.PredictAsync(orgId, leagueId,
+            [.. new[] { pendingMatch, activeMatch?.PendingMatch }.OfType<V3PendingMatch>()]);
+
         return new QueueStatusResponse
         {
             QueuedPlayers = queuedPlayers,
-            PendingMatch = pendingMatch is not null ? MapPendingMatch(pendingMatch) : null,
-            ActiveMatch = activeMatch is not null ? MapActiveMatch(activeMatch) : null
+            PendingMatch = pendingMatch is not null ? MapPendingMatch(pendingMatch, predictions) : null,
+            ActiveMatch = activeMatch is not null ? MapActiveMatch(activeMatch, predictions) : null
         };
     }
 
@@ -179,7 +183,8 @@ public class V3MatchMakingService(
             throw new NotFoundException("Pending match not found");
         }
 
-        return MapPendingMatch(pendingMatch);
+        var predictions = await predictionService.PredictAsync(orgId, leagueId, [pendingMatch]);
+        return MapPendingMatch(pendingMatch, predictions);
     }
 
     public async Task AcceptPendingMatchAsync(Guid orgId, Guid leagueId, Guid pendingMatchId)
@@ -289,7 +294,9 @@ public class V3MatchMakingService(
             .OrderByDescending(am => am.StartedAt)
             .ToListAsync();
 
-        return activeMatches.Select(MapActiveMatch);
+        var predictions = await predictionService.PredictAsync(orgId, leagueId,
+            [.. activeMatches.Select(am => am.PendingMatch)]);
+        return activeMatches.Select(am => MapActiveMatch(am, predictions)).ToList();
     }
 
     public async Task CancelActiveMatchAsync(Guid orgId, Guid leagueId, Guid activeMatchId)
@@ -480,7 +487,9 @@ public class V3MatchMakingService(
             throw new ForbiddenException("You are not allowed to modify this active match");
     }
 
-    private static PendingMatchResponse MapPendingMatch(V3PendingMatch pm) => new()
+    private static PendingMatchResponse MapPendingMatch(
+        V3PendingMatch pm,
+        IReadOnlyDictionary<Guid, MatchPredictionResponse> predictions) => new()
     {
         Id = pm.Id,
         Status = pm.Status,
@@ -501,10 +510,13 @@ public class V3MatchMakingService(
             LeaguePlayerId = a.LeaguePlayerId,
             Status = a.Status,
             AcceptedAt = a.AcceptedAt
-        }).ToList()
+        }).ToList(),
+        Prediction = predictions.GetValueOrDefault(pm.Id)
     };
 
-    private static ActiveMatchResponse MapActiveMatch(V3ActiveMatch am) => new()
+    private static ActiveMatchResponse MapActiveMatch(
+        V3ActiveMatch am,
+        IReadOnlyDictionary<Guid, MatchPredictionResponse> predictions) => new()
     {
         Id = am.Id,
         PendingMatchId = am.PendingMatchId,
@@ -519,6 +531,7 @@ public class V3MatchMakingService(
                 Username = p.LeaguePlayer.OrganizationMembership.GetUsername(),
                 Index = p.Index
             }).ToList()
-        }).ToList()
+        }).ToList(),
+        Prediction = predictions.GetValueOrDefault(am.PendingMatchId)
     };
 }
