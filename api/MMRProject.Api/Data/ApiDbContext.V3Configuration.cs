@@ -343,6 +343,77 @@ public partial class ApiDbContext
                 .HasConstraintName("fk_queue_entries_player");
         });
 
+        modelBuilder.Entity<GameInvite>(entity =>
+        {
+            entity.ToTable("game_invites");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.OrganizationId).HasColumnName("organization_id");
+            entity.Property(e => e.LeagueId).HasColumnName("league_id");
+            entity.Property(e => e.CreatedByLeaguePlayerId).HasColumnName("created_by_league_player_id");
+            entity.Property(e => e.ShareCode).HasColumnName("share_code").HasMaxLength(12);
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.EndReason).HasColumnName("end_reason");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.CurrentRoundId).HasColumnName("current_round_id");
+            entity.Property(e => e.AcceptanceExpiresAt).HasColumnName("acceptance_expires_at");
+            entity.Property(e => e.PendingMatchId).HasColumnName("pending_match_id");
+            entity.Property(e => e.EndedAt).HasColumnName("ended_at");
+
+            entity.HasIndex(e => e.ShareCode, "ix_game_invites_share_code").IsUnique();
+            entity.HasIndex(e => new { e.LeagueId, e.Status }, "ix_game_invites_league_status");
+
+            entity.HasOne(e => e.League).WithMany()
+                .HasForeignKey(e => e.LeagueId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_game_invites_league");
+
+            entity.HasOne(e => e.CreatedByLeaguePlayer).WithMany()
+                .HasForeignKey(e => e.CreatedByLeaguePlayerId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_game_invites_created_by");
+
+            // The active match is removed when its result is submitted or it is cancelled;
+            // the invite keeps its history and simply stops pointing at the removed match.
+            entity.HasOne(e => e.PendingMatch).WithMany()
+                .HasForeignKey(e => e.PendingMatchId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_game_invites_pending_match");
+        });
+
+        modelBuilder.Entity<GameInviteParticipant>(entity =>
+        {
+            entity.ToTable("game_invite_participants");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.OrganizationId).HasColumnName("organization_id");
+            entity.Property(e => e.GameInviteId).HasColumnName("game_invite_id");
+            entity.Property(e => e.LeagueId).HasColumnName("league_id");
+            entity.Property(e => e.LeaguePlayerId).HasColumnName("league_player_id");
+            entity.Property(e => e.RepresentativeLeaguePlayerId).HasColumnName("representative_league_player_id");
+            entity.Property(e => e.JoinedAt).HasColumnName("joined_at");
+            entity.Property(e => e.AcceptanceStatus).HasColumnName("acceptance_status");
+            entity.Property(e => e.AcceptedAt).HasColumnName("accepted_at");
+            entity.Property(e => e.TeamIndex).HasColumnName("team_index");
+            entity.Property(e => e.SlotIndex).HasColumnName("slot_index");
+
+            // One commitment per player per league (see ADR 0001 and the design doc).
+            entity.HasIndex(e => new { e.LeagueId, e.LeaguePlayerId }, "ix_game_invite_participants_league_player").IsUnique();
+            entity.HasIndex(e => e.GameInviteId, "ix_game_invite_participants_invite");
+
+            entity.HasOne(e => e.GameInvite).WithMany(i => i.Participants)
+                .HasForeignKey(e => e.GameInviteId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_game_invite_participants_invite");
+
+            entity.HasOne(e => e.LeaguePlayer).WithMany()
+                .HasForeignKey(e => e.LeaguePlayerId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_game_invite_participants_player");
+        });
+
         modelBuilder.Entity<RatingHistory>(entity =>
         {
             entity.ToTable("rating_histories");

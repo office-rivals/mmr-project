@@ -13,6 +13,10 @@ import {
 import { AppLink } from '@/components/app-link';
 import { Eyebrow } from '@/components/eyebrow';
 import { PageTitle } from '@/components/page-title';
+import {
+  GameInviteSection,
+  useGameInviteQuery,
+} from '@/components/play/game-invite-section';
 import { PendingMatchDialog } from '@/components/play/pending-match-dialog';
 import { PlayerAvatar } from '@/components/player-avatar';
 import { queueQueryKey } from '@/components/shell/matchmaking-button';
@@ -23,6 +27,7 @@ import {
   parseNativeFormData,
 } from '@/lib/server/action-result';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import { gameInviteAction } from '@/lib/game-invite-actions';
 import {
   queueAction,
   queueActionFn,
@@ -38,6 +43,8 @@ import {
 import type { LeagueContext } from './route';
 import type {
   ActiveMatchResponse,
+  GameInviteResponse,
+  LeaguePlayerResponse,
   PendingMatchTeamResponse,
   QueueStatusResponse,
   QueuedPlayerResponse,
@@ -57,6 +64,8 @@ interface MatchmakingPageData {
   now: number;
   queueStatus: QueueStatusResponse | null;
   activeMatches: ActiveMatchResponse[];
+  gameInvite: GameInviteResponse | null;
+  leaguePlayers: LeaguePlayerResponse[];
 }
 
 // Keep the page available when either optional status call fails.
@@ -64,15 +73,29 @@ const getMatchmakingDataFn = createServerFn({ method: 'GET' })
   .validator((input: OrgLeagueInput) => input)
   .handler(async ({ data }): Promise<MatchmakingPageData> => {
     const apiClientV3 = await requireApiClientV3();
-    const [queueStatus, activeMatches] = await Promise.all([
-      apiClientV3.queueApi
-        .getQueueStatus(data.orgId, data.leagueId)
-        .catch(() => null),
-      apiClientV3.activeMatchesApi
-        .listActiveMatches(data.orgId, data.leagueId)
-        .catch(() => [] as ActiveMatchResponse[]),
-    ]);
-    return { queueStatus, activeMatches, now: Date.now() };
+    const [queueStatus, activeMatches, gameInvite, leaguePlayers] =
+      await Promise.all([
+        apiClientV3.queueApi
+          .getQueueStatus(data.orgId, data.leagueId)
+          .catch(() => null),
+        apiClientV3.activeMatchesApi
+          .listActiveMatches(data.orgId, data.leagueId)
+          .catch(() => [] as ActiveMatchResponse[]),
+        apiClientV3.gameInvitesApi
+          .getCurrentInvite(data.orgId, data.leagueId)
+          .then((current) => current.invite ?? null)
+          .catch(() => null),
+        apiClientV3.leaguePlayersApi
+          .listPlayers(data.orgId, data.leagueId)
+          .catch(() => [] as LeaguePlayerResponse[]),
+      ]);
+    return {
+      queueStatus,
+      activeMatches,
+      gameInvite,
+      leaguePlayers,
+      now: Date.now(),
+    };
   });
 
 const listActiveMatchesFn = createServerFn({ method: 'GET' })
@@ -93,14 +116,23 @@ export const Route = createFileRoute(
       POST: async ({ request }) => {
         const formData = await parseNativeFormData(request);
         const action = formData.get('_action');
+        const orgId = String(formData.get('orgId') ?? '');
+        const leagueId = String(formData.get('leagueId') ?? '');
+        if (action === 'createInvite') {
+          const result = await gameInviteAction({
+            action: 'create',
+            orgId,
+            leagueId,
+          });
+          return nativeFormResponse(request, {
+            ...result,
+            success: result.status === 'ok',
+          });
+        }
         if (action !== 'join' && action !== 'leave') {
           return new Response('Unsupported form action', { status: 400 });
         }
-        const result = await queueAction({
-          action,
-          orgId: String(formData.get('orgId') ?? ''),
-          leagueId: String(formData.get('leagueId') ?? ''),
-        });
+        const result = await queueAction({ action, orgId, leagueId });
         return nativeFormResponse(request, {
           ...result,
           success: result.status === 'ok',
@@ -164,6 +196,9 @@ function MatchmakingPage({
     retry: false,
   });
   const activeMatches = activeMatchesQuery.data ?? [];
+
+  const inviteQuery = useGameInviteQuery(orgId, leagueId, seed.gameInvite);
+  const inInvite = !!inviteQuery.data;
 
   const isInQueue = (queueStatus?.queuedPlayers ?? []).some(
     (p) => p.leaguePlayerId === leaguePlayerId
@@ -301,6 +336,20 @@ function MatchmakingPage({
           <Alert variant="destructive">{formMessage}</Alert>
         ) : null}
 
+        {hasLeaguePlayer ? (
+          <GameInviteSection
+            orgId={orgId}
+            leagueId={leagueId}
+            formAction={`/${orgSlug}/${leagueSlug}/matchmaking`}
+            leaguePlayerId={leaguePlayerId}
+            leaguePlayers={seed.leaguePlayers}
+            seedInvite={seed.gameInvite}
+            seedNow={seed.now}
+            inQueue={isInQueue}
+            playFoundSound={playMatchFoundSound}
+          />
+        ) : null}
+
         <div
           className={cn(
             'grid gap-6 lg:items-start',
@@ -330,6 +379,11 @@ function MatchmakingPage({
                   <p className="text-center text-sm lg:text-left">
                     You need to join this league before you can queue for
                     matches.
+                  </p>
+                ) : inInvite ? (
+                  <p className="text-center text-sm lg:text-left">
+                    You&apos;re in a game invite. Complete it, leave while it is
+                    open, or decline during acceptance before you queue up.
                   </p>
                 ) : isInQueue ? (
                   <>
@@ -448,6 +502,14 @@ function MatchmakingPage({
       />
     </>
   );
+}
+
+function playMatchFoundSound() {
+  try {
+    void new Audio('/sounds/match-found.mp3').play().catch(() => {});
+  } catch {
+    // Audio playback is optional.
+  }
 }
 
 function namesLine(players: QueuedPlayerResponse[]) {

@@ -123,6 +123,11 @@ public class V3PendingMatchCoordinator(
         int requiredPlayers,
         CancellationToken cancellationToken)
     {
+        // Players are read and committed under the league commitment lock, so a game invite
+        // join cannot claim one of them between this read and the insert.
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        await LeagueCommitmentLock.AcquireAsync(dbContext, leagueId, cancellationToken);
+
         var hasPendingMatch = await dbContext.V3PendingMatches
             .AnyAsync(pm => pm.LeagueId == leagueId && pm.Status == AcceptanceStatus.Pending, cancellationToken);
 
@@ -165,6 +170,7 @@ public class V3PendingMatchCoordinator(
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return true;
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException

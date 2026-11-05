@@ -15,6 +15,65 @@ namespace MMRProject.Api.IntegrationTests.Organizations;
 [Collection("Database")]
 public class MembershipClaimTests(PostgresFixture postgres) : IntegrationTestBase(postgres)
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OpenGameInvite_BlocksClaimCreationAndApproval(bool requestBeforeInvite)
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await SeedOrgMember(org.Id, "owner", "owner@test.com", OrganizationRole.Owner);
+        await SeedTestUser(org.Id, league.Id, "requester", "requester@test.com");
+        var target = await SeedPlaceholder(org.Id, "Claim target");
+        var claim = requestBeforeInvite ? await CreateClaimAsync(org.Id, target.Id, "requester") : null;
+
+        AuthenticateAs("requester");
+        var invite = await Client.PostAsync($"api/v3/organizations/{org.Id}/leagues/{league.Id}/game-invites", null);
+        Assert.Equal(HttpStatusCode.OK, invite.StatusCode);
+
+        HttpResponseMessage response;
+        if (claim is null)
+        {
+            response = await Client.PostAsJsonAsync($"api/v3/organizations/{org.Id}/claim-requests",
+                new CreateMembershipClaimRequest { OrganizationMembershipId = target.Id });
+        }
+        else
+        {
+            AuthenticateAs("owner");
+            response = await Client.PostAsync($"api/v3/organizations/{org.Id}/claim-requests/{claim.Id}/approve", null);
+        }
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Approve_AfterCancelledGameInvite_PreservesCreatorHistoryWhenMergingPlayer()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await SeedOrgMember(org.Id, "owner", "owner@test.com", OrganizationRole.Owner);
+        var (_, _, requesterPlayer) = await SeedTestUser(org.Id, league.Id, "requester", "requester@test.com");
+        var target = await SeedPlaceholder(org.Id, "Claim target");
+        var targetPlayer = await SeedLeaguePlayerAsync(org.Id, league.Id, target.Id);
+
+        AuthenticateAs("requester");
+        var created = await Client.PostAsync($"api/v3/organizations/{org.Id}/leagues/{league.Id}/game-invites", null);
+        created.EnsureSuccessStatusCode();
+        var invite = (await ReadJsonAsync<GameInviteResponse>(created))!;
+        var cancelled = await Client.PostAsync($"api/v3/organizations/{org.Id}/leagues/{league.Id}/game-invites/{invite.Id}/cancel", null);
+        cancelled.EnsureSuccessStatusCode();
+
+        var claim = await CreateClaimAsync(org.Id, target.Id, "requester");
+        await ApproveClaimAsync(org.Id, claim.Id, "owner");
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        Assert.False(await db.LeaguePlayers.AnyAsync(lp => lp.Id == requesterPlayer.Id));
+        var history = await db.GameInvites.SingleAsync(i => i.Id == invite.Id);
+        Assert.Equal(GameInviteStatus.Ended, history.Status);
+        Assert.Equal(targetPlayer.Id, history.CreatedByLeaguePlayerId);
+    }
+
     [Fact]
     public async Task ClaimableList_AppliesIdentityPrivacyAndVerifiedEmailRules()
     {

@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using MMRProject.Api.Data;
 using MMRProject.Api.Data.Entities.V3;
 using MMRProject.Api.DTOs.V3;
@@ -28,14 +27,22 @@ public class V3MatchMakingService(
     IUserContextResolver userContextResolver,
     ApiDbContext dbContext,
     IV3MatchesService matchesService,
-    IOrganizationService organizationService
+    IOrganizationService organizationService,
+    IGameInviteService gameInviteService
 ) : IV3MatchMakingService
 {
-    private const string QueueEntryIndexName = "ix_queue_entries_league_player";
-
     public async Task AddPlayerToQueueAsync(Guid orgId, Guid leagueId)
     {
+        // A timed-out invite must not keep its players committed when they try to queue.
+        await gameInviteService.SettleLeagueAsync(leagueId);
+
         var leaguePlayer = await GetCurrentLeaguePlayerAsync(orgId, leagueId);
+
+        // Queue, game invites, pending and active matches share one commitment per
+        // player per league. The checks and the insert run under the league lock so a
+        // concurrent invite join cannot slip in between them.
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        await LeagueCommitmentLock.AcquireAsync(dbContext, leagueId);
 
         var existingEntry = await dbContext.QueueEntries
             .FirstOrDefaultAsync(q => q.LeagueId == leagueId && q.LeaguePlayerId == leaguePlayer.Id);
@@ -67,29 +74,24 @@ public class V3MatchMakingService(
             throw new InvalidArgumentException("You have an active match in progress");
         }
 
-        var queueEntry = new QueueEntry
+        var inGameInvite = await dbContext.GameInviteParticipants
+            .AnyAsync(p => p.LeagueId == leagueId && p.LeaguePlayerId == leaguePlayer.Id);
+
+        if (inGameInvite)
+        {
+            throw new InvalidArgumentException("You are in a game invite. Leave it before joining the queue.");
+        }
+
+        dbContext.QueueEntries.Add(new QueueEntry
         {
             OrganizationId = orgId,
             LeagueId = leagueId,
             LeaguePlayerId = leaguePlayer.Id,
             JoinedAt = DateTimeOffset.UtcNow
-        };
+        });
 
-        dbContext.QueueEntries.Add(queueEntry);
-        try
-        {
-            await dbContext.SaveChangesAsync();
-        }
-        catch (DbUpdateException ex) when (ex.InnerException is PostgresException
-                                           {
-                                               SqlState: PostgresErrorCodes.UniqueViolation,
-                                               ConstraintName: QueueEntryIndexName
-                                           })
-        {
-            dbContext.Entry(queueEntry).State = EntityState.Detached;
-            logger.LogInformation("Player {LeaguePlayerId} already in queue for league {LeagueId}",
-                leaguePlayer.Id, leagueId);
-        }
+        await dbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     public async Task RemovePlayerFromQueueAsync(Guid orgId, Guid leagueId)

@@ -273,6 +273,13 @@ public class MembershipClaimService(
         if (claim.UserId == actorUser.Id && claimantMembership.Role != OrganizationRole.Owner)
             throw new ForbiddenException("Moderators cannot approve their own claim requests");
 
+        // Serialize the activity check and player merge with invite/queue commitments.
+        var commitmentLeagueIds = await dbContext.LeaguePlayers
+            .Where(lp => lp.OrganizationMembershipId == claimantMembership.Id)
+            .Select(lp => lp.LeagueId).Distinct().OrderBy(id => id).ToListAsync();
+        foreach (var leagueId in commitmentLeagueIds)
+            await LeagueCommitmentLock.AcquireAsync(dbContext, leagueId);
+
         await AssertNoActivityAsync(claimantMembership.Id);
         var claimantRole = claimantMembership.Role;
         var now = DateTimeOffset.UtcNow;
@@ -298,10 +305,9 @@ public class MembershipClaimService(
             var leaguePlayers = await dbContext.LeaguePlayers
                 .Where(lp => claimantPlayerIds.Contains(lp.Id))
                 .ToListAsync();
-            var targetLeagueIds = await dbContext.LeaguePlayers
+            var targetLeaguePlayers = await dbContext.LeaguePlayers
                 .Where(lp => lp.OrganizationMembershipId == target.Id)
-                .Select(lp => lp.LeagueId)
-                .ToListAsync();
+                .ToDictionaryAsync(lp => lp.LeagueId, lp => lp.Id);
 
             dbContext.PendingMatchTeamPlayers.RemoveRange(staleTeamPlayers);
             dbContext.PendingMatchAcceptances.RemoveRange(staleAcceptances);
@@ -311,8 +317,15 @@ public class MembershipClaimService(
             // through it. Only duplicates of the target's own players are deleted.
             foreach (var leaguePlayer in leaguePlayers)
             {
-                if (targetLeagueIds.Contains(leaguePlayer.LeagueId))
+                if (targetLeaguePlayers.TryGetValue(leaguePlayer.LeagueId, out var targetPlayerId))
+                {
+                    // Ended invites retain their creator after live roster rows are removed.
+                    // Preserve that history before deleting the duplicate league player.
+                    await dbContext.GameInvites
+                        .Where(i => i.CreatedByLeaguePlayerId == leaguePlayer.Id)
+                        .ExecuteUpdateAsync(s => s.SetProperty(i => i.CreatedByLeaguePlayerId, targetPlayerId));
                     dbContext.LeaguePlayers.Remove(leaguePlayer);
+                }
                 else
                     leaguePlayer.OrganizationMembershipId = target.Id;
             }
@@ -438,7 +451,8 @@ public class MembershipClaimService(
             return true;
         }
 
-        return await dbContext.PendingMatchTeamPlayers.AnyAsync(p =>
+        return await dbContext.GameInviteParticipants.AnyAsync(p => playerIds.Contains(p.LeaguePlayerId))
+               || await dbContext.PendingMatchTeamPlayers.AnyAsync(p =>
                    playerIds.Contains(p.LeaguePlayerId)
                    && (p.PendingMatchTeam.PendingMatch.Status == AcceptanceStatus.Pending
                        || p.PendingMatchTeam.PendingMatch.Status == AcceptanceStatus.Accepted))

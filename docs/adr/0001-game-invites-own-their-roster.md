@@ -1,0 +1,3 @@
+# Game invites own their roster independently of the queue
+
+Game invites gather a specific group through a shared link, including players represented by another participant; their roster and acceptance lifecycle remain independent of the public matchmaking queue. Feeding invite participants into that queue would allow unrelated pairings and would not preserve the group when acceptance fails, while independent invite groups must be able to become ready concurrently. Invite games share the existing match result and rating behavior and retain the existing matchmaking classification; this decision does not require reusing the queue's pending-match storage or rating-based team balancing.

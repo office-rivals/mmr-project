@@ -67,7 +67,8 @@ origin and leave `TRUST_PROXY=false`. The server uses that origin for Clerk and
 native-form validation and removes conflicting forwarded host/protocol headers.
 Set `CLERK_AUTHORIZED_PARTIES` to the explicitly trusted application origins; a
 shared Clerk instance may need both its primary and beta origins. Sign-in and
-sign-up return to this app's `/`; sign-out returns to `/login`.
+sign-up return to this app's `/`, or to the game invite link that sent the visitor
+to sign in (`returnTo`, validated); sign-out returns to `/login`.
 
 `TRUST_PROXY` accepts `false`, `true`, `loopback`, or a comma-separated list of
 proxy IP addresses. Keep the default when the app receives traffic directly.

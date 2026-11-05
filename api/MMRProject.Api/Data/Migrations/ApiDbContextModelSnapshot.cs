@@ -522,6 +522,140 @@ namespace MMRProject.Api.Data.Migrations
                     b.ToTable("legacy_teams", (string)null);
                 });
 
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.GameInvite", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("AcceptanceExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("acceptance_expires_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByLeaguePlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_league_player_id");
+
+                    b.Property<Guid?>("CurrentRoundId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("current_round_id");
+
+                    b.Property<int?>("EndReason")
+                        .HasColumnType("integer")
+                        .HasColumnName("end_reason");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("PendingMatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pending_match_id");
+
+                    b.Property<string>("ShareCode")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("share_code");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByLeaguePlayerId");
+
+                    b.HasIndex("PendingMatchId");
+
+                    b.HasIndex(new[] { "LeagueId", "Status" }, "ix_game_invites_league_status");
+
+                    b.HasIndex(new[] { "ShareCode" }, "ix_game_invites_share_code")
+                        .IsUnique();
+
+                    b.ToTable("game_invites", (string)null);
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.GameInviteParticipant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AcceptanceStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("acceptance_status");
+
+                    b.Property<DateTimeOffset?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("GameInviteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("game_invite_id");
+
+                    b.Property<DateTimeOffset>("JoinedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_id");
+
+                    b.Property<Guid>("LeaguePlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("league_player_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("RepresentativeLeaguePlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("representative_league_player_id");
+
+                    b.Property<int?>("SlotIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("slot_index");
+
+                    b.Property<int?>("TeamIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("team_index");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaguePlayerId");
+
+                    b.HasIndex(new[] { "GameInviteId" }, "ix_game_invite_participants_invite");
+
+                    b.HasIndex(new[] { "LeagueId", "LeaguePlayerId" }, "ix_game_invite_participants_league_player")
+                        .IsUnique();
+
+                    b.ToTable("game_invite_participants", (string)null);
+                });
+
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.League", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1619,6 +1753,56 @@ namespace MMRProject.Api.Data.Migrations
                     b.Navigation("PlayerTwo");
                 });
 
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.GameInvite", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.LeaguePlayer", "CreatedByLeaguePlayer")
+                        .WithMany()
+                        .HasForeignKey("CreatedByLeaguePlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_game_invites_created_by");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.League", "League")
+                        .WithMany()
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_game_invites_league");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.V3PendingMatch", "PendingMatch")
+                        .WithMany()
+                        .HasForeignKey("PendingMatchId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_game_invites_pending_match");
+
+                    b.Navigation("CreatedByLeaguePlayer");
+
+                    b.Navigation("League");
+
+                    b.Navigation("PendingMatch");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.GameInviteParticipant", b =>
+                {
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.GameInvite", "GameInvite")
+                        .WithMany("Participants")
+                        .HasForeignKey("GameInviteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_game_invite_participants_invite");
+
+                    b.HasOne("MMRProject.Api.Data.Entities.V3.LeaguePlayer", "LeaguePlayer")
+                        .WithMany()
+                        .HasForeignKey("LeaguePlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_game_invite_participants_player");
+
+                    b.Navigation("GameInvite");
+
+                    b.Navigation("LeaguePlayer");
+                });
+
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.League", b =>
                 {
                     b.HasOne("MMRProject.Api.Data.Entities.V3.Organization", "Organization")
@@ -2023,6 +2207,11 @@ namespace MMRProject.Api.Data.Migrations
                     b.Navigation("MatchTeamOnes");
 
                     b.Navigation("MatchTeamTwos");
+                });
+
+            modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.GameInvite", b =>
+                {
+                    b.Navigation("Participants");
                 });
 
             modelBuilder.Entity("MMRProject.Api.Data.Entities.V3.MatchTeam", b =>

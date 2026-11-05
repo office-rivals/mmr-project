@@ -45,6 +45,10 @@ import type {
   CreateMembershipClaimRequest,
   ReviewMembershipClaimRequest,
   MembershipClaimRequestResponse,
+  CurrentGameInviteResponse,
+  GameInviteResponse,
+  GameInviteLinkResponse,
+  AddGameInvitePlayersRequest,
 } from '../models/index';
 
 // Me API
@@ -887,6 +891,156 @@ export class V3StatisticsApi extends runtime.BaseAPI {
       method: 'GET',
       headers: {},
       query,
+    });
+    return await response.json();
+  }
+}
+
+// Game invite API (league-scoped). Permissions are enforced by the API.
+export class V3GameInvitesApi extends runtime.BaseAPI {
+  private base(orgId: string, leagueId: string) {
+    return `/api/v3/organizations/${orgId}/leagues/${leagueId}/game-invites`;
+  }
+
+  async getCurrentInvite(
+    orgId: string,
+    leagueId: string
+  ): Promise<CurrentGameInviteResponse> {
+    const response = await this.request({
+      path: this.base(orgId, leagueId),
+      method: 'GET',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async createInvite(orgId: string, leagueId: string): Promise<GameInviteResponse> {
+    const response = await this.request({
+      path: this.base(orgId, leagueId),
+      method: 'POST',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async getInvite(
+    orgId: string,
+    leagueId: string,
+    inviteId: string
+  ): Promise<GameInviteResponse> {
+    const response = await this.request({
+      path: `${this.base(orgId, leagueId)}/${inviteId}`,
+      method: 'GET',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async addPlayers(
+    orgId: string,
+    leagueId: string,
+    inviteId: string,
+    request: AddGameInvitePlayersRequest
+  ): Promise<GameInviteResponse> {
+    const response = await this.request({
+      path: `${this.base(orgId, leagueId)}/${inviteId}/players`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: request,
+    });
+    return await response.json();
+  }
+
+  async removePlayer(
+    orgId: string,
+    leagueId: string,
+    inviteId: string,
+    leaguePlayerId: string
+  ): Promise<GameInviteResponse> {
+    const response = await this.request({
+      path: `${this.base(orgId, leagueId)}/${inviteId}/players/${leaguePlayerId}`,
+      method: 'DELETE',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  /** Leaves the invite. `removeManagedPlayers` also removes players the caller added. */
+  async leave(
+    orgId: string,
+    leagueId: string,
+    inviteId: string,
+    removeManagedPlayers: boolean
+  ): Promise<GameInviteResponse> {
+    const response = await this.request({
+      path: `${this.base(orgId, leagueId)}/${inviteId}/leave`,
+      method: 'POST',
+      headers: {},
+      query: { removeManagedPlayers },
+    });
+    return await response.json();
+  }
+
+  async cancel(
+    orgId: string,
+    leagueId: string,
+    inviteId: string
+  ): Promise<GameInviteResponse> {
+    const response = await this.request({
+      path: `${this.base(orgId, leagueId)}/${inviteId}/cancel`,
+      method: 'POST',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async takeControl(
+    orgId: string,
+    leagueId: string,
+    inviteId: string
+  ): Promise<GameInviteResponse> {
+    const response = await this.request({
+      path: `${this.base(orgId, leagueId)}/${inviteId}/take-control`,
+      method: 'POST',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async respond(
+    orgId: string,
+    leagueId: string,
+    inviteId: string,
+    roundId: string,
+    leaguePlayerId: string,
+    accept: boolean
+  ): Promise<GameInviteResponse> {
+    const verb = accept ? 'accept' : 'decline';
+    const response = await this.request({
+      path: `${this.base(orgId, leagueId)}/${inviteId}/rounds/${roundId}/players/${leaguePlayerId}/${verb}`,
+      method: 'POST',
+      headers: {},
+    });
+    return await response.json();
+  }
+}
+
+// Shared-link API. Works for users who are not yet members; eligibility is checked server-side.
+export class V3GameInviteLinksApi extends runtime.BaseAPI {
+  async getByShareCode(shareCode: string): Promise<GameInviteLinkResponse> {
+    const response = await this.request({
+      path: `/api/v3/game-invites/${encodeURIComponent(shareCode)}`,
+      method: 'GET',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async join(shareCode: string): Promise<GameInviteResponse> {
+    const response = await this.request({
+      path: `/api/v3/game-invites/${encodeURIComponent(shareCode)}/join`,
+      method: 'POST',
+      headers: {},
     });
     return await response.json();
   }
