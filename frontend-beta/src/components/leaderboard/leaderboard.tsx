@@ -11,8 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { SHOW_STREAK_THRESHOLD } from '@/lib/constants';
 import { ratingsByPlayer } from '@/lib/player-stats';
+import { StreakIcon } from './standings';
 import { cn } from '@/lib/utils';
 import type {
   LeaderboardEntryResponse,
@@ -100,7 +100,6 @@ export function Leaderboard({
           <TableBody>
             {entries.map((entry, index) => {
               const isMe = currentLeaguePlayerId === entry.leaguePlayerId;
-              const hot = entry.winningStreak >= SHOW_STREAK_THRESHOLD;
               return (
                 <TableRow
                   key={entry.leaguePlayerId}
@@ -136,8 +135,11 @@ export function Leaderboard({
                           {entry.displayName}
                         </span>
                       ) : null}
-                      <span className="block font-semibold">
-                        {entry.username ?? entry.displayName ?? 'Unknown'}
+                      <span className="flex max-w-full items-center gap-1 font-semibold">
+                        <span className="truncate">
+                          {entry.username ?? entry.displayName ?? 'Unknown'}
+                        </span>
+                        <StreakIcon entry={entry} />
                       </span>
                     </div>
                   </TableCell>
@@ -148,43 +150,16 @@ export function Leaderboard({
                     )}
                   >
                     {entry.wins}–{entry.losses}
-                    {hot ? (
-                      <span className="ml-1" title="Winning streak">
-                        🔥
-                      </span>
-                    ) : null}
                   </TableCell>
                   <TableCell
                     className={cn(wide, 'py-3 text-right tabular-nums')}
                   >
-                    <div className="flex flex-row items-center justify-end gap-1.5">
-                      {entry.wins}
-                      {hot ? (
-                        <span
-                          className="text-xs text-nowrap"
-                          title="Winning streak"
-                        >
-                          {'🔥 '}
-                          {entry.winningStreak}
-                        </span>
-                      ) : null}
-                    </div>
+                    {entry.wins}
                   </TableCell>
                   <TableCell
                     className={cn(wide, 'py-3 text-right tabular-nums')}
                   >
-                    <div className="flex flex-row items-center justify-end gap-1.5">
-                      {entry.losses}
-                      {entry.losingStreak >= SHOW_STREAK_THRESHOLD ? (
-                        <span
-                          className="text-xs text-nowrap"
-                          title="Losing streak"
-                        >
-                          {entry.losingStreak >= 7 ? '⛈️' : '🌧️'}{' '}
-                          {entry.losingStreak}
-                        </span>
-                      ) : null}
-                    </div>
+                    {entry.losses}
                   </TableCell>
                   <TableCell
                     className={cn(wide, 'py-3 text-right tabular-nums')}

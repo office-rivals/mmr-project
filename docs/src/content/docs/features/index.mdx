@@ -11,7 +11,7 @@ These pages describe the beta frontend in [`frontend-beta/`](https://github.com/
 
 ## Feature areas
 
-- **Leaderboards and seasons.** Each league has a leaderboard ranked by MMR, a feed of recent matches with each player's rating change, and a season picker for past seasons. You need 10 matches in a season to be ranked. Until then you're listed under "Unranked", with 🐣 in place of your MMR. A streak of three or more wins shows 🔥, and three or more losses show 🌧️ (⛈️ from seven).
+- **Leaderboards and seasons.** Each league has a leaderboard ranked by MMR, a feed of recent matches with each player's rating change, and a season picker for past seasons. You need 10 matches in a season to be ranked. Until then you're listed under "Unranked", with 🐣 in place of your MMR. A streak of three or more wins shows 🔥 beside the player's name with its length, and three or more losses show 🌧️ (⛈️ from seven).
 - **Matchmaking queue.** Queue up in a league. Once enough players are waiting to fill both teams, the app proposes balanced teams and everyone has about 30 seconds to accept. See [Matchmaking](/features/matchmaking/).
 - **Match submission.** Record a 1v1 or 2v2 result with existing league players, organization members who haven't joined the league yet, or new players you create on the spot. A league uses either fixed-target scoring (the winner reaches an exact score, 10 by default) or free-form scoring (you enter both scores and the higher one wins). See [Match submission](/features/match-submission/).
 - **Random teams.** `/random` splits four names into two teams of two. On a touch screen it can also pick teams from fingers placed on the screen.
@@ -24,9 +24,9 @@ These pages describe the beta frontend in [`frontend-beta/`](https://github.com/
 <Figure caption="A leaderboard with an unranked newcomer, and the KPIs on a player profile">
   <Leaderboard
     rows={[
-      { rank: 1, name: 'riley', wins: 42, losses: 18, score: 1611, winStreak: true },
+      { rank: 1, name: 'riley', wins: 42, losses: 18, score: 1611, winStreak: 4 },
       { rank: 2, name: 'alex', wins: 37, losses: 21, score: 1544, me: true },
-      { rank: 3, name: 'jordan', wins: 12, losses: 25, score: 1290, lossStreak: 'storm' },
+      { rank: 3, name: 'jordan', wins: 12, losses: 25, score: 1290, lossStreak: 7 },
       { rank: null, name: 'casey', wins: 1, losses: 2, score: null },
     ]}
   />

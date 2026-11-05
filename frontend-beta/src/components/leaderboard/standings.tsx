@@ -25,20 +25,28 @@ type Entry = LeaderboardEntryResponse;
 const handle = (e: Entry) => e.username ?? e.displayName ?? 'Unknown';
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
-function StreakIcon({ entry }: { entry: Entry }) {
-  if (entry.winningStreak >= SHOW_STREAK_THRESHOLD)
-    return (
-      <span title={`${entry.winningStreak} wins in a row`} className="text-xs">
-        🔥
+/**
+ * Rides beside the name rather than in a number column, so wins and losses
+ * line up whether or not a row has a streak.
+ */
+export function StreakIcon({ entry }: { entry: Entry }) {
+  const win = entry.winningStreak >= SHOW_STREAK_THRESHOLD;
+  const lose = !win && entry.losingStreak >= SHOW_STREAK_THRESHOLD;
+  if (!win && !lose) return null;
+  const length = win ? entry.winningStreak : entry.losingStreak;
+  const label = `${length} ${win ? 'wins' : 'losses'} in a row`;
+  return (
+    <span
+      title={label}
+      className="inline-flex shrink-0 items-center text-xs font-normal text-muted-foreground tabular-nums"
+    >
+      <span aria-hidden="true">
+        {win ? '🔥' : length >= 7 ? '⛈️' : '🌧️'}
+        {length}
       </span>
-    );
-  if (entry.losingStreak >= SHOW_STREAK_THRESHOLD)
-    return (
-      <span title={`${entry.losingStreak} losses in a row`} className="text-xs">
-        {entry.losingStreak >= 7 ? '⛈️' : '🌧️'}
-      </span>
-    );
-  return null;
+      <span className="sr-only">{`, ${label}`}</span>
+    </span>
+  );
 }
 
 function useMmr() {

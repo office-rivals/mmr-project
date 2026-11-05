@@ -31,6 +31,45 @@ test.describe('Leaderboard page', () => {
     ).toHaveText(['#', 'Player', 'Wins', 'Losses', 'Win %', 'Trend', 'MMR']);
   });
 
+  test('keeps streaks beside the name so the number columns line up', async ({
+    page,
+  }) => {
+    await page.goto(LEAGUE_URL);
+    const rows = page.getByRole('table').first().locator('tbody tr:visible');
+    await expect(rows.first()).toBeVisible();
+    // Visible cells only: #, Player, Wins, Losses, Win %, Trend, MMR.
+    for (const row of await rows.all()) {
+      const cells = row.getByRole('cell');
+      await expect(cells.nth(2)).toHaveText(/^\d+$/);
+      await expect(cells.nth(3)).toHaveText(/^\d+$/);
+    }
+    // The seed has players on a streak, and it shows in the Player cell only.
+    const streak = /\d+ (wins|losses) in a row/;
+    await expect(
+      rows.locator('td:nth-child(2)').filter({ hasText: streak })
+    ).not.toHaveCount(0);
+    await expect(
+      rows.locator('td:not(:nth-child(2))').filter({ hasText: streak })
+    ).toHaveCount(0);
+    // The length shown matches what a screen reader hears and the player's
+    // stats.
+    const row = rows
+      .filter({ has: page.locator('td:nth-child(2) [title$="in a row"]') })
+      .first();
+    const badge = row.locator('[title$="in a row"]');
+    const visible = badge.locator('[aria-hidden]');
+    await expect(visible).toBeVisible();
+    const shown = (await visible.innerText()).replace(/\D/g, '');
+    expect(shown).toMatch(/^\d+$/);
+    await expect(badge.locator('.sr-only')).toHaveText(
+      new RegExp(`^, ${shown} (wins|losses) in a row$`)
+    );
+    await row.click();
+    await expect(
+      page.getByRole('dialog').getByText(new RegExp(`^\\S+ ${shown}$`))
+    ).toBeVisible();
+  });
+
   test('shows the top seven ranked players and links to the standings', async ({
     page,
   }) => {
@@ -64,6 +103,9 @@ test.describe('Leaderboard page', () => {
         'MMR',
       ]);
       await expect(table.getByRole('row')).toHaveCount(1 + 5);
+      // Streaks sit by the name, so W–L holds only the record.
+      for (const row of await table.locator('tbody tr:visible').all())
+        await expect(row.getByRole('cell').nth(2)).toHaveText(/^\d+–\d+$/);
       await expect(
         page.getByRole('link', { name: 'View all standings' })
       ).toBeVisible();
@@ -99,7 +141,7 @@ test.describe('Leaderboard page', () => {
     await page.goto(STANDINGS_URL);
     await expect(page.getByText('Current Season')).toBeVisible();
     await page.getByRole('button', { name: /^Show all/ }).click();
-    const rows = page.getByRole('table').first().locator('tbody tr');
+    const rows = page.getByRole('table').first().locator('tbody tr:visible');
     await expect(rows.filter({ hasText: 'tuser' })).toHaveCount(1);
   });
 
