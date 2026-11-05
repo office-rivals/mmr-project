@@ -6,8 +6,9 @@ export interface LeaderboardRow {
   losses: number;
   score: number | null;
   me?: boolean;
-  winStreak?: boolean;
-  lossStreak?: 'rain' | 'storm';
+  /** Matches in a row; shown from three. */
+  winStreak?: number;
+  lossStreak?: number;
 }
 
 interface Props {
@@ -17,7 +18,6 @@ interface Props {
 const { rows, title } = Astro.props;
 const ranked = rows.filter((r) => r.score !== null);
 const unranked = rows.filter((r) => r.score === null);
-const lossGlyph = { rain: '🌧️', storm: '⛈️' } as const;
 ---
 
 <div class="leaderboard">
@@ -32,15 +32,19 @@ const lossGlyph = { rain: '🌧️', storm: '⛈️' } as const;
           ranked.map((r) => (
             <tr class:list={{ me: r.me }}>
               <td class="n">{r.rank}</td>
-              <td>{r.name}</td>
               <td>
-                {r.wins}
-                {r.winStreak && <small title="Winning streak"> 🔥</small>}
+                {r.name}
+                {r.winStreak && <small title={`${r.winStreak} wins in a row`}> 🔥{r.winStreak}</small>}
+                {r.lossStreak && (
+                  <small title={`${r.lossStreak} losses in a row`}>
+                    {' '}
+                    {r.lossStreak >= 7 ? '⛈️' : '🌧️'}
+                    {r.lossStreak}
+                  </small>
+                )}
               </td>
-              <td>
-                {r.losses}
-                {r.lossStreak && <small title="Losing streak"> {lossGlyph[r.lossStreak]}</small>}
-              </td>
+              <td>{r.wins}</td>
+              <td>{r.losses}</td>
               <td class="r">{r.score}</td>
             </tr>
           ))
