@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1
+
+- The leaderboard shows a streak beside the player's name, so the wins and losses columns line up. In the installed app, pulling to refresh moves the page with your finger and says when to let go.
+- Update TanStack Query to 5.105.0, lucide-react to 1.64.0 and shadcn to 4.23.0 in the beta, and pick up security fixes in transitive dependencies of both frontends.
+- chore(deps): bump seroval from 1.6.9 to 1.6.12 in /frontend-beta
+
 ## 0.5.0
 
 - Update React and React DOM to 19.3.1, Base UI to 1.9.0, TanStack Query to 5.104.3 and cn to 0.5.0.
