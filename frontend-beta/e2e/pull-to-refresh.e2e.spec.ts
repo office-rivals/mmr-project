@@ -99,8 +99,26 @@ test('standalone: pull past threshold shows the indicator and refetches data', a
     timeout: 10_000,
   });
 
+  const content = page.locator('#content');
+  const contentTop = async () => (await content.boundingBox())?.y ?? NaN;
+  const restingTop = await contentTop();
+  // A page's fixed overlays (the full-screen picker, /random's panel) must
+  // stay on the viewport while the page moves.
+  await page.evaluate(() => {
+    const overlay = document.createElement('div');
+    overlay.id = 'fixed-probe';
+    overlay.style.cssText =
+      'position:fixed;top:0;left:0;width:10px;height:10px';
+    document.getElementById('content')!.append(overlay);
+  });
+  const probe = page.locator('#fixed-probe');
+
   await pull(client, { release: false }); // hold the pull
   await expect(indicator(page)).toBeVisible();
+  // Past the threshold the page has followed the finger and says to let go.
+  await expect(indicator(page)).toContainText('Release to refresh');
+  expect(await contentTop()).toBeGreaterThan(restingTop + 60);
+  expect((await probe.boundingBox())?.y).toBe(0);
 
   await client.send('Input.dispatchTouchEvent', {
     type: 'touchEnd',
@@ -108,6 +126,7 @@ test('standalone: pull past threshold shows the indicator and refetches data', a
   }); // release past threshold -> commit
   await refetch; // throws if invalidateAll never fired
   await expect(indicator(page)).toHaveCount(0); // resets to idle
+  await expect.poll(contentTop).toBe(restingTop); // the page is back
 });
 
 test('standalone: /random touch surface is opted out (with positive control)', async ({

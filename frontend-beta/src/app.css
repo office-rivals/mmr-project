@@ -165,6 +165,18 @@
     overscroll-behavior: none;
   }
 
+  /* Pull-to-refresh moves the page with the finger (pull-to-refresh.tsx).
+     An offset, not a transform: a transform would become the containing
+     block of the page's fixed overlays and drag them along. */
+  html[data-pull] #content {
+    position: relative;
+    top: var(--pull-offset, 0px);
+  }
+
+  html[data-pull='settle'] #content {
+    transition: top 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     html {
       scroll-behavior: auto;

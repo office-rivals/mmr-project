@@ -224,6 +224,8 @@ export function TeamMemberField({
       role={fullScreen ? 'dialog' : undefined}
       aria-modal={fullScreen || undefined}
       aria-labelledby={fullScreen ? titleId : undefined}
+      // A drag down its list must scroll it, not refresh the page under it.
+      data-no-pull-to-refresh={fullScreen ? '' : undefined}
       onMouseDown={fullScreen ? keepInputFocus : undefined}
       style={fullScreen ? layer : undefined}
       className={cn(
