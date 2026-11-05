@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.2
+
+- Update TanStack Query to 5.105.0, lucide-react to 1.64.0 and shadcn to 4.23.0 in the beta, and pick up security fixes in transitive dependencies of both frontends.
+
 ## 1.7.1
 
 - Patch security advisories in zod, dompurify, vitest and ip-address, and update TanStack Router and Start in the beta.
