@@ -534,3 +534,74 @@ export function TokenResponseFromJSON(json: any): TokenResponse {
 export function CreateTokenResponseFromJSON(json: any): CreateTokenResponse {
   return json;
 }
+
+// Game invite DTOs (api/MMRProject.Api/DTOs/V3/GameInviteDtos.cs)
+export enum GameInviteStatus {
+  Waiting = 'Waiting',
+  AwaitingAcceptance = 'AwaitingAcceptance',
+  Started = 'Started',
+  Ended = 'Ended',
+}
+
+export enum GameInviteEndReason {
+  CreatorCancelled = 'CreatorCancelled',
+  CreatorLeft = 'CreatorLeft',
+  CreatorDeclined = 'CreatorDeclined',
+  CreatorTimedOut = 'CreatorTimedOut',
+  Expired = 'Expired',
+}
+
+export enum GameInviteEligibility {
+  Eligible = 'Eligible',
+  NotOrganizationMember = 'NotOrganizationMember',
+  NotLeagueMember = 'NotLeagueMember',
+}
+
+export interface CurrentGameInviteResponse {
+  invite?: GameInviteResponse | null;
+}
+
+export interface GameInviteResponse {
+  id: string;
+  shareCode: string;
+  status: GameInviteStatus;
+  endReason?: GameInviteEndReason | null;
+  createdAt: string;
+  expiresAt: string;
+  acceptanceExpiresAt?: string | null;
+  /** Changes every time teams are drawn; responses must echo it. */
+  roundId?: string | null;
+  capacity: number;
+  createdByLeaguePlayerId: string;
+  pendingMatchId?: string | null;
+  participants: GameInviteParticipantResponse[];
+  /** Empty until the roster is full and teams are drawn. */
+  teams: PendingMatchTeamResponse[];
+}
+
+export interface GameInviteParticipantResponse {
+  leaguePlayerId: string;
+  displayName?: string;
+  username?: string;
+  representativeLeaguePlayerId: string;
+  isCreator: boolean;
+  acceptanceStatus: AcceptanceStatus;
+  acceptedAt?: string | null;
+  joinedAt: string;
+}
+
+export interface GameInviteLinkResponse {
+  organizationId: string;
+  organizationSlug: string;
+  organizationName: string;
+  leagueId: string;
+  leagueSlug: string;
+  leagueName: string;
+  eligibility: GameInviteEligibility;
+  /** Present only for eligible viewers. */
+  invite?: GameInviteResponse | null;
+}
+
+export interface AddGameInvitePlayersRequest {
+  leaguePlayerIds: string[];
+}

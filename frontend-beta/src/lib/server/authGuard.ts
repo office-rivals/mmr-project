@@ -1,6 +1,8 @@
 import { createMiddleware } from '@tanstack/react-start';
 import { redirect } from '@tanstack/react-router';
+import { getRequest } from '@tanstack/react-start/server';
 
+import { safeInviteReturnPath } from '../game-invite';
 import { isPublicAssetPath } from '../public-assets';
 
 const PUBLIC_PATH_PREFIXES = ['/login', '/sign-up'];
@@ -27,8 +29,19 @@ export const authGuardMiddleware = createMiddleware({ type: 'request' }).server(
       pathname.startsWith(prefix)
     );
 
-    if (!userId && !isNonAuthedPathname) return redirect303('/login');
-    if (userId && isNonAuthedPathname) return redirect303('/');
+    if (!userId && !isNonAuthedPathname) {
+      // A shared invite link returns the visitor to itself after sign-in.
+      const returnTo = safeInviteReturnPath(pathname);
+      return redirect303(
+        returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login'
+      );
+    }
+    if (userId && isNonAuthedPathname) {
+      const returnTo = safeInviteReturnPath(
+        new URL(getRequest().url).searchParams.get('returnTo')
+      );
+      return redirect303(returnTo ?? '/');
+    }
 
     return next();
   }

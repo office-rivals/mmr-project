@@ -22,6 +22,7 @@ import { Route as AuthedOrgSlugIndexRouteImport } from './routes/_authed/$orgSlu
 import { Route as AuthedOrgSlugLeagueSlugRouteRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/route'
 import { Route as AuthedOrgSlugClaimRouteImport } from './routes/_authed/$orgSlug/claim'
 import { Route as AuthedOrgSlugSettingsRouteImport } from './routes/_authed/$orgSlug/settings'
+import { Route as AuthedGameInvitesCodeRouteImport } from './routes/_authed/game-invites/$code'
 import { Route as AuthedJoinIndexRouteImport } from './routes/_authed/join/index'
 import { Route as AuthedJoinCodeRouteImport } from './routes/_authed/join/$code'
 import { Route as AdminOrgSlugIndexRouteImport } from './routes/admin/$orgSlug/index'
@@ -107,6 +108,11 @@ const AuthedOrgSlugClaimRoute = AuthedOrgSlugClaimRouteImport.update({
 const AuthedOrgSlugSettingsRoute = AuthedOrgSlugSettingsRouteImport.update({
   id: '/$orgSlug/settings',
   path: '/$orgSlug/settings',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedGameInvitesCodeRoute = AuthedGameInvitesCodeRouteImport.update({
+  id: '/game-invites/$code',
+  path: '/game-invites/$code',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedJoinIndexRoute = AuthedJoinIndexRouteImport.update({
@@ -244,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/$leagueSlug': typeof AuthedOrgSlugLeagueSlugRouteRouteWithChildren
   '/$orgSlug/claim': typeof AuthedOrgSlugClaimRoute
   '/$orgSlug/settings': typeof AuthedOrgSlugSettingsRoute
+  '/game-invites/$code': typeof AuthedGameInvitesCodeRoute
   '/join/$code': typeof AuthedJoinCodeRoute
   '/admin/$orgSlug/members': typeof AdminOrgSlugMembersRoute
   '/$orgSlug/': typeof AuthedOrgSlugIndexRoute
@@ -276,6 +283,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/$orgSlug/claim': typeof AuthedOrgSlugClaimRoute
   '/$orgSlug/settings': typeof AuthedOrgSlugSettingsRoute
+  '/game-invites/$code': typeof AuthedGameInvitesCodeRoute
   '/join/$code': typeof AuthedJoinCodeRoute
   '/admin/$orgSlug/members': typeof AdminOrgSlugMembersRoute
   '/$orgSlug': typeof AuthedOrgSlugIndexRoute
@@ -312,6 +320,7 @@ export interface FileRoutesById {
   '/_authed/$orgSlug/$leagueSlug': typeof AuthedOrgSlugLeagueSlugRouteRouteWithChildren
   '/_authed/$orgSlug/claim': typeof AuthedOrgSlugClaimRoute
   '/_authed/$orgSlug/settings': typeof AuthedOrgSlugSettingsRoute
+  '/_authed/game-invites/$code': typeof AuthedGameInvitesCodeRoute
   '/_authed/join/$code': typeof AuthedJoinCodeRoute
   '/admin/$orgSlug/members': typeof AdminOrgSlugMembersRoute
   '/_authed/$orgSlug/': typeof AuthedOrgSlugIndexRoute
@@ -349,6 +358,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/$leagueSlug'
     | '/$orgSlug/claim'
     | '/$orgSlug/settings'
+    | '/game-invites/$code'
     | '/join/$code'
     | '/admin/$orgSlug/members'
     | '/$orgSlug/'
@@ -381,6 +391,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/$orgSlug/claim'
     | '/$orgSlug/settings'
+    | '/game-invites/$code'
     | '/join/$code'
     | '/admin/$orgSlug/members'
     | '/$orgSlug'
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/_authed/$orgSlug/$leagueSlug'
     | '/_authed/$orgSlug/claim'
     | '/_authed/$orgSlug/settings'
+    | '/_authed/game-invites/$code'
     | '/_authed/join/$code'
     | '/admin/$orgSlug/members'
     | '/_authed/$orgSlug/'
@@ -541,6 +553,13 @@ declare module '@tanstack/react-router' {
       path: '/$orgSlug/settings'
       fullPath: '/$orgSlug/settings'
       preLoaderRoute: typeof AuthedOrgSlugSettingsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/game-invites/$code': {
+      id: '/_authed/game-invites/$code'
+      path: '/game-invites/$code'
+      fullPath: '/game-invites/$code'
+      preLoaderRoute: typeof AuthedGameInvitesCodeRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/join/': {
@@ -788,6 +807,7 @@ interface AuthedRouteChildren {
   AuthedOrgSlugLeagueSlugRouteRoute: typeof AuthedOrgSlugLeagueSlugRouteRouteWithChildren
   AuthedOrgSlugClaimRoute: typeof AuthedOrgSlugClaimRoute
   AuthedOrgSlugSettingsRoute: typeof AuthedOrgSlugSettingsRoute
+  AuthedGameInvitesCodeRoute: typeof AuthedGameInvitesCodeRoute
   AuthedJoinCodeRoute: typeof AuthedJoinCodeRoute
   AuthedOrgSlugIndexRoute: typeof AuthedOrgSlugIndexRoute
   AuthedJoinIndexRoute: typeof AuthedJoinIndexRoute
@@ -801,6 +821,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
     AuthedOrgSlugLeagueSlugRouteRouteWithChildren,
   AuthedOrgSlugClaimRoute: AuthedOrgSlugClaimRoute,
   AuthedOrgSlugSettingsRoute: AuthedOrgSlugSettingsRoute,
+  AuthedGameInvitesCodeRoute: AuthedGameInvitesCodeRoute,
   AuthedJoinCodeRoute: AuthedJoinCodeRoute,
   AuthedOrgSlugIndexRoute: AuthedOrgSlugIndexRoute,
   AuthedJoinIndexRoute: AuthedJoinIndexRoute,

@@ -67,6 +67,10 @@ public partial class ApiDbContext : DbContext
 
     public virtual DbSet<QueueEntry> QueueEntries { get; set; }
 
+    public virtual DbSet<GameInvite> GameInvites { get; set; }
+
+    public virtual DbSet<GameInviteParticipant> GameInviteParticipants { get; set; }
+
     public virtual DbSet<RatingHistory> RatingHistories { get; set; }
 
     public virtual DbSet<V3PersonalAccessToken> V3PersonalAccessTokens { get; set; }
