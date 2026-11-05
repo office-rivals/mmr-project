@@ -9,6 +9,7 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { renderToString } from 'react-dom/server';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   AcceptanceStatus,
@@ -78,9 +79,11 @@ function mount(
       <GameInviteSection
         orgId="org"
         leagueId="league"
+        formAction="/org/league/matchmaking"
         leaguePlayerId={viewer}
         leaguePlayers={[]}
         seedInvite={invite}
+        seedNow={Date.now()}
         inQueue={false}
         inviteId={inviteId}
       />
@@ -104,6 +107,47 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   queryClient.clear();
+});
+
+describe('server rendering', () => {
+  const renderOnServer = (invite: GameInviteResponse | null) =>
+    renderToString(
+      <QueryClientProvider client={queryClient}>
+        <GameInviteSection
+          orgId="org"
+          leagueId="league"
+          formAction="/org/league/matchmaking"
+          leaguePlayerId="viewer"
+          leaguePlayers={[]}
+          seedInvite={invite}
+          seedNow={Date.parse('2026-01-01T00:00:00Z')}
+          inQueue={false}
+        />
+      </QueryClientProvider>
+    );
+
+  it('renders the countdown from the seed, not the current time', () => {
+    const invite = {
+      ...fixture(),
+      expiresAt: '2026-01-01T00:10:00Z',
+    };
+    const first = renderOnServer(invite);
+    const spy = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 5_000);
+    const second = renderOnServer(invite);
+    spy.mockRestore();
+    expect(first).toContain('10:00');
+    expect(second).toBe(first);
+  });
+
+  it('renders Create as a native form that posts without JavaScript', () => {
+    const html = renderOnServer(null);
+    expect(html).toContain('method="post"');
+    expect(html).toContain('action="/org/league/matchmaking"');
+    expect(html).toContain('name="_action" value="createInvite"');
+    expect(html).toContain('name="orgId" value="org"');
+    expect(html).toContain('name="leagueId" value="league"');
+    expect(html).toMatch(/<button[^>]*type="submit"[^>]*>Create game invite/);
+  });
 });
 
 describe('game invite interactions', () => {

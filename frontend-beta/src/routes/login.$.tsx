@@ -24,7 +24,10 @@ function LoginPage() {
         routing="path"
         path="/login"
         signUpUrl={signUpUrl}
-        fallbackRedirectUrl={returnTo ?? '/'}
+        // ClerkProvider forces both redirects to `/`; a forced value outranks a
+        // fallback, so the invite path must be forced here to win.
+        forceRedirectUrl={returnTo ?? '/'}
+        signUpForceRedirectUrl={returnTo ?? '/'}
       />
     </div>
   );

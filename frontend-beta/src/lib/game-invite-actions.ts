@@ -210,28 +210,30 @@ export const getGameInviteLeaguePlayersFn = createServerFn({ method: 'GET' })
   });
 
 export type JoinGameInviteResult =
-  | { status: 'ok'; orgSlug: string; leagueSlug: string }
-  | { status: 'error'; message: string };
+  { status: 'ok' } | { status: 'error'; message: string };
 
-/** Explicit join from a shared link. Never runs from a preview or a loader. */
+/**
+ * Explicit join from a shared link. Never runs from a preview or a loader.
+ * Shared by the RPC below and the no-JS form POST on the shared-link route.
+ */
+export const joinGameInvite = createServerOnlyFn(async function joinGameInvite(
+  code: string
+): Promise<JoinGameInviteResult> {
+  const api = (await requireApiClientV3()).gameInviteLinksApi;
+  try {
+    await api.join(code);
+    return { status: 'ok' };
+  } catch (error) {
+    const { status, message } = await getApiErrorDetails(
+      error,
+      'Failed to join the game invite'
+    );
+    return failServerAction(status, { status: 'error', message });
+  }
+});
+
 export const joinGameInviteFn = createServerFn({ method: 'POST' })
-  .validator(
-    (input: { code: string; orgSlug: string; leagueSlug: string }) => input
-  )
-  .handler(async ({ data }): Promise<JoinGameInviteResult> => {
-    const api = (await requireApiClientV3()).gameInviteLinksApi;
-    try {
-      await api.join(data.code);
-      return {
-        status: 'ok',
-        orgSlug: data.orgSlug,
-        leagueSlug: data.leagueSlug,
-      };
-    } catch (error) {
-      const { status, message } = await getApiErrorDetails(
-        error,
-        'Failed to join the game invite'
-      );
-      return failServerAction(status, { status: 'error', message });
-    }
-  });
+  .validator((code: string) => code)
+  .handler(({ data: code }): Promise<JoinGameInviteResult> =>
+    joinGameInvite(code)
+  );

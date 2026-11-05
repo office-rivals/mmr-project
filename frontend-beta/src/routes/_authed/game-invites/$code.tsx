@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   eligibilityMessage,
+  inviteLinkPath,
   openSpots,
   endedInviteMessage,
   formatCountdown,
@@ -19,8 +20,13 @@ import {
 import {
   getGameInviteLinkFn,
   getGameInviteLeaguePlayersFn,
+  joinGameInvite,
   joinGameInviteFn,
 } from '@/lib/game-invite-actions';
+import {
+  nativeFormResponse,
+  parseNativeFormData,
+} from '@/lib/server/action-result';
 import {
   GameInviteSection,
   GameInviteShareLink,
@@ -40,6 +46,8 @@ interface GameInviteLinkPageData {
   /** The viewer's league player in the invite's league, if they belong to it. */
   viewerLeaguePlayerId: string | null;
   leaguePlayers: LeaguePlayerResponse[];
+  /** Loader timestamp that seeds the countdown clocks, identical on server and client. */
+  now: number;
 }
 
 function viewerLeaguePlayerIdFor(
@@ -57,6 +65,23 @@ function viewerLeaguePlayerIdFor(
 // membership message. Eligibility is decided by the API, which withholds the
 // roster from anyone who may not see it.
 export const Route = createFileRoute('/_authed/game-invites/$code')({
+  server: {
+    handlers: {
+      // The no-JS Join form. Success redirects back here, where the viewer
+      // now sees the invite they are in.
+      POST: async ({ request, params }) => {
+        const formData = await parseNativeFormData(request);
+        if (formData.get('_action') !== 'join') {
+          return new Response('Unsupported form action', { status: 400 });
+        }
+        const result = await joinGameInvite(params.code);
+        return nativeFormResponse(request, {
+          ...result,
+          success: result.status === 'ok',
+        });
+      },
+    },
+  },
   loader: async ({ context, params }): Promise<GameInviteLinkPageData> => {
     const link = await context.queryClient.fetchQuery({
       queryKey: ['game-invite-link', params.code],
@@ -74,6 +99,7 @@ export const Route = createFileRoute('/_authed/game-invites/$code')({
               data: { orgId: link.organizationId, leagueId: link.leagueId },
             })
           : [],
+      now: Date.now(),
     };
   },
   head: () => ({ meta: [{ title: 'Game invite' }] }),
@@ -85,6 +111,7 @@ function GameInviteLinkPage() {
     link: seedLink,
     viewerLeaguePlayerId,
     leaguePlayers,
+    now: seedNow,
   } = Route.useLoaderData();
   const { code } = Route.useParams();
   const linkQuery = useQuery({
@@ -129,6 +156,7 @@ function GameInviteLinkPage() {
       link={link}
       viewerLeaguePlayerId={viewerLeaguePlayerId}
       leaguePlayers={leaguePlayers}
+      seedNow={seedNow}
     />
   );
 }
@@ -145,32 +173,30 @@ function GameInviteLinkContent({
   link,
   viewerLeaguePlayerId,
   leaguePlayers,
+  seedNow,
 }: {
   code: string;
   link: GameInviteLinkResponse;
   viewerLeaguePlayerId: string | null;
   leaguePlayers: LeaguePlayerResponse[];
+  seedNow: number;
 }) {
   const queryClient = useQueryClient();
   const [failure, setFailure] = useState<string | null>(null);
   const playHref = `/${link.organizationSlug}/${link.leagueSlug}/matchmaking`;
   const eligible = link.eligibility === GameInviteEligibility.Eligible;
   const invite = link.invite ?? null;
-  const [now, setNow] = useState(() => Date.now());
+  // Seeded from the loader so hydration matches the server render, then the
+  // browser clock takes over.
+  const [now, setNow] = useState(seedNow);
   useEffect(() => {
+    setNow(Date.now());
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
 
   const join = useMutation({
-    mutationFn: () =>
-      joinGameInviteFn({
-        data: {
-          code,
-          orgSlug: link.organizationSlug,
-          leagueSlug: link.leagueSlug,
-        },
-      }),
+    mutationFn: () => joinGameInviteFn({ data: code }),
     onSuccess: async (result) => {
       if (result.status === 'error') {
         setFailure(result.message);
@@ -212,9 +238,11 @@ function GameInviteLinkContent({
           <GameInviteSection
             orgId={link.organizationId}
             leagueId={link.leagueId}
+            formAction={playHref}
             leaguePlayerId={viewerLeaguePlayerId}
             leaguePlayers={leaguePlayers}
             seedInvite={invite}
+            seedNow={seedNow}
             inviteId={invite.id}
             inQueue={false}
           />
@@ -323,17 +351,25 @@ function GameInviteLinkContent({
               </div>
             ) : invite.status === GameInviteStatus.Waiting &&
               viewerLeaguePlayerId ? (
-              <Button
-                type="button"
-                className="h-12 w-full text-base font-bold"
-                disabled={join.isPending}
-                onClick={() => {
+              <form
+                method="post"
+                action={inviteLinkPath(code)}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (join.isPending) return;
                   setFailure(null);
                   join.mutate();
                 }}
               >
-                Join game
-              </Button>
+                <input hidden type="hidden" name="_action" value="join" />
+                <Button
+                  type="submit"
+                  className="h-12 w-full text-base font-bold"
+                  disabled={join.isPending}
+                >
+                  Join game
+                </Button>
+              </form>
             ) : invite.status === GameInviteStatus.Waiting ? (
               <p className="text-sm text-muted-foreground">
                 Join the league to take a spot.

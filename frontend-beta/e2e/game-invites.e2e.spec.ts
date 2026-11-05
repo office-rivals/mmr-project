@@ -104,4 +104,20 @@ test.describe('Game invite sign-in return', () => {
       /\/login\?returnTo=%2Fgame-invites%2FABCDEF123$/
     );
   });
+
+  test('completing sign-in lands on the invite, not home', async ({ page }) => {
+    const email = process.env.E2E_USER_EMAIL;
+    const password = process.env.E2E_USER_PASSWORD;
+    if (!email || !password) throw new Error('E2E credentials are not set');
+
+    await page.goto('/game-invites/ABCDEF123');
+    await page.locator('input[name=identifier]').fill(email);
+    await page.locator('input[name=identifier]').press('Enter');
+    await page.locator('input[name=password]').fill(password);
+    await page.locator('input[name=password]').press('Enter');
+
+    await expect(page).toHaveURL(/\/game-invites\/ABCDEF123$/, {
+      timeout: 15_000,
+    });
+  });
 });

@@ -27,6 +27,7 @@ import {
   parseNativeFormData,
 } from '@/lib/server/action-result';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
+import { gameInviteAction } from '@/lib/game-invite-actions';
 import {
   queueAction,
   queueActionFn,
@@ -115,14 +116,23 @@ export const Route = createFileRoute(
       POST: async ({ request }) => {
         const formData = await parseNativeFormData(request);
         const action = formData.get('_action');
+        const orgId = String(formData.get('orgId') ?? '');
+        const leagueId = String(formData.get('leagueId') ?? '');
+        if (action === 'createInvite') {
+          const result = await gameInviteAction({
+            action: 'create',
+            orgId,
+            leagueId,
+          });
+          return nativeFormResponse(request, {
+            ...result,
+            success: result.status === 'ok',
+          });
+        }
         if (action !== 'join' && action !== 'leave') {
           return new Response('Unsupported form action', { status: 400 });
         }
-        const result = await queueAction({
-          action,
-          orgId: String(formData.get('orgId') ?? ''),
-          leagueId: String(formData.get('leagueId') ?? ''),
-        });
+        const result = await queueAction({ action, orgId, leagueId });
         return nativeFormResponse(request, {
           ...result,
           success: result.status === 'ok',
@@ -330,9 +340,11 @@ function MatchmakingPage({
           <GameInviteSection
             orgId={orgId}
             leagueId={leagueId}
+            formAction={`/${orgSlug}/${leagueSlug}/matchmaking`}
             leaguePlayerId={leaguePlayerId}
             leaguePlayers={seed.leaguePlayers}
             seedInvite={seed.gameInvite}
+            seedNow={seed.now}
             inQueue={isInQueue}
             playFoundSound={playMatchFoundSound}
           />

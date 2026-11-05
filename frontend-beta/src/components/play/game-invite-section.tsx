@@ -104,10 +104,17 @@ export function useGameInviteQuery(
 interface GameInviteSectionProps {
   orgId: string;
   leagueId: string;
+  /** Same-route POST target for the native Create form (the Play page). */
+  formAction: string;
   leaguePlayerId: string | null;
   /** Existing league players the viewer may add. */
   leaguePlayers: LeaguePlayerResponse[];
   seedInvite: GameInviteResponse | null;
+  /**
+   * Loader timestamp that seeds the countdown clock, so server and hydrated
+   * renders agree. Reading `Date.now()` during render would not.
+   */
+  seedNow: number;
   /** The viewer is queued; a player can't be in the queue and an invite together. */
   inQueue: boolean;
   /** Keep a shared-link view tied to this invite, including its terminal state. */
@@ -121,9 +128,11 @@ type Notice = { tone: 'success' | 'error' | 'info'; text: string };
 export function GameInviteSection({
   orgId,
   leagueId,
+  formAction,
   leaguePlayerId,
   leaguePlayers,
   seedInvite,
+  seedNow,
   inQueue,
   inviteId,
   playFoundSound,
@@ -172,7 +181,9 @@ export function GameInviteSection({
   }, [invite, inviteId, orgId, leagueId]);
 
   // A clock for the countdowns. It only runs while there is an invite to count.
-  const [now, setNow] = useState(() => Date.now());
+  // It starts from the loader's timestamp and adopts the browser clock once
+  // mounted, so hydration never sees a different second than the server did.
+  const [now, setNow] = useState(seedNow);
   useEffect(() => {
     if (!invite) return;
     setNow(Date.now());
@@ -334,15 +345,26 @@ export function GameInviteSection({
                 ? 'Leave the queue before starting a game invite.'
                 : 'Start one with the spots you know. Share the link with the people you want to play with.'}
             </p>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-12 w-full text-base font-semibold"
-              disabled={inQueue || act.isPending}
-              onClick={() => run('create')}
+            <form
+              method="post"
+              action={formAction}
+              onSubmit={(event) => {
+                event.preventDefault();
+                run('create');
+              }}
             >
-              Create game invite
-            </Button>
+              <input hidden type="hidden" name="_action" value="createInvite" />
+              <input hidden type="hidden" name="orgId" value={orgId} />
+              <input hidden type="hidden" name="leagueId" value={leagueId} />
+              <Button
+                type="submit"
+                variant="outline"
+                className="h-12 w-full text-base font-semibold"
+                disabled={inQueue || act.isPending}
+              >
+                Create game invite
+              </Button>
+            </form>
           </div>
         ) : invite.status === GameInviteStatus.Waiting ? (
           <WaitingView
@@ -417,8 +439,10 @@ export function GameInviteShareLink({ shareCode }: { shareCode: string }) {
   const [feedback, setFeedback] = useState<string | null>(null);
   useEffect(() => setOrigin(window.location.origin), []);
   const url = `${origin}${inviteLinkPath(shareCode)}`;
-  const canShare =
-    typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  // Detected after mount: the server cannot know, and reading `navigator`
+  // during render would change the hydrated markup.
+  const [canShare, setCanShare] = useState(false);
+  useEffect(() => setCanShare(typeof navigator.share === 'function'), []);
 
   const copy = async () => {
     try {
