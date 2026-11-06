@@ -14,6 +14,7 @@ import {
   type Result,
   type WeekChange,
 } from '@/lib/player-stats';
+import { streakGlyph } from '@/lib/streak';
 import { cn, getPlayerDisplayName } from '@/lib/utils';
 import type {
   LeaderboardEntryResponse,
@@ -25,24 +26,39 @@ type Entry = LeaderboardEntryResponse;
 const handle = (e: Entry) => e.username ?? e.displayName ?? 'Unknown';
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
+export function activeStreak(entry: Entry) {
+  const win = entry.winningStreak >= SHOW_STREAK_THRESHOLD;
+  if (!win && entry.losingStreak < SHOW_STREAK_THRESHOLD) return null;
+  const length = win ? entry.winningStreak : entry.losingStreak;
+  const label = `${length} ${win ? 'wins' : 'losses'} in a row`;
+  return { win, length, label };
+}
+
 /**
  * Rides beside the name rather than in a number column, so wins and losses
  * line up whether or not a row has a streak.
  */
-export function StreakIcon({ entry }: { entry: Entry }) {
-  const win = entry.winningStreak >= SHOW_STREAK_THRESHOLD;
-  const lose = !win && entry.losingStreak >= SHOW_STREAK_THRESHOLD;
-  if (!win && !lose) return null;
-  const length = win ? entry.winningStreak : entry.losingStreak;
-  const label = `${length} ${win ? 'wins' : 'losses'} in a row`;
+export function StreakIcon({
+  entry,
+  className,
+}: {
+  entry: Entry;
+  className?: string;
+}) {
+  const streak = activeStreak(entry);
+  if (!streak) return null;
+  const { win, length, label } = streak;
   return (
     <span
       title={label}
-      className="inline-flex shrink-0 items-center text-xs font-normal text-muted-foreground tabular-nums"
+      className={cn(
+        'inline-flex shrink-0 items-center text-xs font-normal text-muted-foreground tabular-nums',
+        className
+      )}
     >
       <span aria-hidden="true">
-        {win ? '🔥' : length >= 7 ? '⛈️' : '🌧️'}
-        {length}
+        {streakGlyph(win, length)}
+        <span className="ml-1">{length}</span>
       </span>
       <span className="sr-only">{`, ${label}`}</span>
     </span>
@@ -294,7 +310,7 @@ export function StreaksCard({
             )}
           >
             <span className="flex-1 truncate">{handle(entry)}</span>
-            <span aria-hidden="true">{win ? '🔥' : '🌧️'}</span>
+            <span aria-hidden="true">{streakGlyph(win, length)}</span>
             <span className="w-8 text-right font-bold">
               {win ? 'W' : 'L'}
               {length}

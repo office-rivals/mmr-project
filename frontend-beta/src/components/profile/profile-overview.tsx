@@ -3,6 +3,7 @@ import { Flame, TrendingUp, Trophy } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
 import { Eyebrow } from '@/components/eyebrow';
 import { PlayerAvatar } from '@/components/player-avatar';
+import { TileStreakGlyph } from '@/components/streak-glyph';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { cn, getPlayerDisplayName } from '@/lib/utils';
@@ -206,7 +207,7 @@ export function ProfileKpis({
           streak ? (
             <>
               {streak}
-              {stats.winningStreak >= 3 ? ' 🔥' : null}
+              <TileStreakGlyph {...stats} />
             </>
           ) : (
             '—'
