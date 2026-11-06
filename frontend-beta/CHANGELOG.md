@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2
+
+- Streak icons now grow with the streak (wins go from 🔥 to 🚀 at seven and 🐐 at eleven; losses from 🌧️ through ⛈️, ❄️ and ☃️ to 🪦 at thirteen), and the home leaderboard shows them after the wins or losses, as the original app does.
+
 ## 0.5.1
 
 - The leaderboard shows a streak beside the player's name, so the wins and losses columns line up. In the installed app, pulling to refresh moves the page with your finger and says when to let go.
