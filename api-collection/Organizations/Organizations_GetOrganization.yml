@@ -1,0 +1,96 @@
+info:
+  name: Organizations_GetOrganization
+  type: http
+  seq: 2
+  tags:
+    - Organizations
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v3/organizations/:orgId"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          {
+            "id": "",
+            "name": "",
+            "slug": "",
+            "createdAt": ""
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "name": "",
+            "slug": "",
+            "createdAt": ""
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "name": "",
+            "slug": "",
+            "createdAt": ""
+          }

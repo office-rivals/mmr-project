@@ -1,0 +1,6 @@
+info:
+  name: Hardware
+  type: folder
+
+request:
+  auth: inherit

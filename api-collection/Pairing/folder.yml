@@ -1,0 +1,6 @@
+info:
+  name: Pairing
+  type: folder
+
+request:
+  auth: inherit

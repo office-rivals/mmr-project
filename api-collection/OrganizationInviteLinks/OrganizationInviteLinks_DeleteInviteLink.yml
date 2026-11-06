@@ -1,0 +1,45 @@
+info:
+  name: OrganizationInviteLinks_DeleteInviteLink
+  type: http
+  seq: 3
+  tags:
+    - OrganizationInviteLinks
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/invite-links/:linkId"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: linkId
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/invite-links/:linkId"
+      method: DELETE
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: linkId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: ""

@@ -1,0 +1,51 @@
+info:
+  name: V3PendingMatches_AcceptPendingMatch
+  type: http
+  seq: 2
+  tags:
+    - V3PendingMatches
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/pending-matches/:pendingMatchId/accept"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+    - name: pendingMatchId
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/pending-matches/:pendingMatchId/accept"
+      method: POST
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: pendingMatchId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: ""

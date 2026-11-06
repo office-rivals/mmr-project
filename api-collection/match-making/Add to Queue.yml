@@ -1,0 +1,18 @@
+info:
+  name: Add to Queue
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{api_host}}/api/v1/match-making/queue"
+  body:
+    type: json
+    data: "{}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

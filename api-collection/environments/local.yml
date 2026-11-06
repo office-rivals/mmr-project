@@ -1,0 +1,12 @@
+name: local
+variables:
+  - name: api_host
+    value: http://localhost:8081
+  - name: baseUrl
+    value: "{{api_host}}"
+  - secret: true
+    name: pat
+    description: ""
+  - secret: true
+    name: hardware_secret
+    description: "Raw hw_… secret from Hardware_Register or Hardware_RotateSecret, without the Bearer prefix. Used by the heartbeat, pairing and matchmaking requests; keep their bearer auth if OpenAPI sync flags it."
