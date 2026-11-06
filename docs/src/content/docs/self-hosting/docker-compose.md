@@ -50,7 +50,7 @@ services:
       - "127.0.0.1:8081:8080"
 
   frontend:
-    build: ./frontend-beta
+    build: ./frontend
     restart: unless-stopped
     depends_on:
       - api
@@ -139,7 +139,7 @@ After `docker compose up -d --build`:
 - `http://localhost:8081/swagger` loads.
 - Your public URL redirects to `/login`, and you can sign in.
 
-Then create your first organization through the API, as described in the [Quick start](/quick-start/#4-create-your-first-organization), using your public frontend and `http://localhost:8081` as the API address.
+Then create your first organization through the API, as described in the [Quick start](/quick-start/#3-create-your-first-organization), using your public frontend and `http://localhost:8081` as the API address.
 
 ## Next steps
 

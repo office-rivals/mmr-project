@@ -11,12 +11,12 @@ import { withBase } from '../../lib/url';
     <div
       class="arch"
       role="img"
-      aria-label="Architecture: the browser talks to frontend-beta, which calls the API; the API uses the MMR API and PostgreSQL; Clerk handles sign-in"
+      aria-label="Architecture: the browser talks to frontend, which calls the API; the API uses the MMR API and PostgreSQL; Clerk handles sign-in"
     >
       <div class="node"><b>Browser or installed app</b><span>Phone-first, works as a PWA</span></div>
       <div class="link">HTTPS</div>
       <div class="row2">
-        <div class="node beta"><b>frontend-beta <span class="pill">Beta</span></b><span>React 19 · TanStack Start · Node</span></div>
+        <div class="node beta"><b>frontend <span class="pill">Beta</span></b><span>React 19 · TanStack Start · Node</span></div>
         <div class="node"><b>Clerk</b><span>sign-in</span></div>
       </div>
       <div class="link">API_BASE_PATH</div>
@@ -32,14 +32,10 @@ import { withBase } from '../../lib/url';
         <div class="term-head"><span>Local development</span><span>bash</span></div>
         <pre><span class="p">$ </span>git clone https://github.com/office-rivals/mmr-project
 <span class="p">$ </span>cd mmr-project
-<span class="p">$ </span>dotnet run --project local-dev/MMRProject.AppHost
-<span class="c"># in a second terminal</span>
-<span class="p">$ </span>cd frontend-beta && cp .env.example .env
-<span class="p">$ </span>npm ci && npm run dev</pre>
+<span class="p">$ </span>dotnet run --project local-dev/MMRProject.AppHost</pre>
       </div>
       <p class="note">
-        The Aspire AppHost starts PostgreSQL and both APIs. The beta runs beside it, pointed at the API through
-        <code>API_BASE_PATH</code>.
+        The Aspire AppHost starts PostgreSQL, both APIs and the frontend, and wires them together.
       </p>
       <a class="arrow-link" href={withBase('/quick-start/')}>Read the quick start <ArrowRight size={16} /></a>
     </div>

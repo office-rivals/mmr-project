@@ -5,11 +5,13 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..');
+const e2eDir = path.join(here, 'e2e');
 const apiDir = path.join(repoRoot, 'api/MMRProject.Api');
 const mmrApiDir = path.join(repoRoot, 'mmr-api');
 
-// Resolved against this file, not process.cwd(), so the suite's env is the same
-// no matter where Playwright is invoked from.
+// Resolved against this file, not process.cwd(), so the configs in e2e/ that
+// extend this one read the same env. `.env` supplies CLERK_SECRET_KEY to the
+// specs that call Clerk's Backend API.
 loadEnv({ path: path.join(here, '.env.e2e'), quiet: true });
 loadEnv({ path: path.join(here, '.env'), quiet: true });
 
@@ -34,13 +36,19 @@ const API_CONNECTION_STRING =
   `Host=${E2E_DB_HOST};Port=${E2E_DB_PORT};` +
   `Database=${E2E_DB_NAME};Username=${E2E_DB_USER};Password=${E2E_DB_PASS}`;
 
+/** Written by the setup project, read by every signed-in project. */
+export const STORAGE_STATE = path.join(e2eDir, '.auth/user.json');
+
 // E2E ports are dedicated, so reusing an "existing server" makes no sense —
 // the only thing that could already be on those ports is a previous, possibly
 // stale, e2e run. Always start fresh.
 const reuseExistingServer = false;
 
+// Paths are absolute because the configs in e2e/ spread this one, and
+// Playwright resolves relative paths against the config file that loads them.
 export default defineConfig({
-  testDir: './e2e',
+  testDir: e2eDir,
+  outputDir: path.join(here, 'test-results/e2e'),
   fullyParallel: false, // tests share the seeded DB; serialize for determinism
   workers: 1,
   retries: process.env.CI ? 1 : 0,
@@ -56,7 +64,7 @@ export default defineConfig({
   // Boots the e2e Postgres via docker-compose before any webServer process
   // tries to connect to it. Idempotent — re-running with services up is a
   // fast no-op.
-  globalSetup: './e2e/global-services.setup.ts',
+  globalSetup: path.join(e2eDir, 'global-services.setup.ts'),
   // Each entry is started in parallel; Playwright waits on every URL before
   // running tests. The .NET API needs Postgres up first, which globalSetup
   // already guarantees.
@@ -95,13 +103,10 @@ export default defineConfig({
       },
     },
     {
-      // SvelteKit dev server. Calls into the .NET API via SSR for some routes,
-      // so we want it up last — Playwright doesn't enforce ordering, but the
-      // URL probe below blocks until the dev server actually serves a page.
+      // The app's Vite dev server. --strictPort so a port collision surfaces
+      // a clear error instead of Vite silently sliding to the next free port
+      // (which Playwright would then never find).
       name: 'frontend',
-      // --strictPort so a port collision surfaces a clear error instead of
-      // Vite silently sliding to the next free port (which Playwright would
-      // then never find).
       command: `npm run dev -- --port ${E2E_FRONTEND_PORT} --strictPort`,
       cwd: here,
       url: `${BASE_URL}/login`,
@@ -122,10 +127,12 @@ export default defineConfig({
     {
       name: 'chromium',
       dependencies: ['setup'],
-      testIgnore: /global\.setup\.ts/,
+      // `.e2e.spec.ts` only: the regression and production suites in the same
+      // directory have their own configs.
+      testMatch: /\.e2e\.spec\.ts$/,
       use: {
         ...devices['Desktop Chrome'],
-        storageState: 'e2e/.auth/user.json',
+        storageState: STORAGE_STATE,
       },
     },
   ],

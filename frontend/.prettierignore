@@ -1,9 +1,6 @@
-# Ignore files for PNPM, NPM and YARN
-pnpm-lock.yaml
+node_modules
+dist
+public
+src/api-v3
+src/routeTree.gen.ts
 package-lock.json
-yarn.lock
-
-# Release tooling (scripts/release/apply-changesets.mjs) owns this file and writes
-# entries without a prettier pass; policing it here would red the auto-generated
-# release PR. Keep it out of the formatter.
-CHANGELOG.md

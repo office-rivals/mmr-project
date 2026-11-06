@@ -1,11 +1,9 @@
-import { type ClassValue, clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-import { cubicOut } from 'svelte/easing';
-import type { TransitionConfig } from 'svelte/transition';
-import type { BadgesResponse } from '$api3';
+export { cn } from 'cn';
+import type { BadgesResponse } from '@/api-v3';
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+export interface DatePresentation {
+  locale?: string;
+  timeZone?: 'UTC';
 }
 
 function parseLocalDate(d: string | null | undefined): Date | null {
@@ -14,21 +12,88 @@ function parseLocalDate(d: string | null | undefined): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+// Building an Intl formatter costs far more than formatting with one, and match
+// lists format several dates per row on every render, so formatters are reused.
+const intlFormatters = new Map<string, object>();
+function reuse<T extends object>(key: string, create: () => T): T {
+  let formatter = intlFormatters.get(key) as T | undefined;
+  if (!formatter) {
+    formatter = create();
+    intlFormatters.set(key, formatter);
+  }
+  return formatter;
+}
+
+export const dateTimeFormat = (
+  locale: string | undefined,
+  options: Intl.DateTimeFormatOptions
+) =>
+  reuse(
+    `date|${locale}|${JSON.stringify(options)}`,
+    () => new Intl.DateTimeFormat(locale, options)
+  );
+
+export const numberFormat = (
+  locale: string | undefined,
+  options: Intl.NumberFormatOptions
+) =>
+  reuse(
+    `number|${locale}|${JSON.stringify(options)}`,
+    () => new Intl.NumberFormat(locale, options)
+  );
+
+export const relativeTimeFormat = (
+  locale: string | undefined,
+  options: Intl.RelativeTimeFormatOptions
+) =>
+  reuse(
+    `relative|${locale}|${JSON.stringify(options)}`,
+    () => new Intl.RelativeTimeFormat(locale, options)
+  );
+
+// `toLocaleDateString` adds a numeric date when the options name no date
+// field; a bare `Intl.DateTimeFormat` would not.
+const hasDateField = (o: Intl.DateTimeFormatOptions) =>
+  o.weekday != null ||
+  o.year != null ||
+  o.month != null ||
+  o.day != null ||
+  o.dateStyle != null;
+
 export function formatDate(
   d: string | null | undefined,
   fallback = '—',
-  localeOptions?: Intl.DateTimeFormatOptions
+  localeOptions?: Intl.DateTimeFormatOptions,
+  presentation?: DatePresentation
 ): string {
   const date = parseLocalDate(d);
   if (!date) return fallback;
-  return localeOptions
-    ? date.toLocaleDateString(undefined, localeOptions)
-    : date.toLocaleDateString();
+  const options = { ...localeOptions, timeZone: presentation?.timeZone };
+  return dateTimeFormat(
+    presentation?.locale,
+    hasDateField(options)
+      ? options
+      : { year: 'numeric', month: 'numeric', day: 'numeric', ...options }
+  ).format(date);
 }
 
-export function formatDateTime(d: string | null | undefined): string {
+export function formatDateTime(
+  d: string | null | undefined,
+  presentation?: DatePresentation
+): string {
   const date = parseLocalDate(d);
-  return date ? date.toLocaleString() : '—';
+  // The fields `toLocaleString` defaults to.
+  return date
+    ? dateTimeFormat(presentation?.locale, {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        timeZone: presentation?.timeZone,
+      }).format(date)
+    : '—';
 }
 
 const isSameDay = (d1: Date, d2: Date): boolean =>
@@ -38,7 +103,7 @@ const isSameDay = (d1: Date, d2: Date): boolean =>
 
 /**
  * True when `d` falls on the same local calendar day as `now`.
- * `now` defaults to `Date.now()` and can be pinned (e.g. from PageData)
+ * `now` defaults to `Date.now()` and can be pinned (e.g. from loader data)
  * to avoid SSR/client hydration mismatches around midnight.
  */
 export function isToday(
@@ -49,8 +114,12 @@ export function isToday(
   return !!date && isSameDay(date, new Date(now));
 }
 
-function localDateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+function localDateKey(date: Date, presentation?: DatePresentation): string {
+  const utc = presentation?.timeZone === 'UTC';
+  const year = utc ? date.getUTCFullYear() : date.getFullYear();
+  const month = utc ? date.getUTCMonth() : date.getMonth();
+  const day = utc ? date.getUTCDate() : date.getDate();
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 /**
@@ -60,16 +129,22 @@ function localDateKey(date: Date): string {
  */
 export function matchDateGroupKey(
   d: string | null | undefined,
-  now: number = Date.now()
+  now: number = Date.now(),
+  presentation?: DatePresentation
 ): string {
   const date = parseLocalDate(d);
   if (!date) return '';
   const today = new Date(now);
   const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  if (isSameDay(date, yesterday)) return 'yesterday';
-  if (isSameDay(date, today)) return 'today';
-  return localDateKey(date);
+  if (presentation?.timeZone === 'UTC') {
+    yesterday.setUTCDate(today.getUTCDate() - 1);
+  } else {
+    yesterday.setDate(today.getDate() - 1);
+  }
+  const key = localDateKey(date, presentation);
+  if (key === localDateKey(yesterday, presentation)) return 'yesterday';
+  if (key === localDateKey(today, presentation)) return 'today';
+  return key;
 }
 
 /**
@@ -79,16 +154,19 @@ export function matchDateGroupKey(
  */
 export function matchDateGroupLabel(
   d: string | null | undefined,
-  now: number = Date.now()
+  now: number = Date.now(),
+  presentation?: DatePresentation
 ): string {
   const date = parseLocalDate(d);
   if (!date) return '';
-  if (matchDateGroupKey(d, now) === 'yesterday') return 'Yesterday';
-  return date.toLocaleDateString(undefined, {
+  if (matchDateGroupKey(d, now, presentation) === 'yesterday')
+    return 'Yesterday';
+  return dateTimeFormat(presentation?.locale, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
-  });
+    timeZone: presentation?.timeZone,
+  }).format(date);
 }
 
 /**
@@ -98,20 +176,30 @@ export function matchDateGroupLabel(
  */
 export function groupMatchesByDate<T extends { id: string; playedAt: string }>(
   matches: readonly T[],
-  now: number = Date.now()
+  now: number = Date.now(),
+  presentation?: DatePresentation
 ): { match: T; label: string | null }[] {
-  const todayKey = matchDateGroupKey(new Date(now).toISOString(), now);
+  const todayKey = matchDateGroupKey(
+    new Date(now).toISOString(),
+    now,
+    presentation
+  );
   return matches.map((match, i, arr) => {
-    const matchKey = matchDateGroupKey(match.playedAt, now);
-    const prevKey = i > 0 ? matchDateGroupKey(arr[i - 1].playedAt, now) : null;
+    const matchKey = matchDateGroupKey(match.playedAt, now, presentation);
+    const prevKey =
+      i > 0 ? matchDateGroupKey(arr[i - 1].playedAt, now, presentation) : null;
     const newGroup = matchKey !== todayKey && matchKey !== prevKey;
     return {
       match,
-      label: newGroup ? matchDateGroupLabel(match.playedAt, now) : null,
+      label: newGroup
+        ? matchDateGroupLabel(match.playedAt, now, presentation)
+        : null,
     };
   });
 }
 
+// `??`, not `||`: an empty-string displayName deliberately wins over username.
+// MatchCard has the OPPOSITE precedence (username first) — do not unify them.
 export function getPlayerDisplayName(
   p:
     | { displayName?: string | null; username?: string | null }
@@ -126,6 +214,8 @@ export function formatLeagueFormat(teamSize: number): string {
   return `${teamSize}v${teamSize}`;
 }
 
+// Deliberately returns the generic badge variants, not the owner/moderator/user
+// role variants that also exist on Badge.
 export function getRoleBadgeVariant(
   role: string
 ): 'default' | 'secondary' | 'outline' {
@@ -156,56 +246,20 @@ export function openFlagsForLeague(
   return badges?.openMatchFlags?.byLeague?.[leagueId] ?? 0;
 }
 
-type FlyAndScaleParams = {
-  y?: number;
-  x?: number;
-  start?: number;
-  duration?: number;
-};
+// Two-letter monogram for avatars and the organization badge.
+export function initials(name: string | null | undefined): string {
+  const words = (name ?? '')
+    .trim()
+    .split(/[\s._-]+/)
+    .filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return `${words[0][0]}${words[1][0]}`.toUpperCase();
+}
 
-export const flyAndScale = (
-  node: Element,
-  params: FlyAndScaleParams = { y: -8, x: 0, start: 0.95, duration: 150 }
-): TransitionConfig => {
-  const style = getComputedStyle(node);
-  const transform = style.transform === 'none' ? '' : style.transform;
-
-  const scaleConversion = (
-    valueA: number,
-    scaleA: [number, number],
-    scaleB: [number, number]
-  ) => {
-    const [minA, maxA] = scaleA;
-    const [minB, maxB] = scaleB;
-
-    const percentage = (valueA - minA) / (maxA - minA);
-    const valueB = percentage * (maxB - minB) + minB;
-
-    return valueB;
-  };
-
-  const styleToString = (
-    style: Record<string, number | string | undefined>
-  ): string => {
-    return Object.keys(style).reduce((str, key) => {
-      if (style[key] === undefined) return str;
-      return str + `${key}:${style[key]};`;
-    }, '');
-  };
-
-  return {
-    duration: params.duration ?? 200,
-    delay: 0,
-    css: (t) => {
-      const y = scaleConversion(t, [0, 1], [params.y ?? 5, 0]);
-      const x = scaleConversion(t, [0, 1], [params.x ?? 0, 0]);
-      const scale = scaleConversion(t, [0, 1], [params.start ?? 0.95, 1]);
-
-      return styleToString({
-        transform: `${transform} translate3d(${x}px, ${y}px, 0) scale(${scale})`,
-        opacity: t,
-      });
-    },
-    easing: cubicOut,
-  };
-};
+/** `m:ss` for a running timer. */
+export function formatElapsed(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}

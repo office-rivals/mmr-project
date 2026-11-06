@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   groupMatchesByDate,
+  formatDateTime,
+  initials,
   isToday,
   matchDateGroupKey,
   matchDateGroupLabel,
@@ -13,6 +15,46 @@ const NOW = new Date(2026, 5, 15, 12, 0, 0).getTime(); // 2026-06-15 12:00 local
 const iso = (d: Date) => d.toISOString();
 const at = (year: number, month: number, day: number, hour = 12) =>
   iso(new Date(year, month - 1, day, hour, 0, 0));
+
+describe('UTC server presentation', () => {
+  const presentation = { locale: 'en-US', timeZone: 'UTC' } as const;
+
+  it('groups midnight boundaries using the rendered timezone', () => {
+    const now = Date.parse('2026-06-15T00:30:00Z');
+    expect(matchDateGroupKey('2026-06-14T23:30:00Z', now, presentation)).toBe(
+      'yesterday'
+    );
+    expect(matchDateGroupKey('2026-06-15T00:01:00Z', now, presentation)).toBe(
+      'today'
+    );
+    expect(
+      groupMatchesByDate(
+        [
+          { id: 'a', playedAt: '2026-06-15T00:01:00Z' },
+          { id: 'b', playedAt: '2026-06-14T23:30:00Z' },
+        ],
+        now,
+        presentation
+      ).map(({ label }) => label)
+    ).toEqual([null, 'Yesterday']);
+  });
+
+  it('keeps yesterday a calendar day across DST transitions', () => {
+    const now = Date.parse('2026-03-30T00:30:00Z');
+    expect(matchDateGroupKey('2026-03-29T00:01:00Z', now, presentation)).toBe(
+      'yesterday'
+    );
+    expect(matchDateGroupLabel('2026-03-28T23:30:00Z', now, presentation)).toBe(
+      'Saturday, Mar 28'
+    );
+  });
+
+  it('renders the same timestamp independently of the server timezone', () => {
+    expect(formatDateTime('2026-06-15T00:30:00Z', presentation)).toBe(
+      '6/15/2026, 12:30:00 AM'
+    );
+  });
+});
 
 describe('isToday', () => {
   it('returns true for a timestamp on the same local day as now', () => {
@@ -137,5 +179,22 @@ describe('groupMatchesByDate', () => {
     expect(result[1].label).not.toBe(result[2].label);
     expect(result[3].label).not.toBeNull();
     expect(result[2].label).not.toBe(result[3].label);
+  });
+});
+
+describe('initials', () => {
+  it('takes the first letter of the first two words', () => {
+    expect(initials('Test Org')).toBe('TO');
+    expect(initials('alpha beta gamma')).toBe('AB');
+  });
+
+  it('uses the first two letters of a single word', () => {
+    expect(initials('tuser')).toBe('TU');
+  });
+
+  it('splits handles on separators and falls back for empty input', () => {
+    expect(initials('first.last')).toBe('FL');
+    expect(initials('')).toBe('?');
+    expect(initials(null)).toBe('?');
   });
 });
