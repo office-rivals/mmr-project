@@ -31,40 +31,53 @@ test.describe('Leaderboard page', () => {
     ).toHaveText(['#', 'Player', 'Wins', 'Losses', 'Win %', 'Trend', 'MMR']);
   });
 
-  test('keeps streaks beside the name so the number columns line up', async ({
+  test('shows a streak after the wins or losses, with counts and icons lined up', async ({
     page,
   }) => {
     await page.goto(LEAGUE_URL);
     const rows = page.getByRole('table').first().locator('tbody tr:visible');
     await expect(rows.first()).toBeVisible();
-    // Visible cells only: #, Player, Wins, Losses, Win %, Trend, MMR.
-    for (const row of await rows.all()) {
-      const cells = row.getByRole('cell');
-      await expect(cells.nth(2)).toHaveText(/^\d+$/);
-      await expect(cells.nth(3)).toHaveText(/^\d+$/);
-    }
-    // The seed has players on a streak, and it shows in the Player cell only.
     const streak = /\d+ (wins|losses) in a row/;
+    // Player, Win % and MMR never carry a streak.
     await expect(
-      rows.locator('td:nth-child(2)').filter({ hasText: streak })
-    ).not.toHaveCount(0);
-    await expect(
-      rows.locator('td:not(:nth-child(2))').filter({ hasText: streak })
+      rows
+        .locator('td:visible:not(:nth-child(3)):not(:nth-child(4))')
+        .filter({ hasText: streak })
     ).toHaveCount(0);
-    // The length shown matches what a screen reader hears and the player's
-    // stats.
-    const row = rows
-      .filter({ has: page.locator('td:nth-child(2) [title$="in a row"]') })
-      .first();
-    const badge = row.locator('[title$="in a row"]');
+    for (const col of [3, 4]) {
+      const counts = rows.locator(
+        `td:nth-child(${col}) > span > span:first-child`
+      );
+      await expect(counts.first()).toHaveText(/^\d+$/);
+      // The digits themselves end at one x, so the counts are right-aligned.
+      const countRight = await counts.evaluateAll((els) =>
+        els.map((el) => {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          return Math.round(range.getBoundingClientRect().right);
+        })
+      );
+      expect(new Set(countRight).size).toBe(1);
+      const icons = rows.locator(`td:nth-child(${col}) [title$="in a row"]`);
+      const iconX = new Set<number>();
+      for (const i of await icons.all())
+        iconX.add(Math.round((await i.boundingBox())!.x));
+      expect(iconX.size).toBeLessThanOrEqual(1);
+    }
+    // The seed has a win streak; its length shows, matches what a screen
+    // reader hears and the player's stats.
+    const badge = rows.locator('td:nth-child(3) [title$="in a row"]').first();
     const visible = badge.locator('[aria-hidden]');
     await expect(visible).toBeVisible();
     const shown = (await visible.innerText()).replace(/\D/g, '');
     expect(shown).toMatch(/^\d+$/);
     await expect(badge.locator('.sr-only')).toHaveText(
-      new RegExp(`^, ${shown} (wins|losses) in a row$`)
+      new RegExp(`^, ${shown} wins in a row$`)
     );
-    await row.click();
+    await rows
+      .filter({ has: page.locator('td:nth-child(3) [title$="in a row"]') })
+      .first()
+      .click();
     await expect(
       page.getByRole('dialog').getByText(new RegExp(`^\\S+ ${shown}$`))
     ).toBeVisible();
@@ -92,20 +105,28 @@ test.describe('Leaderboard page', () => {
   test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
-    test('shows five rows with a combined W–L column', async ({ page }) => {
+    test('shows five rows with short W and L headers', async ({ page }) => {
       await page.goto(LEAGUE_URL);
 
       const table = page.getByRole('table').first();
       await expect(table.getByRole('columnheader')).toHaveText([
         '#',
         'Player',
-        'W–L',
+        'Wins',
+        'Losses',
         'MMR',
       ]);
+      const heads = table.getByRole('columnheader');
+      expect(await heads.nth(2).innerText()).toBe('W');
+      expect(await heads.nth(3).innerText()).toBe('L');
       await expect(table.getByRole('row')).toHaveCount(1 + 5);
-      // Streaks sit by the name, so W–L holds only the record.
-      for (const row of await table.locator('tbody tr:visible').all())
-        await expect(row.getByRole('cell').nth(2)).toHaveText(/^\d+–\d+$/);
+      // A streak shows its icon after the count, without its length.
+      const icons = table.locator('tbody tr:visible [title$="in a row"]');
+      await expect(icons.first()).toBeVisible();
+      for (const icon of await icons.all())
+        expect(await icon.locator('[aria-hidden]').innerText()).toMatch(
+          /^\D+$/
+        );
       await expect(
         page.getByRole('link', { name: 'View all standings' })
       ).toBeVisible();

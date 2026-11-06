@@ -12,6 +12,7 @@ import {
   DialogFooter,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { streakGlyph } from '@/lib/streak';
 import type { LeaderboardEntryResponse, MatchResponse } from '@/api-v3/models';
 
 export interface UserStatsModalProps {
@@ -97,10 +98,16 @@ export function UserStatsModal({
             <Kpi title="# Losses">{entry.losses}</Kpi>
             <Kpi title="# Matches">{totalGames}</Kpi>
             <Kpi title="Streak">
-              {entry.winningStreak > 0 ? `🔥 ${entry.winningStreak}` : null}
-              {entry.losingStreak > 0
-                ? `${entry.losingStreak >= 7 ? '⛈️' : '🌧️'} ${entry.losingStreak}`
-                : null}
+              {entry.winningStreak > 0 ? (
+                <>
+                  {streakGlyph(true, entry.winningStreak)} {entry.winningStreak}
+                </>
+              ) : null}
+              {entry.losingStreak > 0 ? (
+                <>
+                  {streakGlyph(false, entry.losingStreak)} {entry.losingStreak}
+                </>
+              ) : null}
               {entry.winningStreak === 0 && entry.losingStreak === 0
                 ? '—'
                 : null}

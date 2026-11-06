@@ -3,6 +3,7 @@ import { RatingTrend } from '@/components/charts/rating-trend';
 import { Eyebrow } from '@/components/eyebrow';
 import { FormChips } from '@/components/form-chips';
 import { featuredCard, plainCard, StatusPill } from '@/components/surfaces';
+import { TileStreakGlyph } from '@/components/streak-glyph';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import {
   partnerWinRate,
@@ -267,7 +268,7 @@ export function HomeKpiTiles({
           streak ? (
             <span className={cn(streak.startsWith('L') && 'text-foreground')}>
               {streak}
-              {entry.winningStreak >= 3 ? ' 🔥' : null}
+              <TileStreakGlyph {...entry} />
             </span>
           ) : (
             '—'

@@ -12,7 +12,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ratingsByPlayer } from '@/lib/player-stats';
-import { StreakIcon } from './standings';
+import { activeStreak } from './standings';
+import { streakGlyph } from '@/lib/streak';
 import { cn } from '@/lib/utils';
 import type {
   LeaderboardEntryResponse,
@@ -57,6 +58,10 @@ export function Leaderboard({
     () => (ratingHistory ? ratingsByPlayer(ratingHistory) : null),
     [ratingHistory]
   );
+  const digits = {
+    wins: Math.max(1, ...entries.map((e) => String(e.wins).length)),
+    losses: Math.max(1, ...entries.map((e) => String(e.losses).length)),
+  };
   const winRate = (entry: LeaderboardEntryResponse) => {
     const played = entry.wins + entry.losses;
     return played > 0
@@ -77,14 +82,12 @@ export function Leaderboard({
                 #
               </TableHead>
               <TableHead className={headClass}>Player</TableHead>
-              <TableHead className={cn(headClass, 'text-right sm:hidden')}>
-                W–L
+              {/* "W" and "L" on a phone; the full word is still the header's name. */}
+              <TableHead className={headClass}>
+                W<span className="hidden sm:inline">ins</span>
               </TableHead>
-              <TableHead className={cn(headClass, wide, 'text-right')}>
-                Wins
-              </TableHead>
-              <TableHead className={cn(headClass, wide, 'text-right')}>
-                Losses
+              <TableHead className={headClass}>
+                L<span className="hidden sm:inline">osses</span>
               </TableHead>
               <TableHead className={cn(headClass, wide, 'text-right')}>
                 Win %
@@ -100,6 +103,7 @@ export function Leaderboard({
           <TableBody>
             {entries.map((entry, index) => {
               const isMe = currentLeaguePlayerId === entry.leaguePlayerId;
+              const streak = activeStreak(entry);
               return (
                 <TableRow
                   key={entry.leaguePlayerId}
@@ -139,27 +143,22 @@ export function Leaderboard({
                         <span className="truncate">
                           {entry.username ?? entry.displayName ?? 'Unknown'}
                         </span>
-                        <StreakIcon entry={entry} />
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell
-                    className={cn(
-                      'py-3 text-right whitespace-nowrap tabular-nums sm:hidden',
-                      !isMe && 'text-muted-foreground'
-                    )}
-                  >
-                    {entry.wins}–{entry.losses}
+                  <TableCell className="py-3">
+                    <RecordWithStreak
+                      count={entry.wins}
+                      width={digits.wins}
+                      streak={streak?.win ? streak : null}
+                    />
                   </TableCell>
-                  <TableCell
-                    className={cn(wide, 'py-3 text-right tabular-nums')}
-                  >
-                    {entry.wins}
-                  </TableCell>
-                  <TableCell
-                    className={cn(wide, 'py-3 text-right tabular-nums')}
-                  >
-                    {entry.losses}
+                  <TableCell className="py-3">
+                    <RecordWithStreak
+                      count={entry.losses}
+                      width={digits.losses}
+                      streak={streak?.win === false ? streak : null}
+                    />
                   </TableCell>
                   <TableCell
                     className={cn(wide, 'py-3 text-right tabular-nums')}
@@ -184,6 +183,40 @@ export function Leaderboard({
         </Table>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * A win or loss count with the streak icon after it, as the SvelteKit app
+ * shows it. The count is as wide as the widest on the board, so counts and
+ * icons each line up.
+ */
+function RecordWithStreak({
+  count,
+  width,
+  streak,
+}: {
+  count: number;
+  width: number;
+  streak: ReturnType<typeof activeStreak>;
+}) {
+  return (
+    <span className="flex items-center gap-2 whitespace-nowrap tabular-nums">
+      <span className="text-right" style={{ minWidth: `${width}ch` }}>
+        {count}
+      </span>
+      {streak ? (
+        <span title={streak.label} className="text-xs">
+          <span aria-hidden="true">
+            {streakGlyph(streak.win, streak.length)}
+            <span className="ml-1 hidden text-muted-foreground sm:inline">
+              {streak.length}
+            </span>
+          </span>
+          <span className="sr-only">{`, ${streak.label}`}</span>
+        </span>
+      ) : null}
+    </span>
   );
 }
 
