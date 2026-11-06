@@ -1,6 +1,7 @@
-# frontend-beta
+# frontend
 
-React 19 / TanStack Start rewrite of the SvelteKit application in `../frontend`.
+React 19 / TanStack Start rewrite of the legacy SvelteKit application in
+`../frontend-legacy`.
 The reference application guides behavior and appearance; known bugs and older
 icon drawings need not be reproduced. shadcn components
 use Base UI primitives, with styles adapted to match the Svelte rendering.
@@ -8,7 +9,7 @@ use Base UI primitives, with styles adapted to match the Svelte rendering.
 The stack uses React 19.3, TanStack Start/Router, TanStack Query for server data,
 Clerk for authentication, TypeScript 7, Tailwind CSS 4 and Vite 8. Carbon Charts
 and Lucide provide charts and icons. Vitest 5 covers unit tests; Playwright 1.63
-runs the shared functional suite and the beta's own regression and production
+runs the shared functional suite and the app's own regression and production
 suites.
 
 shadcn components are owned source files in `src/components/ui`, not a versioned
@@ -20,8 +21,8 @@ CSS-first configuration in `src/app.css`.
 
 ## Development
 
-Use Node 26 (see `frontend-beta/.nvmrc`, which the production image matches).
-Install dependencies in both app directories with `npm ci`. Run this app with:
+Use Node 26 (see `frontend/.nvmrc`, which the production image matches).
+Install dependencies with `npm ci`. Run the app with:
 
 ```sh
 npm run dev
@@ -66,7 +67,7 @@ For a fixed public hostname behind managed ingress, set `APP_ORIGIN` to its HTTP
 origin and leave `TRUST_PROXY=false`. The server uses that origin for Clerk and
 native-form validation and removes conflicting forwarded host/protocol headers.
 Set `CLERK_AUTHORIZED_PARTIES` to the explicitly trusted application origins; a
-shared Clerk instance may need both its primary and beta origins. Sign-in and
+shared Clerk instance may need every origin that mints its session tokens. Sign-in and
 sign-up return to this app's `/`; sign-out returns to `/login`.
 
 `TRUST_PROXY` accepts `false`, `true`, `loopback`, or a comma-separated list of
@@ -80,14 +81,14 @@ API contract changes; do not overwrite custom client methods with generated code
 
 ## Verification
 
-The beta has its own Playwright suites in `e2e/`:
+The app has its own Playwright suites in `e2e/`:
 
 ```sh
-# Main suite: boots the beta and the isolated e2e backend stack
+# Main suite: boots the app and the isolated e2e backend stack
 npm run e2e
 npm run e2e:ui
 
-# Beta-only native-form, transport, cache and keyboard regressions
+# Native-form, transport, cache and keyboard regressions
 npm run e2e:regressions
 
 # The main suite against the built Node server, plus WebKit/Firefox smoke
@@ -136,14 +137,14 @@ is an explicit framework contract difference; it does not require hydration to
 submit the form. Controls revealed by JavaScript still require JavaScript.
 
 The detailed contract is in `../plans/frontend-beta/specs/10-runtime-contract.md`.
-Run `npm run e2e:regressions` for beta-specific native-form, transport, and cache
+Run `npm run e2e:regressions` for native-form, transport, and cache
 regressions. It uses the same destructive e2e seed and must run alone.
 
 ## Container and release
 
 ```sh
-docker build -t frontend-beta:local .
-docker run --rm --env-file /private/path/beta.env -p 127.0.0.1:3000:3000 frontend-beta:local
+docker build -t frontend:local .
+docker run --rm --env-file /private/path/frontend.env -p 127.0.0.1:3000:3000 frontend:local
 ```
 
 The image runs as the unprivileged `node` user and excludes local env files,
@@ -152,16 +153,11 @@ without requiring a Clerk session; it does not check upstream API availability.
 Use port 3000 for ingress and health probes. Set the public origin and production
 Clerk credentials at runtime before testing authentication on the custom hostname.
 
-`frontend-beta` is a separate changeset/release component. After merging its
-release PR, choose `frontend-beta` and the released version in **Deploy Release**.
-Provision a separate Container App first and set `BETA_UI_CONTAINER_APP_NAME` in
-GitHub. Configure its API URL, Clerk keys, public origin and HTTP probes in Azure.
-The workflow rejects an empty beta target or the primary frontend's app name.
-It deploys the image published for that release to GHCR, without rebuilding it,
-and does not configure DNS, TLS, runtime credentials or probes. Roll back by
-deploying the previous version.
+After merging a release PR, choose `frontend` and the released version in
+**Deploy Release**. The workflow deploys the image published for that release to
+GHCR, without rebuilding it, and does not configure DNS, TLS, runtime credentials
+or probes. Configure the API URL, Clerk keys, public origin and HTTP probes in
+Azure. Roll back by deploying the previous version.
 
-For a beta subdomain sharing live users, reuse the production Clerk instance and
-API issuer, check Clerk's Allowed Subdomains setting, and verify login, refresh,
-logout and an agreed live test mutation after binding HTTPS. Beta mutations affect
-the same live database. The destructive Playwright suites must never target it.
+Deployed instances share the live database, so the destructive Playwright suites
+must never target them.

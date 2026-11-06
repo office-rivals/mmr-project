@@ -1,7 +1,7 @@
 # End-to-end tests
 
-Playwright drives the beta against the full stack — Postgres + MMR API +
-.NET API + the beta app. The runner manages the service lifecycle, so each
+Playwright drives the app against the full stack — Postgres + MMR API +
+.NET API + the app. The runner manages the service lifecycle, so each
 command below brings everything up from cold.
 
 | Command                                   | Specs                                        | Runs against                        |
@@ -14,7 +14,7 @@ command below brings everything up from cold.
   submission (singles and winning scores), matchmaking, the player picker,
   header and layout, pull-to-refresh, settings, match flags, the admin area and
   invite onboarding.
-- **`e2e:regressions`** covers beta-specific native-form, transport, cache and
+- **`e2e:regressions`** covers native-form, transport, cache and
   keyboard regressions.
 - **`e2e:production`** repeats the main suite against the production build in
   Chromium, then runs the header, submit and admin-role specs in WebKit and
@@ -32,7 +32,7 @@ Each suite re-seeds the same database, so never run two at once.
 - `npm ci` in this directory, then
   `npx playwright install chromium` (add `webkit firefox` for
   `e2e:production`).
-- `.env` with the beta's Clerk keys (see `../.env.example`). The suite also
+- `.env` with the app's Clerk keys (see `../.env.example`). The suite also
   reads `CLERK_SECRET_KEY` from it to create throwaway users through Clerk's
   Backend API.
 - `.env.e2e` — copy `../.env.e2e.example` and fill in the Clerk test user's

@@ -12,7 +12,7 @@ deployment-specific values via env vars or CLI args in scripts.
 
 Three-service matchmaking and rating system:
 
-- **Frontend**: SvelteKit + Svelte 5 + TypeScript + TailwindCSS
+- **Frontend**: React 19 + TanStack Start + TypeScript + TailwindCSS (`frontend/`)
 - **API**: ASP.NET Core — business logic and data persistence
 - **MMR API**: Go — MMR calculations and team balancing
 
@@ -21,7 +21,7 @@ Three-service matchmaking and rating system:
 ### Recommended: the Aspire AppHost
 
 One command starts and wires the whole stack — PostgreSQL, the MMR API (Go), the
-API (ASP.NET Core) and the frontend (SvelteKit):
+API (ASP.NET Core) and the frontend:
 
 ```bash
 dotnet run --project local-dev/MMRProject.AppHost
@@ -56,8 +56,8 @@ it by hand when the v3 API changes (it is not generated).
 
 `docs/` is the public landing page and documentation (Astro + Starlight),
 deployed to GitHub Pages from `main` by `.github/workflows/docs.yml`. It
-documents the beta frontend (`frontend-beta/`) — update it when a change alters
-setup, configuration or user-visible behaviour of the beta. Writing conventions
+documents the frontend (`frontend/`) — update it when a change alters setup,
+configuration or user-visible behaviour. Writing conventions
 are in [`docs/README.md`](docs/README.md).
 
 ### Database
@@ -77,16 +77,16 @@ Postgres resource in the Aspire dashboard.
 ### Authentication
 
 - Clerk for auth; the API validates JWT bearer tokens (`Program.cs`, `builder.AddAuth()`).
-- Frontend: `hooks.server.ts` runs Clerk auth, auth guards and API-client injection into `event.locals`; protected routes live under `routes/(authed)/`.
+- Frontend: `src/start.ts` runs the Clerk middleware; protected routes live under `routes/_authed/`.
 - API: the authenticated user is resolved from JWT claims via `IUserContextResolver`.
-- **RBAC** — three roles (User, Moderator, Owner): `routes/admin/+layout.server.ts` gates admin routes to Moderator/Owner; the role-management page is Owner-only.
+- **RBAC** — three roles (User, Moderator, Owner): `routes/admin/` is gated to Moderator/Owner; the role-management page is Owner-only.
 
 ### Frontend
 
-- Svelte 5 runes and snippets; TailwindCSS with HSL color variables; dark mode via a `dark` class on the root element (used by the admin UI).
-- Headless components from `bits-ui` plus custom styled components in `lib/components/ui/`; icons from `lucide-svelte`.
-- Typed v3 API client lives in `src/api-v3` (hand-maintained — see its header note); the request client is built in `lib/server/api/apiClientV3.ts` with automatic JWT injection.
-- Routes: `(authed)/` (shared layout — navbar, queue indicator), `admin/` (separate group, dark mode), `login/`.
+- `frontend/` is React 19 on TanStack Start, served by `server.mjs` in production; see its [README](frontend/README.md) and [AGENTS.md](frontend/AGENTS.md).
+- Interactive controls come from `src/components/ui` (shadcn on Base UI).
+- Typed v3 API client lives in `src/api-v3` (hand-maintained — see its header note).
+- `frontend-legacy/` is the replaced SvelteKit app: not deployed, security and critical fixes only.
 
 ### API
 
@@ -142,22 +142,22 @@ dotnet user-secrets set "Authorization:Issuer" "<clerk_issuer_url>"
 
 - **API**: Bruno collection in `api-collection/`.
 - **MMR API**: Go tests in `mmr-api/test/` (packages: api, custom, mmr, openskill).
-- **Frontend**: Vitest (configured, lightly used).
+- **Frontend**: Vitest.
 - **End-to-end**: Playwright, one suite per app, driving Chromium against the
-  full stack: `frontend/e2e/` ([README](frontend/e2e/README.md)) and
-  `frontend-beta/e2e/` ([README](frontend-beta/e2e/README.md)), which adds the
-  beta's regression and production suites.
+  full stack: `frontend/e2e/` ([README](frontend/e2e/README.md)), which adds
+  regression and production suites, and `frontend-legacy/e2e/`
+  ([README](frontend-legacy/e2e/README.md)).
 
 ### Run e2e before shipping a frontend change
 
 `e2e.yml` is `workflow_dispatch` only — it does **not** run on pull requests.
-`test-ui.yml` covers lint, Vitest, build and `svelte-check`, so an entirely green
-PR still says nothing about whether the app works. Verify any change under
-`frontend/src/` or `frontend-beta/src/` locally with that app's own suite:
+`test-ui.yml` covers type checks, Vitest and a container build, so an entirely
+green PR still says nothing about whether the app works. Verify any change under
+`frontend/src/` or `frontend-legacy/src/` locally with that app's own suite:
 
 ```bash
-cd frontend && npm run e2e        # boots Postgres, both APIs and Vite on its own ports
-cd frontend-beta && npm run e2e   # the same for the beta
+cd frontend && npm run e2e          # boots Postgres, both APIs and Vite on its own ports
+cd frontend-legacy && npm run e2e   # the same for the legacy app
 ```
 
 - **Compare against the merge base.** Run the suite on `main` too, so a failure
@@ -174,7 +174,7 @@ cd frontend-beta && npm run e2e   # the same for the beta
   those events.
 
 From a worktree: copy the gitignored `.env` and `.env.e2e` of the app under test
-(`frontend/` or `frontend-beta/`) and `mmr-api/.env` from your main checkout,
+(`frontend/` or `frontend-legacy/`) and `mmr-api/.env` from your main checkout,
 and use a real `npm ci` — a symlinked `node_modules` resolves outside the
 worktree root, Vite's `server.fs.allow` blocks the client entry, and the app
 never hydrates. To run beside another e2e run, override `E2E_DB_NAME`,

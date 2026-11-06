@@ -1,15 +1,16 @@
-name: Beta UI - build and test
+name: Legacy UI - build and test
 
 # Pull requests always run this workflow so its check reports and can be
 # required; the `changes` job decides whether the suite runs.
 on:
   push:
-    branches: [main]
+    branches: ["main"]
     paths:
-      - 'frontend-beta/**'
-      - '.github/workflows/test-beta.yml'
+      - "frontend-legacy/**/*"
+      - ".nvmrc"
+      - ".github/workflows/test-legacy.yml"
   pull_request:
-    branches: [main]
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -41,48 +42,44 @@ jobs:
             git diff --name-only -z --no-renames "$BASE_SHA"..."$HEAD_SHA" > "$files"
             # Only "no match" may skip the suite; a grep error must not.
             rc=0
-            grep -qzE '^(frontend-beta/|\.github/workflows/test-beta\.yml$)' "$files" || rc=$?
+            grep -qzE '^(frontend-legacy/|\.nvmrc$|\.github/workflows/test-legacy\.yml$)' "$files" || rc=$?
             if [ "$rc" -eq 1 ]; then changed=false; fi
           fi
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
   build:
-    name: Beta UI
+    name: Legacy UI
     needs: changes
     # A skipped job passes as a required check, so only an explicit "nothing
     # changed" may skip the suite; a failed detection still runs it.
     if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
         with:
-          # The beta pins its own Node major so CI tests the runtime its image ships.
-          node-version-file: frontend-beta/.nvmrc
           cache: npm
-          cache-dependency-path: frontend-beta/package-lock.json
+          cache-dependency-path: frontend-legacy/package-lock.json
+          node-version-file: .nvmrc
       - name: Install
         run: npm ci
-        working-directory: frontend-beta
-      - name: Type check
+        working-directory: ./frontend-legacy
+      - name: Lint
+        run: npm run lint
+        working-directory: ./frontend-legacy
+      - name: Unit Test
+        run: npm run test
+        working-directory: ./frontend-legacy
+      - name: Build
+        run: npm run build
+        working-directory: ./frontend-legacy
+        env:
+          PUBLIC_CLERK_PUBLISHABLE_KEY: ""
+      - name: Svelte Check
         run: npm run check
-        working-directory: frontend-beta
-      - name: Unit tests
-        run: npm test
-        working-directory: frontend-beta
-      - name: Audit production dependencies
-        run: npm audit --omit=dev
-        working-directory: frontend-beta
-      - name: Build production container without credentials
-        run: docker build -t frontend-beta:ci frontend-beta
-      - name: Check container health as a non-root user
-        run: |
-          docker run --detach --name beta-ci -p 127.0.0.1:3000:3000 frontend-beta:ci
-          trap 'docker logs beta-ci; docker rm -f beta-ci' EXIT
-          test "$(docker exec beta-ci id -u)" != "0"
-          for i in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:3000/health; then exit 0; fi
-            sleep 1
-          done
-          exit 1
+        working-directory: ./frontend-legacy
+        env:
+          PUBLIC_CLERK_PUBLISHABLE_KEY: ""

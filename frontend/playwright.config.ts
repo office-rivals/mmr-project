@@ -103,7 +103,7 @@ export default defineConfig({
       },
     },
     {
-      // The beta's Vite dev server. --strictPort so a port collision surfaces
+      // The app's Vite dev server. --strictPort so a port collision surfaces
       // a clear error instead of Vite silently sliding to the next free port
       // (which Playwright would then never find).
       name: 'frontend',

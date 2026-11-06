@@ -4,13 +4,12 @@ name: UI - build and test
 # required; the `changes` job decides whether the suite runs.
 on:
   push:
-    branches: ["main"]
+    branches: [main]
     paths:
-      - "frontend/**/*"
-      - ".nvmrc"
-      - ".github/workflows/test-ui.yml"
+      - 'frontend/**'
+      - '.github/workflows/test-ui.yml'
   pull_request:
-    branches: ["main"]
+    branches: [main]
 
 permissions:
   contents: read
@@ -42,7 +41,7 @@ jobs:
             git diff --name-only -z --no-renames "$BASE_SHA"..."$HEAD_SHA" > "$files"
             # Only "no match" may skip the suite; a grep error must not.
             rc=0
-            grep -qzE '^(frontend/|\.nvmrc$|\.github/workflows/test-ui\.yml$)' "$files" || rc=$?
+            grep -qzE '^(frontend/|\.github/workflows/test-ui\.yml$)' "$files" || rc=$?
             if [ "$rc" -eq 1 ]; then changed=false; fi
           fi
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
@@ -54,32 +53,36 @@ jobs:
     # changed" may skip the suite; a failed detection still runs it.
     if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7
         with:
+          # The app pins its own Node major so CI tests the runtime its image ships.
+          node-version-file: frontend/.nvmrc
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-          node-version-file: .nvmrc
       - name: Install
         run: npm ci
-        working-directory: ./frontend
-      - name: Lint
-        run: npm run lint
-        working-directory: ./frontend
-      - name: Unit Test
-        run: npm run test
-        working-directory: ./frontend
-      - name: Build
-        run: npm run build
-        working-directory: ./frontend
-        env:
-          PUBLIC_CLERK_PUBLISHABLE_KEY: ""
-      - name: Svelte Check
+        working-directory: frontend
+      - name: Type check
         run: npm run check
-        working-directory: ./frontend
-        env:
-          PUBLIC_CLERK_PUBLISHABLE_KEY: ""
+        working-directory: frontend
+      - name: Unit tests
+        run: npm test
+        working-directory: frontend
+      - name: Audit production dependencies
+        run: npm audit --omit=dev
+        working-directory: frontend
+      - name: Build production container without credentials
+        run: docker build -t frontend:ci frontend
+      - name: Check container health as a non-root user
+        run: |
+          docker run --detach --name frontend-ci -p 127.0.0.1:3000:3000 frontend:ci
+          trap 'docker logs frontend-ci; docker rm -f frontend-ci' EXIT
+          test "$(docker exec frontend-ci id -u)" != "0"
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/health; then exit 0; fi
+            sleep 1
+          done
+          exit 1

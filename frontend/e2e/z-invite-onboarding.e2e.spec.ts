@@ -137,7 +137,7 @@ test.describe.serial('Invite onboarding claims a name-only player', () => {
   test.beforeAll(async () => {
     expect(
       CLERK_SECRET_KEY,
-      'CLERK_SECRET_KEY must be set (loaded from frontend-beta/.env by playwright.config.ts)'
+      'CLERK_SECRET_KEY must be set (loaded from frontend/.env by playwright.config.ts)'
     ).toBeTruthy();
 
     // Arrange: a deterministic invite link for Test Org. No invite links are

@@ -17,7 +17,7 @@ const productionFunctions =
 
 if (productionFunctions?.size === 0) {
   throw new Error(
-    'No production server functions found; build frontend-beta before testing'
+    'No production server functions found; build frontend before testing'
   );
 }
 

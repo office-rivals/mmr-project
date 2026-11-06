@@ -10,7 +10,7 @@ on:
         default: frontend
         options:
           - frontend
-          - frontend-beta
+          - frontend-legacy
 
 permissions:
   contents: read
@@ -34,7 +34,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version-file: ${{ inputs.target == 'frontend-beta' && 'frontend-beta/.nvmrc' || '.nvmrc' }}
+          node-version-file: ${{ inputs.target == 'frontend' && 'frontend/.nvmrc' || '.nvmrc' }}
           cache: npm
           cache-dependency-path: ${{ inputs.target }}/package-lock.json
 
@@ -48,7 +48,7 @@ jobs:
         env:
           E2E_TARGET: ${{ inputs.target }}
         run: |
-          if [ "$E2E_TARGET" = "frontend-beta" ]; then
+          if [ "$E2E_TARGET" = "frontend" ]; then
             npx playwright install --with-deps chromium webkit firefox
           else
             npx playwright install --with-deps chromium
@@ -98,7 +98,7 @@ jobs:
           E2E_TARGET: ${{ inputs.target }}
         run: |
           npm run e2e
-          if [ "$E2E_TARGET" = "frontend-beta" ]; then
+          if [ "$E2E_TARGET" = "frontend" ]; then
             npm run build
             npm run e2e:production
             npm run e2e:regressions

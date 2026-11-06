@@ -11,27 +11,20 @@ updates:
         patterns:
           - "go.opentelemetry.io/*"
   - package-ecosystem: "npm"
+    directory: "/frontend-legacy"
+    schedule:
+      interval: "weekly"
+    # The legacy SvelteKit app is no longer deployed: security updates only.
+    # They have their own limit, so they still arrive.
+    open-pull-requests-limit: 0
+  - package-ecosystem: "docker"
     directory: "/frontend"
     schedule:
       interval: "weekly"
     cooldown:
       default-days: 7
-    # Security updates only: they have their own limit, so they still arrive.
-    open-pull-requests-limit: 0
-    ignore:
-      # The SvelteKit app is being replaced by frontend-beta, so it stays on its
-      # current majors rather than adapting to them (bits-ui 2, for one, stops
-      # selecting an auto-focused field's value). Security updates still arrive.
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-  - package-ecosystem: "docker"
-    directory: "/frontend-beta"
-    schedule:
-      interval: "weekly"
-    cooldown:
-      default-days: 7
   - package-ecosystem: "npm"
-    directory: "/frontend-beta"
+    directory: "/frontend"
     schedule:
       interval: "weekly"
     cooldown:

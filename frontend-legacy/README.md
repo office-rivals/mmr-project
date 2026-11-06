@@ -1,4 +1,10 @@
-# create-svelte
+# frontend-legacy (legacy)
+
+The SvelteKit app, replaced by [`frontend/`](../frontend/README.md) as of
+`frontend@2.0.0`. It is no longer deployed; only security and critical fixes
+belong here. Build new features in `frontend/`.
+
+## create-svelte
 
 Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
 

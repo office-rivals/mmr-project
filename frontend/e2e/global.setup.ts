@@ -15,7 +15,7 @@ const identityUserId = process.env.E2E_IDENTITY_USER_ID;
 if (!userEmail || !userPassword || !identityUserId) {
   throw new Error(
     'E2E_USER_EMAIL, E2E_USER_PASSWORD and E2E_IDENTITY_USER_ID must be set ' +
-      '(see frontend-beta/.env.e2e.example).'
+      '(see frontend/.env.e2e.example).'
   );
 }
 
