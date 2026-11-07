@@ -5,6 +5,7 @@ import { FormChips } from '@/components/form-chips';
 import { featuredCard, plainCard, StatusPill } from '@/components/surfaces';
 import { TileStreakGlyph } from '@/components/streak-glyph';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
+import { matchOdds } from '@/lib/match-prediction';
 import {
   partnerWinRate,
   shareBeaten,
@@ -470,6 +471,7 @@ export function LiveNowCard({
   const [a, b] = [...match.teams].sort((x, y) => x.index - y.index);
   const names = (team: typeof a | undefined) =>
     (team?.players ?? []).map((p) => getPlayerDisplayName(p)).join(' + ');
+  const odds = matchOdds(match.prediction);
 
   return (
     <AppLink
@@ -491,7 +493,15 @@ export function LiveNowCard({
         <span className="text-xs font-normal text-muted-foreground">vs</span>{' '}
         {names(b)}
       </span>
-      <span className="text-xs text-muted-foreground">Open the live match</span>
+      <span className="flex justify-between gap-3 text-xs text-muted-foreground">
+        <span>Open the live match</span>
+        {odds ? (
+          <span className="tabular-nums">
+            <span className="sr-only">Win chance </span>
+            {odds.teams[0].winPercent}% · {odds.teams[1].winPercent}%
+          </span>
+        ) : null}
+      </span>
     </AppLink>
   );
 }

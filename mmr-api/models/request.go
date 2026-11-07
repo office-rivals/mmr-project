@@ -16,3 +16,14 @@ type MMRCalculationPlayerRating struct {
 	Sigma                  *float64 `json:"sigma"` // Use pointers to represent nullable values
 	IsPreviousSeasonRating *bool    `json:"isPreviousSeasonRating"`
 }
+
+// MMRPredictionRequest describes a match before it is played, so unlike a
+// calculation request it carries no scores.
+type MMRPredictionRequest struct {
+	Team1 MMRPredictionTeam `json:"team1" binding:"required"`
+	Team2 MMRPredictionTeam `json:"team2" binding:"required"`
+}
+
+type MMRPredictionTeam struct {
+	Players []MMRCalculationPlayerRating `json:"players" binding:"required"`
+}

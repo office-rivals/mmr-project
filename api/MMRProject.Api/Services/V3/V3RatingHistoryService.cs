@@ -14,8 +14,6 @@ public interface IV3RatingHistoryService
 
 public class V3RatingHistoryService(ApiDbContext dbContext) : IV3RatingHistoryService
 {
-    private const int RankedMatchThreshold = 10;
-
     public async Task<RatingHistoryResponse> GetPlayerHistoryAsync(Guid orgId, Guid leagueId, Guid leaguePlayerId, Guid? seasonId)
     {
         var playerExists = await dbContext.Set<LeaguePlayer>()
@@ -71,7 +69,7 @@ public class V3RatingHistoryService(ApiDbContext dbContext) : IV3RatingHistorySe
 
         var includedPlayerIds = rows
             .GroupBy(r => r.LeaguePlayerId)
-            .Where(g => g.Count() >= RankedMatchThreshold)
+            .Where(g => g.Count() >= Placement.MatchCount)
             .Select(g => g.Key)
             .ToHashSet();
 

@@ -13,8 +13,6 @@ public interface IV3LeaderboardService
 
 public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardService
 {
-    private const int RankedMatchThreshold = 10;
-
     public async Task<LeaderboardResponse> GetLeaderboardAsync(Guid orgId, Guid leagueId, Guid? seasonId)
     {
         var stats = await GetPlayerStatsAsync(orgId, leagueId, seasonId);
@@ -36,7 +34,7 @@ public class V3LeaderboardService(ApiDbContext dbContext) : IV3LeaderboardServic
                 long? mmr = seasonId.HasValue
                     ? stat?.Mmr
                     : lp.Mmr;
-                if (totalMatches < RankedMatchThreshold)
+                if (totalMatches < Placement.MatchCount)
                     mmr = null;
 
                 return new LeaderboardEntryResponse
