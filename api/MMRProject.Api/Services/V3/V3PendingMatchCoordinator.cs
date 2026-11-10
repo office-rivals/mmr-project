@@ -151,7 +151,7 @@ public class V3PendingMatchCoordinator(
             LeagueId = leagueId,
             Status = AcceptanceStatus.Pending,
             ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(31),
-            Teams = BalanceTeams(players, orgId, leagueId),
+            Teams = TeamBalancer.Balance(players, orgId, leagueId),
             Acceptances = players.Select(p => new PendingMatchAcceptance
             {
                 PendingMatchId = default,
@@ -177,37 +177,6 @@ public class V3PendingMatchCoordinator(
             logger.LogDebug("Pending match already exists for league {LeagueId}", leagueId);
             return false;
         }
-    }
-
-    private static List<PendingMatchTeam> BalanceTeams(List<LeaguePlayer> players, Guid orgId, Guid leagueId)
-    {
-        var sorted = players.OrderByDescending(p => p.Mmr).ToList();
-        var teamCount = 2;
-        var teamPlayers = new List<List<LeaguePlayer>>();
-        for (var i = 0; i < teamCount; i++)
-        {
-            teamPlayers.Add(new List<LeaguePlayer>());
-        }
-
-        for (var i = 0; i < sorted.Count; i++)
-        {
-            var round = i / teamCount;
-            var posInRound = i % teamCount;
-            var teamIndex = round % 2 == 0 ? posInRound : teamCount - 1 - posInRound;
-            teamPlayers[teamIndex].Add(sorted[i]);
-        }
-
-        return teamPlayers.Select((teamPlayersForIndex, index) => new PendingMatchTeam
-        {
-            OrganizationId = orgId,
-            LeagueId = leagueId,
-            Index = index,
-            Players = teamPlayersForIndex.Select((player, playerIndex) => new PendingMatchTeamPlayer
-            {
-                LeaguePlayerId = player.Id,
-                Index = playerIndex
-            }).ToList()
-        }).ToList();
     }
 
     private sealed record PendingMatchLeagueCandidate(Guid OrganizationId, Guid LeagueId, int RequiredPlayers);

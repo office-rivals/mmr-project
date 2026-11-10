@@ -16,6 +16,7 @@ dotnet run --project local-dev/MMRProject.AppHost
 | `mmr-api`  | Go MMR calculation service    | Port injected via `MMR_API_PORT`                             |
 | `api`      | ASP.NET Core API              | EF Core migrations apply automatically on startup            |
 | `frontend` | SvelteKit dev server (`vite`) | `npm install` runs automatically the first time              |
+| `grafana`  | Grafana LGTM (`grafana/otel-lgtm`) | Foosball device telemetry. **Not started by default**: click start on it in the dashboard. OTLP/HTTP on `127.0.0.1:4318` (`FOOSBALL_OTLP_LAN=true` opens it to the LAN, unauthenticated), dashboards + alerts from [`observability/`](../observability/README.md) |
 
 The dashboard (the URL is printed in the console on startup) is the source of
 truth for each service's address — open the `frontend` and `api` links from

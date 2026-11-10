@@ -14,12 +14,14 @@ namespace MMRProject.Api.Services.V3;
 public interface IV3MatchesService
 {
     Task<MatchResponse> SubmitMatchAsync(Guid orgId, Guid leagueId, SubmitMatchRequest request,
-        MatchSource source = MatchSource.Manual);
+        MatchSource source = MatchSource.Manual, Guid? createdByMembershipId = null);
     Task<List<MatchResponse>> GetMatchesAsync(Guid orgId, Guid leagueId, Guid? seasonId, Guid? leaguePlayerId = null, int limit = 50, int offset = 0);
     Task<MatchResponse> GetMatchAsync(Guid orgId, Guid leagueId, Guid matchId);
     Task<MatchResponse> UpdateMatchAsync(Guid orgId, Guid leagueId, Guid matchId, SubmitMatchRequest request);
     Task DeleteMatchAsync(Guid orgId, Guid leagueId, Guid matchId);
     Task<RecalculateMatchesResponse> RecalculateCurrentSeasonAsync(Guid orgId, Guid leagueId, Guid? fromMatchId);
+    /// <summary>The member's player in the league, added (not saved) when they have none yet.</summary>
+    Task<LeaguePlayer> GetOrCreateLeaguePlayerAsync(Guid orgId, Guid leagueId, OrganizationMembership membership);
 }
 
 public class V3MatchesService(
@@ -34,14 +36,17 @@ public class V3MatchesService(
     private const decimal DefaultSigma = 8.333m;
 
     public async Task<MatchResponse> SubmitMatchAsync(Guid orgId, Guid leagueId, SubmitMatchRequest request,
-        MatchSource source = MatchSource.Manual)
+        MatchSource source = MatchSource.Manual, Guid? createdByMembershipId = null)
     {
-        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        // Join the caller's transaction when there is one (table matches submit under a table lock).
+        await using var transaction = dbContext.Database.CurrentTransaction is null
+            ? await dbContext.Database.BeginTransactionAsync()
+            : null;
 
         var currentSeason = await seasonService.GetCurrentSeasonAsync(orgId, leagueId)
             ?? throw new InvalidArgumentException("No active season found for this league");
 
-        var membershipId = await organizationService.GetCurrentMembershipIdAsync(orgId);
+        var membershipId = createdByMembershipId ?? await organizationService.GetCurrentMembershipIdAsync(orgId);
 
         // Only manual entry can double-submit; matchmade results are tied to one
         // active match. Lock before player resolution so concurrent enrolments
@@ -85,7 +90,10 @@ public class V3MatchesService(
         await SaveMatchChangesAsync();
 
         await CalculateAndApplyMmr(orgId, match, leaguePlayers);
-        await transaction.CommitAsync();
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync();
+        }
 
         return await LoadAndMapMatch(orgId, leagueId, match.Id);
     }
@@ -419,7 +427,7 @@ public class V3MatchesService(
             "Multiple organization members match this email. Select an existing player instead.");
     }
 
-    private async Task<LeaguePlayer> GetOrCreateLeaguePlayerAsync(
+    public async Task<LeaguePlayer> GetOrCreateLeaguePlayerAsync(
         Guid orgId,
         Guid leagueId,
         OrganizationMembership membership)

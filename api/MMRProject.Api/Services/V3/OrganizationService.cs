@@ -319,6 +319,10 @@ public class OrganizationService(
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(c => c.Status, MembershipClaimStatus.Cancelled));
 
+        // Removed members keep their history, but not their cards (privacy: delete what's no longer needed).
+        await dbContext.PlayerCards.Where(c => c.OrganizationMembershipId == membershipId).ExecuteDeleteAsync();
+        await dbContext.TableRosterEntries.Where(e => e.LeaguePlayer.OrganizationMembershipId == membershipId)
+            .ExecuteDeleteAsync();
         await dbContext.SaveChangesAsync();
         await transaction.CommitAsync();
     }

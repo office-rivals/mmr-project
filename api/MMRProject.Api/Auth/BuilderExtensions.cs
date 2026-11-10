@@ -47,7 +47,9 @@ public static class BuilderExtensions
                 o.Authority = issuer;
             })
             .AddScheme<PersonalAccessTokenAuthenticationOptions, PersonalAccessTokenAuthenticationHandler>(
-                PatScheme, options => { });
+                PatScheme, options => { })
+            .AddScheme<DeviceAuthenticationOptions, DeviceAuthenticationHandler>(
+                DeviceAuthenticationHandler.SchemeName, options => { });
 
         return builder;
     }
