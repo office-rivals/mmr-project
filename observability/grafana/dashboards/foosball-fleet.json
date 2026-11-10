@@ -1,0 +1,733 @@
+{
+  "uid": "foosball-fleet",
+  "title": "Foosball — fleet",
+  "tags": [
+    "foosball"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 41,
+  "refresh": "1m",
+  "time": {
+    "from": "now-3d",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "links": [],
+  "panels": [
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Devices reporting (36 h)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(max by (device_id) (last_over_time(foosball_uptime_milliseconds[36h]))) or vector(0)",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Silent > 36 h",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(max by (device_id) (present_over_time(foosball_uptime_milliseconds[14d])) unless max by (device_id) (present_over_time(foosball_uptime_milliseconds[36h]))) or vector(0)",
+          "instant": true
+        }
+      ],
+      "description": "Seen in the last 14 days but no metrics for 36 h: dead battery, Wi-Fi or a crash loop.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Low battery",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(max by (device_id) (last_over_time(foosball_battery_voltage_volts[14d])) < 3.6) or vector(0)",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Goals (time range)",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(count_over_time({service_name=\"foosball-goal-counter\"} |= \"counted\" | foosball_tag=\"goal\" [$__range])) or vector(0)",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Devices",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (device_id, foosball_role, foosball_table_id, foosball_goal, foosball_end, service_version) (last_over_time(foosball_uptime_milliseconds[14d]))",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (device_id) (last_over_time(foosball_battery_voltage_volts[14d]))",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "time() - max by (device_id) (max_over_time(timestamp(foosball_uptime_milliseconds)[14d:5m]))",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (device_id) (last_over_time(foosball_wifi_rssi_dBm[14d]))",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "instant": true,
+          "format": "table",
+          "expr": "max by (device_id) (last_over_time(foosball_beam_health_ratio[14d]))"
+        }
+      ],
+      "description": "Every device that sent metrics in the last 14 days. Last seen = time since its last metrics export (heartbeat ≤ 24 h, plus every session end). Beam = beam health at the last report, goal counters only (firmware/beam-health-firmware-2026-10-16.md §4).",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "device_id",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Time 4": true,
+              "Value #A": true,
+              "Time 5": true
+            },
+            "renameByName": {
+              "device_id": "Device",
+              "foosball_role": "Role",
+              "foosball_table_id": "Table",
+              "foosball_goal": "Goal",
+              "foosball_end": "End",
+              "service_version": "Firmware",
+              "Value #B": "Battery",
+              "Value #C": "Last seen",
+              "Value #D": "RSSI",
+              "Value #E": "Beam"
+            },
+            "indexByName": {
+              "device_id": 0,
+              "foosball_role": 1,
+              "foosball_table_id": 2,
+              "foosball_goal": 3,
+              "foosball_end": 4,
+              "Value #B": 5,
+              "Value #C": 6,
+              "Value #D": 7,
+              "service_version": 9,
+              "Value #E": 8
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Battery"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "volt"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 3.45
+                    },
+                    {
+                      "color": "green",
+                      "value": 3.6
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last seen"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 95040.00000000001
+                    },
+                    {
+                      "color": "red",
+                      "value": 129600
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "RSSI"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dBm"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Drill down",
+                    "url": "/d/foosball-device?var-device=${__value.raw}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Beam"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "ok",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "low_margin",
+                        "color": "orange",
+                        "index": 1
+                      },
+                      "2": {
+                        "text": "ambient_high",
+                        "color": "orange",
+                        "index": 2
+                      },
+                      "3": {
+                        "text": "blocked",
+                        "color": "red",
+                        "index": 3
+                      },
+                      "4": {
+                        "text": "sensor_dead",
+                        "color": "red",
+                        "index": 4
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Battery",
+            "desc": false
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Low battery — swap these",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (device_id, foosball_table_id, foosball_role) (last_over_time(foosball_battery_voltage_volts[14d])) < 3.6",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "description": "Last reported voltage below the warn level (low-battery thresholds, INTERFACES §3).",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "device_id": "Device",
+              "foosball_table_id": "Table",
+              "foosball_role": "Role",
+              "Value": "Battery"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "volt",
+          "decimals": 2
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Battery voltage per device",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 18,
+        "w": 16,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by (device_id) (max_over_time(foosball_battery_voltage_volts[$__interval]))",
+          "legendFormat": "{{device_id}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "volt",
+          "custom": {
+            "drawStyle": "line",
+            "spanNulls": true,
+            "showPoints": "always",
+            "pointSize": 4,
+            "fillOpacity": 0,
+            "stacking": {
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "line+area"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3.45
+              },
+              {
+                "color": "green",
+                "value": 3.6
+              }
+            ]
+          },
+          "min": 3.0,
+          "max": 5.0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "15m"
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Goals per table per hour",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum by (table) (count_over_time({service_name=\"foosball-goal-counter\"} |= \"counted\" | foosball_tag=\"goal\" | label_format table=\"{{ if .foosball_table_id }}{{ .foosball_table_id }}{{ else }}{{ .device_id }}{{ end }}\" [$__interval]))",
+          "legendFormat": "{{table}}"
+        }
+      ],
+      "description": "From the devices' 'goal counted' log records. Grouped by table_id once a device is configured, by device_id before that.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "bars",
+            "spanNulls": true,
+            "showPoints": "never",
+            "pointSize": 4,
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1h"
+    }
+  ]
+}
