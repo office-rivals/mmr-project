@@ -5,7 +5,7 @@ description: The services you run to host MMR Project yourself, and how they con
 
 A self-hosted MMR Project instance has four parts you run and one you don't:
 
-- **Frontend**: the web app from `frontend-beta/`, served by a Node server
+- **Frontend**: the web app from `frontend/`, served by a Node server
 - **API**: the ASP.NET Core backend, which also runs the matchmaking worker in the background
 - **MMR API**: the Go service that calculates rating changes
 - **Database**: PostgreSQL, the only stateful part
@@ -59,8 +59,8 @@ You can run the app and its data yourself, but you still need a Clerk applicatio
 
 ## Source files that matter
 
-- [`frontend-beta/Dockerfile`](https://github.com/office-rivals/mmr-project/blob/main/frontend-beta/Dockerfile) and [`frontend-beta/.env.example`](https://github.com/office-rivals/mmr-project/blob/main/frontend-beta/.env.example)
-- [`frontend-beta/README.md`](https://github.com/office-rivals/mmr-project/blob/main/frontend-beta/README.md), for proxy and origin settings
+- [`frontend/Dockerfile`](https://github.com/office-rivals/mmr-project/blob/main/frontend/Dockerfile) and [`frontend/.env.example`](https://github.com/office-rivals/mmr-project/blob/main/frontend/.env.example)
+- [`frontend/README.md`](https://github.com/office-rivals/mmr-project/blob/main/frontend/README.md), for proxy and origin settings
 - [`api/MMRProject.Api/Dockerfile`](https://github.com/office-rivals/mmr-project/blob/main/api/MMRProject.Api/Dockerfile) and [`api/MMRProject.Api/appsettings.json`](https://github.com/office-rivals/mmr-project/blob/main/api/MMRProject.Api/appsettings.json)
 - [`mmr-api/Dockerfile`](https://github.com/office-rivals/mmr-project/blob/main/mmr-api/Dockerfile) and [`mmr-api/.env.example`](https://github.com/office-rivals/mmr-project/blob/main/mmr-api/.env.example)
 

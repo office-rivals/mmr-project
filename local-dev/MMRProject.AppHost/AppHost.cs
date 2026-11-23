@@ -50,7 +50,7 @@ var mmrApi = builder.AddGolangApp("mmr-api", "../../mmr-api")
 #pragma warning restore CS0618
     .WithHttpEndpoint(env: "MMR_API_PORT") // Aspire allocates the port and injects it
     .WithEnvironment("ADMIN_SECRET", adminSecret)
-    .WithHttpHealthCheck("/health") // existing probe (also the mmr-api-prod Container App's)
+    .WithHttpHealthCheck("/health") // existing probe, also used by the deployed Container App
     // The Go service uses OTLP/HTTP exporters (otlptracehttp/...), which ignore
     // OTEL_EXPORTER_OTLP_PROTOCOL and always POST http/protobuf. Force the http
     // endpoint so traces/metrics/logs reach the Aspire dashboard.
@@ -75,17 +75,16 @@ var api = builder.AddProject<Projects.MMRProject_Api>("api", launchProfileName: 
     // forwards the key header correctly.
     .WithOtlpExporter(OtlpProtocol.HttpProtobuf);
 
-// --- Frontend (SvelteKit / Vite) --------------------------------------------
+// --- Frontend (TanStack Start / Vite) ---------------------------------------
 
 builder.AddViteApp("frontend", "../../frontend")
     .WithNpm() // npm package manager + install on first run
     .WaitFor(api)
-    // Lets vite.config.ts force a clean dep pre-bundle only under Aspire, where a
-    // mid-request re-optimize otherwise crashes esbuild with write EPIPE.
-    .WithEnvironment("ASPIRE_MANAGED", "true")
     .WithEnvironment("API_BASE_PATH", api.GetEndpoint("http"))
-    .WithEnvironment("PUBLIC_CLERK_PUBLISHABLE_KEY", clerkPublishableKey)
+    .WithEnvironment("CLERK_PUBLISHABLE_KEY", clerkPublishableKey)
     .WithEnvironment("CLERK_SECRET_KEY", clerkSecretKey)
+    .WithEnvironment("CLERK_SIGN_IN_URL", "/login")
+    .WithEnvironment("CLERK_SIGN_UP_URL", "/sign-up")
     .WithExternalHttpEndpoints();
 
 builder.Build().Run();

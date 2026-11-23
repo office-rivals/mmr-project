@@ -1,38 +1,163 @@
-# create-svelte
+# frontend
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
+React 19 / TanStack Start rewrite of the legacy SvelteKit application in
+`../frontend-legacy`.
+The reference application guides behavior and appearance; known bugs and older
+icon drawings need not be reproduced. shadcn components
+use Base UI primitives, with styles adapted to match the Svelte rendering.
 
-## Creating a project
+The stack uses React 19.3, TanStack Start/Router, TanStack Query for server data,
+Clerk for authentication, TypeScript 7, Tailwind CSS 4 and Vite 8. Carbon Charts
+and Lucide provide charts and icons. Vitest 5 covers unit tests; Playwright 1.63
+runs the shared functional suite and the app's own regression and production
+suites.
 
-If you're seeing this, you've probably already done this step. Congrats!
+shadcn components are owned source files in `src/components/ui`, not a versioned
+component runtime. `components.json` selects the Base UI `base-vega` registry;
+the local shadcn CLI is pinned by the lockfile. Generated styles and compatibility
+wrappers intentionally preserve the reference UI. Regenerating components must
+be followed by the e2e suites below. Tailwind uses its Vite plugin and
+CSS-first configuration in `src/app.css`.
 
-```bash
-# create a new project in the current directory
-npm create svelte@latest
+## Development
 
-# create a new project in my-app
-npm create svelte@latest my-app
-```
+Use Node 26 (see `frontend/.nvmrc`, which the production image matches).
+Install dependencies with `npm ci`. Run the app with:
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```bash
+```sh
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```bash
+npm run check
+npm test
 npm run build
+npm start
 ```
 
-You can preview the production build with `npm run preview`.
+Vite generates `src/routeTree.gen.ts`; on a fresh checkout, build before checking
+if that file is absent. `npm start` serves the production build using `PORT`
+(default 3000) and `HOST` (default `0.0.0.0`).
 
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+The implemented routes include authentication, organization browsing/settings,
+leaderboards, profiles, statistics, matchmaking, active matches, match submission,
+random teams, invitations, personal tokens, and organization/league administration.
+
+## Configuration
+
+Copy `.env.example` to `.env` and supply your own values. Never commit credentials
+or deployment identifiers.
+
+| Variable                   | Purpose                                                |
+| -------------------------- | ------------------------------------------------------ |
+| `API_BASE_PATH`            | Server-side API base URL, resolved per request         |
+| `CLERK_PUBLISHABLE_KEY`    | Clerk public key, supplied to the browser during SSR   |
+| `CLERK_SECRET_KEY`         | Server-only Clerk secret                               |
+| `CLERK_SIGN_IN_URL`        | `/login`                                               |
+| `CLERK_SIGN_UP_URL`        | `/sign-up`                                             |
+| `TRUST_PROXY`              | Forwarded-header trust policy; defaults false          |
+| `APP_ORIGIN`               | Fixed public origin behind a TLS-terminating proxy     |
+| `CLERK_AUTHORIZED_PARTIES` | Comma-separated origins allowed to mint session tokens |
+
+The Clerk middleware reads the runtime public key and supplies it to the browser
+through its SSR initial state. No credentials are required to build the image.
+`VITE_CLERK_PUBLISHABLE_KEY` remains supported for existing local configurations;
+prefer `CLERK_PUBLISHABLE_KEY` for deployments. The API URL and secret key are also
+runtime configuration. Vite loads local env for development; `server.mjs` loads
+optional dotenv configuration for local production runs.
+
+For a fixed public hostname behind managed ingress, set `APP_ORIGIN` to its HTTPS
+origin and leave `TRUST_PROXY=false`. The server uses that origin for Clerk and
+native-form validation and removes conflicting forwarded host/protocol headers.
+Set `CLERK_AUTHORIZED_PARTIES` to the explicitly trusted application origins; a
+shared Clerk instance may need every origin that mints its session tokens. Sign-in and
+sign-up return to this app's `/`; sign-out returns to `/login`.
+
+`TRUST_PROXY` accepts `false`, `true`, `loopback`, or a comma-separated list of
+proxy IP addresses. Keep the default when the app receives traffic directly.
+When a controlled reverse proxy terminates HTTPS, use `loopback` for a same-host
+proxy or list its exact peer addresses. Use `true` only when every immediate peer
+is controlled and overwrites forwarded headers; invalid values stop startup.
+
+`src/api-v3` is hand-maintained, like the reference client. Update it alongside
+API contract changes; do not overwrite custom client methods with generated code.
+
+## Verification
+
+The app has its own Playwright suites in `e2e/`:
+
+```sh
+# Main suite: boots the app and the isolated e2e backend stack
+npm run e2e
+npm run e2e:ui
+
+# Native-form, transport, cache and keyboard regressions
+npm run e2e:regressions
+
+# The main suite against the built Node server, plus WebKit/Firefox smoke
+# and production contracts
+npm run build && npm run e2e:production
+```
+
+See `e2e/README.md` for prerequisites, including the `.env.e2e` test account.
+These tests reset the database; never run two suites concurrently. Ports 8090,
+8091, and 5180 must be free. Postgres uses the dedicated e2e port 5433.
+
+## Data and mutation lifecycle
+
+Date and number rendering uses a consistent English/UTC snapshot for SSR and
+initial hydration, then adopts the browser's locale and timezone. Use
+`useLocaleFormatters()` for rendered values and date groups; formatting directly
+with the runtime defaults can disagree between Linux containers and browsers.
+Without JavaScript, date displays retain the UTC snapshot.
+
+The app and admin layouts fetch one fresh `['me']` snapshot in `beforeLoad`
+per navigation or invalidation. Descendants resolve organizations and leagues from
+that snapshot in route context. They do not independently reuse a stale shell
+query. Loader-only league lists, invitation details, and admin badge counts
+also refetch on navigation. This makes newly joined leagues and renamed organizations available
+before the destination route resolves.
+
+Play-flow state is scoped to the current league and active-match ID. Queue and
+active-match lists poll every two seconds. Pull-to-refresh fetches the shell, refetches callable cached queries, then
+waits for synchronous route invalidation. A failed preflight preserves the
+current page and shows refresh feedback.
+
+Admin saves await `router.invalidate({ sync: true })` before settling the dialog.
+A cancelled or reopened dialog retains its own generation, so an older save
+cannot close it. Server-function validation/API failures preserve their HTTP
+status while returning the action data used to display feedback.
+
+## Native form responses
+
+SSR-visible mutations support explicit same-route POST handlers with Origin
+checks. Invitee fields stay in the POST body. Enhanced forms use inline action
+feedback; native success uses a 303 redirect, and native failure renders an
+escaped error document with the original HTTP status. Unlike SvelteKit,
+TanStack Start has no implicit `form` action-data channel for rendering
+`fail(status, data)` into the original page. This native error-page presentation
+is an explicit framework contract difference; it does not require hydration to
+submit the form. Controls revealed by JavaScript still require JavaScript.
+
+The detailed contract is in `../plans/frontend-beta/specs/10-runtime-contract.md`.
+Run `npm run e2e:regressions` for native-form, transport, and cache
+regressions. It uses the same destructive e2e seed and must run alone.
+
+## Container and release
+
+```sh
+docker build -t frontend:local .
+docker run --rm --env-file /private/path/frontend.env -p 127.0.0.1:3000:3000 frontend:local
+```
+
+The image runs as the unprivileged `node` user and excludes local env files,
+test artifacts and development dependencies. `/health` checks the Node listener
+without requiring a Clerk session; it does not check upstream API availability.
+Use port 3000 for ingress and health probes. Set the public origin and production
+Clerk credentials at runtime before testing authentication on the custom hostname.
+
+After merging a release PR, choose `frontend` and the released version in
+**Deploy Release**. The workflow deploys the image published for that release to
+GHCR, without rebuilding it, and does not configure DNS, TLS, runtime credentials
+or probes. Configure the API URL, Clerk keys, public origin and HTTP probes in
+Azure. Roll back by deploying the previous version.
+
+Deployed instances share the live database, so the destructive Playwright suites
+must never target them.

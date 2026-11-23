@@ -4,10 +4,10 @@ description: Run MMR Project locally and sign in to the frontend.
 ---
 
 :::caution[Based on the beta]
-These docs describe the beta frontend in `frontend-beta/`, the React 19 and TanStack Start rewrite. The SvelteKit app in `frontend/` still runs alongside it and isn't covered here.
+These docs describe the beta frontend in `frontend/`, the React 19 and TanStack Start rewrite. The SvelteKit app in `frontend-legacy/` still runs alongside it and isn't covered here.
 :::
 
-This is the shortest path to a local, signed-in instance. The .NET Aspire AppHost runs the backend, and you run the frontend from `frontend-beta/` next to it.
+This is the shortest path to a local, signed-in instance. The .NET Aspire AppHost runs the backend and the frontend together.
 
 ## Prerequisites
 
@@ -46,7 +46,7 @@ dotnet user-secrets set "Parameters:clerk-secret-key" "sk_test_..."
 dotnet user-secrets set "Parameters:clerk-issuer" "https://your-app.clerk.accounts.dev"
 ```
 
-The API uses the issuer. The two keys are for the SvelteKit app in `frontend/`, which the AppHost also starts.
+The API uses the issuer. The two keys are for the frontend, which the AppHost also starts.
 
 From the repository root, start the stack:
 
@@ -54,36 +54,11 @@ From the repository root, start the stack:
 dotnet run --project local-dev/MMRProject.AppHost
 ```
 
-The AppHost starts PostgreSQL, the MMR API, the API and the SvelteKit app, and prints the URL of the Aspire dashboard. The API applies database migrations on startup. The dashboard lists each service's address; you need the `api` one next.
+The AppHost starts PostgreSQL, the MMR API, the API and the frontend, and prints the URL of the Aspire dashboard. The API applies database migrations on startup. The dashboard lists each service's address; you need the `api` one next.
 
-## 3. Run the frontend
+## 3. Create your first organization
 
-In a second terminal:
-
-```bash
-cd frontend-beta
-cp .env.example .env
-```
-
-Edit `.env`:
-
-- `API_BASE_PATH`: the `api` URL from the dashboard. The example value, `http://localhost:8081`, is the port in the API's `http` launch profile, which the AppHost uses.
-- `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`: your Clerk keys.
-
-Keep `CLERK_SIGN_IN_URL=/login`, `CLERK_SIGN_UP_URL=/sign-up` and `TRUST_PROXY=false` as they are, and leave `APP_ORIGIN` and `CLERK_AUTHORIZED_PARTIES` unset.
-
-Then install and start the dev server:
-
-```bash
-npm ci
-npm run dev
-```
-
-The frontend runs on `http://localhost:5173`. The dev server exits instead of picking another port if 5173 is taken.
-
-## 4. Create your first organization
-
-Open `http://localhost:5173` and sign up. Until you belong to an organization, the home page asks you to join one with an invite code.
+Open the `frontend` URL from the dashboard and sign up. Until you belong to an organization, the home page asks you to join one with an invite code.
 
 The app has no screen for creating an organization yet, so create it through the API. In the browser's developer console on the frontend, get a Clerk token:
 

@@ -12,7 +12,6 @@ on:
         type: choice
         options:
           - frontend
-          - frontend-beta
           - api
           - mmr-api
       version:
@@ -106,23 +105,16 @@ jobs:
       - name: Resolve the Container App
         env:
           UI_APP: ${{ secrets.UI_CONTAINER_APP_NAME }}
-          BETA_UI_APP: ${{ secrets.BETA_UI_CONTAINER_APP_NAME }}
           API_APP: ${{ secrets.API_CONTAINER_APP_NAME }}
           MMR_API_APP: ${{ secrets.MMR_API_CONTAINER_APP_NAME }}
         run: |
           case "$COMPONENT" in
             frontend) app="$UI_APP" ;;
-            frontend-beta) app="$BETA_UI_APP" ;;
             api) app="$API_APP" ;;
             mmr-api) app="$MMR_API_APP" ;;
           esac
           if [ -z "$app" ]; then
             echo "No Container App is configured for $COMPONENT." >&2
-            exit 1
-          fi
-          # A beta release must never replace the stable frontend.
-          if [ "$COMPONENT" = "frontend-beta" ] && [ "$app" = "$UI_APP" ]; then
-            echo "BETA_UI_CONTAINER_APP_NAME must name a separate Container App." >&2
             exit 1
           fi
           echo "CONTAINER_APP=$app" >> "$GITHUB_ENV"

@@ -10,7 +10,7 @@ import Leaderboard from '../../components/mock/Leaderboard.astro';
 import AppNavbar from '../../components/mock/AppNavbar.astro';
 
 :::caution[Based on the beta]
-These docs describe the beta frontend in `frontend-beta/`, the React 19 and TanStack Start rewrite. The SvelteKit app in `frontend/` still runs alongside it and isn't covered here.
+These docs describe the beta frontend in `frontend/`, the React 19 and TanStack Start rewrite. The SvelteKit app in `frontend-legacy/` still runs alongside it and isn't covered here.
 :::
 
 MMR Project is a self-hosted app for running competitive leagues around office games. Players report match results, the app rates them with OpenSkill, and a matchmaking queue splits the players waiting to play into teams balanced by rating. Leagues live inside organizations and run in seasons, with a leaderboard per season.
@@ -39,7 +39,7 @@ You host every part of it yourself except sign-in, which uses [Clerk](https://cl
 
 | Service | What it does | Source |
 | --- | --- | --- |
-| Frontend | React 19 and TanStack Start web app, served by a Node server | [`frontend-beta/`](https://github.com/office-rivals/mmr-project/tree/main/frontend-beta) |
+| Frontend | React 19 and TanStack Start web app, served by a Node server | [`frontend/`](https://github.com/office-rivals/mmr-project/tree/main/frontend) |
 | API | ASP.NET Core API: business logic, data access and the background matchmaking worker | [`api/MMRProject.Api/`](https://github.com/office-rivals/mmr-project/tree/main/api/MMRProject.Api) |
 | MMR API | Go service that the API calls to calculate rating changes | [`mmr-api/`](https://github.com/office-rivals/mmr-project/tree/main/mmr-api) |
 | PostgreSQL | Stores all application data; the only stateful service | — |
@@ -49,7 +49,7 @@ The browser only talks to the frontend. The frontend's server calls the API with
 
 ## About the frontend
 
-These docs are written for the beta frontend in `frontend-beta/` and call it "the frontend" throughout. The older SvelteKit app in [`frontend/`](https://github.com/office-rivals/mmr-project/tree/main/frontend) still exists alongside it and uses the same API, but its configuration differs and isn't covered here.
+These docs are written for the beta frontend in `frontend/` and call it "the frontend" throughout. The older SvelteKit app in [`frontend-legacy/`](https://github.com/office-rivals/mmr-project/tree/main/frontend-legacy) still exists alongside it and uses the same API, but its configuration differs and isn't covered here.
 
 ## Core concepts
 

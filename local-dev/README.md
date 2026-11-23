@@ -10,12 +10,12 @@ dotnet run --project local-dev/MMRProject.AppHost
 
 ## What it runs
 
-| Resource   | What                          | Notes                                                        |
-| ---------- | ----------------------------- | ------------------------------------------------------------ |
-| `postgres` | PostgreSQL                    | Persisted in a Docker volume; database `mmr_project`         |
-| `mmr-api`  | Go MMR calculation service    | Port injected via `MMR_API_PORT`                             |
-| `api`      | ASP.NET Core API              | EF Core migrations apply automatically on startup            |
-| `frontend` | SvelteKit dev server (`vite`) | `npm install` runs automatically the first time              |
+| Resource   | What                               | Notes                                                        |
+| ---------- | ---------------------------------- | ------------------------------------------------------------ |
+| `postgres` | PostgreSQL                         | Persisted in a Docker volume; database `mmr_project`         |
+| `mmr-api`  | Go MMR calculation service         | Port injected via `MMR_API_PORT`                             |
+| `api`      | ASP.NET Core API                   | EF Core migrations apply automatically on startup            |
+| `frontend` | TanStack Start dev server (`vite`) | `npm install` runs automatically the first time              |
 
 The dashboard (the URL is printed in the console on startup) is the source of
 truth for each service's address — open the `frontend` and `api` links from

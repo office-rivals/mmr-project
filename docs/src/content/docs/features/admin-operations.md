@@ -5,7 +5,7 @@ description: What organization owners and moderators can manage, where it lives 
 
 Owners and moderators manage their organization from the admin area at `/admin`. They reach it from **Admin** in the account menu, which also shows how many match flags are waiting. Regular members don't see the entry, and the organization admin pages refuse them.
 
-The beta's admin routes are in [`frontend-beta/src/routes/admin/`](https://github.com/office-rivals/mmr-project/tree/main/frontend-beta/src/routes/admin) and the controllers in [`api/MMRProject.Api/Controllers/V3/`](https://github.com/office-rivals/mmr-project/tree/main/api/MMRProject.Api/Controllers/V3).
+The beta's admin routes are in [`frontend/src/routes/admin/`](https://github.com/office-rivals/mmr-project/tree/main/frontend/src/routes/admin) and the controllers in [`api/MMRProject.Api/Controllers/V3/`](https://github.com/office-rivals/mmr-project/tree/main/api/MMRProject.Api/Controllers/V3).
 
 ## Admin pages
 
