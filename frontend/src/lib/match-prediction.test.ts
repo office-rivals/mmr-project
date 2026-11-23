@@ -8,6 +8,7 @@ import {
 import type { MatchPredictionResponse } from '@/api-v3';
 
 const prediction: MatchPredictionResponse = {
+  pendingMatchId: 'pending',
   teams: [
     {
       index: 1,
@@ -55,6 +56,7 @@ describe('matchOdds', () => {
 
   it('hides a placing player’s stake and their team’s average', () => {
     const placing: MatchPredictionResponse = {
+      ...prediction,
       teams: [
         {
           ...prediction.teams[0],
@@ -78,10 +80,13 @@ describe('matchOdds', () => {
   it('is null without a usable prediction', () => {
     expect(matchOdds(null, 'a')).toBeNull();
     expect(matchOdds(undefined, 'a')).toBeNull();
-    expect(matchOdds({ teams: [prediction.teams[0]] }, 'a')).toBeNull();
+    expect(
+      matchOdds({ ...prediction, teams: [prediction.teams[0]] }, 'a')
+    ).toBeNull();
     expect(
       matchOdds(
         {
+          ...prediction,
           teams: [prediction.teams[0], { ...prediction.teams[1], players: [] }],
         },
         'a'

@@ -12,6 +12,7 @@ import { failServerAction } from '@/lib/server/action-result';
 import { getApiErrorDetails } from '@/lib/server/apiError';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { scrollToStep } from '@/lib/scroll-to-step';
+import { useMatchPredictions } from '@/components/play/use-match-predictions';
 import type { LeagueContext } from './route';
 import type { ActiveMatchResponse } from '@/api-v3';
 
@@ -132,6 +133,9 @@ function LeagueActiveMatchRoute({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const prediction = useMatchPredictions(league.orgId, league.leagueId, [
+    activeMatch.pendingMatchId,
+  ]).get(activeMatch.pendingMatchId);
   const [formMessage, setFormMessage] = useState<string | null>(null);
 
   const submitResult = useMutation({
@@ -169,6 +173,7 @@ function LeagueActiveMatchRoute({
       submitting={submitResult.isPending}
       onSubmit={(scores) => submitResult.mutate(scores)}
       onGoToStep={scrollToStep}
+      prediction={prediction}
     />
   );
 }

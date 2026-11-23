@@ -27,13 +27,13 @@ public class V3MatchPredictionService(
     IMemoryCache cache,
     ILogger<V3MatchPredictionService> logger) : IV3MatchPredictionService
 {
-    // Queue and active-match polls ask every few seconds, so the MMR API's
-    // answer is cached on the exact request: it stays valid while nobody's
-    // rating changes, and any change is a different request.
+    // The app asks again whenever it shows a match, so the MMR API's answer is
+    // cached on the exact request: it stays valid while nobody's rating
+    // changes, and any change is a different request.
     private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(15);
 
-    // A failing MMR API must not hold up the match it decorates, nor be asked
-    // again by every poll while it is down.
+    // A failing MMR API must not hold up the page showing the match, nor be
+    // asked again by every request while it is down.
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan FailureBackoff = TimeSpan.FromSeconds(30);
 
@@ -130,6 +130,7 @@ public class V3MatchPredictionService(
 
         return new MatchPredictionResponse
         {
+            PendingMatchId = match.Id,
             Teams = [MapTeam(teams[0], response.Team1), MapTeam(teams[1], response.Team2)],
         };
     }

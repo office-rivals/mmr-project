@@ -16,7 +16,11 @@ import {
   type Result,
 } from '@/lib/player-stats';
 import { cn, getPlayerDisplayName } from '@/lib/utils';
-import type { ActiveMatchResponse, LeaderboardEntryResponse } from '@/api-v3';
+import type {
+  ActiveMatchResponse,
+  LeaderboardEntryResponse,
+  MatchPredictionResponse,
+} from '@/api-v3';
 
 export interface HomeStanding {
   entry: LeaderboardEntryResponse;
@@ -459,10 +463,12 @@ export function LiveNowCard({
   match,
   now,
   href,
+  prediction,
 }: {
   match: ActiveMatchResponse;
   now: number;
   href: string;
+  prediction?: MatchPredictionResponse | null;
 }) {
   const minutes = Math.max(
     0,
@@ -471,7 +477,7 @@ export function LiveNowCard({
   const [a, b] = [...match.teams].sort((x, y) => x.index - y.index);
   const names = (team: typeof a | undefined) =>
     (team?.players ?? []).map((p) => getPlayerDisplayName(p)).join(' + ');
-  const odds = matchOdds(match.prediction);
+  const odds = matchOdds(prediction);
 
   return (
     <AppLink

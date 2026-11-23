@@ -363,8 +363,6 @@ export interface PendingMatchResponse {
   expiresAt: string;
   teams: PendingMatchTeamResponse[];
   acceptances: PendingMatchAcceptanceResponse[];
-  /** Null when the prediction is unavailable; the match is still valid. */
-  prediction?: MatchPredictionResponse | null;
 }
 
 export interface PendingMatchTeamResponse {
@@ -390,11 +388,12 @@ export interface ActiveMatchResponse {
   pendingMatchId: string;
   startedAt: string;
   teams: PendingMatchTeamResponse[];
-  /** Null when the prediction is unavailable; the match is still valid. */
-  prediction?: MatchPredictionResponse | null;
 }
 
+/** From GET …/match-predictions, one per match it could predict. */
 export interface MatchPredictionResponse {
+  /** The found match; a live match carries it as `pendingMatchId`. */
+  pendingMatchId: string;
   teams: TeamPredictionResponse[];
 }
 

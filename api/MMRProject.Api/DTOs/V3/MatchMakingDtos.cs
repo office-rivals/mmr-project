@@ -25,7 +25,6 @@ public record PendingMatchResponse
     [Required] public required DateTimeOffset ExpiresAt { get; init; }
     [Required] public required List<PendingMatchTeamResponse> Teams { get; init; }
     [Required] public required List<PendingMatchAcceptanceResponse> Acceptances { get; init; }
-    public MatchPredictionResponse? Prediction { get; init; }
 }
 
 public record PendingMatchTeamResponse
@@ -55,15 +54,19 @@ public record ActiveMatchResponse
     [Required] public required Guid PendingMatchId { get; init; }
     [Required] public required DateTimeOffset StartedAt { get; init; }
     [Required] public required List<PendingMatchTeamResponse> Teams { get; init; }
-    public MatchPredictionResponse? Prediction { get; init; }
 }
 
 /// <summary>
-/// What the MMR calculation expects of a match before it is played. Null on a
-/// match when the prediction is unavailable.
+/// What the MMR calculation expects of a match before it is played.
 /// </summary>
 public record MatchPredictionResponse
 {
+    /// <summary>
+    /// The found match; a live match carries it as its
+    /// <see cref="ActiveMatchResponse.PendingMatchId"/>.
+    /// </summary>
+    [Required] public required Guid PendingMatchId { get; init; }
+
     [Required] public required List<TeamPredictionResponse> Teams { get; init; }
 }
 

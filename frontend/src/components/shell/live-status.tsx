@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouterState } from '@tanstack/react-router';
 import { AppLink } from '@/components/app-link';
 import { PendingMatchDialog } from '@/components/play/pending-match-dialog';
+import { useMatchPredictions } from '@/components/play/use-match-predictions';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { matchOdds, stakeLabel } from '@/lib/match-prediction';
 import { queueActionFn, type QueueActionName } from '@/lib/queue-actions';
@@ -11,6 +12,7 @@ import { cn, formatElapsed, getPlayerDisplayName, initials } from '@/lib/utils';
 import { queueQueryKey, useQueueStatus } from './use-queue-status';
 import type {
   ActiveMatchResponse,
+  MatchPredictionResponse,
   PendingMatchResponse,
   PendingMatchTeamResponse,
   QueuedPlayerResponse,
@@ -44,6 +46,7 @@ const LABEL = {
  */
 export function LiveStatus(props: LiveStatusProps) {
   const state = useLiveState(props);
+  const prediction = useStatePrediction(props, state);
   const action = useQueueAction(props.orgId, props.leagueId);
   if (!state) return null;
   if (state.kind === 'pending') {
@@ -58,6 +61,7 @@ export function LiveStatus(props: LiveStatusProps) {
         secondsRemaining={state.secondsLeft}
         responding={action.isPending}
         leaguePlayerId={props.leaguePlayerId}
+        prediction={prediction}
         onAccept={() => action.mutate({ action: 'accept', matchId })}
         onDecline={() => action.mutate({ action: 'decline', matchId })}
       />
@@ -78,6 +82,7 @@ export function LiveStatus(props: LiveStatusProps) {
         leaguePlayerId={props.leaguePlayerId!}
         action={action}
         variant="card"
+        prediction={prediction}
       />
     </section>
   );
@@ -92,6 +97,7 @@ export function LiveStatusPill({
   ...props
 }: LiveStatusProps & { anchor: RefObject<HTMLElement | null> }) {
   const state = useLiveState(props);
+  const prediction = useStatePrediction(props, state);
   const [open, setOpen] = useState(false);
   const action = useQueueAction(props.orgId, props.leagueId, () =>
     setOpen(false)
@@ -154,6 +160,7 @@ export function LiveStatusPill({
                 action={action}
                 variant="panel"
                 onNavigate={() => setOpen(false)}
+                prediction={prediction}
               />
             </div>
           </Popover.Popup>
@@ -161,6 +168,20 @@ export function LiveStatusPill({
       </Popover.Portal>
     </Popover.Root>
   );
+}
+
+/** The odds for the found or live match the status shows. */
+function useStatePrediction(
+  { orgId, leagueId }: LiveStatusProps,
+  state: LiveState | null
+) {
+  const id =
+    state?.kind === 'pending'
+      ? state.match.id
+      : state?.kind === 'live'
+        ? state.match.pendingMatchId
+        : undefined;
+  return useMatchPredictions(orgId, leagueId, [id]).get(id ?? '');
 }
 
 const CTA =
@@ -176,6 +197,7 @@ function StatusBody({
   action,
   variant,
   onNavigate,
+  prediction,
 }: {
   state: Exclude<LiveState, { kind: 'pending' }>;
   base: string;
@@ -183,6 +205,7 @@ function StatusBody({
   action: QueueAction;
   variant: 'card' | 'panel';
   onNavigate?: () => void;
+  prediction: MatchPredictionResponse | undefined;
 }) {
   const textLink = cn(
     'flex min-w-0 items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -197,7 +220,7 @@ function StatusBody({
 
   if (state.kind === 'live') {
     const href = `${base}/active-match/${state.match.id}`;
-    const odds = matchOdds(state.match.prediction, leaguePlayerId);
+    const odds = matchOdds(prediction, leaguePlayerId);
     const myTeam = state.match.teams.find((t) =>
       t.players.some((p) => p.leaguePlayerId === leaguePlayerId)
     );

@@ -16,7 +16,7 @@ import {
   loserScoreOptions,
 } from '@/lib/scoring';
 import { cn } from '@/lib/utils';
-import type { ActiveMatchResponse } from '@/api-v3';
+import type { ActiveMatchResponse, MatchPredictionResponse } from '@/api-v3';
 
 type TeamOption = 'team1' | 'team2';
 
@@ -28,6 +28,8 @@ interface ActiveMatchPageProps {
   submitting: boolean;
   onSubmit: (scores: { team1Score: number; team2Score: number }) => void;
   onGoToStep: (hash: string) => void;
+  /** From `useMatchPredictions`; the odds hide without one. */
+  prediction?: MatchPredictionResponse | null;
 }
 
 export function ActiveMatchPage({
@@ -38,6 +40,7 @@ export function ActiveMatchPage({
   submitting,
   onSubmit,
   onGoToStep,
+  prediction,
 }: ActiveMatchPageProps) {
   const teams = [...(activeMatch.teams ?? [])].sort(
     (a, b) => a.index - b.index
@@ -66,7 +69,7 @@ export function ActiveMatchPage({
   const teamIndex = (which: TeamOption) =>
     teams[which === 'team1' ? 0 : 1]?.index ?? (which === 'team1' ? 0 : 1);
 
-  const odds = matchOdds(activeMatch.prediction, currentLeaguePlayerId);
+  const odds = matchOdds(prediction, currentLeaguePlayerId);
   const { formatNumber } = useLocaleFormatters();
   const formatMmr = (value: number) =>
     formatNumber(value, { maximumFractionDigits: 0 });
