@@ -110,7 +110,7 @@ and links to Clerk via `IdentityUserId`; **PlayerHistory** and
 ### Placement matches
 
 A player's first 10 matches of each season are placement matches
-(`Placement.MatchCount` in the API, `RANKED_MATCH_THRESHOLD` in frontend-beta).
+(`Placement.MatchCount` in the API, `RANKED_MATCH_THRESHOLD` in the frontend).
 **Never let anyone see how a placement match moves a player's MMR** — not as a
 delta, a chart point, a prediction's stake, or an MMR or team average that
 would let someone work it out. Withhold it in the API response, not only in the
