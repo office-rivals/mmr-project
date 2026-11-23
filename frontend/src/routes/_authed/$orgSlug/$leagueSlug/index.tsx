@@ -42,6 +42,7 @@ import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { fetchPlayerSeasonMatches } from '@/lib/server/player-matches';
 import { cn, formatLeagueFormat } from '@/lib/utils';
 import { selectCurrentSeason } from '@/lib/util/season';
+import { useMatchPredictions } from '@/components/play/use-match-predictions';
 import type {
   ActiveMatchResponse,
   LeaderboardEntryResponse,
@@ -322,6 +323,9 @@ function LeagueHomePage() {
       }
     : null;
   const liveMatch = data.isCurrentSeason ? data.activeMatches[0] : undefined;
+  const livePrediction = useMatchPredictions(data.orgId, data.leagueId, [
+    liveMatch?.pendingMatchId,
+  ]).get(liveMatch?.pendingMatchId ?? '');
   const partnerCardCount = [partners.duo, partners.nemesis, liveMatch].filter(
     Boolean
   ).length;
@@ -419,6 +423,7 @@ function LeagueHomePage() {
                 match={liveMatch}
                 now={data.now}
                 href={`${base}/matchmaking`}
+                prediction={livePrediction}
               />
             ) : null}
           </div>

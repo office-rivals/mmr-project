@@ -6,6 +6,7 @@ import { WinChance } from './win-chance';
 import type { ActiveMatchResponse, MatchPredictionResponse } from '@/api-v3';
 
 const prediction: MatchPredictionResponse = {
+  pendingMatchId: 'pending',
   teams: [
     {
       index: 0,
@@ -51,9 +52,7 @@ function visibleText(markup: string) {
   return text.replace(/\s+/g, ' ');
 }
 
-function activeMatch(
-  prediction: MatchPredictionResponse | null
-): ActiveMatchResponse {
+function activeMatch(): ActiveMatchResponse {
   const player = (leaguePlayerId: string, index: number) => ({
     leaguePlayerId,
     displayName: leaguePlayerId,
@@ -67,20 +66,20 @@ function activeMatch(
       { index: 0, players: [player('p1', 0), player('p2', 1)] },
       { index: 1, players: [player('me', 0), player('p4', 1)] },
     ],
-    prediction,
   };
 }
 
 function renderActiveMatch(prediction: MatchPredictionResponse | null) {
   return renderToStaticMarkup(
     <ActiveMatchPage
-      activeMatch={activeMatch(prediction)}
+      activeMatch={activeMatch()}
       currentLeaguePlayerId="me"
       leagueWinningScore={10}
       formMessage={null}
       submitting={false}
       onSubmit={() => {}}
       onGoToStep={() => {}}
+      prediction={prediction}
     />
   );
 }
@@ -138,6 +137,7 @@ describe('ActiveMatchPage prediction', () => {
 
   it('shows a placing viewer the odds but no MMR', () => {
     const placing: MatchPredictionResponse = {
+      ...prediction,
       teams: [
         prediction.teams[0],
         {

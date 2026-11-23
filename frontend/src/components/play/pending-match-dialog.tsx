@@ -14,6 +14,7 @@ import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { matchOdds } from '@/lib/match-prediction';
 import { cn, getPlayerDisplayName } from '@/lib/utils';
 import type {
+  MatchPredictionResponse,
   PendingMatchAcceptanceResponse,
   PendingMatchResponse,
   PendingMatchTeamResponse,
@@ -30,6 +31,8 @@ interface PendingMatchDialogProps {
   /** Puts the viewer's team first and names them "You". */
   leaguePlayerId?: string | null;
   formatLabel?: string;
+  /** From `useMatchPredictions`; the odds hide without one. */
+  prediction?: MatchPredictionResponse | null;
 }
 
 // The acceptance window the matchmaking page promises; drives the ring.
@@ -111,6 +114,7 @@ export function PendingMatchDialog({
   onDecline,
   leaguePlayerId,
   formatLabel,
+  prediction,
 }: PendingMatchDialogProps) {
   const isMine = (team: PendingMatchTeamResponse) =>
     leaguePlayerId != null &&
@@ -122,7 +126,7 @@ export function PendingMatchDialog({
     if (teams.some(isMine)) return isMine(team) ? 'Your team' : 'Opponents';
     return `Team ${idx + 1}`;
   };
-  const odds = matchOdds(pendingMatch?.prediction, leaguePlayerId);
+  const odds = matchOdds(prediction, leaguePlayerId);
   const { formatNumber } = useLocaleFormatters();
   const formatMmr = (value: number) =>
     formatNumber(value, { maximumFractionDigits: 0 });

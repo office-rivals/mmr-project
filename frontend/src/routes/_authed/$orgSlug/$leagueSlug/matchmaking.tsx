@@ -37,8 +37,10 @@ import {
   formatLeagueFormat,
   getPlayerDisplayName,
 } from '@/lib/utils';
+import { useMatchPredictions } from '@/components/play/use-match-predictions';
 import type { LeagueContext } from './route';
 import type {
+  MatchPredictionResponse,
   ActiveMatchResponse,
   PendingMatchTeamResponse,
   QueueStatusResponse,
@@ -177,6 +179,11 @@ function MatchmakingPage({
   );
 
   const pendingMatch = queueStatus?.pendingMatch;
+  // One request for the found match and every live one.
+  const predictions = useMatchPredictions(orgId, leagueId, [
+    pendingMatch?.id,
+    ...activeMatches.map((m) => m.pendingMatchId),
+  ]);
   const pendingForMe =
     !!pendingMatch &&
     pendingMatch.teams.some((t) =>
@@ -425,6 +432,7 @@ function MatchmakingPage({
                     now={now}
                     me={leaguePlayerId}
                     href={`/${orgSlug}/${leagueSlug}/active-match/${match.id}`}
+                    prediction={predictions.get(match.pendingMatchId)}
                   />
                 ))}
               </div>
@@ -441,6 +449,7 @@ function MatchmakingPage({
         responding={queueAction.isPending}
         leaguePlayerId={leaguePlayerId}
         formatLabel={`${formatLabel} · ${scoreLabel}`}
+        prediction={pendingMatch && predictions.get(pendingMatch.id)}
         onAccept={() =>
           queueAction.mutate({ action: 'accept', matchId: pendingMatch?.id })
         }
@@ -572,11 +581,13 @@ function ActiveMatchCard({
   now,
   me,
   href,
+  prediction,
 }: {
   match: ActiveMatchResponse;
   now: number;
   me: string | null;
   href: string;
+  prediction: MatchPredictionResponse | undefined;
 }) {
   const minutes = Math.max(
     0,
@@ -596,7 +607,7 @@ function ActiveMatchCard({
   const [left, right] = myTeam
     ? [myTeam, ...match.teams.filter((t) => t !== myTeam)]
     : (match.teams ?? []);
-  const odds = matchOdds(match.prediction, me);
+  const odds = matchOdds(prediction, me);
   return (
     <div
       className={cn(

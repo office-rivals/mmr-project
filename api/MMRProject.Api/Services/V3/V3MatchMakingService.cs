@@ -21,6 +21,15 @@ public interface IV3MatchMakingService
     Task CancelActiveMatchAsync(Guid orgId, Guid leagueId, Guid activeMatchId);
     Task<MatchResponse> SubmitActiveMatchResultAsync(Guid orgId, Guid leagueId, Guid activeMatchId,
         SubmitActiveMatchResultRequest request);
+
+    /// <summary>
+    /// Predicts the chosen matches by pending match id. A live match is
+    /// predicted for anyone in the league, a found one only for its players;
+    /// any other id, or a match that cannot be predicted, is left out.
+    /// An org moderator who does not play gets the live ones.
+    /// </summary>
+    Task<IReadOnlyList<MatchPredictionResponse>> GetMatchPredictionsAsync(Guid orgId, Guid leagueId,
+        IReadOnlyCollection<Guid> pendingMatchIds);
 }
 
 public class V3MatchMakingService(
@@ -33,6 +42,9 @@ public class V3MatchMakingService(
 ) : IV3MatchMakingService
 {
     private const string QueueEntryIndexName = "ix_queue_entries_league_player";
+
+    /// <summary>Most matches one prediction request may name.</summary>
+    public const int MaxPredictedMatches = 20;
 
     public async Task AddPlayerToQueueAsync(Guid orgId, Guid leagueId)
     {
@@ -151,14 +163,11 @@ public class V3MatchMakingService(
             .ThenInclude(om => om.User)
             .FirstOrDefaultAsync();
 
-        var predictions = await predictionService.PredictAsync(orgId, leagueId,
-            [.. new[] { pendingMatch, activeMatch?.PendingMatch }.OfType<V3PendingMatch>()]);
-
         return new QueueStatusResponse
         {
             QueuedPlayers = queuedPlayers,
-            PendingMatch = pendingMatch is not null ? MapPendingMatch(pendingMatch, predictions) : null,
-            ActiveMatch = activeMatch is not null ? MapActiveMatch(activeMatch, predictions) : null
+            PendingMatch = pendingMatch is not null ? MapPendingMatch(pendingMatch) : null,
+            ActiveMatch = activeMatch is not null ? MapActiveMatch(activeMatch) : null
         };
     }
 
@@ -183,8 +192,7 @@ public class V3MatchMakingService(
             throw new NotFoundException("Pending match not found");
         }
 
-        var predictions = await predictionService.PredictAsync(orgId, leagueId, [pendingMatch]);
-        return MapPendingMatch(pendingMatch, predictions);
+        return MapPendingMatch(pendingMatch);
     }
 
     public async Task AcceptPendingMatchAsync(Guid orgId, Guid leagueId, Guid pendingMatchId)
@@ -294,9 +302,38 @@ public class V3MatchMakingService(
             .OrderByDescending(am => am.StartedAt)
             .ToListAsync();
 
-        var predictions = await predictionService.PredictAsync(orgId, leagueId,
-            [.. activeMatches.Select(am => am.PendingMatch)]);
-        return activeMatches.Select(am => MapActiveMatch(am, predictions)).ToList();
+        return activeMatches.Select(MapActiveMatch).ToList();
+    }
+
+    public async Task<IReadOnlyList<MatchPredictionResponse>> GetMatchPredictionsAsync(Guid orgId, Guid leagueId,
+        IReadOnlyCollection<Guid> pendingMatchIds)
+    {
+        if (pendingMatchIds.Count > MaxPredictedMatches)
+        {
+            throw new InvalidArgumentException($"Ask for at most {MaxPredictedMatches} matches at a time");
+        }
+        if (pendingMatchIds.Count == 0) return [];
+
+        // Org moderators may view the league without playing in it: they see
+        // live matches, as GET active-matches shows them, but no found ones.
+        var identityUserId = userContextResolver.GetIdentityUserId();
+        var leaguePlayerId = await dbContext.LeaguePlayers
+            .Where(lp => lp.OrganizationId == orgId && lp.LeagueId == leagueId)
+            .Where(lp => lp.OrganizationMembership.User != null &&
+                         lp.OrganizationMembership.User.IdentityUserId == identityUserId)
+            .Select(lp => (Guid?)lp.Id)
+            .FirstOrDefaultAsync();
+        var matches = await dbContext.V3PendingMatches
+            .Where(pm => pendingMatchIds.Contains(pm.Id) && pm.LeagueId == leagueId)
+            .Where(pm => pm.Acceptances.Any(a => a.LeaguePlayerId == leaguePlayerId) ||
+                         dbContext.V3ActiveMatches.Any(am => am.PendingMatchId == pm.Id))
+            .Include(pm => pm.Teams)
+            .ThenInclude(t => t.Players)
+            .ThenInclude(p => p.LeaguePlayer)
+            .ToListAsync();
+
+        var predictions = await predictionService.PredictAsync(orgId, leagueId, matches);
+        return [.. pendingMatchIds.Distinct().Where(predictions.ContainsKey).Select(id => predictions[id])];
     }
 
     public async Task CancelActiveMatchAsync(Guid orgId, Guid leagueId, Guid activeMatchId)
@@ -487,9 +524,7 @@ public class V3MatchMakingService(
             throw new ForbiddenException("You are not allowed to modify this active match");
     }
 
-    private static PendingMatchResponse MapPendingMatch(
-        V3PendingMatch pm,
-        IReadOnlyDictionary<Guid, MatchPredictionResponse> predictions) => new()
+    private static PendingMatchResponse MapPendingMatch(V3PendingMatch pm) => new()
     {
         Id = pm.Id,
         Status = pm.Status,
@@ -510,13 +545,10 @@ public class V3MatchMakingService(
             LeaguePlayerId = a.LeaguePlayerId,
             Status = a.Status,
             AcceptedAt = a.AcceptedAt
-        }).ToList(),
-        Prediction = predictions.GetValueOrDefault(pm.Id)
+        }).ToList()
     };
 
-    private static ActiveMatchResponse MapActiveMatch(
-        V3ActiveMatch am,
-        IReadOnlyDictionary<Guid, MatchPredictionResponse> predictions) => new()
+    private static ActiveMatchResponse MapActiveMatch(V3ActiveMatch am) => new()
     {
         Id = am.Id,
         PendingMatchId = am.PendingMatchId,
@@ -531,7 +563,6 @@ public class V3MatchMakingService(
                 Username = p.LeaguePlayer.OrganizationMembership.GetUsername(),
                 Index = p.Index
             }).ToList()
-        }).ToList(),
-        Prediction = predictions.GetValueOrDefault(am.PendingMatchId)
+        }).ToList()
     };
 }

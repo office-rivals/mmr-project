@@ -15,25 +15,70 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
     private static readonly string[] Players = ["p1", "p2", "p3", "p4"];
 
     [Fact]
-    public async Task PendingMatch_IncludesPrediction()
+    public async Task PendingMatch_IsPredicted_ForItsPlayersOnly()
     {
         var (org, league) = await SetupLeagueAsync();
+        await SeedTestUser(org.Id, league.Id, "outsider", "outsider@test.com");
         await QueueAndMatchAsync(org.Id, league.Id);
 
         AuthenticateAs("p1");
-        var status = await GetQueueStatusAsync(org.Id, league.Id);
-        var pendingMatch = status.PendingMatch!;
+        var pendingMatch = (await GetQueueStatusAsync(org.Id, league.Id)).PendingMatch!;
+        var prediction = Assert.Single(await GetPredictionsAsync(org.Id, league.Id, pendingMatch.Id));
 
-        AssertPredictionCovers(pendingMatch.Teams, pendingMatch.Prediction);
+        Assert.Equal(pendingMatch.Id, prediction.PendingMatchId);
+        AssertPredictionCovers(pendingMatch.Teams, prediction);
 
-        var byIdResponse = await Client.GetAsync(
-            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/pending-matches/{pendingMatch.Id}");
-        var byId = await ReadJsonAsync<PendingMatchResponse>(byIdResponse);
-        Assert.Equivalent(pendingMatch.Prediction, byId!.Prediction, strict: true);
+        // A found match is private to its players, as GET pending-matches/{id} is.
+        AuthenticateAs("outsider");
+        Assert.Empty(await GetPredictionsAsync(org.Id, league.Id, pendingMatch.Id));
     }
 
     [Fact]
-    public async Task ActiveMatch_IncludesPrediction_AndAsksTheMmrApiOnce()
+    public async Task ActiveMatch_IsPredicted_ForTheLeague_AndAsksTheMmrApiOnce()
+    {
+        var (org, league) = await SetupLeagueAsync();
+        await SeedTestUser(org.Id, league.Id, "outsider", "outsider@test.com");
+        await QueueAndMatchAsync(org.Id, league.Id);
+        AuthenticateAs("p1");
+        var pending = (await GetQueueStatusAsync(org.Id, league.Id)).PendingMatch!;
+        var whenFound = Assert.Single(await GetPredictionsAsync(org.Id, league.Id, pending.Id));
+        await AcceptAllAsync(org.Id, league.Id, pending.Id);
+
+        AuthenticateAs("p1");
+        var active = Assert.Single(await GetActiveMatchesAsync(org.Id, league.Id));
+        var whenLive = Assert.Single(await GetPredictionsAsync(org.Id, league.Id, active.PendingMatchId));
+        // Live matches are listed for the whole league, so their odds are too.
+        AuthenticateAs("outsider");
+        var forOutsider = Assert.Single(await GetPredictionsAsync(org.Id, league.Id, active.PendingMatchId));
+
+        AssertPredictionCovers(active.Teams, whenLive);
+        Assert.Equivalent(whenFound, whenLive, strict: true);
+        Assert.Equivalent(whenLive, forOutsider, strict: true);
+        // Asking again for the same match reuses the first answer.
+        Assert.Equal(1, Factory.StubMmrCalculationApiClient.PredictCallCount);
+    }
+
+    [Fact]
+    public async Task ActiveMatch_IsPredicted_ForAModeratorWhoDoesNotPlay()
+    {
+        var (org, league) = await SetupLeagueAsync();
+        await SeedOrgMember(org.Id, "moderator", "moderator@test.com", OrganizationRole.Moderator);
+        await QueueAndMatchAsync(org.Id, league.Id);
+        AuthenticateAs("p1");
+        var pending = (await GetQueueStatusAsync(org.Id, league.Id)).PendingMatch!;
+
+        // Not a player, so a found match stays private.
+        AuthenticateAs("moderator");
+        Assert.Empty(await GetPredictionsAsync(org.Id, league.Id, pending.Id));
+
+        await AcceptAllAsync(org.Id, league.Id, pending.Id);
+        AuthenticateAs("moderator");
+        var prediction = Assert.Single(await GetPredictionsAsync(org.Id, league.Id, pending.Id));
+        Assert.Equal(pending.Id, prediction.PendingMatchId);
+    }
+
+    [Fact]
+    public async Task MatchResponses_CarryNoPrediction()
     {
         var (org, league) = await SetupLeagueAsync();
         await QueueAndMatchAsync(org.Id, league.Id);
@@ -42,43 +87,53 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
         await AcceptAllAsync(org.Id, league.Id, pending.Id);
 
         AuthenticateAs("p1");
-        var status = await GetQueueStatusAsync(org.Id, league.Id);
-        var activeMatches = await GetActiveMatchesAsync(org.Id, league.Id);
-        await GetQueueStatusAsync(org.Id, league.Id);
+        var queueJson = await Client.GetStringAsync($"api/v3/organizations/{org.Id}/leagues/{league.Id}/queue");
+        var activeJson = await Client.GetStringAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/active-matches");
 
-        AssertPredictionCovers(status.ActiveMatch!.Teams, status.ActiveMatch.Prediction);
-        var listed = Assert.Single(activeMatches);
-        Assert.Equivalent(status.ActiveMatch.Prediction, listed.Prediction, strict: true);
-        Assert.Equivalent(pending.Prediction, listed.Prediction, strict: true);
-        // Polling the same match, pending or active, reuses the first answer.
-        Assert.Equal(1, Factory.StubMmrCalculationApiClient.PredictCallCount);
+        // Polling the queue or the live matches never asks the MMR API.
+        Assert.DoesNotContain("prediction", queueJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("prediction", activeJson, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, Factory.StubMmrCalculationApiClient.PredictCallCount);
     }
 
     [Fact]
-    public async Task Prediction_IsNull_WhenTheMmrApiFails()
+    public async Task Predictions_LeaveOutMatches_ThatCannotBePredicted()
+    {
+        var (org, league) = await SetupLeagueAsync();
+        var (otherOrg, otherLeague) = await SetupLeagueAsync("q");
+        await QueueAndMatchAsync(otherOrg.Id, otherLeague.Id, "q");
+        await QueueAndMatchAsync(org.Id, league.Id);
+
+        AuthenticateAs("q1");
+        var elsewhere = (await GetQueueStatusAsync(otherOrg.Id, otherLeague.Id)).PendingMatch!;
+        // Live, so its league is the only thing that keeps it out.
+        await AcceptAllAsync(otherOrg.Id, otherLeague.Id, elsewhere.Id, "q");
+        AuthenticateAs("p1");
+        var mine = (await GetQueueStatusAsync(org.Id, league.Id)).PendingMatch!;
+
+        // Unknown ids and another league's matches are simply not in the answer.
+        var predictions = await GetPredictionsAsync(org.Id, league.Id, mine.Id, Guid.NewGuid(), elsewhere.Id);
+        Assert.Equal([mine.Id], predictions.Select(p => p.PendingMatchId));
+    }
+
+    [Fact]
+    public async Task Predictions_AreEmpty_WhenTheMmrApiFails()
     {
         var (org, league) = await SetupLeagueAsync();
         Factory.StubMmrCalculationApiClient.ThrowOnPredict = true;
         await QueueAndMatchAsync(org.Id, league.Id);
 
         AuthenticateAs("p1");
-        var statusResponse = await Client.GetAsync($"api/v3/organizations/{org.Id}/leagues/{league.Id}/queue");
-        Assert.Equal(HttpStatusCode.OK, statusResponse.StatusCode);
-        var status = (await ReadJsonAsync<QueueStatusResponse>(statusResponse))!;
-        Assert.NotNull(status.PendingMatch);
-        Assert.Null(status.PendingMatch.Prediction);
-
-        await AcceptAllAsync(org.Id, league.Id, status.PendingMatch.Id);
-        AuthenticateAs("p1");
-        var active = Assert.Single(await GetActiveMatchesAsync(org.Id, league.Id));
-        Assert.Null(active.Prediction);
-        Assert.Null((await GetQueueStatusAsync(org.Id, league.Id)).ActiveMatch!.Prediction);
-        // A failure is not retried on every poll.
+        var pending = (await GetQueueStatusAsync(org.Id, league.Id)).PendingMatch!;
+        Assert.Empty(await GetPredictionsAsync(org.Id, league.Id, pending.Id));
+        Assert.Empty(await GetPredictionsAsync(org.Id, league.Id, pending.Id));
+        // A failure is not retried on every request.
         Assert.Equal(1, Factory.StubMmrCalculationApiClient.PredictCallCount);
     }
 
     [Fact]
-    public async Task Prediction_IsNull_WithoutACurrentSeason()
+    public async Task Predictions_AreEmpty_WithoutACurrentSeason()
     {
         var org = await CreateOrganization();
         var league = await CreateLeague(org.Id, teamSize: 2);
@@ -89,10 +144,23 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
         await QueueAndMatchAsync(org.Id, league.Id);
 
         AuthenticateAs("p1");
-        var status = await GetQueueStatusAsync(org.Id, league.Id);
+        var pending = (await GetQueueStatusAsync(org.Id, league.Id)).PendingMatch!;
 
-        Assert.NotNull(status.PendingMatch);
-        Assert.Null(status.PendingMatch.Prediction);
+        Assert.Empty(await GetPredictionsAsync(org.Id, league.Id, pending.Id));
+    }
+
+    [Fact]
+    public async Task Predictions_RejectTooManyIds()
+    {
+        var (org, league) = await SetupLeagueAsync();
+        AuthenticateAs("p1");
+
+        var ids = Enumerable.Range(0, V3MatchMakingService.MaxPredictedMatches + 1)
+            .Select(_ => $"pendingMatchId={Guid.NewGuid()}");
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{org.Id}/leagues/{league.Id}/match-predictions?{string.Join('&', ids)}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
@@ -107,7 +175,7 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
 
         AuthenticateAs("p1");
         var active = Assert.Single(await GetActiveMatchesAsync(org.Id, league.Id));
-        var prediction = active.Prediction!;
+        var prediction = Assert.Single(await GetPredictionsAsync(org.Id, league.Id, active.PendingMatchId));
         var predictRequest = Factory.StubMmrCalculationApiClient.PredictRequests.Last();
         var mmrBefore = await LoadMmrAsync(prediction.Teams.SelectMany(t => t.Players).Select(p => p.LeaguePlayerId));
 
@@ -165,16 +233,16 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
 
         AuthenticateAs("p1");
         var pendingMatch = (await GetQueueStatusAsync(org.Id, league.Id)).PendingMatch!;
+        var prediction = Assert.Single(await GetPredictionsAsync(org.Id, league.Id, pendingMatch.Id));
 
         // The odds still show; only the MMRs that would reveal a placement
         // match's change are withheld.
-        AssertPredictionCovers(pendingMatch.Teams, pendingMatch.Prediction);
-        Assert.All(pendingMatch.Prediction!.Teams.SelectMany(t => t.Players), AssertHidden);
+        AssertPredictionCovers(pendingMatch.Teams, prediction);
+        Assert.All(prediction.Teams.SelectMany(t => t.Players), AssertHidden);
     }
 
-    private static void AssertPredictionCovers(List<PendingMatchTeamResponse> teams, MatchPredictionResponse? prediction)
+    private static void AssertPredictionCovers(List<PendingMatchTeamResponse> teams, MatchPredictionResponse prediction)
     {
-        Assert.NotNull(prediction);
         Assert.Equal(teams.Select(t => t.Index), prediction.Teams.Select(t => t.Index));
         foreach (var team in teams)
         {
@@ -193,18 +261,22 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
         Assert.Null(player.MmrIfLose);
     }
 
-    private async Task<(Organization Org, League League)> SetupLeagueAsync()
+    // Players are named <prefix>1..4, so two leagues can live side by side.
+    private async Task<(Organization Org, League League)> SetupLeagueAsync(string prefix = "p")
     {
-        var org = await CreateOrganization();
+        var org = await CreateOrganization(slug: $"{prefix}-org");
         var league = await CreateLeague(org.Id, teamSize: 2);
         await CreateSeason(org.Id, league.Id, DateTimeOffset.UtcNow.AddDays(-1));
-        foreach (var player in Players)
+        foreach (var player in PlayersNamed(prefix))
         {
             await SeedTestUser(org.Id, league.Id, player, $"{player}@test.com",
-                player == "p1" ? OrganizationRole.Owner : OrganizationRole.Member);
+                player == $"{prefix}1" ? OrganizationRole.Owner : OrganizationRole.Member);
         }
         return (org, league);
     }
+
+    private static string[] PlayersNamed(string prefix) =>
+        [.. Players.Select(p => prefix + p[1..])];
 
     // Two of the four play manual matches first, so the matchmade result mixes
     // players with a rating this season and players on their first match.
@@ -254,9 +326,9 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
             .ToDictionaryAsync(lp => lp.Id, lp => lp.Mmr);
     }
 
-    private async Task QueueAndMatchAsync(Guid orgId, Guid leagueId)
+    private async Task QueueAndMatchAsync(Guid orgId, Guid leagueId, string prefix = "p")
     {
-        foreach (var player in Players)
+        foreach (var player in PlayersNamed(prefix))
         {
             AuthenticateAs(player);
             var response = await Client.PostAsync($"api/v3/organizations/{orgId}/leagues/{leagueId}/queue", null);
@@ -265,9 +337,9 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
         await RunMatchMakingCycleAsync();
     }
 
-    private async Task AcceptAllAsync(Guid orgId, Guid leagueId, Guid pendingMatchId)
+    private async Task AcceptAllAsync(Guid orgId, Guid leagueId, Guid pendingMatchId, string prefix = "p")
     {
-        foreach (var player in Players)
+        foreach (var player in PlayersNamed(prefix))
         {
             AuthenticateAs(player);
             var response = await Client.PostAsync(
@@ -281,6 +353,16 @@ public class MatchPredictionTests(PostgresFixture postgres) : IntegrationTestBas
         var response = await Client.GetAsync($"api/v3/organizations/{orgId}/leagues/{leagueId}/queue");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return (await ReadJsonAsync<QueueStatusResponse>(response))!;
+    }
+
+    private async Task<List<MatchPredictionResponse>> GetPredictionsAsync(
+        Guid orgId, Guid leagueId, params Guid[] pendingMatchIds)
+    {
+        var query = string.Join('&', pendingMatchIds.Select(id => $"pendingMatchId={id}"));
+        var response = await Client.GetAsync(
+            $"api/v3/organizations/{orgId}/leagues/{leagueId}/match-predictions?{query}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await ReadJsonAsync<List<MatchPredictionResponse>>(response))!;
     }
 
     private async Task<List<ActiveMatchResponse>> GetActiveMatchesAsync(Guid orgId, Guid leagueId)

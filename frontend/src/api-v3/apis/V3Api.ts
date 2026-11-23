@@ -32,6 +32,7 @@ import type {
   QueueStatusResponse,
   PendingMatchResponse,
   ActiveMatchResponse,
+  MatchPredictionResponse,
   SubmitActiveMatchResultRequest,
   CreateMatchFlagRequest,
   UpdateMatchFlagReasonRequest,
@@ -623,6 +624,23 @@ export class V3PendingMatchesApi extends runtime.BaseAPI {
       method: 'POST',
       headers: {},
     });
+  }
+}
+
+// Match Predictions API
+export class V3MatchPredictionsApi extends runtime.BaseAPI {
+  async getMatchPredictions(
+    orgId: string,
+    leagueId: string,
+    pendingMatchIds: string[]
+  ): Promise<MatchPredictionResponse[]> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/match-predictions`,
+      method: 'GET',
+      headers: {},
+      query: { pendingMatchId: pendingMatchIds },
+    });
+    return await response.json();
   }
 }
 

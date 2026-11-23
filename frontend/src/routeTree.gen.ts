@@ -41,6 +41,7 @@ import { Route as AdminOrgSlugLeaguesLeagueSlugIndexRouteImport } from './routes
 import { Route as AdminOrgSlugLeaguesLeagueSlugMatchFlagsRouteImport } from './routes/admin/$orgSlug/leagues/$leagueSlug/match-flags'
 import { Route as AdminOrgSlugLeaguesLeagueSlugMatchesRouteImport } from './routes/admin/$orgSlug/leagues/$leagueSlug/matches'
 import { Route as AdminOrgSlugLeaguesLeagueSlugSeasonsRouteImport } from './routes/admin/$orgSlug/leagues/$leagueSlug/seasons'
+import { Route as ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchPredictionsRouteImport } from './routes/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions'
 import { Route as ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRouteImport } from './routes/api/v3/organizations/$orgId/leagues/$leagueId/matches'
 import { Route as ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRouteImport } from './routes/api/v3/organizations/$orgId/leagues/$leagueId/queue'
 
@@ -219,6 +220,12 @@ const AdminOrgSlugLeaguesLeagueSlugSeasonsRoute =
     path: '/seasons',
     getParentRoute: () => AdminOrgSlugLeaguesLeagueSlugRouteRoute,
   } as any)
+const ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchPredictionsRoute =
+  ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchPredictionsRouteImport.update({
+    id: '/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions',
+    path: '/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute =
   ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRouteImport.update({
     id: '/api/v3/organizations/$orgId/leagues/$leagueId/matches',
@@ -264,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/admin/$orgSlug/leagues/$leagueSlug/matches': typeof AdminOrgSlugLeaguesLeagueSlugMatchesRoute
   '/admin/$orgSlug/leagues/$leagueSlug/seasons': typeof AdminOrgSlugLeaguesLeagueSlugSeasonsRoute
   '/admin/$orgSlug/leagues/$leagueSlug/': typeof AdminOrgSlugLeaguesLeagueSlugIndexRoute
+  '/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchPredictionsRoute
   '/api/v3/organizations/$orgId/leagues/$leagueId/matches': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute
   '/api/v3/organizations/$orgId/leagues/$leagueId/queue': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRoute
 }
@@ -295,6 +303,7 @@ export interface FileRoutesByTo {
   '/admin/$orgSlug/leagues/$leagueSlug/matches': typeof AdminOrgSlugLeaguesLeagueSlugMatchesRoute
   '/admin/$orgSlug/leagues/$leagueSlug/seasons': typeof AdminOrgSlugLeaguesLeagueSlugSeasonsRoute
   '/admin/$orgSlug/leagues/$leagueSlug': typeof AdminOrgSlugLeaguesLeagueSlugIndexRoute
+  '/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchPredictionsRoute
   '/api/v3/organizations/$orgId/leagues/$leagueId/matches': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute
   '/api/v3/organizations/$orgId/leagues/$leagueId/queue': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRoute
 }
@@ -332,6 +341,7 @@ export interface FileRoutesById {
   '/admin/$orgSlug/leagues/$leagueSlug/matches': typeof AdminOrgSlugLeaguesLeagueSlugMatchesRoute
   '/admin/$orgSlug/leagues/$leagueSlug/seasons': typeof AdminOrgSlugLeaguesLeagueSlugSeasonsRoute
   '/admin/$orgSlug/leagues/$leagueSlug/': typeof AdminOrgSlugLeaguesLeagueSlugIndexRoute
+  '/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchPredictionsRoute
   '/api/v3/organizations/$orgId/leagues/$leagueId/matches': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute
   '/api/v3/organizations/$orgId/leagues/$leagueId/queue': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRoute
 }
@@ -369,6 +379,7 @@ export interface FileRouteTypes {
     | '/admin/$orgSlug/leagues/$leagueSlug/matches'
     | '/admin/$orgSlug/leagues/$leagueSlug/seasons'
     | '/admin/$orgSlug/leagues/$leagueSlug/'
+    | '/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions'
     | '/api/v3/organizations/$orgId/leagues/$leagueId/matches'
     | '/api/v3/organizations/$orgId/leagues/$leagueId/queue'
   fileRoutesByTo: FileRoutesByTo
@@ -400,6 +411,7 @@ export interface FileRouteTypes {
     | '/admin/$orgSlug/leagues/$leagueSlug/matches'
     | '/admin/$orgSlug/leagues/$leagueSlug/seasons'
     | '/admin/$orgSlug/leagues/$leagueSlug'
+    | '/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions'
     | '/api/v3/organizations/$orgId/leagues/$leagueId/matches'
     | '/api/v3/organizations/$orgId/leagues/$leagueId/queue'
   id:
@@ -436,6 +448,7 @@ export interface FileRouteTypes {
     | '/admin/$orgSlug/leagues/$leagueSlug/matches'
     | '/admin/$orgSlug/leagues/$leagueSlug/seasons'
     | '/admin/$orgSlug/leagues/$leagueSlug/'
+    | '/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions'
     | '/api/v3/organizations/$orgId/leagues/$leagueId/matches'
     | '/api/v3/organizations/$orgId/leagues/$leagueId/queue'
   fileRoutesById: FileRoutesById
@@ -446,6 +459,7 @@ export interface RootRouteChildren {
   LoginSplatRoute: typeof LoginSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
   OrgSlugLeagueSlugApiRecentMatchRoute: typeof OrgSlugLeagueSlugApiRecentMatchRoute
+  ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchPredictionsRoute: typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchPredictionsRoute
   ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute: typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute
   ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRoute: typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRoute
 }
@@ -676,6 +690,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOrgSlugLeaguesLeagueSlugSeasonsRouteImport
       parentRoute: typeof AdminOrgSlugLeaguesLeagueSlugRouteRoute
     }
+    '/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions': {
+      id: '/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions'
+      path: '/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions'
+      fullPath: '/api/v3/organizations/$orgId/leagues/$leagueId/match-predictions'
+      preLoaderRoute: typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchPredictionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v3/organizations/$orgId/leagues/$leagueId/matches': {
       id: '/api/v3/organizations/$orgId/leagues/$leagueId/matches'
       path: '/api/v3/organizations/$orgId/leagues/$leagueId/matches'
@@ -815,6 +836,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginSplatRoute: LoginSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
   OrgSlugLeagueSlugApiRecentMatchRoute: OrgSlugLeagueSlugApiRecentMatchRoute,
+  ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchPredictionsRoute:
+    ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchPredictionsRoute,
   ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute:
     ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute,
   ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRoute:

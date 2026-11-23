@@ -9,6 +9,7 @@ const TEST_USER_PLAYER_ID = '66666666-6666-6666-6666-666666666601';
 const LEAGUE = '/test-org/test-league';
 const MATCHMAKING = `${LEAGUE}/matchmaking`;
 const QUEUE_API = `/api/v3/organizations/${ORG_ID}/leagues/${LEAGUE_ID}/queue`;
+const PREDICTIONS_API = `/api/v3/organizations/${ORG_ID}/leagues/${LEAGUE_ID}/match-predictions`;
 
 const PENDING_MATCH_ID = 'eeeeeeee-4000-0000-0000-000000000001';
 const TEAM_ONE_ID = 'eeeeeeee-4000-0000-0000-000000000002';
@@ -139,13 +140,26 @@ function expectedOdds(prediction: MatchPredictionResponse) {
   };
 }
 
-async function queuePrediction(page: Page) {
-  const response = await page.request.get(QUEUE_API);
+async function stagedPrediction(page: Page) {
+  const response = await page.request.get(
+    `${PREDICTIONS_API}?pendingMatchId=${PENDING_MATCH_ID}`
+  );
   expect(response.ok()).toBe(true);
-  const status = (await response.json()) as QueueStatusResponse;
-  const match = status.pendingMatch ?? status.activeMatch;
-  expect(match?.prediction, 'the API predicts the staged match').toBeTruthy();
-  return match!.prediction!;
+  const predictions = (await response.json()) as MatchPredictionResponse[];
+  expect(predictions, 'the API predicts the staged match').toHaveLength(1);
+  return predictions[0];
+}
+
+/** Rewrites every predictions response the page fetches. */
+async function editPredictions(
+  page: Page,
+  edit: (predictions: MatchPredictionResponse[]) => MatchPredictionResponse[]
+) {
+  await page.route(`**${PREDICTIONS_API}?*`, async (route) => {
+    const response = await route.fetch();
+    const predictions = (await response.json()) as MatchPredictionResponse[];
+    await route.fulfill({ response, json: edit(predictions) });
+  });
 }
 
 test.afterEach(() => removeMatch());
@@ -155,7 +169,7 @@ test('a found match shows both teams’ odds, their average MMR and your stake',
 }) => {
   stageMatch({ active: false });
   await gotoAuthed(page, MATCHMAKING);
-  const expected = expectedOdds(await queuePrediction(page));
+  const expected = expectedOdds(await stagedPrediction(page));
 
   const dialog = page.getByRole('dialog', { name: 'Match found!' });
   await expect(dialog).toBeVisible();
@@ -174,7 +188,7 @@ test('a live match shows its odds on the match, on home, in the live bar and on 
 }) => {
   stageMatch({ active: true });
   await gotoAuthed(page, `${LEAGUE}/active-match/${ACTIVE_MATCH_ID}`);
-  const expected = expectedOdds(await queuePrediction(page));
+  const expected = expectedOdds(await stagedPrediction(page));
 
   const odds = page.getByTestId('win-chance');
   await expect(odds).toContainText(expected.ours);
@@ -205,16 +219,14 @@ test('a live match shows its odds on the match, on home, in the live bar and on 
 
 test('a placing player sees the odds but no MMR at stake', async ({ page }) => {
   stageMatch({ active: true });
-  await page.route(`**${QUEUE_API}`, async (route) => {
-    const response = await route.fetch();
-    const status = (await response.json()) as QueueStatusResponse;
-    for (const team of status.activeMatch?.prediction?.teams ?? []) {
+  await editPredictions(page, (predictions) => {
+    for (const team of predictions.flatMap((p) => p.teams)) {
       for (const player of team.players) {
         if (player.leaguePlayerId !== TEST_USER_PLAYER_ID) continue;
         player.mmr = player.mmrIfWin = player.mmrIfLose = null;
       }
     }
-    await route.fulfill({ response, json: status });
+    return predictions;
   });
 
   await gotoAuthed(page, LEAGUE);
@@ -231,12 +243,7 @@ test('a live match without a prediction still shows in the live bar', async ({
   page,
 }) => {
   stageMatch({ active: true });
-  await page.route(`**${QUEUE_API}`, async (route) => {
-    const response = await route.fetch();
-    const status = (await response.json()) as QueueStatusResponse;
-    if (status.activeMatch) status.activeMatch.prediction = null;
-    await route.fulfill({ response, json: status });
-  });
+  await editPredictions(page, () => []);
 
   await gotoAuthed(page, LEAGUE);
 
@@ -244,4 +251,15 @@ test('a live match without a prediction still shows in the live bar', async ({
   await expect(bar.getByRole('link', { name: 'Report result' })).toBeVisible();
   await expect(bar.getByTestId('live-win-chance')).toHaveCount(0);
   await expect(bar).not.toContainText('win chance');
+});
+
+test('polling the queue carries no prediction', async ({ page }) => {
+  stageMatch({ active: true });
+  await gotoAuthed(page, LEAGUE);
+
+  const response = await page.request.get(QUEUE_API);
+  expect(response.ok()).toBe(true);
+  const status = (await response.json()) as QueueStatusResponse;
+  expect(status.activeMatch).toBeTruthy();
+  expect(JSON.stringify(status)).not.toContain('prediction');
 });
