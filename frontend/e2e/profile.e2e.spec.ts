@@ -8,7 +8,7 @@ test.describe('Player profile', () => {
     await page.goto(PROFILE_URL);
 
     await expect(page.getByText('MMR', { exact: true })).toBeVisible();
-    // Scoped to the tiles' terms: the match history below is headed "Matches".
+    // Scoped to the tiles' terms: the "All N matches" link also says Matches.
     for (const label of [
       'Matches',
       'Wins',
@@ -57,22 +57,5 @@ test.describe('Player profile', () => {
 
     await expect(page.getByText('Most common opponents')).toBeVisible();
     await expect(page.getByText('Most common teammates')).toBeVisible();
-  });
-
-  test('always shows the profile player at top-left of every match card', async ({
-    page,
-  }) => {
-    await page.goto(PROFILE_URL);
-
-    // Each MatchCard renders one `.items-start` div per left-team players column.
-    // The opponents/teammates tables don't use this class, so every hit is a match card.
-    const leftColumns = page.locator('.flex.flex-1.flex-col.items-start');
-    const count = await leftColumns.count();
-    expect(count).toBeGreaterThan(0);
-
-    for (let i = 0; i < count; i++) {
-      const firstName = leftColumns.nth(i).locator('p').first();
-      await expect(firstName).toContainText('tuser');
-    }
   });
 });

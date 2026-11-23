@@ -8,12 +8,10 @@ import { test, expect, type Page } from '@playwright/test';
 import { gotoAuthed } from './helpers';
 
 const TEST_LEAGUE_ID = '22222222-2222-2222-2222-222222222222';
-const TEST_USER_LEAGUE_PLAYER_ID = '66666666-6666-6666-6666-666666666601';
 const ALICE_LEAGUE_PLAYER_ID = 'bed02f01-6ea5-514a-9815-dbf9fdaacfa7';
 const BOB_LEAGUE_PLAYER_ID = 'f6a97f23-2a35-58c3-b1e0-6085c728ae2d';
 
 const SUBMIT_URL = '/test-org/test-league/submit';
-const PROFILE_URL = `/test-org/test-league/player/${TEST_USER_LEAGUE_PLAYER_ID}`;
 
 // isMobile is left out because Firefox, which shares the production smoke
 // project list, does not support it.
@@ -52,22 +50,6 @@ test('tapping a typed match fills the submit slot', async ({ page }) => {
   await suggestion(page, 'Alice Anderson').tap();
 
   await expect(team1.locator('h4')).toHaveCount(2);
-});
-
-test('tapping a player adds them to the profile compare filter', async ({
-  page,
-}) => {
-  await gotoAuthed(page, PROFILE_URL);
-
-  const input = page.locator('input[placeholder="Filter..."]').first();
-  await input.tap();
-  await input.pressSequentially('alia');
-  await suggestion(page, 'Alice Anderson').tap();
-
-  await expect(
-    page.locator('.bg-secondary', { hasText: 'Alice Anderson' })
-  ).toBeVisible();
-  await expect(input).toHaveValue('');
 });
 
 test('tapping a season selects it', async ({ page }) => {

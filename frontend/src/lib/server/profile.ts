@@ -7,7 +7,6 @@ import { fetchPlayerSeasonMatches } from '@/lib/server/player-matches';
 import { selectCurrentSeason } from '@/lib/util/season';
 import type {
   LeaguePlayerResponse,
-  MatchFlagResponse,
   MatchResponse,
   RatingHistoryResponse,
   SeasonResponse,
@@ -40,17 +39,13 @@ export interface PlayerProfileData {
   stats: PlayerProfileStats;
   /** The same summary Home uses, over the same window of matches. */
   partners: PartnerSummary;
-  /** Whole league roster, for the match filter. */
-  players: LeaguePlayerResponse[];
   orgSlug: string;
   leagueSlug: string;
   seasons: SeasonResponse[];
   currentSeason: SeasonResponse | null;
-  myFlags: MatchFlagResponse[];
   /**
-   * Server clock at load time. The match-history date grouping is pinned to it
-   * so SSR and hydration agree on the today/yesterday boundaries, and so a
-   * season switch (which re-runs the load) recomputes them.
+   * Server clock at load time. The activity grid is pinned to it so SSR and
+   * hydration agree on the weeks, and a season switch recomputes them.
    */
   now: number;
 }
@@ -69,9 +64,8 @@ export interface PlayerProfileInput {
 /**
  * Port of `player/[id]/+page.server.ts`.
  *
- * The whole body is one try/catch: any failure of any call (except
- * `getMyFlags`, which self-catches to `[]`) surfaces as 404 `Player not
- * found`, including a transient leaderboard or seasons failure. That is the
+ * The whole body is one try/catch: any failure of any call surfaces as 404
+ * `Player not found`, including a transient leaderboard or seasons failure. That is the
  * documented Svelte behaviour — do not narrow it.
  */
 export async function loadPlayerProfile(
@@ -88,36 +82,25 @@ export async function loadPlayerProfile(
     const currentSeason = selectCurrentSeason(seasonsList);
     const seasonId = input.season ?? currentSeason?.id;
 
-    const [
-      player,
-      matches,
-      ratingHistory,
-      leaderboard,
-      seasons,
-      players,
-      myFlags,
-    ] = await Promise.all([
-      apiClientV3.leaguePlayersApi.getPlayer(orgId, leagueId, playerId),
-      fetchPlayerSeasonMatches(
-        apiClientV3,
-        orgId,
-        leagueId,
-        seasonId,
-        playerId
-      ),
-      apiClientV3.ratingHistoryApi.getPlayerHistory(
-        orgId,
-        leagueId,
-        playerId,
-        seasonId
-      ),
-      apiClientV3.leaderboardApi.getLeaderboard(orgId, leagueId, seasonId),
-      Promise.resolve(seasonsList),
-      apiClientV3.leaguePlayersApi.listPlayers(orgId, leagueId),
-      apiClientV3.matchFlagsApi
-        .getMyFlags(orgId, leagueId)
-        .catch(() => [] as MatchFlagResponse[]),
-    ]);
+    const [player, matches, ratingHistory, leaderboard, seasons] =
+      await Promise.all([
+        apiClientV3.leaguePlayersApi.getPlayer(orgId, leagueId, playerId),
+        fetchPlayerSeasonMatches(
+          apiClientV3,
+          orgId,
+          leagueId,
+          seasonId,
+          playerId
+        ),
+        apiClientV3.ratingHistoryApi.getPlayerHistory(
+          orgId,
+          leagueId,
+          playerId,
+          seasonId
+        ),
+        apiClientV3.leaderboardApi.getLeaderboard(orgId, leagueId, seasonId),
+        Promise.resolve(seasonsList),
+      ]);
 
     const playerEntry = leaderboard.entries?.find(
       (entry) => entry.leaguePlayerId === playerId
@@ -169,14 +152,12 @@ export async function loadPlayerProfile(
         losingStreak: playerEntry?.losingStreak ?? 0,
       },
       partners: partnerSummary(matches, playerId),
-      players,
       orgSlug,
       leagueSlug,
       seasons,
       currentSeason,
-      myFlags,
-      // Captured inside the load, so it refreshes on every re-run (season
-      // change, invalidate after a flag action) but never while the tab idles.
+      // Captured inside the load, so it refreshes on every re-run (a season
+      // change) but never while the tab idles.
       now: Date.now(),
     };
   } catch {

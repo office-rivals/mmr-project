@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { Flag, LoaderCircle } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
 import { Eyebrow } from '@/components/eyebrow';
@@ -34,10 +34,15 @@ import {
   MATCHES_PAGE_SIZE,
   getMatchFeedFn,
   getMatchesPageFn,
+  requireLeaguePlayer,
   type MatchFeedPage,
 } from '@/lib/league-data';
 import { partnerOptions, type PartnerOption } from '@/lib/player-stats';
+import { HttpError } from '@/lib/http-error';
+import { createRouteGuard } from '@/lib/server/http-error';
+import { loadShellDataOnce } from '@/lib/server/shell';
 import { cn } from '@/lib/utils';
+import { resolveLeague } from './route';
 import type { FlagActionResult } from '@/lib/match-flag-actions';
 import type { MatchFlagResponse, MatchResponse } from '@/api-v3';
 
@@ -49,17 +54,41 @@ interface OlderMatches extends MatchFeedPage {
 interface MatchesSearch extends PartnerSelection {
   season?: string;
   view?: 'everyone';
+  /** Another player's matches, linked from their profile. */
+  player?: string;
 }
 
 const optionalId = (value: unknown) =>
   typeof value === 'string' && value ? value : undefined;
 
+/**
+ * Document requests for an unknown `?player=` get a real 404; the loader alone
+ * would render the error inside a 200.
+ */
+const matchesGuard = createRouteGuard(async ({ request }) => {
+  const url = new URL(request.url);
+  const playerId = url.searchParams.get('player');
+  if (!playerId) return;
+  const [orgSlug = '', leagueSlug = ''] = url.pathname
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => decodeURIComponent(segment));
+  const league = resolveLeague(await loadShellDataOnce(), {
+    orgSlug,
+    leagueSlug,
+  });
+  if (playerId === league.leaguePlayerId) return;
+  await requireLeaguePlayer(league.orgId, league.leagueId, playerId);
+});
+
 export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/matches')({
+  server: { middleware: [matchesGuard] },
   validateSearch: (search: Record<string, unknown>): MatchesSearch => ({
     ...(typeof search.season === 'string' && search.season
       ? { season: search.season }
       : {}),
     ...(search.view === 'everyone' ? { view: 'everyone' as const } : {}),
+    ...(optionalId(search.player) ? { player: optionalId(search.player) } : {}),
     ...(optionalId(search.with) ? { with: optionalId(search.with) } : {}),
     ...(optionalId(search.against)
       ? { against: optionalId(search.against) }
@@ -68,23 +97,36 @@ export const Route = createFileRoute('/_authed/$orgSlug/$leagueSlug/matches')({
   loaderDeps: ({ search }) => ({
     season: search.season,
     view: search.view,
+    player: search.player,
     with: search.with,
     against: search.against,
   }),
-  loader: async ({ context, deps }) => {
+  loader: async ({ context, deps, location }) => {
     const { orgId, leagueId, leaguePlayerId } = context.league;
-    const page = await getMatchesPageFn({
+    // Your own id is the Mine view, which then shows as selected.
+    if (deps.player != null && deps.player === leaguePlayerId) {
+      const query = new URLSearchParams(location.searchStr);
+      query.delete('player');
+      const rest = query.toString();
+      throw redirect({
+        href: `${location.pathname}${rest ? `?${rest}` : ''}`,
+        replace: true,
+      });
+    }
+    const result = await getMatchesPageFn({
       data: {
         orgId,
         leagueId,
         leaguePlayerId,
         season: deps.season,
         mine: deps.view !== 'everyone',
+        playerId: deps.player,
         withId: deps.with,
         againstId: deps.against,
       },
     });
-    return { ...page, league: context.league };
+    if (!result.ok) throw new HttpError(result.status, result.message);
+    return { ...result.data, league: context.league };
   },
   staticData: { wide: true },
   errorComponent: HttpErrorView,
@@ -101,6 +143,7 @@ function MatchesRoute() {
         data.league.leagueId,
         data.seasonId,
         search.view ?? 'mine',
+        data.subject?.leaguePlayerId,
         search.with,
         search.against,
       ].join(':')}
@@ -118,7 +161,10 @@ function MatchesPage() {
   const { league } = data;
   const base = `/${league.orgSlug}/${league.leagueSlug}`;
   const me = league.leaguePlayerId;
-  const mine = me != null && search.view !== 'everyone';
+  const subject = data.subject;
+  const mine = me != null && search.view !== 'everyone' && subject == null;
+  // Whose matches the feed holds, and whom the partner filters pair them with.
+  const focus = subject?.leaguePlayerId ?? (mine ? me : null);
   const canReport = Boolean(me && data.isCurrentSeason);
   const [reportOpen, setReportOpen] = useState(false);
   const flags = useMatchFlagHandlers(league.orgId, league.leagueId);
@@ -157,7 +203,7 @@ function MatchesPage() {
     orgId: league.orgId,
     leagueId: league.leagueId,
     seasonId: data.seasonId,
-    leaguePlayerId: mine ? me! : undefined,
+    leaguePlayerId: focus ?? undefined,
   };
   useEffect(() => {
     if (!olderStale) return;
@@ -233,8 +279,8 @@ function MatchesPage() {
   const moreAvailable = filtered
     ? shown < data.feed.matches.length
     : older.hasMore;
-  const partners = mine
-    ? partnerOptions(data.myMatches, me)
+  const partners = focus
+    ? partnerOptions(data.subjectMatches ?? data.myMatches, focus)
     : { teammates: [], opponents: [] };
   const groups: { label: string; matches: MatchResponse[] }[] = [];
   for (const match of matches) {
@@ -279,7 +325,7 @@ function MatchesPage() {
         <FlagResultAlert result={flags.result} />
 
         <div className="flex flex-wrap items-center justify-between gap-3 lg:rounded-lg lg:border lg:bg-card lg:p-2 lg:pr-4">
-          {me ? (
+          {me || subject ? (
             <div
               role="group"
               aria-label="Whose matches"
@@ -287,11 +333,13 @@ function MatchesPage() {
             >
               {(
                 [
-                  [undefined, 'Mine'],
+                  // Mine needs a league player; a non-member only browses.
+                  ...(me ? ([[undefined, 'Mine']] as const) : []),
                   ['everyone', 'Everyone'],
                 ] as const
               ).map(([view, label]) => {
-                const active = (search.view ?? undefined) === view;
+                const active =
+                  subject == null && (search.view ?? undefined) === view;
                 return (
                   <AppLink
                     key={label}
@@ -308,11 +356,19 @@ function MatchesPage() {
                   </AppLink>
                 );
               })}
+              {subject ? (
+                <span
+                  aria-current="true"
+                  className="flex min-h-11 max-w-48 min-w-0 flex-1 items-center justify-center rounded-full bg-muted px-5 py-1.5 text-sm font-semibold text-foreground lg:min-h-0"
+                >
+                  <span className="truncate">{subject.name}</span>
+                </span>
+              ) : null}
             </div>
           ) : (
             <span />
           )}
-          {mine ? (
+          {focus ? (
             <PartnerFilters
               teammates={withSelected(partners.teammates, search.with, matches)}
               opponents={withSelected(
@@ -344,7 +400,7 @@ function MatchesPage() {
           </label>
         </div>
 
-        {me && data.isCurrentSeason ? (
+        {me && !subject && data.isCurrentSeason ? (
           <WeekSummaryCompact
             matches={data.myMatches}
             me={me}
@@ -353,14 +409,23 @@ function MatchesPage() {
           />
         ) : null}
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+        <div
+          className={cn(
+            'grid gap-6 lg:items-start',
+            // The side column holds your own week, so another player's feed
+            // takes the full width.
+            me && !subject && 'lg:grid-cols-[minmax(0,1fr)_20rem]'
+          )}
+        >
           <section aria-label="Match feed" className="flex flex-col gap-2">
             {filtered && data.feed.matches.length > 0 ? (
               <p className="text-sm text-muted-foreground">
                 {data.feed.matches.length}{' '}
                 {data.feed.matches.length === 1 ? 'match' : 'matches'}
                 {data.filtered?.truncated
-                  ? ' among your latest this season'
+                  ? subject
+                    ? ' among their latest this season'
+                    : ' among your latest this season'
                   : ' this season'}
               </p>
             ) : null}
@@ -368,9 +433,11 @@ function MatchesPage() {
               <p className="rounded-lg border bg-card p-6 text-center text-muted-foreground">
                 {filtered
                   ? 'No matches with these filters.'
-                  : mine
-                    ? 'You have not played a match this season.'
-                    : 'No matches this season.'}
+                  : subject
+                    ? `${subject.name} has not played a match this season.`
+                    : mine
+                      ? 'You have not played a match this season.'
+                      : 'No matches this season.'}
               </p>
             ) : null}
             {groups.map((group) => (
@@ -390,7 +457,7 @@ function MatchesPage() {
                         <MatchCard
                           match={match}
                           showMmr={showMmr}
-                          viewerId={me}
+                          viewerId={subject?.leaguePlayerId ?? me}
                           renderPlayerLink={(player, name) => (
                             <AppLink
                               to={`${base}/player/${player.leaguePlayerId}`}
@@ -443,7 +510,7 @@ function MatchesPage() {
               </Button>
             ) : null}
           </section>
-          {me ? (
+          {me && !subject ? (
             <aside className="hidden flex-col gap-6 lg:flex">
               {data.isCurrentSeason ? (
                 <WeekSummaryCard

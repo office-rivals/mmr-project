@@ -1,20 +1,15 @@
-// Behaviour of the two player pickers:
-//   - src/components/play/team-member-field.tsx  (match submission slots)
-//   - src/components/profile/player-filter.tsx   (compare filter on a profile)
-//
-// The compare filter had no e2e coverage at all, and the submit picker was only
-// covered incidentally by the flows that use it to fill a match. These specs
-// pin the picker interactions themselves.
+// Behaviour of the match submission player picker
+// (src/components/play/team-member-field.tsx). It was only covered
+// incidentally by the flows that use it to fill a match. These specs pin the
+// picker interactions themselves.
 import { test, expect, type Page } from '@playwright/test';
 
 // Fixture ids from scripts/seed-data.sql (Test League, team size 2).
 const TEST_LEAGUE_ID = '22222222-2222-2222-2222-222222222222';
-const TEST_USER_LEAGUE_PLAYER_ID = '66666666-6666-6666-6666-666666666601';
 const ALICE_LEAGUE_PLAYER_ID = 'bed02f01-6ea5-514a-9815-dbf9fdaacfa7';
 const BOB_LEAGUE_PLAYER_ID = 'f6a97f23-2a35-58c3-b1e0-6085c728ae2d';
 
 const SUBMIT_URL = '/test-org/test-league/submit';
-const PROFILE_URL = `/test-org/test-league/player/${TEST_USER_LEAGUE_PLAYER_ID}`;
 
 // The "You" slot is autofocused, so a keypress can land before the page has
 // hydrated and attached its handlers — the browser then applies its own default
@@ -373,64 +368,5 @@ test.describe('Submit — player search on a phone', () => {
       expect(await scrollY(page)).toBe(y);
       await expect(you(page)).toBeInViewport({ ratio: 1 });
     });
-  });
-});
-
-test.describe('Player profile — compare filter', () => {
-  test('picking a player adds a chip and clears the input', async ({
-    page,
-  }) => {
-    await gotoHydrated(page, PROFILE_URL);
-
-    const input = page.locator('input[placeholder="Filter..."]').first();
-    await input.click();
-    await input.pressSequentially('alia');
-    await suggestion(page, 'Alice Anderson').click();
-
-    await expect(
-      page.locator('.bg-secondary', { hasText: 'Alice Anderson' })
-    ).toBeVisible();
-    // The filter is multi-select, so the box has to be ready for the next name.
-    await expect(input).toHaveValue('');
-  });
-
-  test('Escape clears the filter and closes the suggestions', async ({
-    page,
-  }) => {
-    await gotoHydrated(page, PROFILE_URL);
-
-    const input = page.locator('input[placeholder="Filter..."]').first();
-    await input.click();
-    await input.pressSequentially('alia');
-    await expect(suggestion(page, 'Alice Anderson')).toBeVisible();
-
-    await input.press('Escape');
-
-    await expect(input).toHaveValue('');
-    await expect(page.locator('[role="option"]')).toHaveCount(0);
-  });
-
-  test('a player can be picked again after removing their chip', async ({
-    page,
-  }) => {
-    await gotoHydrated(page, PROFILE_URL);
-
-    const input = page.locator('input[placeholder="Filter..."]').first();
-    const chip = page.locator('.bg-secondary', { hasText: 'Alice Anderson' });
-
-    await input.click();
-    await input.pressSequentially('alia');
-    await suggestion(page, 'Alice Anderson').click();
-    await expect(chip).toBeVisible();
-
-    await chip.locator('button').click();
-    await expect(chip).toHaveCount(0);
-
-    await input.click();
-    await input.fill('');
-    await input.pressSequentially('alia');
-    await suggestion(page, 'Alice Anderson').click();
-
-    await expect(chip).toBeVisible();
   });
 });

@@ -100,7 +100,7 @@ API (`/api/v3/organizations/{orgId}/leagues/{leagueId}/matches`):
 
 ## Match flags
 
-League players flag a match they think is wrong with **Report match** on the league page, or with the flag button next to a match on a player's profile. Each person can have one open flag per match, and can edit or delete it until it's resolved. Open flags are counted in the account menu and the admin navigation.
+League players flag a match they think is wrong with **Report match** on the league page, or with the flag button next to a match on the Matches page. Each person can have one open flag per match, and can edit or delete it until it's resolved. Open flags are counted in the account menu and the admin navigation.
 
 At `/admin/<org>/leagues/<league>/match-flags` you can filter flags by status, look at the flagged match, edit it and recalculate on the same page, then resolve the flag as **Resolved** or **Dismissed** with an optional note.
 

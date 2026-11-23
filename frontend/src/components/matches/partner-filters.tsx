@@ -21,7 +21,7 @@ interface PartnerFiltersProps {
   onChange: (next: PartnerSelection) => void;
 }
 
-/** Narrows the viewer's own matches to one teammate and/or one opponent. */
+/** Narrows a player's matches to one teammate and/or one opponent. */
 export function PartnerFilters({
   teammates,
   opponents,
@@ -32,7 +32,7 @@ export function PartnerFilters({
   return (
     <div
       role="group"
-      aria-label="Filter my matches"
+      aria-label="Filter matches"
       className="flex min-w-0 flex-wrap items-center gap-2"
     >
       <PartnerSelect
