@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0
+
+- Move to 2.0.0 alongside the new official frontend. No API changes.
+
 ## 1.2.5
 
 - chore(deps): bump the opentelemetry group in /mmr-api with 10 updates
