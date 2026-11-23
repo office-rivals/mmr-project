@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0
+
+- Move to 2.0.0 alongside the new official frontend. No API changes.
+
 ## 1.7.1
 
 - Fix overlapping edits of the same match returning a 500 for an edit that had actually saved; edits of one match now apply one at a time.

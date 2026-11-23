@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0
+
+- The React and TanStack Start app is now the official frontend, replacing the SvelteKit app. Self-hosters must set `CLERK_PUBLISHABLE_KEY` in place of `PUBLIC_CLERK_PUBLISHABLE_KEY`.
+
 ## 0.5.2
 
 - Streak icons now grow with the streak (wins go from 🔥 to 🚀 at seven and 🐐 at eleven; losses from 🌧️ through ⛈️, ❄️ and ☃️ to 🪦 at thirteen), and the home leaderboard shows them after the wins or losses, as the original app does.
