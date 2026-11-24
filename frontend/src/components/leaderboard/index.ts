@@ -1,1 +1,1 @@
-export { Leaderboard, type LeaderboardProps } from './leaderboard';
+export { Leaderboard, PHONE_ROWS, type LeaderboardProps } from './leaderboard';

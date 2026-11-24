@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
-import { Crown } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { ChevronDown, Crown } from 'lucide-react';
 import { AppLink } from '@/components/app-link';
 import { TrendLine } from '@/components/charts';
 import { Eyebrow } from '@/components/eyebrow';
@@ -14,6 +15,7 @@ import {
   type Result,
   type WeekChange,
 } from '@/lib/player-stats';
+import { standingsPage } from '@/lib/leaderboard-window';
 import { streakGlyph } from '@/lib/streak';
 import { cn, getPlayerDisplayName } from '@/lib/utils';
 import type {
@@ -365,8 +367,10 @@ interface StandingsTableProps {
   metric?: StandingsMetric;
   /** Rating change this week, shown in its own column for the week sort. */
   week?: Map<string, WeekChange>;
-  /** Rows shown before "Show all". */
-  initialRows?: number;
+  /** Name search; results keep their real ranks and are paged like the board. */
+  query?: string;
+  /** Rows per page; the signed-in player's row is pinned below a page without it. */
+  pageSize?: number;
   /** The podium above shows the first three, so phones skip their rows. */
   podium?: boolean;
 }
@@ -409,7 +413,8 @@ export function StandingsTable({
   playerHref,
   metric = 'mmr',
   week,
-  initialRows = 12,
+  query = '',
+  pageSize = 100,
   podium = false,
 }: StandingsTableProps) {
   // On phones the sort's own column replaces the trend sparkline.
@@ -417,8 +422,34 @@ export function StandingsTable({
   const trendOnPhone = metric !== 'form' && metric !== 'week';
   const mmr = useMmr();
   const hydrated = useHydrated();
-  const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? entries : entries.slice(0, initialRows);
+  // The page belongs to one search: a new search starts again at page 1.
+  // Spaces alone change nothing, so they keep the page.
+  const search = query.trim();
+  const [paging, setPaging] = useState({ search, page: 1 });
+  if (paging.search !== search) setPaging({ search, page: 1 });
+  const page = paging.search === search ? paging.page : 1;
+  const view = standingsPage(entries, me, query, page, pageSize);
+  const tableTop = useRef<HTMLDivElement>(null);
+  const goTo = (next: number, event: React.MouseEvent<HTMLElement>) => {
+    // Enter and Space fire a click with detail 0.
+    const keyboardButton = event.detail === 0 ? event.currentTarget : null;
+    // At either end the button pressed becomes disabled and drops focus.
+    const disabling = next === 1 || next === view.pageCount;
+    // Render the new page now, so the scrolling below sees its height.
+    flushSync(() => setPaging({ search, page: next }));
+    if (keyboardButton && !disabling) {
+      // A keyboard user stays on the button pressed, so keep it in view.
+      keyboardButton.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    // The pager sits under a long table; the new page starts at its top.
+    tableTop.current?.scrollIntoView({ block: 'start' });
+    if (disabling) tableTop.current?.focus({ preventScroll: true });
+  };
+  // The podium shows #1-#3 only while the table starts at them.
+  const podiumRows = podium && view.page === 1 && !search;
+  const first = (view.page - 1) * pageSize + 1;
+  const last = first + view.shown.length - 1;
   const trends = useMemo(
     () => (ratingHistory ? ratingsByPlayer(ratingHistory) : null),
     [ratingHistory]
@@ -427,9 +458,108 @@ export function StandingsTable({
     'h-10 px-2 text-left align-middle text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground';
   const cell = 'px-2 py-2.5 align-middle';
 
+  // The gap row spans every column, including the ones a breakpoint hides.
+  const columns = metric === 'week' ? 9 : 8;
+  const renderRow = (entry: Entry, index: number) => {
+    const isMe = entry.leaguePlayerId === me;
+    const history = trends?.get(entry.leaguePlayerId);
+    return (
+      <tr
+        key={entry.leaguePlayerId}
+        aria-current={isMe ? 'true' : undefined}
+        // Relative so the name link's overlay spans the whole row.
+        className={cn(
+          'relative border-b last:border-b-0',
+          isMe && 'bg-primary/10 text-primary',
+          podiumRows && index >= 0 && index < 3 && 'hidden lg:table-row'
+        )}
+      >
+        <td className={cn(cell, 'pl-4 text-base font-bold tabular-nums')}>
+          {entry.rank}
+        </td>
+        <td className={cell}>
+          <div className="flex items-center gap-3">
+            <PlayerAvatar name={getPlayerDisplayName(entry)} highlight={isMe} />
+            <div className="flex min-w-0 flex-col leading-tight">
+              <AppLink
+                to={playerHref(entry.leaguePlayerId)}
+                className="flex items-center gap-1 truncate font-semibold after:absolute after:inset-0 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                <span className="truncate">{handle(entry)}</span>
+                <StreakIcon entry={entry} />
+              </AppLink>
+              <span
+                className={cn(
+                  'truncate text-xs',
+                  !isMe && 'text-muted-foreground'
+                )}
+              >
+                <span className="lg:hidden">
+                  {entry.wins}–{entry.losses} · {pct(winRate(entry))}
+                </span>
+                <span className="hidden lg:inline">
+                  {entry.displayName ?? ''}
+                </span>
+              </span>
+            </div>
+          </div>
+        </td>
+        <td
+          className={cn(cell, 'hidden text-right tabular-nums lg:table-cell')}
+        >
+          {entry.wins}
+        </td>
+        <td
+          className={cn(cell, 'hidden text-right tabular-nums lg:table-cell')}
+        >
+          {entry.losses}
+        </td>
+        <td
+          className={cn(cell, 'hidden text-right tabular-nums 2xl:table-cell')}
+        >
+          {pct(winRate(entry))}
+        </td>
+        <td
+          className={cn(
+            cell,
+            'pl-4',
+            formOnPhone ? 'table-cell' : 'hidden lg:table-cell'
+          )}
+        >
+          <FormSquares form={form.get(entry.leaguePlayerId)} />
+        </td>
+        <td className={cn(cell, !trendOnPhone && 'hidden lg:table-cell')}>
+          {/* Sized up front: the history streams in after the table. */}
+          <div className="h-5 w-12 sm:w-16">
+            {history ? <TrendLine values={history} highlight={isMe} /> : null}
+          </div>
+        </td>
+        {metric === 'week' ? (
+          <td className={cn(cell, 'text-right tabular-nums')}>
+            <WeekDelta change={week?.get(entry.leaguePlayerId)} />
+          </td>
+        ) : null}
+        <td
+          className={cn(
+            cell,
+            'pr-4 text-right text-base font-bold tabular-nums'
+          )}
+        >
+          {mmr(entry.mmr)}
+        </td>
+      </tr>
+    );
+  };
+
   return (
     // Scrolls rather than clips if a column set ever outgrows its breakpoint.
-    <div className="overflow-x-auto rounded-lg border bg-card">
+    <div
+      ref={tableTop}
+      tabIndex={-1}
+      role="region"
+      aria-label="Standings"
+      className="scroll-mt-4 overflow-x-auto rounded-lg border bg-card outline-none"
+    >
       <table className="w-full text-sm">
         <thead className="border-b">
           <tr>
@@ -484,131 +614,69 @@ export function StandingsTable({
           </tr>
         </thead>
         <tbody>
-          {visible.map((entry, index) => {
-            const isMe = entry.leaguePlayerId === me;
-            const history = trends?.get(entry.leaguePlayerId);
-            return (
-              <tr
-                key={entry.leaguePlayerId}
-                aria-current={isMe ? 'true' : undefined}
-                // Relative so the name link's overlay spans the whole row.
-                className={cn(
-                  'relative border-b last:border-b-0',
-                  isMe && 'bg-primary/10 text-primary',
-                  podium && index < 3 && 'hidden lg:table-row'
-                )}
+          {view.matches === 0 ? (
+            <tr className="border-b">
+              <td
+                colSpan={columns}
+                className="px-4 py-6 text-center text-muted-foreground"
               >
+                No ranked player matches “{search}”.
+              </td>
+            </tr>
+          ) : null}
+          {view.shown.map((entry, index) => renderRow(entry, index))}
+          {view.pinned ? (
+            <>
+              <tr className="border-b" data-testid="standings-gap">
                 <td
-                  className={cn(cell, 'pl-4 text-base font-bold tabular-nums')}
+                  colSpan={columns}
+                  className="py-1.5 text-center text-xs tracking-[0.3em] text-muted-foreground"
                 >
-                  {entry.rank}
-                </td>
-                <td className={cell}>
-                  <div className="flex items-center gap-3">
-                    <PlayerAvatar
-                      name={getPlayerDisplayName(entry)}
-                      highlight={isMe}
-                    />
-                    <div className="flex min-w-0 flex-col leading-tight">
-                      <AppLink
-                        to={playerHref(entry.leaguePlayerId)}
-                        className="flex items-center gap-1 truncate font-semibold after:absolute after:inset-0 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                      >
-                        <span className="truncate">{handle(entry)}</span>
-                        <StreakIcon entry={entry} />
-                      </AppLink>
-                      <span
-                        className={cn(
-                          'truncate text-xs',
-                          !isMe && 'text-muted-foreground'
-                        )}
-                      >
-                        <span className="lg:hidden">
-                          {entry.wins}–{entry.losses} · {pct(winRate(entry))}
-                        </span>
-                        <span className="hidden lg:inline">
-                          {entry.displayName ?? ''}
-                        </span>
-                      </span>
-                    </div>
-                  </div>
-                </td>
-                <td
-                  className={cn(
-                    cell,
-                    'hidden text-right tabular-nums lg:table-cell'
-                  )}
-                >
-                  {entry.wins}
-                </td>
-                <td
-                  className={cn(
-                    cell,
-                    'hidden text-right tabular-nums lg:table-cell'
-                  )}
-                >
-                  {entry.losses}
-                </td>
-                <td
-                  className={cn(
-                    cell,
-                    'hidden text-right tabular-nums 2xl:table-cell'
-                  )}
-                >
-                  {pct(winRate(entry))}
-                </td>
-                <td
-                  className={cn(
-                    cell,
-                    'pl-4',
-                    formOnPhone ? 'table-cell' : 'hidden lg:table-cell'
-                  )}
-                >
-                  <FormSquares form={form.get(entry.leaguePlayerId)} />
-                </td>
-                <td
-                  className={cn(cell, !trendOnPhone && 'hidden lg:table-cell')}
-                >
-                  {/* Sized up front: the history streams in after the table. */}
-                  <div className="h-5 w-12 sm:w-16">
-                    {history ? (
-                      <TrendLine values={history} highlight={isMe} />
-                    ) : null}
-                  </div>
-                </td>
-                {metric === 'week' ? (
-                  <td className={cn(cell, 'text-right tabular-nums')}>
-                    <WeekDelta change={week?.get(entry.leaguePlayerId)} />
-                  </td>
-                ) : null}
-                <td
-                  className={cn(
-                    cell,
-                    'pr-4 text-right text-base font-bold tabular-nums'
-                  )}
-                >
-                  {mmr(entry.mmr)}
+                  <span aria-hidden="true">⋯</span>
+                  <span className="sr-only">Your position</span>
                 </td>
               </tr>
-            );
-          })}
+              {renderRow(view.pinned, -1)}
+            </>
+          ) : null}
         </tbody>
       </table>
-      {entries.length > initialRows ? (
-        <div className="flex items-center justify-between gap-3 border-t px-4 py-3 text-sm text-muted-foreground">
+      {view.pageCount > 1 || search ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-sm text-muted-foreground">
           <span>
-            Showing {visible.length} of {entries.length}
+            {view.pageCount > 1
+              ? `Showing ${first}–${last} of ${view.matches}`
+              : `${view.matches} of ${entries.length} players`}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-11 lg:h-9"
-            disabled={!hydrated}
-            aria-expanded={expanded}
-            onClick={() => setExpanded((v) => !v)}
-          >
-            {expanded ? 'Show fewer' : `Show all ${entries.length}`}
-          </Button>
+          {view.pageCount > 1 ? (
+            <nav aria-label="Pages" className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-11 lg:h-9"
+                disabled={!hydrated || view.page === 1}
+                onClick={(event) => goTo(view.page - 1, event)}
+              >
+                Previous
+              </Button>
+              <span
+                className="tabular-nums"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                Page {view.page} of {view.pageCount}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-11 lg:h-9"
+                disabled={!hydrated || view.page === view.pageCount}
+                onClick={(event) => goTo(view.page + 1, event)}
+              >
+                Next
+              </Button>
+            </nav>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -617,29 +685,60 @@ export function StandingsTable({
 
 export function UnrankedList({
   entries,
+  me,
   playerHref,
 }: {
   entries: Entry[];
+  me: string | null;
   playerHref: (id: string) => string;
 }) {
   if (entries.length === 0) return null;
+  // Closed for everyone but an unranked viewer, who comes to see their own
+  // placement progress. A native disclosure opens without JavaScript.
+  const startOpen = entries.some((e) => e.leaguePlayerId === me);
   return (
-    <section aria-labelledby="unranked-heading" className="flex flex-col gap-3">
-      <h2
-        id="unranked-heading"
-        className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase"
+    <details
+      open={startOpen}
+      aria-labelledby="unranked-heading"
+      className="group"
+    >
+      <summary className="grid min-h-11 cursor-pointer list-none grid-cols-[1fr_auto] items-center gap-x-3 rounded-lg border bg-card px-4 py-3 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+        <h2
+          id="unranked-heading"
+          className="text-base leading-tight font-semibold"
+        >
+          Unranked · {entries.length}{' '}
+          {entries.length === 1 ? 'player' : 'players'}
+        </h2>
+        <span className="col-start-1 text-xs leading-tight text-muted-foreground">
+          Play {RANKED_MATCH_THRESHOLD} matches to place
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className="col-start-2 row-span-2 row-start-1 size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <ul
+        id="unranked-list"
+        className="mt-3 overflow-hidden rounded-lg border bg-card"
       >
-        Unranked · play {RANKED_MATCH_THRESHOLD} matches to place
-      </h2>
-      <ul className="overflow-hidden rounded-lg border bg-card">
         {entries.map((entry) => {
           const played = entry.wins + entry.losses;
+          const isMe = entry.leaguePlayerId === me;
           return (
             <li
               key={entry.leaguePlayerId}
-              className="relative flex items-center gap-3 border-b px-4 py-3 last:border-b-0"
+              aria-current={isMe ? 'true' : undefined}
+              className={cn(
+                'relative flex items-center gap-3 border-b px-4 py-3 last:border-b-0',
+                isMe && 'bg-primary/10 text-primary'
+              )}
             >
-              <PlayerAvatar name={getPlayerDisplayName(entry)} dashed />
+              <PlayerAvatar
+                name={getPlayerDisplayName(entry)}
+                dashed
+                highlight={isMe}
+              />
               <div className="flex min-w-0 flex-1 flex-col leading-tight">
                 <AppLink
                   to={playerHref(entry.leaguePlayerId)}
@@ -647,7 +746,9 @@ export function UnrankedList({
                 >
                   {handle(entry)}
                 </AppLink>
-                <span className="text-xs text-muted-foreground">
+                <span
+                  className={cn('text-xs', !isMe && 'text-muted-foreground')}
+                >
                   {Math.min(played, RANKED_MATCH_THRESHOLD)} of{' '}
                   {RANKED_MATCH_THRESHOLD} placement matches
                 </span>
@@ -657,6 +758,6 @@ export function UnrankedList({
           );
         })}
       </ul>
-    </section>
+    </details>
   );
 }

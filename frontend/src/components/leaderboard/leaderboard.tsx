@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import type { Span } from '@/lib/leaderboard-window';
 import { ratingsByPlayer } from '@/lib/player-stats';
 import { activeStreak } from './standings';
 import { streakGlyph } from '@/lib/streak';
@@ -27,10 +28,12 @@ export interface LeaderboardProps {
   ratingHistory?: LeagueRatingHistoryEntry[];
   onSelect?: (entry: LeaderboardEntryResponse) => void;
   currentLeaguePlayerId?: string | null;
+  /** The rows a phone shows, as indexes into `entries`; the first five by default. */
+  phone?: Span;
 }
 
 /** Phones show fewer rows, as in the design; the rest wait on the full page. */
-const PHONE_ROWS = 5;
+export const PHONE_ROWS = 5;
 
 /**
  * Home's slice of the standings. Renders `entries` in the order the server
@@ -43,6 +46,7 @@ export function Leaderboard({
   ratingHistory,
   onSelect,
   currentLeaguePlayerId,
+  phone = { start: 0, end: PHONE_ROWS },
 }: LeaderboardProps) {
   // A row's only behaviour is a React `onClick`, so it is inert while the page
   // is still SSR HTML — and a click landing in that window is swallowed, not
@@ -111,7 +115,8 @@ export function Leaderboard({
                     'cursor-pointer focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
                     !interactive && 'pointer-events-none',
                     isMe && 'bg-primary/10 text-primary hover:bg-primary/15',
-                    index >= PHONE_ROWS && 'hidden sm:table-row'
+                    (index < phone.start || index >= phone.end) &&
+                      'hidden sm:table-row'
                   )}
                   tabIndex={0}
                   aria-current={isMe ? 'true' : undefined}

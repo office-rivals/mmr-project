@@ -16,7 +16,7 @@ import {
 } from '@/components/home/home-overview';
 import { FlagResultAlert } from '@/components/flag-result-alert';
 import { HttpErrorView } from '@/components/http-error-view';
-import { Leaderboard } from '@/components/leaderboard';
+import { Leaderboard, PHONE_ROWS } from '@/components/leaderboard';
 import { MatchCard } from '@/components/match-card';
 import { PageTitle } from '@/components/page-title';
 import { ReportMatchModal } from '@/components/report-match-modal';
@@ -38,6 +38,7 @@ import {
   type PartnerSummary,
 } from '@/lib/player-stats';
 import { getLeagueRatingHistoryFn } from '@/lib/league-data';
+import { homeBoard } from '@/lib/leaderboard-window';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { fetchPlayerSeasonMatches } from '@/lib/server/player-matches';
 import { cn, formatLeagueFormat } from '@/lib/utils';
@@ -87,7 +88,7 @@ interface LeagueHomeData {
 // Enough for the form and this-week cards; the rest stays on the server.
 const MY_MATCHES_SHIPPED = 200;
 
-// The top of the standings; phones show five of them.
+// The standings around the signed-in player; phones show fewer of them.
 const HOME_LEADERBOARD_ROWS = 7;
 
 const getLeagueHomeFn = createServerFn({ method: 'GET' })
@@ -296,6 +297,12 @@ function LeagueHomePage() {
   const base = `/${data.orgSlug}/${data.leagueSlug}`;
   const entries = data.leaderboard?.entries ?? [];
   const ranked = entries.filter((e) => e.mmr != null);
+  const homeRows = homeBoard(
+    ranked,
+    data.leaguePlayerId,
+    HOME_LEADERBOARD_ROWS,
+    PHONE_ROWS
+  );
   const myEntry = data.leaguePlayerId
     ? (entries.find((e) => e.leaguePlayerId === data.leaguePlayerId) ?? null)
     : null;
@@ -445,7 +452,8 @@ function LeagueHomePage() {
               </p>
             ) : (
               <Leaderboard
-                entries={ranked.slice(0, HOME_LEADERBOARD_ROWS)}
+                entries={homeRows.entries}
+                phone={homeRows.phone}
                 ratingHistory={ratingHistory}
                 onSelect={(entry) => {
                   setSelectedEntry(entry);
