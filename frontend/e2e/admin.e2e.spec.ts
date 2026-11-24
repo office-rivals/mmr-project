@@ -11,8 +11,9 @@ const isEditPost = (url: string | URL) => isServerFn(url, 'editMatchFn');
 // every server-function request — the edit POST shares that prefix, and
 // stalling it too would close the window these tests need to observe.
 const isDataReload = (url: URL) => isServerFn(url, 'loadMatchesFn');
-// The row's delete form, scripted directly when a modal covers the button.
-const DELETE_FORM_SELECTOR = 'form[data-delete-match]';
+// A row's Recalc form, scripted directly when a modal covers the button.
+const RECALC_FORM_SELECTOR =
+  'form:has([data-testid="admin-match-recalculate"])';
 
 // Each spec assumes the Owner test user wired up by global.setup.ts. The seed
 // gives Test Org 2 leagues, 65 members and 15 current-season matches in
@@ -566,24 +567,38 @@ test.describe('League admin', () => {
     const matchId = await rows.nth(last).getAttribute('data-match-id');
     expect(matchId).toBeTruthy();
 
+    // The score the delete asks for, read where the admin would read it.
+    const deleteDialog = page.getByTestId('delete-match-dialog');
+    await expect(async () => {
+      await rows.nth(last).getByTestId('admin-match-delete').click();
+      await expect(deleteDialog).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 15_000 });
+    const score = await deleteDialog
+      .getByTestId('delete-match-score')
+      .textContent();
+    await deleteDialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
     const dialog = await openEditDialogForRow(page, last);
     await expect(dialog.locator('form')).toHaveCount(1);
 
-    // Scripted because the modal overlay blocks the row's Delete button; this
-    // is the reload a concurrent admin would cause.
-    // requestSubmit() bypasses the button, but the form-level handler still
-    // raises a confirm(); accepting it is the equivalent of clicking through.
-    page.once('dialog', (d) => d.accept());
-    await page.evaluate(
-      ([id, selector]) => {
-        document
-          .querySelector<HTMLFormElement>(
-            `[data-match-id="${id}"] ${selector}`
-          )!
-          .requestSubmit();
+    // Another admin deletes it through the list's own form post.
+    const deleted = await page.request.post(`${LEAGUE_ADMIN}/matches`, {
+      headers: { origin: new URL(page.url()).origin },
+      form: {
+        _action: 'delete',
+        matchId: matchId!,
+        confirmation: score!,
       },
-      [matchId, DELETE_FORM_SELECTOR] as const
-    );
+      maxRedirects: 0,
+    });
+    expect(deleted.status()).toBe(303);
+
+    // Then this page reloads its list. Scripted because the modal overlay
+    // blocks the row's buttons; requestSubmit() runs the same handler.
+    await page.evaluate((selector) => {
+      document.querySelector<HTMLFormElement>(selector)!.requestSubmit();
+    }, `[data-testid="admin-match-row"] ${RECALC_FORM_SELECTOR}`);
 
     await expect(page.locator(`[data-match-id="${matchId}"]`)).toHaveCount(0);
 

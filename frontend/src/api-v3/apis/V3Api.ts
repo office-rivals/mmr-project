@@ -24,6 +24,7 @@ import type {
   SeasonResponse,
   SubmitMatchRequest,
   MatchResponse,
+  MatchNeighboursResponse,
   RecalculateMatchesResponse,
   LeaderboardResponse,
   RatingHistoryResponse,
@@ -450,6 +451,19 @@ export class V3MatchesApi extends runtime.BaseAPI {
   ): Promise<MatchResponse> {
     const response = await this.request({
       path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/matches/${matchId}`,
+      method: 'GET',
+      headers: {},
+    });
+    return await response.json();
+  }
+
+  async getMatchNeighbours(
+    orgId: string,
+    leagueId: string,
+    matchId: string
+  ): Promise<MatchNeighboursResponse> {
+    const response = await this.request({
+      path: `/api/v3/organizations/${orgId}/leagues/${leagueId}/matches/${matchId}/neighbours`,
       method: 'GET',
       headers: {},
     });

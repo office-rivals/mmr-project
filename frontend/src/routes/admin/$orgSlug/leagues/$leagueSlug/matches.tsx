@@ -8,6 +8,7 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react';
+import { DeleteMatchDialog } from '@/components/admin/delete-match-dialog';
 import { EditMatchDialog } from '@/components/admin/edit-match-dialog';
 import { MatchCard } from '@/components/match-card/match-card';
 import { MatchDateHeader } from '@/components/match-card/match-date-header';
@@ -24,6 +25,7 @@ import {
 import { HttpErrorView } from '@/components/http-error-view';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { parseActionSuccessKey } from '@/lib/action-feedback';
+import { deleteMatchFn } from '@/lib/admin-match-actions';
 import {
   failServerAction,
   nativeFormResponse,
@@ -31,6 +33,7 @@ import {
 } from '@/lib/server/action-result';
 import { requireApiClientV3 } from '@/lib/server/apiClientV3';
 import { getApiErrorDetails } from '@/lib/server/apiError';
+import { deleteMatch } from '@/lib/server/delete-match';
 import { requireAdminOrg, resolveOrgAndLeagueIds } from '@/lib/server/admin';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import type { EditMatchTeamPayload } from '@/components/admin/edit-match-dialog';
@@ -41,7 +44,8 @@ const PAGE_SIZE = 25;
 type ActionResult = { success: boolean; message: string };
 
 const MATCH_SUCCESS_MESSAGES = {
-  'match-deleted': 'Match deleted',
+  'match-deleted':
+    'Match deleted. Run Recalculate season so every rating is right.',
   'matches-recalculated': 'Matches recalculated successfully',
 } as const;
 
@@ -88,47 +92,6 @@ const loadMatchesFn = createServerFn({ method: 'GET' })
       now: Date.now(),
     };
   });
-
-interface DeleteMatchInput {
-  orgSlug: string;
-  leagueSlug: string;
-  matchId: string;
-}
-
-async function deleteMatch(data: DeleteMatchInput): Promise<ActionResult> {
-  if (!data.matchId)
-    return failServerAction(400, {
-      success: false,
-      message: 'matchId required',
-    });
-
-  const apiClientV3 = await requireApiClientV3();
-  const ctx = await resolveOrgAndLeagueIds(apiClientV3, data);
-  if (!ctx)
-    return failServerAction(404, {
-      success: false,
-      message: 'Org or league not found',
-    });
-
-  try {
-    await apiClientV3.matchesApi.deleteMatch(
-      ctx.orgId,
-      ctx.leagueId,
-      data.matchId
-    );
-    return { success: true, message: 'Match deleted' };
-  } catch (err) {
-    const { status, message } = await getApiErrorDetails(
-      err,
-      'Failed to delete match'
-    );
-    return failServerAction(status, { success: false, message });
-  }
-}
-
-const deleteMatchFn = createServerFn({ method: 'POST' })
-  .validator((input: DeleteMatchInput) => input)
-  .handler(({ data }): Promise<ActionResult> => deleteMatch(data));
 
 const editMatchFn = createServerFn({ method: 'POST' })
   .validator(
@@ -268,6 +231,7 @@ export const Route = createFileRoute(
                 orgSlug: params.orgSlug,
                 leagueSlug: params.leagueSlug,
                 matchId: String(formData.get('matchId') ?? ''),
+                confirmation: String(formData.get('confirmation') ?? ''),
               });
               break;
             default:
@@ -307,6 +271,9 @@ function AdminMatchesPage() {
   );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  // Kept from the click, so the dialog still has its match while the list reloads.
+  const [deleting, setDeleting] = useState<MatchResponse | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     setResult(
@@ -468,48 +435,20 @@ function AdminMatchesPage() {
                               Recalc
                             </Button>
                           </form>
-                          <form
-                            data-delete-match=""
-                            method="post"
-                            action={`/admin/${orgSlug}/leagues/${leagueSlug}/matches`}
-                            onSubmit={(event) => {
-                              event.preventDefault();
-                              const msg = isLatest
-                                ? 'Delete this match and roll back its rating impact?'
-                                : 'Delete this match? Ratings for downstream matches will be wrong until you recalculate.';
-                              if (!window.confirm(msg)) return;
-                              void run(
-                                deleteMatchFn({
-                                  data: {
-                                    orgSlug,
-                                    leagueSlug,
-                                    matchId: match.id,
-                                  },
-                                })
-                              );
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            disabled={!hydrated}
+                            data-testid="admin-match-delete"
+                            onClick={() => {
+                              setDeleting(match);
+                              setDeleteDialogOpen(true);
                             }}
                           >
-                            <input
-                              type="hidden"
-                              name="_action"
-                              value="delete"
-                            />
-                            <input
-                              type="hidden"
-                              name="matchId"
-                              value={match.id}
-                            />
-                            <Button
-                              type="submit"
-                              size="sm"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive"
-                              data-testid="admin-match-delete"
-                            >
-                              <Trash2 className="mr-1 h-3.5 w-3.5" />
-                              Delete
-                            </Button>
-                          </form>
+                            <Trash2 className="mr-1 h-3.5 w-3.5" />
+                            Delete
+                          </Button>
                         </div>
                       </div>
                     </Fragment>
@@ -561,6 +500,25 @@ function AdminMatchesPage() {
           )}
         </div>
       </div>
+
+      <DeleteMatchDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        // The current copy, so a score edited since the page loaded is the one asked for.
+        match={
+          deleting
+            ? (data.matches.find((match) => match.id === deleting.id) ??
+              deleting)
+            : null
+        }
+        onDelete={async (input) => {
+          const actionResult = await run(
+            deleteMatchFn({ data: { orgSlug, leagueSlug, ...input } })
+          );
+          if (!actionResult.success) await router.invalidate({ sync: true });
+          return actionResult;
+        }}
+      />
 
       <EditMatchDialog
         open={editDialogOpen}

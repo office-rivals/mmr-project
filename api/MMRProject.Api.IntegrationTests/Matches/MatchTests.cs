@@ -577,6 +577,154 @@ public class MatchTests(PostgresFixture postgres) : IntegrationTestBase(postgres
         Assert.Equal(0, orphanedHistories);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DeleteMatch_OlderMatch_PutsPlayersWithNoLaterMatchBackToTheirRatingBefore(
+        bool recalcFromNextMatch)
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, p1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, p2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, p3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, p4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+        var (_, _, p5) = await SeedTestUser(org.Id, league.Id, "p5", "p5@test.com");
+        var (_, _, p6) = await SeedTestUser(org.Id, league.Id, "p6", "p6@test.com");
+        var (_, _, p7) = await SeedTestUser(org.Id, league.Id, "p7", "p7@test.com");
+        var all = new[] { p1, p2, p3, p4, p5, p6, p7 }.Select(p => p.Id).ToList();
+
+        AuthenticateAs("p1");
+        var matchesUrl = $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches";
+        async Task<MatchResponse> Submit(Guid[] winners, Guid[] losers)
+        {
+            var response = await Client.PostAsJsonAsync(matchesUrl, new SubmitMatchRequest
+            {
+                Teams =
+                [
+                    new SubmitMatchTeamRequest { Players = [.. winners], Score = 10 },
+                    new SubmitMatchTeamRequest { Players = [.. losers], Score = 5 }
+                ]
+            });
+            response.EnsureSuccessStatusCode();
+            return (await ReadJsonAsync<MatchResponse>(response))!;
+        }
+
+        var earlier = await Submit([p5.Id, p6.Id], [p3.Id, p4.Id]);
+        // p7's only match, and p5's last; p1 and p2 play again after it.
+        var deleted = await Submit([p5.Id, p7.Id], [p1.Id, p2.Id]);
+        var next = await Submit([p1.Id, p2.Id], [p3.Id, p4.Id]);
+
+        MMRProject.Api.Data.Entities.V3.RatingHistory p5AfterEarlier;
+        LeaguePlayer p1BeforeDelete;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+            p5AfterEarlier = await dbContext.RatingHistories
+                .SingleAsync(rh => rh.MatchId == earlier.Id && rh.LeaguePlayerId == p5.Id);
+            p1BeforeDelete = (await dbContext.LeaguePlayers.FindAsync(p1.Id))!;
+            var p7BeforeDelete = (await dbContext.LeaguePlayers.FindAsync(p7.Id))!;
+            Assert.NotEqual(1500, p7BeforeDelete.Mmr);
+        }
+
+        var deleteResponse = await Client.DeleteAsync($"{matchesUrl}/{deleted.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+
+            // No match left at all: back to the defaults.
+            var p7Now = (await dbContext.LeaguePlayers.FindAsync(p7.Id))!;
+            Assert.Equal((1500L, 25.0m, 8.333m), (p7Now.Mmr, p7Now.Mu, p7Now.Sigma));
+
+            // An earlier match only: back to the rating it left them with.
+            var p5Now = (await dbContext.LeaguePlayers.FindAsync(p5.Id))!;
+            Assert.Equal((p5AfterEarlier.Mmr, p5AfterEarlier.Mu, p5AfterEarlier.Sigma),
+                (p5Now.Mmr, p5Now.Mu, p5Now.Sigma));
+
+            // A later match: left for the recalc that replays it.
+            var p1Now = (await dbContext.LeaguePlayers.FindAsync(p1.Id))!;
+            Assert.Equal((p1BeforeDelete.Mmr, p1BeforeDelete.Mu, p1BeforeDelete.Sigma),
+                (p1Now.Mmr, p1Now.Mu, p1Now.Sigma));
+        }
+
+        var recalcResponse = await Client.PostAsync(recalcFromNextMatch
+            ? $"{matchesUrl}/recalculate?fromMatchId={next.Id}"
+            : $"{matchesUrl}/recalculate", null);
+        Assert.Equal(HttpStatusCode.OK, recalcResponse.StatusCode);
+
+        // After either recalc every player's rating is the one their last
+        // remaining match gave them, or the defaults with none.
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+            foreach (var playerId in all)
+            {
+                var player = (await dbContext.LeaguePlayers.FindAsync(playerId))!;
+                var last = await dbContext.RatingHistories
+                    .Where(rh => rh.LeaguePlayerId == playerId)
+                    .Join(dbContext.Set<V3Match>(), rh => rh.MatchId, m => m.Id, (rh, m) => new { rh, m })
+                    .OrderByDescending(x => x.m.PlayedAt)
+                    .ThenByDescending(x => x.m.RecordedAt)
+                    .ThenByDescending(x => x.m.CreatedAt)
+                    .Select(x => x.rh)
+                    .FirstOrDefaultAsync();
+                var expected = last is null
+                    ? (1500L, 25.0m, 8.333m)
+                    : (last.Mmr, last.Mu, last.Sigma);
+                Assert.Equal(expected, (player.Mmr, player.Mu, player.Sigma));
+            }
+        }
+    }
+
+    [Fact]
+    public async Task DeleteMatch_AfterAnEditTookAPlayerOut_PutsThatPlayerBackToo()
+    {
+        var org = await CreateOrganization();
+        var league = await CreateLeague(org.Id);
+        await CreateSeason(org.Id, league.Id);
+
+        var (_, _, p1) = await SeedTestUser(org.Id, league.Id, "p1", "p1@test.com",
+            OrganizationRole.Moderator);
+        var (_, _, p2) = await SeedTestUser(org.Id, league.Id, "p2", "p2@test.com");
+        var (_, _, p3) = await SeedTestUser(org.Id, league.Id, "p3", "p3@test.com");
+        var (_, _, p4) = await SeedTestUser(org.Id, league.Id, "p4", "p4@test.com");
+        var (_, _, p5) = await SeedTestUser(org.Id, league.Id, "p5", "p5@test.com");
+
+        AuthenticateAs("p1");
+        var matchesUrl = $"api/v3/organizations/{org.Id}/leagues/{league.Id}/matches";
+        SubmitMatchRequest Teams(Guid[] winners, Guid[] losers) => new()
+        {
+            Teams =
+            [
+                new SubmitMatchTeamRequest { Players = [.. winners], Score = 10 },
+                new SubmitMatchTeamRequest { Players = [.. losers], Score = 5 }
+            ]
+        };
+
+        var response = await Client.PostAsJsonAsync(matchesUrl, Teams([p1.Id, p2.Id], [p3.Id, p4.Id]));
+        response.EnsureSuccessStatusCode();
+        var match = (await ReadJsonAsync<MatchResponse>(response))!;
+        (await Client.PostAsJsonAsync(matchesUrl, Teams([p1.Id, p3.Id], [p4.Id, p5.Id])))
+            .EnsureSuccessStatusCode();
+
+        // "I never played this one": p2 is swapped for p5, with no recalc, and
+        // the match is then deleted as a duplicate. It was p2's only match.
+        (await Client.PatchAsJsonAsync($"{matchesUrl}/{match.Id}", Teams([p1.Id, p5.Id], [p3.Id, p4.Id])))
+            .EnsureSuccessStatusCode();
+        var deleteResponse = await Client.DeleteAsync($"{matchesUrl}/{match.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApiDbContext>();
+        var p2Now = (await dbContext.LeaguePlayers.FindAsync(p2.Id))!;
+        Assert.Equal((1500L, 25.0m, 8.333m), (p2Now.Mmr, p2Now.Mu, p2Now.Sigma));
+    }
+
     [Fact]
     public async Task GetSingleMatch_ReturnsCorrectData()
     {
