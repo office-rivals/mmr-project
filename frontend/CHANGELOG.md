@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0
+
+- Centre the home page leaderboard on the signed-in player, page the leaderboard 100 players at a time with a search by name, pinning the player's own row below a page they aren't on, and collapse the unranked list unless the player is on it.
+
 ## 2.0.0
 
 - The React and TanStack Start app is now the official frontend, replacing the SvelteKit app. Self-hosters must set `CLERK_PUBLISHABLE_KEY` in place of `PUBLIC_CLERK_PUBLISHABLE_KEY`.
