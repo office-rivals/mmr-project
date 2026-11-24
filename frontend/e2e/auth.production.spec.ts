@@ -24,7 +24,7 @@ test('production serves authenticated HTML without hydration and rejects forged 
         .getByRole('heading', { name: 'Leaderboard', exact: true })
         .first()
     ).toBeVisible();
-    // Server-rendered rows: Home's table shows the top seven ranked players.
+    // Server-rendered rows: Home's table shows seven ranked players.
     await expect(
       nativePage.getByRole('table').first().locator('tbody tr')
     ).toHaveCount(7);

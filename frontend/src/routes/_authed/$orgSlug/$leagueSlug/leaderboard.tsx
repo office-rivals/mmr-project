@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
 import { createFileRoute } from '@tanstack/react-router';
 import { AppLink } from '@/components/app-link';
 import { Eyebrow } from '@/components/eyebrow';
@@ -13,6 +14,8 @@ import {
 } from '@/components/leaderboard/standings';
 import { PageTitle } from '@/components/page-title';
 import { SeasonPicker } from '@/components/season-picker';
+import { Input } from '@/components/ui/input';
+import { useHydrated } from '@/hooks/use-hydrated';
 import { getLeagueRatingHistoryFn, getStandingsFn } from '@/lib/league-data';
 import {
   WEEK_MS,
@@ -21,6 +24,7 @@ import {
   formWins,
   winRate,
 } from '@/lib/player-stats';
+import { searchPlayers } from '@/lib/leaderboard-window';
 import { cn, formatLeagueFormat } from '@/lib/utils';
 import type { LeagueRatingHistoryEntry, SeasonResponse } from '@/api-v3';
 
@@ -82,6 +86,8 @@ function StandingsPage() {
       ? 'mmr'
       : (search.sort ?? 'mmr');
 
+  const hydrated = useHydrated();
+  const [query, setQuery] = useState('');
   const [ratingHistory, setRatingHistory] = useState<
     LeagueRatingHistoryEntry[] | undefined
   >(undefined);
@@ -99,6 +105,8 @@ function StandingsPage() {
   const entries = data.leaderboard.entries ?? [];
   const ranked = entries.filter((e) => e.mmr != null);
   const unranked = entries.filter((e) => e.mmr == null);
+  // Search counts the same players on every sort.
+  const searchCount = query.trim() ? searchPlayers(ranked, query).length : null;
   const myEntry = ranked.find((e) => e.leaguePlayerId === me);
   const form = useMemo(
     () => formByPlayer(data.recentMatches),
@@ -202,6 +210,32 @@ function StandingsPage() {
       {/* The side rail waits for xl: at lg it would squeeze the table. */}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
         <div className="flex flex-col gap-6">
+          {ranked.length > 0 ? (
+            <div className="relative">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                type="search"
+                aria-label="Search players"
+                placeholder="Search players"
+                className="pl-9"
+                value={query}
+                disabled={!hydrated}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+              {/* Outside the table, which remounts on a new sort or season,
+                  so a screen reader hears each new count. */}
+              <p className="sr-only" aria-live="polite">
+                {searchCount === null
+                  ? ''
+                  : searchCount === 0
+                    ? 'No ranked player matches'
+                    : `${searchCount} ${searchCount === 1 ? 'player' : 'players'} found`}
+              </p>
+            </div>
+          ) : null}
           {myEntry ? (
             <div className="xl:hidden">
               <YourPositionCard ranked={ranked} me={myEntry} />
@@ -218,7 +252,8 @@ function StandingsPage() {
           ) : null}
           {ranked.length > 0 ? (
             <StandingsTable
-              key={sort}
+              // A new sort or season starts again at page 1.
+              key={`${data.seasonId}|${sort}`}
               entries={sorted}
               me={me}
               form={form}
@@ -227,9 +262,16 @@ function StandingsPage() {
               metric={sort}
               week={week}
               podium={sort === 'mmr' && ranked.length >= 3}
+              query={query}
             />
           ) : null}
-          <UnrankedList entries={unranked} playerHref={playerHref} />
+          <UnrankedList
+            // Each season's list starts open only if you are unranked in it.
+            key={data.seasonId}
+            entries={unranked}
+            me={me}
+            playerHref={playerHref}
+          />
         </div>
         <aside className="hidden flex-col gap-6 xl:flex">
           {myEntry ? <YourPositionCard ranked={ranked} me={myEntry} /> : null}
