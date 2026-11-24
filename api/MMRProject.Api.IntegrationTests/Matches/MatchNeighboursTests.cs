@@ -14,7 +14,7 @@ public class MatchNeighboursTests(PostgresFixture postgres) : IntegrationTestBas
     private static readonly DateTimeOffset Noon = new(2026, 10, 30, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public async Task GetMatchNeighbours_ReturnsNearestEarlierAndLaterMatchInTheLeague()
+    public async Task GetMatchNeighbours_ReturnsNearestEarlierAndLaterMatchInTheSameSeason()
     {
         var org = await CreateOrganization();
         var league = await CreateLeague(org.Id);
@@ -27,8 +27,9 @@ public class MatchNeighboursTests(PostgresFixture postgres) : IntegrationTestBas
         var target = await Submit(org.Id, league.Id, players, 10, 3);
         var later = await Submit(org.Id, league.Id, players, 10, 4);
         var earlier = await Submit(org.Id, league.Id, players, 10, 2);
-        var earliest = await Submit(org.Id, league.Id, players, 10, 1);
+        var pastSeason = await Submit(org.Id, league.Id, players, 10, 1);
         var farLater = await Submit(org.Id, league.Id, players, 10, 5);
+        var pastSeasonEarlier = await Submit(org.Id, league.Id, players, 10, 6);
 
         // A match in another league, closer in time than either neighbour.
         var otherLeague = await CreateLeague(org.Id, "Other League", "other-league", teamSize: 1);
@@ -48,7 +49,10 @@ public class MatchNeighboursTests(PostgresFixture postgres) : IntegrationTestBas
         otherResponse.EnsureSuccessStatusCode();
         var other = await ReadJsonAsync<MatchResponse>(otherResponse);
 
-        await SetPlayedAt(earliest.Id, Noon.AddDays(-20), oldSeason.Id);
+        // The past season's last match is closer to `earlier` than any match of
+        // its own season.
+        await SetPlayedAt(pastSeasonEarlier.Id, Noon.AddDays(-20), oldSeason.Id);
+        await SetPlayedAt(pastSeason.Id, Noon.AddMinutes(-5), oldSeason.Id);
         await SetPlayedAt(earlier.Id, Noon.AddMinutes(-4));
         await SetPlayedAt(target.Id, Noon);
         await SetPlayedAt(later.Id, Noon.AddMinutes(105));
@@ -60,14 +64,15 @@ public class MatchNeighboursTests(PostgresFixture postgres) : IntegrationTestBas
         Assert.Equal(later.Id, neighbours.After?.Id);
         Assert.Equal(2, neighbours.Before!.Teams.Count);
 
-        // The nearest earlier match may be in a past season.
+        // A match in the past season is never a neighbour, however close.
         var aroundEarlier = await GetNeighbours(org.Id, league.Id, earlier.Id);
-        Assert.Equal(earliest.Id, aroundEarlier.Before?.Id);
+        Assert.Null(aroundEarlier.Before);
         Assert.Equal(target.Id, aroundEarlier.After?.Id);
 
-        var aroundFirst = await GetNeighbours(org.Id, league.Id, earliest.Id);
-        Assert.Null(aroundFirst.Before);
-        Assert.Equal(earlier.Id, aroundFirst.After?.Id);
+        // A report on a past-season match gets that season's neighbours.
+        var aroundPastSeason = await GetNeighbours(org.Id, league.Id, pastSeason.Id);
+        Assert.Equal(pastSeasonEarlier.Id, aroundPastSeason.Before?.Id);
+        Assert.Null(aroundPastSeason.After);
 
         var aroundLast = await GetNeighbours(org.Id, league.Id, farLater.Id);
         Assert.Equal(later.Id, aroundLast.Before?.Id);

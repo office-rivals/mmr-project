@@ -11,7 +11,7 @@ export interface MatchNeighboursProps {
 }
 
 /**
- * The reported match between the league's matches just before and after it,
+ * The reported match between the season's matches just before and after it,
  * so a match entered twice shows up next to its original.
  */
 export function MatchNeighbours({ match, neighbours }: MatchNeighboursProps) {
@@ -56,8 +56,8 @@ function Neighbour({
     return (
       <p className="text-xs text-muted-foreground" data-testid={testId}>
         {side === 'before'
-          ? 'No earlier match in this league.'
-          : 'No later match in this league.'}
+          ? 'No earlier match in the same season.'
+          : 'No later match in the same season.'}
       </p>
     );
   }

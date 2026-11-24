@@ -498,15 +498,15 @@ public class V3MatchesService(
         var match = await dbContext.V3Matches
             .AsNoTracking()
             .Where(m => m.OrganizationId == orgId && m.LeagueId == leagueId && m.Id == matchId)
-            .Select(m => new { m.PlayedAt, m.RecordedAt })
+            .Select(m => new { m.SeasonId, m.PlayedAt, m.RecordedAt })
             .FirstOrDefaultAsync()
             ?? throw new NotFoundException("Match not found");
 
-        // Across every season, in the match list's order, so a duplicate entered
-        // around a season change is still found next to the original.
+        // Within the match's own season, in the match list's order.
         var others = dbContext.V3Matches
             .AsNoTracking()
-            .Where(m => m.OrganizationId == orgId && m.LeagueId == leagueId && m.Id != matchId);
+            .Where(m => m.OrganizationId == orgId && m.LeagueId == leagueId
+                        && m.SeasonId == match.SeasonId && m.Id != matchId);
 
         var beforeId = await others
             .Where(m => m.PlayedAt < match.PlayedAt
