@@ -13,3 +13,9 @@ app's earlier per-control code broke on iOS.
 - **A form that posts without JavaScript** (see "Native form responses" in the
   README): Base UI controls can't be operated until the page hydrates, so use
   `NativeSelect` and native radios there.
+
+## Server functions and server routes
+
+These are the frontend's BFF. Before adding or changing one, or an API
+endpoint it calls, read "General API and BFF" in the root
+[AGENTS.md](../AGENTS.md).

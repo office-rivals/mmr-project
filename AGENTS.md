@@ -74,6 +74,30 @@ Postgres resource in the Aspire dashboard.
 
 ## Architecture
 
+### General API and BFF
+
+The API (`api/`) is a **general API**: other people build their own apps on it
+with a personal access token, and the frontend is one such app. The TanStack
+Start backend (`frontend/`: server functions and server routes) is the
+frontend's **BFF** (backend for frontend).
+
+Place each new endpoint by what it returns:
+
+- **A resource goes in the API**: one thing any app could ask for by its own
+  ids and inputs, such as a leaderboard, a match or a player's rating history.
+  A batch takes a list of those ("these N items").
+- **A screen's data goes in the BFF**: it calls the API's resources, then joins
+  and shapes them for that screen. Only the frontend depends on it, so it
+  changes with the screen.
+- **Data rules go in the API**, where every app meets them: access checks,
+  validation, and what is withheld from whom.
+- **The MMR API is internal**: rating maths, called by the API alone.
+
+When a screen needs something the API can't answer, add the general resource
+to the API and shape it in the BFF. Example: `getStandingsFn`
+(`frontend/src/lib/league-data.ts`) builds the standings page from three
+resources: seasons, leaderboard and matches.
+
 ### Authentication
 
 - Clerk for auth; the API validates JWT bearer tokens (`Program.cs`, `builder.AddAuth()`).
