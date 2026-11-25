@@ -74,6 +74,32 @@ Postgres resource in the Aspire dashboard.
 
 ## Architecture
 
+### General API, screen-specific endpoints
+
+The API (`api/`) is a general API: other people should be able to build their
+own apps on it with a personal access token. Keep it as general as possible;
+the frontend is one such app.
+
+- **An API endpoint is a resource, not a screen.** It returns one thing, asked
+  for by its own ids and inputs: a leaderboard, a match, a player's rating
+  history. Don't add a field to a response because a screen shows it there,
+  and don't shape or key an endpoint on what one page holds.
+- **Screen-specific endpoints live in the TanStack Start backend**
+  (`frontend/`), as server functions or server routes. They call the API, then
+  join and shape the answers for one screen. They are not a contract for
+  anyone else and can change with the screen.
+- **Rules about data hold in the API**, where every app meets them: access
+  checks, validation, and what is withheld from whom. Never rely on a Start
+  endpoint to hide something.
+- **A batch in the API is general** ("these N items"), never "what this page
+  needs".
+- **The MMR API stays internal**: rating maths only, called by the API alone.
+
+Example: the standings page needs the seasons, the leaderboard and recent
+matches. The API has one endpoint for each, and `getStandingsFn`
+(`frontend/src/lib/league-data.ts`) calls the three and returns what the page
+renders. The API has no standings-page endpoint.
+
 ### Authentication
 
 - Clerk for auth; the API validates JWT bearer tokens (`Program.cs`, `builder.AddAuth()`).

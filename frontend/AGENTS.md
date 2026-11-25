@@ -13,3 +13,11 @@ app's earlier per-control code broke on iOS.
 - **A form that posts without JavaScript** (see "Native form responses" in the
   README): Base UI controls can't be operated until the page hydrates, so use
   `NativeSelect` and native radios there.
+
+## Server functions and server routes
+
+Screen-specific data belongs here, not in the API: a server function or server
+route calls the API's general endpoints, then joins and shapes the answers for
+one screen. If a screen needs something the API can't answer, add a general
+resource to the API and shape it here. See "General API, screen-specific
+endpoints" in the root [AGENTS.md](../AGENTS.md).
