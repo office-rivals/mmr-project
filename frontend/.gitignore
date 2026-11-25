@@ -12,3 +12,6 @@ test-results
 
 # TanStack Start build temp
 .tanstack/
+
+# TypeScript incremental build info (tsc -b)
+*.tsbuildinfo

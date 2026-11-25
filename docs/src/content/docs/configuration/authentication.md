@@ -40,7 +40,7 @@ CLERK_SIGN_IN_URL=/login
 CLERK_SIGN_UP_URL=/sign-up
 ```
 
-All four are read at runtime, so you don't need credentials to build the image. Signing in or up returns the user to `/`, and signing out returns them to `/login`.
+All four are read at runtime, so you don't need credentials to build the image. Signing in returns the user to the page they opened (only paths on the same site are followed, anything else goes to `/`). Signing up returns them to `/`, and signing out returns them to `/login`.
 
 ### Behind a public hostname
 

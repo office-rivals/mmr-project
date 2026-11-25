@@ -18,13 +18,16 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminOrgSlugRouteRouteImport } from './routes/admin/$orgSlug/route'
 import { Route as LoginSplatRouteImport } from './routes/login.$'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
+import { Route as TCodeRouteImport } from './routes/t.$code'
 import { Route as AuthedOrgSlugIndexRouteImport } from './routes/_authed/$orgSlug/index'
 import { Route as AuthedOrgSlugLeagueSlugRouteRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/route'
+import { Route as AuthedOrgSlugCardsRouteImport } from './routes/_authed/$orgSlug/cards'
 import { Route as AuthedOrgSlugClaimRouteImport } from './routes/_authed/$orgSlug/claim'
 import { Route as AuthedOrgSlugSettingsRouteImport } from './routes/_authed/$orgSlug/settings'
 import { Route as AuthedJoinIndexRouteImport } from './routes/_authed/join/index'
 import { Route as AuthedJoinCodeRouteImport } from './routes/_authed/join/$code'
 import { Route as AdminOrgSlugIndexRouteImport } from './routes/admin/$orgSlug/index'
+import { Route as AdminOrgSlugHardwareRouteImport } from './routes/admin/$orgSlug/hardware'
 import { Route as AdminOrgSlugMembersRouteImport } from './routes/admin/$orgSlug/members'
 import { Route as OrgSlugLeagueSlugApiRecentMatchRouteImport } from './routes/$orgSlug/$leagueSlug/api/recent-match'
 import { Route as AuthedOrgSlugLeagueSlugIndexRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/index'
@@ -36,11 +39,15 @@ import { Route as AuthedOrgSlugLeagueSlugSubmitRouteImport } from './routes/_aut
 import { Route as AdminOrgSlugLeaguesIndexRouteImport } from './routes/admin/$orgSlug/leagues/index'
 import { Route as AdminOrgSlugLeaguesLeagueSlugRouteRouteImport } from './routes/admin/$orgSlug/leagues/$leagueSlug/route'
 import { Route as AuthedOrgSlugLeagueSlugActiveMatchIdRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/active-match.$id'
+import { Route as AuthedOrgSlugLeagueSlugMatchIdRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/match.$id'
 import { Route as AuthedOrgSlugLeagueSlugPlayerIdRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/player/$id'
+import { Route as AuthedOrgSlugLeagueSlugTablesIndexRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/tables/index'
+import { Route as AuthedOrgSlugLeagueSlugTablesTableIdRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/tables/$tableId'
 import { Route as AdminOrgSlugLeaguesLeagueSlugIndexRouteImport } from './routes/admin/$orgSlug/leagues/$leagueSlug/index'
 import { Route as AdminOrgSlugLeaguesLeagueSlugMatchFlagsRouteImport } from './routes/admin/$orgSlug/leagues/$leagueSlug/match-flags'
 import { Route as AdminOrgSlugLeaguesLeagueSlugMatchesRouteImport } from './routes/admin/$orgSlug/leagues/$leagueSlug/matches'
 import { Route as AdminOrgSlugLeaguesLeagueSlugSeasonsRouteImport } from './routes/admin/$orgSlug/leagues/$leagueSlug/seasons'
+import { Route as AuthedOrgSlugLeagueSlugTablesTableIdStatsRouteImport } from './routes/_authed/$orgSlug/$leagueSlug/tables/$tableId_.stats'
 import { Route as ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRouteImport } from './routes/api/v3/organizations/$orgId/leagues/$leagueId/matches'
 import { Route as ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRouteImport } from './routes/api/v3/organizations/$orgId/leagues/$leagueId/queue'
 
@@ -88,6 +95,11 @@ const SignUpSplatRoute = SignUpSplatRouteImport.update({
   path: '/sign-up/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TCodeRoute = TCodeRouteImport.update({
+  id: '/t/$code',
+  path: '/t/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedOrgSlugIndexRoute = AuthedOrgSlugIndexRouteImport.update({
   id: '/$orgSlug/',
   path: '/$orgSlug/',
@@ -99,6 +111,11 @@ const AuthedOrgSlugLeagueSlugRouteRoute =
     path: '/$orgSlug/$leagueSlug',
     getParentRoute: () => AuthedRoute,
   } as any)
+const AuthedOrgSlugCardsRoute = AuthedOrgSlugCardsRouteImport.update({
+  id: '/$orgSlug/cards',
+  path: '/$orgSlug/cards',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedOrgSlugClaimRoute = AuthedOrgSlugClaimRouteImport.update({
   id: '/$orgSlug/claim',
   path: '/$orgSlug/claim',
@@ -122,6 +139,11 @@ const AuthedJoinCodeRoute = AuthedJoinCodeRouteImport.update({
 const AdminOrgSlugIndexRoute = AdminOrgSlugIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AdminOrgSlugRouteRoute,
+} as any)
+const AdminOrgSlugHardwareRoute = AdminOrgSlugHardwareRouteImport.update({
+  id: '/hardware',
+  path: '/hardware',
   getParentRoute: () => AdminOrgSlugRouteRoute,
 } as any)
 const AdminOrgSlugMembersRoute = AdminOrgSlugMembersRouteImport.update({
@@ -189,10 +211,28 @@ const AuthedOrgSlugLeagueSlugActiveMatchIdRoute =
     path: '/active-match/$id',
     getParentRoute: () => AuthedOrgSlugLeagueSlugRouteRoute,
   } as any)
+const AuthedOrgSlugLeagueSlugMatchIdRoute =
+  AuthedOrgSlugLeagueSlugMatchIdRouteImport.update({
+    id: '/match/$id',
+    path: '/match/$id',
+    getParentRoute: () => AuthedOrgSlugLeagueSlugRouteRoute,
+  } as any)
 const AuthedOrgSlugLeagueSlugPlayerIdRoute =
   AuthedOrgSlugLeagueSlugPlayerIdRouteImport.update({
     id: '/player/$id',
     path: '/player/$id',
+    getParentRoute: () => AuthedOrgSlugLeagueSlugRouteRoute,
+  } as any)
+const AuthedOrgSlugLeagueSlugTablesIndexRoute =
+  AuthedOrgSlugLeagueSlugTablesIndexRouteImport.update({
+    id: '/tables/',
+    path: '/tables/',
+    getParentRoute: () => AuthedOrgSlugLeagueSlugRouteRoute,
+  } as any)
+const AuthedOrgSlugLeagueSlugTablesTableIdRoute =
+  AuthedOrgSlugLeagueSlugTablesTableIdRouteImport.update({
+    id: '/tables/$tableId',
+    path: '/tables/$tableId',
     getParentRoute: () => AuthedOrgSlugLeagueSlugRouteRoute,
   } as any)
 const AdminOrgSlugLeaguesLeagueSlugIndexRoute =
@@ -219,6 +259,12 @@ const AdminOrgSlugLeaguesLeagueSlugSeasonsRoute =
     path: '/seasons',
     getParentRoute: () => AdminOrgSlugLeaguesLeagueSlugRouteRoute,
   } as any)
+const AuthedOrgSlugLeagueSlugTablesTableIdStatsRoute =
+  AuthedOrgSlugLeagueSlugTablesTableIdStatsRouteImport.update({
+    id: '/tables/$tableId_/stats',
+    path: '/tables/$tableId/stats',
+    getParentRoute: () => AuthedOrgSlugLeagueSlugRouteRoute,
+  } as any)
 const ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute =
   ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRouteImport.update({
     id: '/api/v3/organizations/$orgId/leagues/$leagueId/matches',
@@ -240,11 +286,14 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthedSettingsRoute
   '/login/$': typeof LoginSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/t/$code': typeof TCodeRoute
   '/admin/': typeof AdminIndexRoute
   '/$orgSlug/$leagueSlug': typeof AuthedOrgSlugLeagueSlugRouteRouteWithChildren
+  '/$orgSlug/cards': typeof AuthedOrgSlugCardsRoute
   '/$orgSlug/claim': typeof AuthedOrgSlugClaimRoute
   '/$orgSlug/settings': typeof AuthedOrgSlugSettingsRoute
   '/join/$code': typeof AuthedJoinCodeRoute
+  '/admin/$orgSlug/hardware': typeof AdminOrgSlugHardwareRoute
   '/admin/$orgSlug/members': typeof AdminOrgSlugMembersRoute
   '/$orgSlug/': typeof AuthedOrgSlugIndexRoute
   '/join/': typeof AuthedJoinIndexRoute
@@ -259,11 +308,15 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/$leagueSlug/': typeof AuthedOrgSlugLeagueSlugIndexRoute
   '/admin/$orgSlug/leagues/': typeof AdminOrgSlugLeaguesIndexRoute
   '/$orgSlug/$leagueSlug/active-match/$id': typeof AuthedOrgSlugLeagueSlugActiveMatchIdRoute
+  '/$orgSlug/$leagueSlug/match/$id': typeof AuthedOrgSlugLeagueSlugMatchIdRoute
   '/$orgSlug/$leagueSlug/player/$id': typeof AuthedOrgSlugLeagueSlugPlayerIdRoute
+  '/$orgSlug/$leagueSlug/tables/$tableId': typeof AuthedOrgSlugLeagueSlugTablesTableIdRoute
   '/admin/$orgSlug/leagues/$leagueSlug/match-flags': typeof AdminOrgSlugLeaguesLeagueSlugMatchFlagsRoute
   '/admin/$orgSlug/leagues/$leagueSlug/matches': typeof AdminOrgSlugLeaguesLeagueSlugMatchesRoute
   '/admin/$orgSlug/leagues/$leagueSlug/seasons': typeof AdminOrgSlugLeaguesLeagueSlugSeasonsRoute
+  '/$orgSlug/$leagueSlug/tables/': typeof AuthedOrgSlugLeagueSlugTablesIndexRoute
   '/admin/$orgSlug/leagues/$leagueSlug/': typeof AdminOrgSlugLeaguesLeagueSlugIndexRoute
+  '/$orgSlug/$leagueSlug/tables/$tableId/stats': typeof AuthedOrgSlugLeagueSlugTablesTableIdStatsRoute
   '/api/v3/organizations/$orgId/leagues/$leagueId/matches': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute
   '/api/v3/organizations/$orgId/leagues/$leagueId/queue': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRoute
 }
@@ -272,11 +325,14 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthedSettingsRoute
   '/login/$': typeof LoginSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/t/$code': typeof TCodeRoute
   '/': typeof AuthedIndexRoute
   '/admin': typeof AdminIndexRoute
+  '/$orgSlug/cards': typeof AuthedOrgSlugCardsRoute
   '/$orgSlug/claim': typeof AuthedOrgSlugClaimRoute
   '/$orgSlug/settings': typeof AuthedOrgSlugSettingsRoute
   '/join/$code': typeof AuthedJoinCodeRoute
+  '/admin/$orgSlug/hardware': typeof AdminOrgSlugHardwareRoute
   '/admin/$orgSlug/members': typeof AdminOrgSlugMembersRoute
   '/$orgSlug': typeof AuthedOrgSlugIndexRoute
   '/join': typeof AuthedJoinIndexRoute
@@ -290,11 +346,15 @@ export interface FileRoutesByTo {
   '/$orgSlug/$leagueSlug': typeof AuthedOrgSlugLeagueSlugIndexRoute
   '/admin/$orgSlug/leagues': typeof AdminOrgSlugLeaguesIndexRoute
   '/$orgSlug/$leagueSlug/active-match/$id': typeof AuthedOrgSlugLeagueSlugActiveMatchIdRoute
+  '/$orgSlug/$leagueSlug/match/$id': typeof AuthedOrgSlugLeagueSlugMatchIdRoute
   '/$orgSlug/$leagueSlug/player/$id': typeof AuthedOrgSlugLeagueSlugPlayerIdRoute
+  '/$orgSlug/$leagueSlug/tables/$tableId': typeof AuthedOrgSlugLeagueSlugTablesTableIdRoute
   '/admin/$orgSlug/leagues/$leagueSlug/match-flags': typeof AdminOrgSlugLeaguesLeagueSlugMatchFlagsRoute
   '/admin/$orgSlug/leagues/$leagueSlug/matches': typeof AdminOrgSlugLeaguesLeagueSlugMatchesRoute
   '/admin/$orgSlug/leagues/$leagueSlug/seasons': typeof AdminOrgSlugLeaguesLeagueSlugSeasonsRoute
+  '/$orgSlug/$leagueSlug/tables': typeof AuthedOrgSlugLeagueSlugTablesIndexRoute
   '/admin/$orgSlug/leagues/$leagueSlug': typeof AdminOrgSlugLeaguesLeagueSlugIndexRoute
+  '/$orgSlug/$leagueSlug/tables/$tableId/stats': typeof AuthedOrgSlugLeagueSlugTablesTableIdStatsRoute
   '/api/v3/organizations/$orgId/leagues/$leagueId/matches': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute
   '/api/v3/organizations/$orgId/leagues/$leagueId/queue': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRoute
 }
@@ -307,12 +367,15 @@ export interface FileRoutesById {
   '/_authed/settings': typeof AuthedSettingsRoute
   '/login/$': typeof LoginSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/t/$code': typeof TCodeRoute
   '/_authed/': typeof AuthedIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/_authed/$orgSlug/$leagueSlug': typeof AuthedOrgSlugLeagueSlugRouteRouteWithChildren
+  '/_authed/$orgSlug/cards': typeof AuthedOrgSlugCardsRoute
   '/_authed/$orgSlug/claim': typeof AuthedOrgSlugClaimRoute
   '/_authed/$orgSlug/settings': typeof AuthedOrgSlugSettingsRoute
   '/_authed/join/$code': typeof AuthedJoinCodeRoute
+  '/admin/$orgSlug/hardware': typeof AdminOrgSlugHardwareRoute
   '/admin/$orgSlug/members': typeof AdminOrgSlugMembersRoute
   '/_authed/$orgSlug/': typeof AuthedOrgSlugIndexRoute
   '/_authed/join/': typeof AuthedJoinIndexRoute
@@ -327,11 +390,15 @@ export interface FileRoutesById {
   '/_authed/$orgSlug/$leagueSlug/': typeof AuthedOrgSlugLeagueSlugIndexRoute
   '/admin/$orgSlug/leagues/': typeof AdminOrgSlugLeaguesIndexRoute
   '/_authed/$orgSlug/$leagueSlug/active-match/$id': typeof AuthedOrgSlugLeagueSlugActiveMatchIdRoute
+  '/_authed/$orgSlug/$leagueSlug/match/$id': typeof AuthedOrgSlugLeagueSlugMatchIdRoute
   '/_authed/$orgSlug/$leagueSlug/player/$id': typeof AuthedOrgSlugLeagueSlugPlayerIdRoute
+  '/_authed/$orgSlug/$leagueSlug/tables/$tableId': typeof AuthedOrgSlugLeagueSlugTablesTableIdRoute
   '/admin/$orgSlug/leagues/$leagueSlug/match-flags': typeof AdminOrgSlugLeaguesLeagueSlugMatchFlagsRoute
   '/admin/$orgSlug/leagues/$leagueSlug/matches': typeof AdminOrgSlugLeaguesLeagueSlugMatchesRoute
   '/admin/$orgSlug/leagues/$leagueSlug/seasons': typeof AdminOrgSlugLeaguesLeagueSlugSeasonsRoute
+  '/_authed/$orgSlug/$leagueSlug/tables/': typeof AuthedOrgSlugLeagueSlugTablesIndexRoute
   '/admin/$orgSlug/leagues/$leagueSlug/': typeof AdminOrgSlugLeaguesLeagueSlugIndexRoute
+  '/_authed/$orgSlug/$leagueSlug/tables/$tableId_/stats': typeof AuthedOrgSlugLeagueSlugTablesTableIdStatsRoute
   '/api/v3/organizations/$orgId/leagues/$leagueId/matches': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute
   '/api/v3/organizations/$orgId/leagues/$leagueId/queue': typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRoute
 }
@@ -345,11 +412,14 @@ export interface FileRouteTypes {
     | '/settings'
     | '/login/$'
     | '/sign-up/$'
+    | '/t/$code'
     | '/admin/'
     | '/$orgSlug/$leagueSlug'
+    | '/$orgSlug/cards'
     | '/$orgSlug/claim'
     | '/$orgSlug/settings'
     | '/join/$code'
+    | '/admin/$orgSlug/hardware'
     | '/admin/$orgSlug/members'
     | '/$orgSlug/'
     | '/join/'
@@ -364,11 +434,15 @@ export interface FileRouteTypes {
     | '/$orgSlug/$leagueSlug/'
     | '/admin/$orgSlug/leagues/'
     | '/$orgSlug/$leagueSlug/active-match/$id'
+    | '/$orgSlug/$leagueSlug/match/$id'
     | '/$orgSlug/$leagueSlug/player/$id'
+    | '/$orgSlug/$leagueSlug/tables/$tableId'
     | '/admin/$orgSlug/leagues/$leagueSlug/match-flags'
     | '/admin/$orgSlug/leagues/$leagueSlug/matches'
     | '/admin/$orgSlug/leagues/$leagueSlug/seasons'
+    | '/$orgSlug/$leagueSlug/tables/'
     | '/admin/$orgSlug/leagues/$leagueSlug/'
+    | '/$orgSlug/$leagueSlug/tables/$tableId/stats'
     | '/api/v3/organizations/$orgId/leagues/$leagueId/matches'
     | '/api/v3/organizations/$orgId/leagues/$leagueId/queue'
   fileRoutesByTo: FileRoutesByTo
@@ -377,11 +451,14 @@ export interface FileRouteTypes {
     | '/settings'
     | '/login/$'
     | '/sign-up/$'
+    | '/t/$code'
     | '/'
     | '/admin'
+    | '/$orgSlug/cards'
     | '/$orgSlug/claim'
     | '/$orgSlug/settings'
     | '/join/$code'
+    | '/admin/$orgSlug/hardware'
     | '/admin/$orgSlug/members'
     | '/$orgSlug'
     | '/join'
@@ -395,11 +472,15 @@ export interface FileRouteTypes {
     | '/$orgSlug/$leagueSlug'
     | '/admin/$orgSlug/leagues'
     | '/$orgSlug/$leagueSlug/active-match/$id'
+    | '/$orgSlug/$leagueSlug/match/$id'
     | '/$orgSlug/$leagueSlug/player/$id'
+    | '/$orgSlug/$leagueSlug/tables/$tableId'
     | '/admin/$orgSlug/leagues/$leagueSlug/match-flags'
     | '/admin/$orgSlug/leagues/$leagueSlug/matches'
     | '/admin/$orgSlug/leagues/$leagueSlug/seasons'
+    | '/$orgSlug/$leagueSlug/tables'
     | '/admin/$orgSlug/leagues/$leagueSlug'
+    | '/$orgSlug/$leagueSlug/tables/$tableId/stats'
     | '/api/v3/organizations/$orgId/leagues/$leagueId/matches'
     | '/api/v3/organizations/$orgId/leagues/$leagueId/queue'
   id:
@@ -411,12 +492,15 @@ export interface FileRouteTypes {
     | '/_authed/settings'
     | '/login/$'
     | '/sign-up/$'
+    | '/t/$code'
     | '/_authed/'
     | '/admin/'
     | '/_authed/$orgSlug/$leagueSlug'
+    | '/_authed/$orgSlug/cards'
     | '/_authed/$orgSlug/claim'
     | '/_authed/$orgSlug/settings'
     | '/_authed/join/$code'
+    | '/admin/$orgSlug/hardware'
     | '/admin/$orgSlug/members'
     | '/_authed/$orgSlug/'
     | '/_authed/join/'
@@ -431,11 +515,15 @@ export interface FileRouteTypes {
     | '/_authed/$orgSlug/$leagueSlug/'
     | '/admin/$orgSlug/leagues/'
     | '/_authed/$orgSlug/$leagueSlug/active-match/$id'
+    | '/_authed/$orgSlug/$leagueSlug/match/$id'
     | '/_authed/$orgSlug/$leagueSlug/player/$id'
+    | '/_authed/$orgSlug/$leagueSlug/tables/$tableId'
     | '/admin/$orgSlug/leagues/$leagueSlug/match-flags'
     | '/admin/$orgSlug/leagues/$leagueSlug/matches'
     | '/admin/$orgSlug/leagues/$leagueSlug/seasons'
+    | '/_authed/$orgSlug/$leagueSlug/tables/'
     | '/admin/$orgSlug/leagues/$leagueSlug/'
+    | '/_authed/$orgSlug/$leagueSlug/tables/$tableId_/stats'
     | '/api/v3/organizations/$orgId/leagues/$leagueId/matches'
     | '/api/v3/organizations/$orgId/leagues/$leagueId/queue'
   fileRoutesById: FileRoutesById
@@ -445,6 +533,7 @@ export interface RootRouteChildren {
   AuthedRoute: typeof AuthedRouteWithChildren
   LoginSplatRoute: typeof LoginSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
+  TCodeRoute: typeof TCodeRoute
   OrgSlugLeagueSlugApiRecentMatchRoute: typeof OrgSlugLeagueSlugApiRecentMatchRoute
   ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute: typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute
   ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRoute: typeof ApiV3OrganizationsOrgIdLeaguesLeagueIdQueueRoute
@@ -515,6 +604,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignUpSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/t/$code': {
+      id: '/t/$code'
+      path: '/t/$code'
+      fullPath: '/t/$code'
+      preLoaderRoute: typeof TCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/$orgSlug/': {
       id: '/_authed/$orgSlug/'
       path: '/$orgSlug'
@@ -527,6 +623,13 @@ declare module '@tanstack/react-router' {
       path: '/$orgSlug/$leagueSlug'
       fullPath: '/$orgSlug/$leagueSlug'
       preLoaderRoute: typeof AuthedOrgSlugLeagueSlugRouteRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/$orgSlug/cards': {
+      id: '/_authed/$orgSlug/cards'
+      path: '/$orgSlug/cards'
+      fullPath: '/$orgSlug/cards'
+      preLoaderRoute: typeof AuthedOrgSlugCardsRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/$orgSlug/claim': {
@@ -562,6 +665,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/$orgSlug/'
       preLoaderRoute: typeof AdminOrgSlugIndexRouteImport
+      parentRoute: typeof AdminOrgSlugRouteRoute
+    }
+    '/admin/$orgSlug/hardware': {
+      id: '/admin/$orgSlug/hardware'
+      path: '/hardware'
+      fullPath: '/admin/$orgSlug/hardware'
+      preLoaderRoute: typeof AdminOrgSlugHardwareRouteImport
       parentRoute: typeof AdminOrgSlugRouteRoute
     }
     '/admin/$orgSlug/members': {
@@ -641,11 +751,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedOrgSlugLeagueSlugActiveMatchIdRouteImport
       parentRoute: typeof AuthedOrgSlugLeagueSlugRouteRoute
     }
+    '/_authed/$orgSlug/$leagueSlug/match/$id': {
+      id: '/_authed/$orgSlug/$leagueSlug/match/$id'
+      path: '/match/$id'
+      fullPath: '/$orgSlug/$leagueSlug/match/$id'
+      preLoaderRoute: typeof AuthedOrgSlugLeagueSlugMatchIdRouteImport
+      parentRoute: typeof AuthedOrgSlugLeagueSlugRouteRoute
+    }
     '/_authed/$orgSlug/$leagueSlug/player/$id': {
       id: '/_authed/$orgSlug/$leagueSlug/player/$id'
       path: '/player/$id'
       fullPath: '/$orgSlug/$leagueSlug/player/$id'
       preLoaderRoute: typeof AuthedOrgSlugLeagueSlugPlayerIdRouteImport
+      parentRoute: typeof AuthedOrgSlugLeagueSlugRouteRoute
+    }
+    '/_authed/$orgSlug/$leagueSlug/tables/': {
+      id: '/_authed/$orgSlug/$leagueSlug/tables/'
+      path: '/tables'
+      fullPath: '/$orgSlug/$leagueSlug/tables/'
+      preLoaderRoute: typeof AuthedOrgSlugLeagueSlugTablesIndexRouteImport
+      parentRoute: typeof AuthedOrgSlugLeagueSlugRouteRoute
+    }
+    '/_authed/$orgSlug/$leagueSlug/tables/$tableId': {
+      id: '/_authed/$orgSlug/$leagueSlug/tables/$tableId'
+      path: '/tables/$tableId'
+      fullPath: '/$orgSlug/$leagueSlug/tables/$tableId'
+      preLoaderRoute: typeof AuthedOrgSlugLeagueSlugTablesTableIdRouteImport
       parentRoute: typeof AuthedOrgSlugLeagueSlugRouteRoute
     }
     '/admin/$orgSlug/leagues/$leagueSlug/': {
@@ -675,6 +806,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/$orgSlug/leagues/$leagueSlug/seasons'
       preLoaderRoute: typeof AdminOrgSlugLeaguesLeagueSlugSeasonsRouteImport
       parentRoute: typeof AdminOrgSlugLeaguesLeagueSlugRouteRoute
+    }
+    '/_authed/$orgSlug/$leagueSlug/tables/$tableId_/stats': {
+      id: '/_authed/$orgSlug/$leagueSlug/tables/$tableId_/stats'
+      path: '/tables/$tableId/stats'
+      fullPath: '/$orgSlug/$leagueSlug/tables/$tableId/stats'
+      preLoaderRoute: typeof AuthedOrgSlugLeagueSlugTablesTableIdStatsRouteImport
+      parentRoute: typeof AuthedOrgSlugLeagueSlugRouteRoute
     }
     '/api/v3/organizations/$orgId/leagues/$leagueId/matches': {
       id: '/api/v3/organizations/$orgId/leagues/$leagueId/matches'
@@ -718,6 +856,7 @@ const AdminOrgSlugLeaguesLeagueSlugRouteRouteWithChildren =
   )
 
 interface AdminOrgSlugRouteRouteChildren {
+  AdminOrgSlugHardwareRoute: typeof AdminOrgSlugHardwareRoute
   AdminOrgSlugMembersRoute: typeof AdminOrgSlugMembersRoute
   AdminOrgSlugIndexRoute: typeof AdminOrgSlugIndexRoute
   AdminOrgSlugLeaguesLeagueSlugRouteRoute: typeof AdminOrgSlugLeaguesLeagueSlugRouteRouteWithChildren
@@ -725,6 +864,7 @@ interface AdminOrgSlugRouteRouteChildren {
 }
 
 const AdminOrgSlugRouteRouteChildren: AdminOrgSlugRouteRouteChildren = {
+  AdminOrgSlugHardwareRoute: AdminOrgSlugHardwareRoute,
   AdminOrgSlugMembersRoute: AdminOrgSlugMembersRoute,
   AdminOrgSlugIndexRoute: AdminOrgSlugIndexRoute,
   AdminOrgSlugLeaguesLeagueSlugRouteRoute:
@@ -757,7 +897,11 @@ interface AuthedOrgSlugLeagueSlugRouteRouteChildren {
   AuthedOrgSlugLeagueSlugSubmitRoute: typeof AuthedOrgSlugLeagueSlugSubmitRoute
   AuthedOrgSlugLeagueSlugIndexRoute: typeof AuthedOrgSlugLeagueSlugIndexRoute
   AuthedOrgSlugLeagueSlugActiveMatchIdRoute: typeof AuthedOrgSlugLeagueSlugActiveMatchIdRoute
+  AuthedOrgSlugLeagueSlugMatchIdRoute: typeof AuthedOrgSlugLeagueSlugMatchIdRoute
   AuthedOrgSlugLeagueSlugPlayerIdRoute: typeof AuthedOrgSlugLeagueSlugPlayerIdRoute
+  AuthedOrgSlugLeagueSlugTablesTableIdRoute: typeof AuthedOrgSlugLeagueSlugTablesTableIdRoute
+  AuthedOrgSlugLeagueSlugTablesIndexRoute: typeof AuthedOrgSlugLeagueSlugTablesIndexRoute
+  AuthedOrgSlugLeagueSlugTablesTableIdStatsRoute: typeof AuthedOrgSlugLeagueSlugTablesTableIdStatsRoute
 }
 
 const AuthedOrgSlugLeagueSlugRouteRouteChildren: AuthedOrgSlugLeagueSlugRouteRouteChildren =
@@ -773,7 +917,14 @@ const AuthedOrgSlugLeagueSlugRouteRouteChildren: AuthedOrgSlugLeagueSlugRouteRou
     AuthedOrgSlugLeagueSlugIndexRoute: AuthedOrgSlugLeagueSlugIndexRoute,
     AuthedOrgSlugLeagueSlugActiveMatchIdRoute:
       AuthedOrgSlugLeagueSlugActiveMatchIdRoute,
+    AuthedOrgSlugLeagueSlugMatchIdRoute: AuthedOrgSlugLeagueSlugMatchIdRoute,
     AuthedOrgSlugLeagueSlugPlayerIdRoute: AuthedOrgSlugLeagueSlugPlayerIdRoute,
+    AuthedOrgSlugLeagueSlugTablesTableIdRoute:
+      AuthedOrgSlugLeagueSlugTablesTableIdRoute,
+    AuthedOrgSlugLeagueSlugTablesIndexRoute:
+      AuthedOrgSlugLeagueSlugTablesIndexRoute,
+    AuthedOrgSlugLeagueSlugTablesTableIdStatsRoute:
+      AuthedOrgSlugLeagueSlugTablesTableIdStatsRoute,
   }
 
 const AuthedOrgSlugLeagueSlugRouteRouteWithChildren =
@@ -786,6 +937,7 @@ interface AuthedRouteChildren {
   AuthedSettingsRoute: typeof AuthedSettingsRoute
   AuthedIndexRoute: typeof AuthedIndexRoute
   AuthedOrgSlugLeagueSlugRouteRoute: typeof AuthedOrgSlugLeagueSlugRouteRouteWithChildren
+  AuthedOrgSlugCardsRoute: typeof AuthedOrgSlugCardsRoute
   AuthedOrgSlugClaimRoute: typeof AuthedOrgSlugClaimRoute
   AuthedOrgSlugSettingsRoute: typeof AuthedOrgSlugSettingsRoute
   AuthedJoinCodeRoute: typeof AuthedJoinCodeRoute
@@ -799,6 +951,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedIndexRoute: AuthedIndexRoute,
   AuthedOrgSlugLeagueSlugRouteRoute:
     AuthedOrgSlugLeagueSlugRouteRouteWithChildren,
+  AuthedOrgSlugCardsRoute: AuthedOrgSlugCardsRoute,
   AuthedOrgSlugClaimRoute: AuthedOrgSlugClaimRoute,
   AuthedOrgSlugSettingsRoute: AuthedOrgSlugSettingsRoute,
   AuthedJoinCodeRoute: AuthedJoinCodeRoute,
@@ -814,6 +967,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthedRoute: AuthedRouteWithChildren,
   LoginSplatRoute: LoginSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
+  TCodeRoute: TCodeRoute,
   OrgSlugLeagueSlugApiRecentMatchRoute: OrgSlugLeagueSlugApiRecentMatchRoute,
   ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute:
     ApiV3OrganizationsOrgIdLeaguesLeagueIdMatchesRoute,

@@ -10,6 +10,8 @@ import { MmrDelta } from './mmr-delta';
 export interface MatchCardProps {
   match: MatchResponse;
   showMmr?: boolean;
+  /** Adds a "Goals" link under the time (table-scored matches). */
+  goalsHref?: string;
   playerHref?: (leaguePlayerId: string) => string;
   renderPlayerLink?: (
     player: MatchTeamPlayerResponse,
@@ -28,6 +30,7 @@ const playerName = (p: { displayName?: string; username?: string }) =>
 export function MatchCard({
   match,
   showMmr = false,
+  goalsHref,
   playerHref,
   renderPlayerLink,
   now,
@@ -115,6 +118,14 @@ export function MatchCard({
                 ? ` · ${outcome.delta > 0 ? '+' : outcome.delta < 0 ? '−' : ''}${Math.abs(outcome.delta)}`
                 : null}
             </span>
+          ) : null}
+          {goalsHref ? (
+            <a
+              className="text-sm text-muted-foreground underline @xl:col-start-1 @xl:row-start-2"
+              href={goalsHref}
+            >
+              Goals
+            </a>
           ) : null}
         </div>
         <div className="flex flex-row items-center gap-2 @xl:contents">
