@@ -56,7 +56,7 @@ Before you upgrade:
 While the new version starts:
 
 - Watch the API's startup logs for migration errors.
-- Check the health endpoints. The API serves `/health` (process is up) and `/ready` (database reachable). The MMR API and the beta frontend serve `/health`.
+- Check the health endpoints. The API serves `/health` (process is up) and `/ready` (database reachable). The MMR API and the frontend serve `/health`.
 
 Afterwards, check that:
 

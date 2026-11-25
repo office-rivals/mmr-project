@@ -83,7 +83,7 @@ They can't read or write a league's data until they join it. League data include
 
 Moderators and owners can read and write league data in every league of their organization without joining each one. They also get the admin area at `/admin/<org>` for members, invite links, leagues, seasons, match corrections and match flags. See [Admin operations](/features/admin-operations/) for the role each action needs.
 
-In the beta, the player-facing league pages (leaderboard, submit, matchmaking) only open for leagues you've joined, whatever your role. For other leagues, moderators and owners work through the admin area or the API.
+In the frontend, the player-facing league pages (leaderboard, submit, matchmaking) only open for leagues you've joined, whatever your role. For other leagues, moderators and owners work through the admin area or the API.
 
 ## Removed and rejoined members
 

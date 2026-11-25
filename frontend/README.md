@@ -136,7 +136,7 @@ TanStack Start has no implicit `form` action-data channel for rendering
 is an explicit framework contract difference; it does not require hydration to
 submit the form. Controls revealed by JavaScript still require JavaScript.
 
-The detailed contract is in `../plans/frontend-beta/specs/10-runtime-contract.md`.
+The detailed contract is in `../plans/frontend/specs/10-runtime-contract.md`.
 Run `npm run e2e:regressions` for native-form, transport, and cache
 regressions. It uses the same destructive e2e seed and must run alone.
 

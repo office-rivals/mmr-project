@@ -18,7 +18,7 @@ export default defineConfig({
     starlight({
       title: 'MMR Project',
       description:
-        'Self-hosted matchmaking and OpenSkill ratings for office games. Docs for the beta frontend.',
+        'Self-hosted matchmaking and OpenSkill ratings for office games.',
       logo: { src: './src/assets/crest.png', alt: '' },
       favicon: '/favicon.png',
       head: [
@@ -40,7 +40,6 @@ export default defineConfig({
         './src/styles/starlight.css',
       ],
       components: {
-        SiteTitle: './src/components/starlight/SiteTitle.astro',
         ThemeProvider: './src/components/starlight/ThemeProvider.astro',
         ThemeSelect: './src/components/starlight/ThemeSelect.astro',
       },

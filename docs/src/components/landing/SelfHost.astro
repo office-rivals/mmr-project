@@ -16,7 +16,7 @@ import { withBase } from '../../lib/url';
       <div class="node"><b>Browser or installed app</b><span>Phone-first, works as a PWA</span></div>
       <div class="link">HTTPS</div>
       <div class="row2">
-        <div class="node beta"><b>frontend <span class="pill">Beta</span></b><span>React 19 · TanStack Start · Node</span></div>
+        <div class="node app"><b>frontend</b><span>React 19 · TanStack Start · Node</span></div>
         <div class="node"><b>Clerk</b><span>sign-in</span></div>
       </div>
       <div class="link">API_BASE_PATH</div>
@@ -75,12 +75,8 @@ import { withBase } from '../../lib/url';
     font-size: 13px;
     color: var(--muted-foreground);
   }
-  .node.beta {
+  .node.app {
     border-color: var(--primary);
-  }
-  .node .pill {
-    font-size: 11px;
-    padding: 1px 8px;
   }
   .link {
     display: flex;

@@ -57,11 +57,11 @@ The native response rendering differs from SvelteKit in two explicit ways:
   It does not re-render the original form with SvelteKit's `form` action data.
 
 TanStack Start has no equivalent to SvelteKit's implicit action-data channel
-that feeds `fail(status, data)` back into the page renderer. The beta uses
+that feeds `fail(status, data)` back into the page renderer. The frontend uses
 explicit raw POST handlers and preserves the mutation, status, privacy, and
 feedback semantics; native error presentation is therefore a separate document.
 Enhanced forms retain inline feedback and entered state. Dialogs and multi-step
 controls that require JavaScript to become available continue to require it.
 
-Regression coverage lives in `frontend-beta/e2e/*.functional.spec.ts`; run
-`npm run e2e:regressions` in `frontend-beta`, separately from other seeded suites.
+Regression coverage lives in `frontend/e2e/*.functional.spec.ts`; run
+`npm run e2e:regressions` in `frontend`, separately from other seeded suites.

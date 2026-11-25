@@ -3,10 +3,6 @@ title: Quick start
 description: Run MMR Project locally and sign in to the frontend.
 ---
 
-:::caution[Based on the beta]
-These docs describe the beta frontend in `frontend/`, the React 19 and TanStack Start rewrite. The SvelteKit app in `frontend-legacy/` still runs alongside it and isn't covered here.
-:::
-
 This is the shortest path to a local, signed-in instance. The .NET Aspire AppHost runs the backend and the frontend together.
 
 ## Prerequisites
