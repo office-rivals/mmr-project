@@ -114,7 +114,7 @@ roster: {
 Optional and cheap, for players who forgot their card: `POST tables/{tableId}/roster/me` and
 `DELETE tables/{tableId}/roster/me`.
 
-## frontend-beta (admin-ui)
+## frontend (admin-ui)
 
 - **Link** (`/t/{code}`, kind `card`): the page reads "Link this card to you in `<org>`. Tap it on any
   scoreboard to join the next game". The **Link to me** button calls `POST me/cards`, and on success the page

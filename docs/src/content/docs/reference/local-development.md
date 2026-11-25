@@ -64,12 +64,8 @@ The test user's profile is therefore at
 `/test-org/test-league/player/66666666-6666-6666-6666-666666666601` on either
 frontend.
 
-The AppHost starts the SvelteKit frontend. To browse the seed in the beta
-frontend, run `npm run dev` in `frontend-beta/` next to the AppHost, with
-`API_BASE_PATH` and your Clerk keys in `frontend-beta/.env` (copy
-`.env.example`). The beta dev server listens on port 5173 and fails to start if
-that port is taken. See the
-[frontend-beta README](https://github.com/office-rivals/mmr-project/blob/main/frontend-beta/README.md).
+The AppHost starts the frontend; open its URL from the dashboard. See the
+[frontend README](https://github.com/office-rivals/mmr-project/blob/main/frontend/README.md).
 
 ### Wiring the seed to your Clerk login
 
@@ -97,16 +93,16 @@ Clerk identity.
 ## End-to-end tests (Playwright)
 
 Each frontend has its own e2e suite that drives Chromium against the full
-stack: `frontend/e2e/` for the SvelteKit app and `frontend-beta/e2e/` for the
-beta. Both cover the leaderboard, profile, statistics, match submission
+stack: `frontend/e2e/` for the frontend and `frontend-legacy/e2e/` for the
+legacy SvelteKit app. Both cover the leaderboard, profile, statistics, match submission
 (including singles and winning scores), matchmaking, the player picker, header
 and layout, pull-to-refresh, settings, match flags and the admin area,
-including role checks. The steps below use the SvelteKit suite; the beta's
-works the same way from its own directory.
+including role checks. The steps below use the frontend's suite; the legacy
+suite works the same way from `frontend-legacy/`.
 
 It is **not** part of the standard PR checks. Run it manually before each
 release, locally or via the `E2E` GitHub Actions workflow (`workflow_dispatch`
-only), which takes a `frontend` or `frontend-beta` target.
+only), which takes a `frontend` or `frontend-legacy` target.
 
 ### One-time setup
 
@@ -171,7 +167,7 @@ docker compose -f docker-compose.e2e.yml down -v
 The beta has its own Playwright install, config and test account file:
 
 ```bash
-cd frontend-beta
+cd frontend
 npm ci
 npx playwright install chromium
 cp .env.example .env            # then fill in your Clerk keys
@@ -187,10 +183,10 @@ The beta has two more suites:
 - `npm run build && npm run e2e:production` runs the beta's suite against the
   production build in Chromium, then checks key flows in WebKit and Firefox.
   Install those browsers first with
-  `npx playwright install chromium webkit firefox` in `frontend-beta/`.
+  `npx playwright install chromium webkit firefox` in `frontend/`.
 
 Every suite resets the same database, so never run two at once. See the
-[frontend-beta README](https://github.com/office-rivals/mmr-project/blob/main/frontend-beta/README.md)
+[frontend README](https://github.com/office-rivals/mmr-project/blob/main/frontend/README.md)
 for details.
 
 ### Adding a test

@@ -36,7 +36,7 @@ If you're moving a database from before v3, follow the [V3 migration guide](/ref
 
 ## Releases
 
-The four components (`api`, `mmr-api`, `frontend-beta` and `frontend`) are versioned and released separately. Each release has a [GitHub Release](https://github.com/office-rivals/mmr-project/releases) and an entry in the component's `CHANGELOG.md`.
+The four components (`api`, `mmr-api`, `frontend` and `frontend-legacy`) are versioned and released separately. Each release has a [GitHub Release](https://github.com/office-rivals/mmr-project/releases) and an entry in the component's `CHANGELOG.md`.
 
 Each release also publishes a container image to GitHub Container Registry, tagged with its version and `latest`:
 

@@ -2,7 +2,7 @@
 #
 # Dev environment bootstrap: fetch dependencies for every component.
 #
-#   - frontend   (SvelteKit / Node)   -> npm ci
+#   - frontend   (TanStack Start / Node) -> npm ci
 #   - api        (ASP.NET Core / .NET) -> dotnet restore
 #   - mmr-api    (Go)                  -> go mod download
 #

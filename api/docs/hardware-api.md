@@ -90,7 +90,7 @@ The API serves the table hardware (goal counters and scoreboards) and the app sc
 
 | Key | Default | Purpose |
 |-----|---------|---------|
-| `Hardware:PublicFrontendBaseUrl` | unset | The base URL of frontend-beta, used to build the short links `{base}/t/{code}` (the scoreboard's `table_url`/`claim_url`, and `TableResponse.tableUrl`). When it is unset, those are null. |
+| `Hardware:PublicFrontendBaseUrl` | unset | The base URL of the frontend, used to build the short links `{base}/t/{code}` (the scoreboard's `table_url`/`claim_url`, and `TableResponse.tableUrl`). When it is unset, those are null. |
 | `Hardware:ClaimWindowDays` | 7 | How long a finished match can be claimed. |
 | `Hardware:LiveMatchTimeoutMinutes` | 30 | A live match with no activity for this long is closed. |
 | `Hardware:DeviceUndoWindowSeconds` | 10 | A goal counter's undo button may undo its own goal this long after the goal arrived. Sent to the counters as `undo_window_s`. |

@@ -40,6 +40,14 @@ public class V3MatchesController(IV3MatchesService matchesService) : ControllerB
         return await matchesService.GetMatchAsync(orgId, leagueId, matchId);
     }
 
+    [HttpGet("{matchId:guid}/neighbours")]
+    [Authorize(Policy = V3AuthorizationPolicies.RequireLeagueAccess)]
+    public async Task<ActionResult<MatchNeighboursResponse>> GetMatchNeighbours(
+        [FromRoute] Guid orgId, [FromRoute] Guid leagueId, [FromRoute] Guid matchId)
+    {
+        return await matchesService.GetMatchNeighboursAsync(orgId, leagueId, matchId);
+    }
+
     [HttpPatch("{matchId:guid}")]
     [Authorize(Policy = V3AuthorizationPolicies.RequireOrgModerator)]
     public async Task<ActionResult<MatchResponse>> UpdateMatch(

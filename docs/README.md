@@ -3,7 +3,7 @@
 The landing page and documentation published to
 <https://office-rivals.github.io/mmr-project/>, built with
 [Astro](https://astro.build) and [Starlight](https://starlight.astro.build).
-The site describes the beta frontend (`frontend-beta/`) and says so on every page.
+The site describes the beta frontend (`frontend/`) and says so on every page.
 
 ```sh
 npm ci

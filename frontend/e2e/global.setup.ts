@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test as setup, expect } from '@playwright/test';
@@ -46,11 +47,28 @@ setup('apply seed and sign in', async ({ page }) => {
   await page.locator('input[name=password]').fill(userPassword);
   await page.locator('input[name=password]').press('Enter');
 
-  // After sign-in we land on either the home page (org list) or, when the
-  // seed wires us into a single org/league, on the leaderboard route.
-  await expect(page).toHaveURL(/\/(test-org\/test-league|$)/, {
+  // New Clerk apps verify a sign-in from a new device with an email code; the
+  // +clerk_test address accepts Clerk's fixed test code.
+  const signedIn = /\/(test-org\/test-league|$)/;
+  await expect(page).toHaveURL(new RegExp(`client-trust|${signedIn.source}`), {
     timeout: 15_000,
   });
+  if (page.url().includes('client-trust')) {
+    await page
+      .getByRole('textbox', { name: 'Enter verification code' })
+      .pressSequentially('424242');
+  }
 
-  await page.context().storageState({ path: authFile });
+  // After sign-in we land on either the home page (org list) or, when the
+  // seed wires us into a single org/league, on the leaderboard route.
+  await expect(page).toHaveURL(signedIn, { timeout: 15_000 });
+
+  // Clerk's session token lives for 60s and is accepted for a few seconds past
+  // expiry. A spec that loaded its first page in that grace window rendered
+  // with the token and then had its own requests rejected a moment later.
+  // Without the token, every spec's first page load goes through Clerk's
+  // handshake and starts with a fresh one.
+  const state = await page.context().storageState();
+  state.cookies = state.cookies.filter((c) => !c.name.startsWith('__session'));
+  writeFileSync(authFile, JSON.stringify(state));
 });

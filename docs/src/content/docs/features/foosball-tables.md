@@ -5,7 +5,7 @@ description: Connect goal counters and scoreboards to a table, watch the live sc
 
 A foosball table can carry two **goal counters** (one in each goal) and a **scoreboard**. The goal counters report every goal to the API, which keeps the score; the scoreboard shows it. People can walk up and play without signing in to anything: the table records an **unclaimed match** (a score with no players), and the players claim it in the app afterwards.
 
-The beta's pages are in [`frontend-beta/src/routes/admin/$orgSlug/hardware.tsx`](https://github.com/office-rivals/mmr-project/blob/main/frontend-beta/src/routes/admin/$orgSlug/hardware.tsx) and [`frontend-beta/src/routes/_authed/$orgSlug/$leagueSlug/tables/`](https://github.com/office-rivals/mmr-project/tree/main/frontend-beta/src/routes/_authed/$orgSlug/$leagueSlug/tables), with shared code in [`frontend-beta/src/features/foosball/`](https://github.com/office-rivals/mmr-project/tree/main/frontend-beta/src/features/foosball).
+The beta's pages are in [`frontend/src/routes/admin/$orgSlug/hardware.tsx`](https://github.com/office-rivals/mmr-project/blob/main/frontend/src/routes/admin/$orgSlug/hardware.tsx) and [`frontend/src/routes/_authed/$orgSlug/$leagueSlug/tables/`](https://github.com/office-rivals/mmr-project/tree/main/frontend/src/routes/_authed/$orgSlug/$leagueSlug/tables), with shared code in [`frontend/src/features/foosball/`](https://github.com/office-rivals/mmr-project/tree/main/frontend/src/features/foosball).
 
 ## Setting up a table
 

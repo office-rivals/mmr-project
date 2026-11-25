@@ -26,6 +26,7 @@ export enum MembershipClaimStatus {
 export enum MatchSource {
   Manual = 'Manual',
   Matchmaking = 'Matchmaking',
+  Table = 'Table',
 }
 
 export enum AcceptanceStatus {
@@ -278,6 +279,11 @@ export interface MatchTeamPlayerResponse {
   username?: string;
   index: number;
   ratingDelta?: number;
+}
+
+export interface MatchNeighboursResponse {
+  before?: MatchResponse | null;
+  after?: MatchResponse | null;
 }
 
 export interface RecalculateMatchesResponse {
