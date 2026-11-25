@@ -89,20 +89,21 @@ Ratings carry over between seasons with a soft reset. In a player's first match 
 `/admin/<org>/leagues/<league>/matches` lists the league's matches, newest first. Edits, deletions and recalculation only apply to matches in the current season.
 
 - **Edit** replaces the players or corrects the scores, under the same rules as a [new submission](/features/match-submission/#rules-the-api-enforces). Editing doesn't touch ratings. Recalculate from that match afterwards to carry the correction through to the leaderboard.
-- **Delete** removes the match and any flags on it. For the latest match, the players' ratings roll back to what they were before it. For an earlier match, later ratings stay wrong until you recalculate.
+- **Delete** removes the match and any flags on it, and can't be undone. To confirm, you type the match's score as it's shown, for example `10-5`. Players who haven't played since get back their rating from before the match; for the latest match, that's everyone in it. For an earlier match, run **Recalculate season**, or **Recalc** from the next match, afterwards to fix the players who have played since.
 - **Recalc** on a match replays ratings from that match forward. **Recalculate season** replays every match in the current season.
 
 API (`/api/v3/organizations/{orgId}/leagues/{leagueId}/matches`):
 
 - `PATCH /{matchId}`: edit
 - `DELETE /{matchId}`: delete
+- `GET /{matchId}/neighbours`: the matches played just before and just after it in the same season
 - `POST /recalculate`: replay the current season, or from the match in the optional `fromMatchId` query parameter
 
 ## Match flags
 
 League players flag a match they think is wrong with **Report match** on the league page, or with the flag button next to a match on a player's profile. Each person can have one open flag per match, and can edit or delete it until it's resolved. Open flags are counted in the account menu and the admin navigation.
 
-At `/admin/<org>/leagues/<league>/match-flags` you can filter flags by status, look at the flagged match, edit it and recalculate on the same page, then resolve the flag as **Resolved** or **Dismissed** with an optional note.
+At `/admin/<org>/leagues/<league>/match-flags` you can filter flags by status and look at the flagged match between the matches played just before and just after it in the same season. A neighbour is marked **Likely duplicate** when it was played within 15 minutes and each side has the same score and players, even if the teams were entered the other way round. In a 2v2 league one player may differ; in 1v1 both must match. You can edit, recalculate or delete the match on the same page, then resolve the flag as **Resolved** or **Dismissed** with an optional note. Deleting the match deletes the flag with it, under the same rules as on the matches page.
 
 **League player endpoints** (`/api/v3/organizations/{orgId}/leagues/{leagueId}/match-flags`):
 

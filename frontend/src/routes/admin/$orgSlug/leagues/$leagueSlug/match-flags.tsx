@@ -7,9 +7,12 @@ import {
   Flag,
   Pencil,
   RefreshCw,
+  Trash2,
   XCircle,
 } from 'lucide-react';
+import { DeleteMatchDialog } from '@/components/admin/delete-match-dialog';
 import { EditMatchDialog } from '@/components/admin/edit-match-dialog';
+import { MatchNeighbours } from '@/components/admin/match-neighbours';
 import { MatchCard } from '@/components/match-card/match-card';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +31,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { HttpErrorView } from '@/components/http-error-view';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { parseActionSuccessKey } from '@/lib/action-feedback';
+import { deleteMatchFn } from '@/lib/admin-match-actions';
 import { HttpError } from '@/lib/http-error';
 import {
   failServerAction,
@@ -44,6 +48,7 @@ import type { EditMatchTeamPayload } from '@/components/admin/edit-match-dialog'
 import type {
   LeaguePlayerResponse,
   MatchFlagResponse,
+  MatchNeighboursResponse,
   MatchResponse,
 } from '@/api-v3';
 
@@ -64,6 +69,7 @@ interface FlagsPageData {
   flags: MatchFlagResponse[];
   players: LeaguePlayerResponse[];
   matchesById: Record<string, MatchResponse | null>;
+  neighboursByMatchId: Record<string, MatchNeighboursResponse | null>;
   currentSeasonId: string | null;
   statusFilter: FlagStatusFilter;
   orgId: string;
@@ -99,16 +105,18 @@ const loadFlagsFn = createServerFn({ method: 'GET' })
         const matchEntries = await Promise.all(
           uniqueMatchIds.map(async (matchId) => {
             try {
-              const match = await apiClientV3.matchesApi.getMatch(
-                org.id,
-                data.leagueId,
-                matchId
-              );
-              return [matchId, match] as const;
+              const [match, neighbours] = await Promise.all([
+                apiClientV3.matchesApi.getMatch(org.id, data.leagueId, matchId),
+                // Neighbours are a review aid: the flag still shows without them.
+                apiClientV3.matchesApi
+                  .getMatchNeighbours(org.id, data.leagueId, matchId)
+                  .catch(() => null),
+              ]);
+              return [matchId, match, neighbours] as const;
             } catch (err) {
               // Only a 404 means the referenced match was deleted.
               if (err instanceof ResponseError && err.response.status === 404) {
-                return [matchId, null] as const;
+                return [matchId, null, null] as const;
               }
               throw err;
             }
@@ -119,7 +127,12 @@ const loadFlagsFn = createServerFn({ method: 'GET' })
           data: {
             flags,
             players,
-            matchesById: Object.fromEntries(matchEntries),
+            matchesById: Object.fromEntries(
+              matchEntries.map(([id, match]) => [id, match])
+            ),
+            neighboursByMatchId: Object.fromEntries(
+              matchEntries.map(([id, , neighbours]) => [id, neighbours])
+            ),
             currentSeasonId,
             statusFilter: data.status,
             orgId: org.id,
@@ -388,6 +401,9 @@ function MatchFlagsPage() {
   const [resolveStatus, setResolveStatus] = useState<string>('Resolved');
   const [editing, setEditing] = useState<MatchResponse | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  // Kept from the click, so the dialog still has its match while the list reloads.
+  const [deleting, setDeleting] = useState<MatchResponse | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     setResult(
@@ -439,8 +455,9 @@ function MatchFlagsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Flagged Matches</h1>
           <p className="text-muted-foreground">
-            Review the flagged match, correct it if needed, then resolve or
-            dismiss the flag. Editing a match leaves rating history untouched —
+            Review the flagged match next to the matches played just before and
+            after it. Correct or delete it if needed, then resolve or dismiss
+            the flag. Editing a match leaves rating history untouched —
             recalculate to flow the correction through to the leaderboard.
           </p>
         </div>
@@ -496,6 +513,7 @@ function MatchFlagsPage() {
           <div className="space-y-4">
             {data.flags.map((flag) => {
               const match = data.matchesById[flag.matchId] ?? null;
+              const neighbours = data.neighboursByMatchId[flag.matchId] ?? null;
               const isCurrentSeason =
                 !!match &&
                 data.currentSeasonId != null &&
@@ -591,13 +609,28 @@ function MatchFlagsPage() {
                           <CheckCircle className="mr-1 h-3.5 w-3.5" />
                           Resolve
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                          disabled={!hydrated || !isCurrentSeason}
+                          data-testid="match-flag-delete"
+                          onClick={() => {
+                            if (!match) return;
+                            setDeleting(match);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="mr-1 h-3.5 w-3.5" />
+                          Delete match
+                        </Button>
                       </div>
                     )}
                   </CardHeader>
 
                   <CardContent className="space-y-3">
                     {match ? (
-                      <MatchCard match={match} showMmr />
+                      <MatchNeighbours match={match} neighbours={neighbours} />
                     ) : (
                       <div className="rounded-md border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
                         This match no longer exists — it may have been deleted.
@@ -607,8 +640,8 @@ function MatchFlagsPage() {
                     {flag.status === 'Open' && match && !isCurrentSeason && (
                       <p className="text-xs text-muted-foreground">
                         This match is in a past season, so it can&apos;t be
-                        edited or recalculated — resolve or dismiss the flag
-                        instead.
+                        edited, recalculated or deleted — resolve or dismiss the
+                        flag instead.
                       </p>
                     )}
 
@@ -760,6 +793,28 @@ function MatchFlagsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <DeleteMatchDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        // The current copy, so a score edited since the page loaded is the one asked for.
+        match={deleting ? (data.matchesById[deleting.id] ?? deleting) : null}
+        onDelete={async (input) => {
+          const actionResult = await run(
+            deleteMatchFn({ data: { orgSlug, leagueSlug, ...input } })
+          );
+          if (actionResult.success) {
+            setResult({
+              success: true,
+              message:
+                'Match deleted. Run Recalculate season on the Matches page so every rating is right.',
+            });
+          } else {
+            await router.invalidate({ sync: true });
+          }
+          return actionResult;
+        }}
+      />
 
       <EditMatchDialog
         open={editDialogOpen}

@@ -27,7 +27,9 @@ test.describe('Admin match flags', () => {
     const card = cardWithReason(page, FLAG_A_REASON);
     await expect(card).toBeVisible();
     // The flag's match is rendered inline (MatchCard shows the "vs." separator).
-    await expect(card.getByText('vs.')).toBeVisible();
+    await expect(
+      card.getByTestId('match-flag-reported').getByText('vs.')
+    ).toBeVisible();
     // Flag metadata is present alongside the match.
     await expect(card.getByText(/Flagged by Alice Anderson/)).toBeVisible();
     await expect(card.getByText(FLAG_A_REASON)).toBeVisible();
@@ -71,11 +73,14 @@ test.describe('Admin match flags', () => {
     const card = cardWithReason(page, FLAG_C_REASON);
     await expect(card).toBeVisible();
     // The match still renders for review...
-    await expect(card.getByText('vs.')).toBeVisible();
+    await expect(
+      card.getByTestId('match-flag-reported').getByText('vs.')
+    ).toBeVisible();
     // ...but Edit/Recalc are disabled because the API rejects edits and
     // recalculation outside the current season, with an explanation shown.
     await expect(card.getByTestId('match-flag-edit')).toBeDisabled();
     await expect(card.getByTestId('match-flag-recalculate')).toBeDisabled();
+    await expect(card.getByTestId('match-flag-delete')).toBeDisabled();
     await expect(card.getByText(/past season/i)).toBeVisible();
     // Resolving/dismissing is still available for old flags.
     await expect(card.getByTestId('match-flag-resolve')).toBeEnabled();
