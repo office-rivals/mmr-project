@@ -1,14 +1,32 @@
-import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
+import { tanstackStart } from '@tanstack/react-start/plugin/vite';
+import viteReact from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
-export default defineConfig({
-  plugins: [sveltekit()],
-  optimizeDeps: {
-    // Under the Aspire-managed dev server, Vite re-optimizing dependencies
-    // mid-request crashes esbuild with "write EPIPE" on the first page load;
-    // forcing a clean pre-bundle at startup avoids it. Scope it to the AppHost
-    // run (marker env set there) so a standalone `npm run dev` keeps its dep
-    // cache and fast restarts.
-    force: !!process.env.ASPIRE_MANAGED,
-  },
+export default defineConfig(({ command, mode }) => {
+  // Mirror local server config in dev; production reads its environment at runtime.
+  if (command === 'serve') {
+    const fileEnv = loadEnv(mode, process.cwd(), '');
+    for (const [key, value] of Object.entries(fileEnv)) {
+      if (process.env[key] === undefined) process.env[key] = value;
+    }
+  }
+
+  return {
+    server: {
+      port: 5173,
+      strictPort: true, // fail loudly instead of drifting to 5174 — Playwright depends on this
+    },
+    resolve: { tsconfigPaths: true },
+    // Plugin order matters: tanstackStart() before viteReact().
+    plugins: [
+      tailwindcss(),
+      tanstackStart({
+        // Loader refetches stay observable as `__data.json` requests, which the
+        // e2e pull-to-refresh spec waits for.
+        serverFns: { base: '/_serverFn/__data.json' },
+      }),
+      viteReact(),
+    ],
+  };
 });

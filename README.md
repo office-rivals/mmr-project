@@ -2,7 +2,7 @@
 
 This repository contains a matchmaking and rating system split into three main components:
 
-1. **Frontend**: SvelteKit web application
+1. **Frontend**: React and TanStack Start web application
 2. **API**: ASP.NET Core service handling business logic and data
 3. **MMR API**: Go service specializing in MMR calculations and team balancing
 
@@ -13,7 +13,8 @@ Setup, configuration and feature docs live at
 
 ```
 /
-├── frontend/           # SvelteKit web application
+├── frontend/           # React and TanStack Start web application
+├── frontend-legacy/    # Legacy SvelteKit app, replaced by frontend/
 ├── api/                # ASP.NET Core API service
 ├── mmr-api/            # Go MMR calculation service
 ├── local-dev/          # .NET Aspire AppHost (one-command local stack)
@@ -37,7 +38,7 @@ it needs from NuGet, so `dotnet run` is enough.
 ### Local Development
 
 The whole stack runs from a single **.NET Aspire AppHost** — PostgreSQL, the MMR
-API (Go), the API (ASP.NET Core) and the frontend (SvelteKit) — orchestrated
+API (Go), the API (ASP.NET Core) and the frontend — orchestrated
 together with shared configuration, service discovery, and a telemetry
 dashboard. This is the one supported local-development workflow.
 
@@ -90,7 +91,7 @@ Create a `.env` file next to the compose file with your Clerk values and local
 secrets:
 
 ```bash
-PUBLIC_CLERK_PUBLISHABLE_KEY=<your_clerk_publishable_key>
+CLERK_PUBLISHABLE_KEY=<your_clerk_publishable_key>
 CLERK_SECRET_KEY=<your_clerk_secret_key>
 CLERK_ISSUER_URL=<your_clerk_issuer_url>
 POSTGRES_PASSWORD=local-postgres-password
@@ -155,11 +156,12 @@ services:
     depends_on:
       - api
     environment:
-      NODE_ENV: production
-      ORIGIN: http://localhost:3000
+      APP_ORIGIN: http://localhost:3000
       API_BASE_PATH: http://api:8080
-      PUBLIC_CLERK_PUBLISHABLE_KEY: ${PUBLIC_CLERK_PUBLISHABLE_KEY}
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      CLERK_SIGN_IN_URL: /login
+      CLERK_SIGN_UP_URL: /sign-up
     ports:
       - "3000:3000"
 
@@ -210,12 +212,12 @@ The `slug` becomes the organization URL segment, for example
 
 ## Development
 
-### Frontend (SvelteKit)
+### Frontend (React and TanStack Start)
 
 - Built with TypeScript and TailwindCSS
-- Uses OpenAPI generated clients for API communication
-- Component-driven architecture
-- Protected routes under (authed)
+- Hand-maintained typed client for the v3 API in `src/api-v3`
+- Protected routes under `routes/_authed/`
+- The previous SvelteKit app lives in `frontend-legacy/` and is no longer deployed
 
 ### API (ASP.NET Core)
 

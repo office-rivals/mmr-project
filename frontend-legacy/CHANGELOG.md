@@ -1,0 +1,370 @@
+# Changelog
+
+## 1.7.2
+
+- Update TanStack Query to 5.105.0, lucide-react to 1.64.0 and shadcn to 4.23.0 in the beta, and pick up security fixes in transitive dependencies of both frontends.
+
+## 1.7.1
+
+- Patch security advisories in zod, dompurify, vitest and ip-address, and update TanStack Router and Start in the beta.
+- chore(deps-dev): bump eslint from 10.8.1 to 10.12.0 in /frontend
+- chore(deps-dev): bump follow-redirects from 1.16.0 to 1.16.1 in /frontend
+- Update vite to 8.3.4, which patches the launch-editor advisories in the dev server.
+
+## 1.7.0
+
+- Let members request an existing player from the organization page and let moderators approve or reject those claims from the members admin page.
+- Keep the organization page working when player-claim data can't be loaded, and return no candidates from `GET /api/v3/organizations/{orgId}/members/claimable` to members who can't claim.
+- chore(deps-dev): bump @sveltejs/vite-plugin-svelte from 7.1.2 to 7.3.1 in /frontend
+- chore(deps-dev): bump @sveltejs/adapter-node from 5.5.4 to 5.5.7 in /frontend
+- chore(deps-dev): bump autoprefixer from 10.5.4 to 10.6.1 in /frontend
+- chore(deps): bump sveltekit-superforms from 2.30.2 to 2.31.0 in /frontend
+- chore(deps-dev): bump prettier-plugin-tailwindcss from 0.8.0 to 0.8.1 in /frontend
+- Explain how an optional email links a new match player to an account and how name-only players can be claimed after joining.
+
+## 1.6.3
+
+- Select the pre-filled value when a dialog focuses a field again, so typing a new match score replaces the old one instead of appending to it.
+
+## 1.6.2
+
+- chore(deps): bump shell-quote and concurrently in /frontend
+- Fix the frontend container image build by returning `tailwind-variants` to 0.3, the version that matches the app's Tailwind CSS 3 and `tailwind-merge` 2.
+
+## 1.6.1
+
+- chore(deps): bump shell-quote and @openapitools/openapi-generator-cli in /frontend
+- chore(deps-dev): bump ip-address from 10.2.0 to 10.4.0 in /frontend
+- chore(deps-dev): bump @sveltejs/kit from 2.70.1 to 2.70.2 in /frontend
+- chore(deps): bump dompurify from 3.4.12 to 3.4.13 in /frontend
+- chore(deps-dev): bump postcss from 8.5.25 to 8.5.26 in /frontend
+- chore(deps): bump dotenv from 16.6.1 to 17.4.2 in /frontend
+- chore(deps-dev): bump autoprefixer from 10.5.0 to 10.5.4 in /frontend
+- chore(deps): bump tailwind-variants from 0.3.1 to 3.3.1 in /frontend
+- chore(deps-dev): bump eslint from 10.3.0 to 10.8.1 in /frontend
+- chore(deps-dev): bump svelte from 5.55.7 to 5.56.10 in /frontend
+- chore(deps): bump postcss-selector-parser in /frontend
+- chore(deps-dev): bump @openapitools/openapi-generator-cli from 2.40.1 to 2.41.0 in /frontend
+- chore(deps): bump @vitest/mocker and vitest in /frontend
+- chore(deps): bump joi from 17.13.4 to 17.13.7 in /frontend
+- chore(deps): bump devalue from 5.8.1 to 5.9.2 in /frontend
+- chore(deps-dev): bump @playwright/test from 1.60.0 to 1.63.0 in /frontend
+- chore(deps-dev): bump ip-address from 10.4.0 to 10.7.2 in /frontend
+- chore(deps): bump bits-ui from 1.8.0 to 2.19.4 in /frontend
+- chore(deps): bump devalue from 5.9.2 to 5.9.4 in /frontend
+- chore(deps): bump dompurify from 3.4.13 to 3.4.16 in /frontend
+- chore(deps-dev): bump brace-expansion from 5.0.7 to 5.0.12 in /frontend
+- chore(deps): bump joi from 17.13.7 to 17.13.8 in /frontend
+- chore(deps): bump source-map-js from 1.2.1 to 1.2.2 in /frontend
+- chore(deps-dev): bump typescript-eslint from 8.59.1 to 8.71.1 in /frontend
+- Fix creating a personal access token from Settings, which the API rejected with "Unsupported PAT scope".
+- Order rating history and rating charts by when each match was played rather than when it was submitted, and return `playedAt` on rating-history entries.
+
+## 1.6.0
+
+- Group the admin matches list under date headers, matching the player-facing
+  recent-matches and profile views. Grouping is per page (the list paginates).
+- Show admins a red badge wherever match flags are waiting to be resolved — the
+  account menu, the admin nav, and each affected organization and league — backed
+  by a new `GET /api/v3/me/badges`. The flagged-matches filter now defaults to
+  Open.
+- chore(deps-dev): bump typescript from 5.9.3 to 6.0.3 in /frontend
+- chore(deps-dev): bump svelte-check from 4.4.6 to 4.6.0 in /frontend
+- chore(deps): bump @carbon/charts-svelte from 1.27.8 to 1.27.17 in /frontend
+- chore(deps): bump zod from 3.25.76 to 4.4.3 in /frontend
+- chore(deps-dev): bump axios from 1.17.0 to 1.18.1 in /frontend
+- chore(deps-dev): bump brace-expansion from 5.0.5 to 5.0.7 in /frontend
+- chore(deps): bump dompurify from 3.4.11 to 3.4.12 in /frontend
+- chore(deps): bump valibot from 1.3.1 to 1.4.2 in /frontend
+- chore(deps-dev): bump @sveltejs/kit from 2.65.1 to 2.70.1 in /frontend
+- chore(deps-dev): bump postcss from 8.5.15 to 8.5.25 in /frontend
+- chore(deps): bump ts-deepmerge and sveltekit-superforms in /frontend
+- chore(deps): bump js-cookie and svelte-clerk in /frontend
+- Fix the admin match edit dialog flashing "Each player can only appear once
+  across both teams" over a save that succeeded. Resetting the form on success
+  dropped every player dropdown to its first option and blanked the scores, and
+  Svelte syncs bound state back from a reset form, so the dialog rendered that
+  bogus state until the follow-up data reload finished. The dialog owns those
+  values, so it no longer resets the form.
+  
+  Saving twice for the same match no longer sends two requests: Save is ignored
+  while one is in flight, and a response no longer closes or writes an error into
+  a dialog the admin cancelled and reopened while it was outstanding.
+  
+  Cancelling a save and reopening the same match no longer shows the scores from
+  before that save, which the next Save would then write back over the edit that
+  had just landed. The dialog re-reads the match from the reloaded data, as long
+  as nothing has been typed into it.
+  
+  A save the admin cancelled out of is still reported: a rejected edit in that
+  window used to be dropped silently, and a successful one left the previous
+  attempt's failure banner standing. An outstanding save also no longer disables
+  Save on a different match, and correcting a rejected edit clears the old error
+  as soon as the retry starts.
+  
+  A match that disappears from the list while it is open for editing — deleted by
+  someone else, or shifted off the page by a reload — now says so, instead of
+  reading "No match selected".
+- Player pickers can be driven from the keyboard: arrow keys move through the
+  suggestions, Enter picks one and Escape clears the filter. Enter in a player
+  filter no longer submits the match form with empty slots.
+- Remove the unused v1 API client. The frontend has fully migrated to the v3
+  client (`$api3`); the v1 client (`src/api`, `apiClient.ts`, the `$api` alias,
+  and the `locals.apiClient` injection) was still wired up but consumed by no
+  route, and the API no longer serves the `/swagger/v1/swagger.json` spec the
+  `generate-api` script targeted. Delete the dead client.
+  
+  Also remove the `generate-api` script: the v3 client (`src/api-v3`) is
+  hand-maintained, not generated, so running the generator would clobber it. The
+  client files now document this explicitly.
+  
+  Also convert the organization settings route to the typed v3 client
+  (`apiClientV3.meApi` / `organizationsApi`) instead of raw `fetch('/api/v3/...')`
+  calls, so the whole frontend goes through the typed client. No behavioural
+  change.
+
+## 1.5.0
+
+- Show the flagged match inline on the admin match-flags page and let moderators
+  edit (and recalculate) the match before resolving or dismissing the flag.
+- chore(deps-dev): bump prettier from 3.8.3 to 3.8.4 in /frontend
+- Harden the PWA pull-to-refresh gesture:
+  
+  - Ignore pulls that start on surfaces owning their own touch gestures (the
+    `/random` touch randomizer), so its multi-finger flow no longer triggers a
+    spurious refresh.
+  - Only attach the global touch listeners in standalone (installed) mode, and
+    resolve standalone status once instead of on every gesture.
+  - Handle `touchcancel` so an interrupted pull no longer leaves the spinner
+    stuck on screen.
+  - Restrict the gesture to a single finger and only commit once the last finger
+    lifts, fixing multi-touch origin/commit glitches.
+  - Surface a brief error state (instead of silently resetting) when the refresh
+    fails, and expose the refresh state to assistive tech via an `aria-live`
+    status region.
+  - Render the indicator beneath the app-shell header (`z-20`) so it emerges from
+    under the header as intended.
+
+## 1.4.1
+
+- chore(deps-dev): bump @sveltejs/kit from 2.61.1 to 2.65.1 in /frontend
+- chore(deps-dev): bump @sveltejs/vite-plugin-svelte from 7.0.0 to 7.1.2 in /frontend
+- chore(deps): bump dompurify from 3.4.1 to 3.4.10 in /frontend
+- chore(deps-dev): bump form-data from 4.0.5 to 4.0.6 in /frontend
+- chore(deps-dev): bump vite from 8.0.10 to 8.0.16 in /frontend
+- chore(deps): bump dompurify from 3.4.10 to 3.4.11 in /frontend
+- Hide not-yet-started seasons from members. `GET .../seasons` now returns only seasons that have already started, and a new moderator/owner-only `GET .../admin/seasons` returns the full list (including upcoming) for admin management. The frontend selects the current season defensively and the admin seasons page uses the new endpoint so upcoming seasons stay visible to admins.
+- Refactor date helpers in `src/lib/utils.ts` to remove duplication:
+  collapse the repeated null/empty/NaN guards behind a private
+  `parseLocalDate` helper, replace three local `formatDate`
+  redefinitions in `admin/members`, `admin/.../match-flags` and
+  `settings` with the shared one, and simplify the date-bucket boundary
+  check in `groupMatchesByDate`. Behaviour is unchanged except that the
+  admin match-flags page now formats dates in the user's locale instead
+  of forcing `en-US`.
+- Group matches in the recent-matches list on the league page and the match
+  history on the player page by date. A small uppercase header ("Yesterday" or
+  "Wednesday, Mar 5") appears above each new date bucket when the previous match
+  was either from today or from a different day, so users can scan older matches
+  without comparing per-row timestamps.
+- Force a clean Vite dependency pre-bundle (`optimizeDeps.force`) when the dev
+  server runs under the Aspire AppHost, so esbuild doesn't re-optimize dependencies
+  mid-request and crash with `write EPIPE` on the first page load. A standalone
+  `npm run dev` is unaffected and keeps its dependency cache.
+- Restore pull-to-refresh in the installed PWA. The gesture was silently dropped
+  during the v3 multi-tenancy migration, which rewrote the authenticated layout
+  and never re-mounted the `PullToRefresh` component. It is wired back into the
+  `(authed)` shell, and the refresh indicator now slides out from beneath the
+  fixed app-shell header instead of appearing behind it.
+- Hide the "Report match" affordance on a league with no active season (e.g. a
+  league whose only seasons are not yet started), and reuse the shared
+  `selectCurrentSeason` helper in the admin seasons page so current-season
+  selection has a single, order-independent definition.
+
+## 1.4.0
+
+- chore(deps-dev): bump axios from 1.15.2 to 1.16.1 in /frontend
+- chore(deps-dev): bump eslint-plugin-svelte from 3.18.0 to 3.19.0 in /frontend
+- chore(deps-dev): bump @openapitools/openapi-generator-cli from 2.31.1 to 2.38.0 in /frontend
+- Add a fixed top header to the authenticated app shell showing the current organization and league, with a popover that lets the user switch between any organization and league they belong to. Mirrors the bottom navbar's full-width, fixed positioning and groups leagues under their parent org (inspired by Slack/Linear workspace switchers).
+- Organization invite codes are now 12 characters with unbiased random
+  sampling (previously 6 characters), making code enumeration impractical.
+  Existing 6-character codes keep working.
+
+## 1.3.0
+
+- Make the per-match winning score configurable per league. Leagues now expose a nullable `winningScore` field; when set (e.g. 10 for foosball, default), the winning team must score exactly that and the loser scores 0..(winning_score-1), matching the previous behaviour. When null, scoring is free-form: both teams enter raw scores and the higher score wins — useful for table tennis, badminton, etc. The submit form switches between the existing button picker and dual numeric inputs based on the league's config. Existing leagues are backfilled to 10 by the migration; the API derives `is_winner` server-side from the scores. No MMR recalc needed — score magnitudes don't affect openskill output.
+- chore(deps-dev): bump ip-address from 10.1.0 to 10.2.0 in /frontend
+- chore(deps-dev): bump prettier-plugin-tailwindcss from 0.7.3 to 0.8.0 in /frontend
+- chore(deps-dev): bump eslint-plugin-svelte from 3.17.1 to 3.18.0 in /frontend
+- chore(deps-dev): bump @sveltejs/kit from 2.58.0 to 2.61.1 in /frontend
+- chore(deps-dev): bump @playwright/test from 1.59.1 to 1.60.0 in /frontend
+- chore(deps): bump svelte-clerk from 1.1.5 to 1.1.9 in /frontend
+- chore(deps-dev): bump @sveltejs/adapter-auto from 3.3.1 to 7.0.1 in /frontend
+
+## 1.2.0
+
+- Add support for 1v1 leagues, and replace `League.QueueSize` with `League.TeamSize` (the per-team player count) — `QueueSize` was the inverted way to think about the same concept. The queue requires `2 * teamSize` players. Migrating: existing `queue_size` values are halved into the new `team_size` column.
+  
+  - **api**: rename `League.QueueSize` → `TeamSize` (column `queue_size` → `team_size`, values halved); validate `TeamSize >= 1`; enforce exactly two teams of equal size on match submission; expose `teamSize` on `MeLeagueResponse`. Wire format renames: `CreateLeagueRequest.queueSize` → `teamSize`, `LeagueResponse.queueSize` → `teamSize`, `MeLeagueResponse.queueSize` → `teamSize`.
+  - **mmr-api**: drop the hard-coded "exactly 4 unique players" rule and build team-player slices dynamically; both teams must still have ≥1 player and equal sizes.
+  - **frontend**: regenerated client (`teamSize` field); the create-league form has a 1v1 / 2v2 selector; the matchmaking page derives the required queue length from `teamSize * 2`; admin/league overviews display the format label ("1v1"/"2v2") instead of "Queue size N".
+- Actually fix GitHub (and other OAuth) sign-up by mounting Clerk's `<SignIn />` and `<SignUp />` under SvelteKit rest routes (`/login/[...rest]` and `/sign-up/[...rest]`). The earlier fix added a `/sign-up` page but kept `/login` as an exact-match route, so after GitHub OAuth the browser was redirected to `/login/sso-callback` — which 404'd. Clerk's prebuilt components own their own internal sub-routes (`sso-callback`, `factor-one`, `verify`, …); the `signUp.create({ transfer: true })` call that converts a transferable OAuth verification into a real sign-up lives in the `sso-callback` UI, so without that sub-route mounted it never runs and first-time GitHub users stay stuck on `external_account_not_found`. Also wires `signUpUrl="/sign-up"` and `signInUrl="/login"` props explicitly so the link between the two flows doesn't depend on dashboard configuration.
+- Upgrade frontend ESLint stack: ESLint 8 → 10, eslint-plugin-svelte 2 → 3,
+  typescript-eslint 7 → 8 (unified package), eslint-config-prettier 9 → 10.
+  Migrate from `.eslintrc.cjs` legacy config to flat `eslint.config.js`. Drop
+  `@types/eslint` (now built in) and `.eslintignore` (replaced by `ignores` in
+  flat config). New strict defaults from eslint-plugin-svelte v3
+  (`require-each-key`, `no-navigation-without-resolve`,
+  `prefer-svelte-reactivity`) are reported as warnings to be addressed
+  incrementally.
+- Switch the touch randomizer's team colors from white/brown to white/red so they are reliably distinguishable for colorblind users (white is achromatic, giving strong luminance contrast against red across all common color vision deficiencies).
+
+## 1.1.0
+
+- Fix GitHub (and other OAuth) sign-up getting stuck on `external_account_not_found`. Adds a `/sign-up` route mounting Clerk's `<SignUp />` component so the prebuilt `<SignIn />` flow can complete the OAuth → sign-up transfer for first-time users. Also allowlists `/sign-up` in the server-side auth guard so the redirect isn't bounced back to `/login`.
+- Bump frontend Docker base image to `node:24-alpine` (current Node LTS).
+  CI workflows now read the Node version from a single root-level `.nvmrc`.
+- Redesign the `/random` page with a bespoke touch UI. On touch devices the page
+  now opens a full-bleed surface where users drop fingers and two random fingers
+  become the white team while two become the brown team (extras are ignored,
+  minimum four). Desktop visitors keep the original names form. A pill toggle in
+  the header lets touch users switch back to the names form without leaving the
+  page.
+- Disable spellcheck and autocorrect on player name inputs in the match submit flow so Safari doesn't flag initials and short handles as typos. Also disables iOS autocapitalization on the player filter and username inputs.
+- Fix submit-page preview to render the same player name (short handle / username) as every other match card. The preview now populates both `displayName` and `username` and lets the match-card pick its own priority, so a player previously shown as `Foo Bar` in the preview now correctly matches the `foob` rendered after submit.
+
+## 1.0.2
+
+- Bump svelte-clerk from 0.20.6 to 1.1.5 (Clerk Core 3 alignment). Pulls in
+  @clerk/backend 3.x and @clerk/shared 4.x. The 1.0.0 breaking change
+  (removal of `<Protect>`, `<SignedIn>`, `<SignedOut>` in favour of `<Show>`)
+  does not affect this codebase — none of those components were in use.
+
+## 1.0.1
+
+- Bump frontend, api, and mmr-api dependencies to the latest minor/patch
+  within their current major. Includes Clerk JS SDK updates that pull in
+  patches for GHSA-vqx2-fgx2-5wq9 (middleware route protection bypass)
+  and GHSA-w24r-5266-9c3c (authorization bypass).
+- Fix the report-match modal on the leaderboard, which always rendered "Failed to load matches. Please try again." Add the missing SvelteKit endpoint at `/api/v3/organizations/[orgId]/leagues/[leagueId]/matches` that was assumed by the v3 modal rewrite.
+- Label seasons in the season picker as "Season 1", "Season 2", … instead
+  of using the start month/year. The currently active season still reads
+  "Current Season".
+
+## 1.0.0
+
+- **Major:** v3 multi-tenancy migration. Breaking changes in both the
+  frontend route tree and the public API surface.
+  
+  ### Multi-tenancy (organizations + leagues)
+  
+  Every match, player, season, leaderboard, queue, and rating now lives
+  under an organization → league hierarchy. Frontend routes move from
+  flat-namespace `/random`, `/matchmaking`, etc. to scoped paths under
+  `/[orgSlug]/[leagueSlug]/...`. Users can belong to multiple
+  organizations with separate ratings per league, gated by the new
+  `OrganizationRole` (Owner / Moderator / Member) on `OrganizationMembership`.
+  
+  ### Legacy v1/v2 API removed
+  
+  All `/api/v1/*` and `/api/v2/*` endpoints, plus their controllers,
+  services, adapters, DTOs, and background services, are deleted.
+  Legacy routes return `410 Gone` via `DeprecatedApiController`. Swagger
+  is simplified to a v3-only document at `/swagger/v3/swagger.json`. The
+  old global `PlayerRole` (User/Moderator/Owner) is replaced by per-org
+  `OrganizationRole`.
+  
+  ### v3 API surface
+  
+  - 14 new REST controllers under `api/v3/organizations/{orgId}/leagues/{leagueId}/...`
+  - Organization-role authorization (`RequireOrgOwner`, `RequireOrgModerator`,
+    `RequireOrgMember`, `RequireLeagueAccess`).
+  - Organization invite-link flow (Discord-style codes).
+  - Per-organization Personal Access Tokens with scope validation.
+  - Match flagging migrated to v3 with full CRUD + admin endpoints.
+  - League-scoped matchmaking with a transactional pending-match coordinator
+    (row-level FOR UPDATE locks; partial unique index on
+    `pending_matches(league_id) WHERE status = 0`).
+  - Admin match edit + MMR recalc endpoints restored to feature parity with
+    the legacy /admin/matches page (`PATCH /matches/{id}`,
+    `POST /matches/recalculate?fromMatchId=...`).
+  - `LeaderboardEntryResponse` adds `wins`, `losses`, `winningStreak`, `losingStreak`;
+    `mmr` is nullable (null until 10 ranked matches).
+  - New `GET /rating-history` (league-wide), `GET /matches?leaguePlayerId=`,
+    `GET /statistics/time-distribution`.
+  
+  ### Data migration
+  
+  - Hand-written EF Core migration renames v3 tables (drops `v3_` prefix)
+    and prefixes legacy tables with `legacy_`. No data loss.
+  - Idempotent backfill SQL (`scripts/backfill-legacy-data.sql`)
+    migrates users, default org + league, memberships, league players
+    (with MMR), seasons, matches (normalized teams), rating history
+    (exploded from `MmrCalculation`), and PATs.
+  - Verification script and migration guide for operators.
+  
+  ### Frontend rewrite
+  
+  Every page under `(authed)/` was rewritten against the v3 API client:
+  
+  - Leaderboard with wins/losses, streak emojis, MMR sparkline, Unranked
+    divider, current-user highlight, click-row stats modal, MMR toggle,
+    default-current-season behavior.
+  - Player profile with extended KPIs (Last match, Streak), opponents and
+    teammates tables, match filter, profile player pinned top-left of
+    every match card, Settings/Logout, season picker.
+  - Statistics: line chart restored + heatmap of match frequency by
+    day-of-week and hour-of-day.
+  - Submit match: step-by-step UX (player picker → who won → loser score
+    → preview), inline new-player dialog with optional email,
+    primary-player + last-10-players persistence in localStorage.
+  - Active match submit: same step-by-step UX, current user's team rendered
+    first.
+  - Matchmaking: pending-match accept/decline dialog with per-player
+    acceptance status, 30s countdown, sound on match found.
+  - Layout: bottom navbar lifted to the (authed) layout so it persists
+    across `/random` and `/settings`; queue-size badge on the matchmaking
+    icon.
+  
+  ### Admin tree rebuilt
+  
+  Legacy `/admin/{users,matches,match-flags}` deleted (was wired to v1/v2
+  endpoints that no longer exist). Replaced with a v3-native admin shell
+  scoped to organizations and leagues:
+  
+  ```
+  /admin/                                       super-admin landing (placeholder)
+  /admin/[orgSlug]/                             org overview
+  /admin/[orgSlug]/members/                     members + invite links
+  /admin/[orgSlug]/leagues/                     leagues list + create
+  /admin/[orgSlug]/leagues/[leagueSlug]/        league overview
+  /admin/[orgSlug]/leagues/[leagueSlug]/match-flags/
+  /admin/[orgSlug]/leagues/[leagueSlug]/matches/    edit / delete / recalc
+  /admin/[orgSlug]/leagues/[leagueSlug]/seasons/    list + create
+  ```
+  
+  Org admin pages enforce `orgRole >= Moderator`; the `/admin` landing
+  filters out orgs where the user is only a Member. Match-edit dialog
+  allows lineup + score changes and surfaces a "Recalculate season"
+  button to replay MMR from the affected match.
+  
+  ### Tests
+  
+  - Backend: 109 integration tests across multi-tenancy, authorization,
+    matchmaking, match flags, PAT scoping, match edit + recalc
+    correctness.
+  - Frontend: 35 Playwright e2e tests covering the leaderboard, profile,
+    statistics, submit, matchmaking, layout, full admin UI, and RBAC
+    (Member-only second org in the seed verifies admin pages return 403).
+  - E2E orchestration: `npm run e2e` brings up Postgres
+    (docker-compose), the Go MMR API, the .NET API, and the Vite dev
+    server in one command via `globalSetup` + Playwright `webServer`.
+  - Vendored seed (`scripts/seed-data.sql`) with deterministic players,
+    matches, rating histories, two organizations.
+  
+  See `docs/local-development.md`.
+
+## 0.1.0
+
+- Set up Changesets-based releases and manual deployment from GitHub Releases.

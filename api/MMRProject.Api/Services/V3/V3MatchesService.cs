@@ -17,6 +17,7 @@ public interface IV3MatchesService
         MatchSource source = MatchSource.Manual, Guid? createdByMembershipId = null);
     Task<List<MatchResponse>> GetMatchesAsync(Guid orgId, Guid leagueId, Guid? seasonId, Guid? leaguePlayerId = null, int limit = 50, int offset = 0);
     Task<MatchResponse> GetMatchAsync(Guid orgId, Guid leagueId, Guid matchId);
+    Task<MatchNeighboursResponse> GetMatchNeighboursAsync(Guid orgId, Guid leagueId, Guid matchId);
     Task<MatchResponse> UpdateMatchAsync(Guid orgId, Guid leagueId, Guid matchId, SubmitMatchRequest request);
     Task DeleteMatchAsync(Guid orgId, Guid leagueId, Guid matchId);
     Task<RecalculateMatchesResponse> RecalculateCurrentSeasonAsync(Guid orgId, Guid leagueId, Guid? fromMatchId);
@@ -500,6 +501,44 @@ public class V3MatchesService(
         return await LoadAndMapMatch(orgId, leagueId, matchId);
     }
 
+    public async Task<MatchNeighboursResponse> GetMatchNeighboursAsync(Guid orgId, Guid leagueId, Guid matchId)
+    {
+        var match = await dbContext.V3Matches
+            .AsNoTracking()
+            .Where(m => m.OrganizationId == orgId && m.LeagueId == leagueId && m.Id == matchId)
+            .Select(m => new { m.SeasonId, m.PlayedAt, m.RecordedAt })
+            .FirstOrDefaultAsync()
+            ?? throw new NotFoundException("Match not found");
+
+        // Within the match's own season, in the match list's order.
+        var others = dbContext.V3Matches
+            .AsNoTracking()
+            .Where(m => m.OrganizationId == orgId && m.LeagueId == leagueId
+                        && m.SeasonId == match.SeasonId && m.Id != matchId);
+
+        var beforeId = await others
+            .Where(m => m.PlayedAt < match.PlayedAt
+                || (m.PlayedAt == match.PlayedAt && m.RecordedAt < match.RecordedAt))
+            .OrderByDescending(m => m.PlayedAt)
+            .ThenByDescending(m => m.RecordedAt)
+            .Select(m => (Guid?)m.Id)
+            .FirstOrDefaultAsync();
+
+        var afterId = await others
+            .Where(m => m.PlayedAt > match.PlayedAt
+                || (m.PlayedAt == match.PlayedAt && m.RecordedAt > match.RecordedAt))
+            .OrderBy(m => m.PlayedAt)
+            .ThenBy(m => m.RecordedAt)
+            .Select(m => (Guid?)m.Id)
+            .FirstOrDefaultAsync();
+
+        return new MatchNeighboursResponse
+        {
+            Before = beforeId is { } before ? await LoadAndMapMatch(orgId, leagueId, before) : null,
+            After = afterId is { } after ? await LoadAndMapMatch(orgId, leagueId, after) : null,
+        };
+    }
+
     public async Task<MatchResponse> UpdateMatchAsync(Guid orgId, Guid leagueId, Guid matchId, SubmitMatchRequest request)
     {
         var match = await dbContext.Set<V3Match>()
@@ -616,25 +655,37 @@ public class V3MatchesService(
         if (match.SeasonId != currentSeason.Id)
             throw new InvalidArgumentException("Only matches in the current season can be deleted");
 
-        var latestMatchId = await dbContext.Set<V3Match>()
-            .Where(m => m.OrganizationId == orgId && m.LeagueId == leagueId)
-            .OrderByDescending(m => m.PlayedAt)
-            .ThenByDescending(m => m.RecordedAt)
-            .ThenByDescending(m => m.CreatedAt)
-            .Select(m => m.Id)
-            .FirstOrDefaultAsync();
-
-        // Latest-match shortcut: roll back ratings to the previous snapshot, no
-        // recalc needed. For any earlier match we only delete the match rows;
-        // the caller must invoke recalc to fix MMR for the affected players.
-        if (latestMatchId == match.Id)
-        {
-            await RestoreLatestMatchPlayerRatings(match);
-        }
-
         var ratingHistories = await dbContext.RatingHistories
             .Where(rh => rh.MatchId == matchId)
             .ToListAsync();
+
+        // A player whose last match this was would keep the rating it gave
+        // them, and a recalc never reaches a player with no match left to
+        // replay, so they go back to their rating from before it. Players with
+        // a later match are fixed by the recalc the caller runs next. An edit
+        // keeps the history of players it took out, so they count too.
+        var playerIds = match.Teams
+            .SelectMany(t => t.Players)
+            .Select(p => p.LeaguePlayerId)
+            .Concat(ratingHistories.Select(rh => rh.LeaguePlayerId))
+            .Distinct()
+            .ToList();
+        var playersWithLaterMatch = await dbContext.Set<MatchTeamPlayer>()
+            .Where(p => playerIds.Contains(p.LeaguePlayerId)
+                        && p.MatchTeam.Match.OrganizationId == orgId
+                        && p.MatchTeam.Match.LeagueId == leagueId
+                        && p.MatchTeam.MatchId != match.Id
+                        && (p.MatchTeam.Match.PlayedAt > match.PlayedAt
+                            || (p.MatchTeam.Match.PlayedAt == match.PlayedAt
+                                && p.MatchTeam.Match.RecordedAt > match.RecordedAt)
+                            || (p.MatchTeam.Match.PlayedAt == match.PlayedAt
+                                && p.MatchTeam.Match.RecordedAt == match.RecordedAt
+                                && p.MatchTeam.Match.CreatedAt > match.CreatedAt)))
+            .Select(p => p.LeaguePlayerId)
+            .Distinct()
+            .ToListAsync();
+        await RestoreRatingsFromBefore(match, playerIds.Except(playersWithLaterMatch).ToList());
+
         dbContext.RatingHistories.RemoveRange(ratingHistories);
 
         // Flags reference the match with a restricted FK, so they must go before
@@ -1122,13 +1173,14 @@ public class V3MatchesService(
         await dbContext.SaveChangesAsync();
     }
 
-    private async Task RestoreLatestMatchPlayerRatings(V3Match match)
+    /// <summary>
+    /// Sets each player to their last rating before <paramref name="match"/>,
+    /// or the defaults when they have none.
+    /// </summary>
+    private async Task RestoreRatingsFromBefore(V3Match match, List<Guid> impactedPlayerIds)
     {
-        var impactedPlayerIds = match.Teams
-            .SelectMany(t => t.Players)
-            .Select(p => p.LeaguePlayerId)
-            .Distinct()
-            .ToList();
+        if (impactedPlayerIds.Count == 0)
+            return;
 
         var leaguePlayers = await dbContext.LeaguePlayers
             .Where(lp => impactedPlayerIds.Contains(lp.Id))

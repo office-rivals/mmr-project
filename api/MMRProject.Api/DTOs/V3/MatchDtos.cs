@@ -62,6 +62,12 @@ public record MatchTeamPlayerResponse
     public long? RatingDelta { get; init; }
 }
 
+public record MatchNeighboursResponse
+{
+    public MatchResponse? Before { get; init; }
+    public MatchResponse? After { get; init; }
+}
+
 public record RecalculateMatchesResponse
 {
     [Required] public required int MatchCount { get; init; }

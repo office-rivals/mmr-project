@@ -7,7 +7,7 @@ Each service reads its own configuration. The tables below list the variables th
 
 ## Frontend
 
-The frontend in `frontend-beta/` reads everything at runtime, so one image works in every environment. For local development, copy [`frontend-beta/.env.example`](https://github.com/office-rivals/mmr-project/blob/main/frontend-beta/.env.example) to `.env`; both the dev server and `npm start` load it.
+The frontend in `frontend/` reads everything at runtime, so one image works in every environment. For local development, copy [`frontend/.env.example`](https://github.com/office-rivals/mmr-project/blob/main/frontend/.env.example) to `.env`; both the dev server and `npm start` load it.
 
 | Variable | Required | Notes |
 | --- | --- | --- |
@@ -64,7 +64,7 @@ For backend-specific setup, see [Observability](/operations/observability/).
 
 ## Local development defaults
 
-When you run the stack with the Aspire AppHost, it injects the API's connection string, issuer, MMR API URL and shared secret, the MMR API's `ADMIN_SECRET` and port, and the OTLP endpoint for its dashboard. See [`local-dev/README.md`](https://github.com/office-rivals/mmr-project/blob/main/local-dev/README.md). It doesn't configure the frontend in `frontend-beta/`; that reads its own `.env`, as in the [Quick start](/quick-start/).
+When you run the stack with the Aspire AppHost, it injects the API's connection string, issuer, MMR API URL and shared secret, the MMR API's `ADMIN_SECRET` and port, and the OTLP endpoint for its dashboard. See [`local-dev/README.md`](https://github.com/office-rivals/mmr-project/blob/main/local-dev/README.md). For the frontend it sets `API_BASE_PATH`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_SIGN_IN_URL` and `CLERK_SIGN_UP_URL`, taking the Clerk keys from the AppHost's user-secrets as in the [Quick start](/quick-start/).
 
 [`api/MMRProject.Api/appsettings.Development.json`](https://github.com/office-rivals/mmr-project/blob/main/api/MMRProject.Api/appsettings.Development.json) holds the defaults for running the API on its own: PostgreSQL on `localhost`, the MMR API on `http://localhost:8080`, and migrations on. It has no issuer, so set one as a user-secret in `api/MMRProject.Api`:
 
