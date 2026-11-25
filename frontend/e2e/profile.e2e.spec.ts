@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 const TEST_USER_LEAGUE_PLAYER_ID = '66666666-6666-6666-6666-666666666601';
+// Seeded with 5 matches, all in the current season: in placement, with history.
+const PLACEMENT_LEAGUE_PLAYER_ID = '305836cb-159b-5839-a86b-338c322b9bd8';
 const PROFILE_URL = `/test-org/test-league/player/${TEST_USER_LEAGUE_PLAYER_ID}`;
 
 test.describe('Player profile', () => {
@@ -74,5 +76,21 @@ test.describe('Player profile', () => {
       const firstName = leftColumns.nth(i).locator('p').first();
       await expect(firstName).toContainText('tuser');
     }
+  });
+
+  test('a player still in placement shows no rating chart or peak', async ({
+    page,
+  }) => {
+    await page.goto(
+      `/test-org/test-league/player/${PLACEMENT_LEAGUE_PLAYER_ID}`
+    );
+
+    await expect(page.getByText('🐣')).toBeVisible();
+    await expect(
+      page.locator('dt', { hasText: /^Peak$/ }).locator('+ dd')
+    ).toHaveText('—');
+    await expect(
+      page.getByRole('region', { name: 'Rating over time' })
+    ).toHaveCount(0);
   });
 });

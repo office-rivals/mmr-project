@@ -153,7 +153,8 @@ export async function loadPlayerProfile(
       leagueId,
       player,
       matches: reorderedMatches,
-      ratingHistory,
+      // In placement the rating is hidden (🐣), so its history and peak are too.
+      ratingHistory: mmr == null ? { entries: [] } : ratingHistory,
       isCurrentUser: playerId === input.leaguePlayerId,
       stats: {
         mmr,
