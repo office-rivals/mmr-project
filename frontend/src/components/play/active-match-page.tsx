@@ -4,9 +4,12 @@ import { LoadingOverlay } from '@/components/loading-overlay';
 import { PageTitle } from '@/components/page-title';
 import { LoserScoreStep } from '@/components/play/loser-score-step';
 import { StepHeading } from '@/components/play/step-heading';
+import { TeamAverageMmr, WinChance } from '@/components/play/win-chance';
 import { WinnerStep } from '@/components/play/winner-step';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
+import { matchOdds } from '@/lib/match-prediction';
 import {
   deriveLosingTeam,
   isScorePairComplete,
@@ -57,6 +60,16 @@ export function ActiveMatchPage({
       ? 'team2'
       : 'team1';
   const otherTeam: TeamOption = currentUserTeam === 'team1' ? 'team2' : 'team1';
+  const isParticipant =
+    playerInTeam(0, currentLeaguePlayerId) ||
+    playerInTeam(1, currentLeaguePlayerId);
+  const teamIndex = (which: TeamOption) =>
+    teams[which === 'team1' ? 0 : 1]?.index ?? (which === 'team1' ? 0 : 1);
+
+  const odds = matchOdds(activeMatch.prediction, currentLeaguePlayerId);
+  const { formatNumber } = useLocaleFormatters();
+  const formatMmr = (value: number) =>
+    formatNumber(value, { maximumFractionDigits: 0 });
 
   const teamPlayers = (which: TeamOption) =>
     which === 'team1' ? (teams[0]?.players ?? []) : (teams[1]?.players ?? []);
@@ -183,10 +196,28 @@ export function ActiveMatchPage({
                       {player.displayName ?? player.username ?? 'Unknown'}
                     </p>
                   ))}
+                  {odds ? (
+                    <TeamAverageMmr
+                      odds={odds}
+                      teamIndex={teamIndex(which)}
+                      format={formatMmr}
+                      className="mt-auto pt-1"
+                    />
+                  ) : null}
                 </div>
               </Fragment>
             ))}
           </div>
+
+          {odds ? (
+            <WinChance
+              compact
+              odds={odds}
+              teamIndex={teamIndex(currentUserTeam)}
+              neutral={!isParticipant}
+              className="-mt-4"
+            />
+          ) : null}
 
           {!isFreeForm ? (
             <WinnerStep
