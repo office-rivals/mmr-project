@@ -1,11 +1,11 @@
 ---
 title: Admin operations
-description: What organization owners and moderators can manage, where it lives in the beta, and the role each action needs.
+description: What organization owners and moderators can manage, where it lives in the frontend, and the role each action needs.
 ---
 
 Owners and moderators manage their organization from the admin area at `/admin`. They reach it from **Admin** in the account menu, which also shows how many match flags are waiting. Regular members don't see the entry, and the organization admin pages refuse them.
 
-The beta's admin routes are in [`frontend/src/routes/admin/`](https://github.com/office-rivals/mmr-project/tree/main/frontend/src/routes/admin) and the controllers in [`api/MMRProject.Api/Controllers/V3/`](https://github.com/office-rivals/mmr-project/tree/main/api/MMRProject.Api/Controllers/V3).
+The frontend's admin routes are in [`frontend/src/routes/admin/`](https://github.com/office-rivals/mmr-project/tree/main/frontend/src/routes/admin) and the controllers in [`api/MMRProject.Api/Controllers/V3/`](https://github.com/office-rivals/mmr-project/tree/main/api/MMRProject.Api/Controllers/V3).
 
 ## Admin pages
 
@@ -46,7 +46,7 @@ Roles are ordered Owner, then Moderator, then Member, and each role can do every
 | List, view and resolve flags | Moderator | `/leagues/{leagueId}/admin/match-flags` |
 | Submit matches, flag matches, read league data | League access | `/leagues/{leagueId}/...` |
 
-"League access" means you've joined the league, or you're a moderator or owner. Queueing for matchmaking is the exception: everyone, owners included, has to join the league first. The API enforces all of this with the `RequireOrgMember`, `RequireOrgModerator`, `RequireOrgOwner` and `RequireLeagueAccess` policies in [`V3AuthorizationPolicies.cs`](https://github.com/office-rivals/mmr-project/blob/main/api/MMRProject.Api/Authorization/V3/V3AuthorizationPolicies.cs). Some beta pages show owner-only controls to moderators too. The API rejects the action when a moderator uses them.
+"League access" means you've joined the league, or you're a moderator or owner. Queueing for matchmaking is the exception: everyone, owners included, has to join the league first. The API enforces all of this with the `RequireOrgMember`, `RequireOrgModerator`, `RequireOrgOwner` and `RequireLeagueAccess` policies in [`V3AuthorizationPolicies.cs`](https://github.com/office-rivals/mmr-project/blob/main/api/MMRProject.Api/Authorization/V3/V3AuthorizationPolicies.cs). Some frontend pages show owner-only controls to moderators too. The API rejects the action when a moderator uses them.
 
 ## Members
 
@@ -74,7 +74,7 @@ Owners create leagues at `/admin/<org>/leagues` with:
 - a format: 2v2 or 1v1
 - a winning score: 10 by default, or blank for free-form scoring
 
-The beta has no screen for editing a league. Owners can change the name, slug, format or winning score with `PATCH /api/v3/organizations/{orgId}/leagues/{leagueId}`. The winning score can't change while the current season has recorded matches.
+The frontend has no screen for editing a league. Owners can change the name, slug, format or winning score with `PATCH /api/v3/organizations/{orgId}/leagues/{leagueId}`. The winning score can't change while the current season has recorded matches.
 
 ## Seasons
 

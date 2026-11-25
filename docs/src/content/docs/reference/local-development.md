@@ -113,6 +113,7 @@ cd frontend
 npm ci
 npx playwright install chromium
 
+cp .env.example .env            # then fill in your Clerk keys
 cp .env.e2e.example .env.e2e
 # Edit .env.e2e and fill in your Clerk dev test account's email, password
 # and identity_user_id (see "Wiring the seed" above).
@@ -162,25 +163,13 @@ cd local-development
 docker compose -f docker-compose.e2e.yml down -v
 ```
 
-### Running the beta's suites
+### More suites
 
-The beta has its own Playwright install, config and test account file:
+The frontend has two more suites:
 
-```bash
-cd frontend
-npm ci
-npx playwright install chromium
-cp .env.example .env            # then fill in your Clerk keys
-cp .env.e2e.example .env.e2e    # then fill in the Clerk test account
-npm run e2e                     # headless
-npm run e2e:ui                  # Playwright UI mode
-```
-
-The beta has two more suites:
-
-- `npm run e2e:regressions` covers beta-specific native-form, transport and
-  cache regressions.
-- `npm run build && npm run e2e:production` runs the beta's suite against the
+- `npm run e2e:regressions` covers native-form, transport and cache
+  regressions.
+- `npm run build && npm run e2e:production` runs the suite against the
   production build in Chromium, then checks key flows in WebKit and Firefox.
   Install those browsers first with
   `npx playwright install chromium webkit firefox` in `frontend/`.

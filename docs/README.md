@@ -3,7 +3,7 @@
 The landing page and documentation published to
 <https://office-rivals.github.io/mmr-project/>, built with
 [Astro](https://astro.build) and [Starlight](https://starlight.astro.build).
-The site describes the beta frontend (`frontend/`) and says so on every page.
+The site documents the frontend (`frontend/`).
 
 ```sh
 npm ci
@@ -19,7 +19,7 @@ npm run check:links  # fails on broken internal links in dist/
 | ---------------------------- | --------------------------------------------------------- |
 | `src/pages/index.astro`      | Landing page; sections in `src/components/landing/`       |
 | `src/content/docs/`          | Docs pages; the sidebar is defined in `astro.config.mjs`  |
-| `src/components/mock/`       | HTML mock-ups of the beta app, used instead of screenshots |
+| `src/components/mock/`       | HTML mock-ups of the app, used instead of screenshots     |
 | `src/styles/tokens.css`      | MMR Project design-system tokens (Dark theme only)        |
 | `src/styles/starlight.css`   | Maps Starlight's theme onto the tokens                    |
 

@@ -10,7 +10,6 @@ import { withBase } from '../../lib/url';
     <a class="brand" href={withBase('/')}>
       <Image src={crest} alt="" width={32} height={32} />
       <span>MMR Project</span>
-      <span class="pill">Beta</span>
     </a>
     <nav class="links" aria-label="Site">
       <a href={withBase('/introduction/')}>Docs</a>
@@ -19,17 +18,6 @@ import { withBase } from '../../lib/url';
     </nav>
   </div>
 </header>
-
-<div class="beta-strip">
-  <div class="wrap">
-    <span class="pill">Beta</span>
-    <p>
-      <b>Built on the beta frontend.</b> Everything on this site shows and documents
-      <code>frontend</code>, the React&nbsp;19 and TanStack Start rewrite. The SvelteKit app in
-      <code>frontend-legacy/</code> still runs alongside it.
-    </p>
-  </div>
-</div>
 
 <style>
   .site-nav {
@@ -84,25 +72,5 @@ import { withBase } from '../../lib/url';
     .hide-sm {
       display: none !important;
     }
-  }
-  .beta-strip {
-    border-bottom: 1px solid var(--border);
-  }
-  .beta-strip .wrap {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    padding-top: 12px;
-    padding-bottom: 12px;
-  }
-  .beta-strip p {
-    margin: 0;
-    font-size: 14px;
-    line-height: 20px;
-    color: var(--muted-foreground);
-  }
-  .beta-strip b {
-    color: var(--foreground);
-    font-weight: 600;
   }
 </style>

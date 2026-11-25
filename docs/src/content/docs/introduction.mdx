@@ -9,16 +9,12 @@ import AppHeader from '../../components/mock/AppHeader.astro';
 import Leaderboard from '../../components/mock/Leaderboard.astro';
 import AppNavbar from '../../components/mock/AppNavbar.astro';
 
-:::caution[Based on the beta]
-These docs describe the beta frontend in `frontend/`, the React 19 and TanStack Start rewrite. The SvelteKit app in `frontend-legacy/` still runs alongside it and isn't covered here.
-:::
-
 MMR Project is a self-hosted app for running competitive leagues around office games. Players report match results, the app rates them with OpenSkill, and a matchmaking queue splits the players waiting to play into teams balanced by rating. Leagues live inside organizations and run in seasons, with a leaderboard per season.
 
 You host every part of it yourself except sign-in, which uses [Clerk](https://clerk.com).
 
 <Figure caption="A league page">
-  <Phone label="The beta app's league page on a phone: leaderboard and a recent match">
+  <Phone label="The app's league page on a phone: leaderboard and a recent match">
     <AppHeader org="Acme Office" league="Friday Foosball" />
     <div style="padding:14px 12px 10px">
       <Leaderboard
@@ -49,7 +45,7 @@ The browser only talks to the frontend. The frontend's server calls the API with
 
 ## About the frontend
 
-These docs are written for the beta frontend in `frontend/` and call it "the frontend" throughout. The older SvelteKit app in [`frontend-legacy/`](https://github.com/office-rivals/mmr-project/tree/main/frontend-legacy) still exists alongside it and uses the same API, but its configuration differs and isn't covered here.
+These docs are written for the frontend in `frontend/`, the React 19 and TanStack Start app, and call it "the frontend" throughout. The older SvelteKit app in [`frontend-legacy/`](https://github.com/office-rivals/mmr-project/tree/main/frontend-legacy) still exists alongside it and uses the same API, but its configuration differs and isn't covered here.
 
 ## Core concepts
 

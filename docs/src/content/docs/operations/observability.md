@@ -5,7 +5,7 @@ description: Export logs, metrics and traces from the API and the MMR API to any
 
 The two backend services, the API and the MMR API, emit OpenTelemetry logs, metrics and traces. Each service exports over OTLP directly to the endpoint you configure, with no collector sidecar.
 
-The beta frontend emits no telemetry. It does not use OpenTelemetry or any analytics SDK.
+The frontend emits no telemetry. It does not use OpenTelemetry or any analytics SDK.
 
 ## Turning telemetry on
 

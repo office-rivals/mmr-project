@@ -26,7 +26,7 @@ If the header value starts with `Bearer pat_`, the API treats it as a PAT. Anyth
 
 A PAT lets a script call the API as you. It's a string that starts with `pat_` followed by 64 hex characters. The API stores only a SHA-256 hash of it.
 
-### Create and revoke tokens in the beta
+### Create and revoke tokens in the frontend
 
 Open the account menu and choose **Personal Access Tokens**, which goes to `/settings`.
 
@@ -59,7 +59,7 @@ A PAT can be created:
 - restricted to one organization
 - restricted to one organization and one league within it
 
-Tokens created in the beta have no restriction. To create a restricted token, call `POST /api/v3/me/tokens` with `organizationId`, and optionally `leagueId`, in the body. That endpoint only accepts a session token, not a PAT. You must be an active member of the organization, and the league must belong to it.
+Tokens created in the frontend have no restriction. To create a restricted token, call `POST /api/v3/me/tokens` with `organizationId`, and optionally `leagueId`, in the body. That endpoint only accepts a session token, not a PAT. You must be an active member of the organization, and the league must belong to it.
 
 A PAT is only accepted on routes under `/api/v3/organizations/{orgId}`. On those routes:
 
