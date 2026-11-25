@@ -1,18 +1,11 @@
-import { Fragment, useCallback, useMemo, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { useMemo } from 'react';
+import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import { AlertCircle, CheckCircle, X } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
+import { AppLink } from '@/components/app-link';
 import { HttpErrorView } from '@/components/http-error-view';
 import { SeasonPicker } from '@/components/season-picker';
 import { RatingChart, RatingChartLegend } from '@/components/charts';
-import {
-  MatchCard,
-  MatchDateHeader,
-  MatchFlagButton,
-} from '@/components/match-card';
-import { FlagDialogs } from '@/components/profile/flag-dialogs';
-import { PlayerFilter } from '@/components/profile/player-filter';
 import {
   ActivityCard,
   ProfileHeader,
@@ -21,13 +14,7 @@ import {
   RivalsCard,
   TeammatesCard,
 } from '@/components/profile/profile-overview';
-import { Alert } from '@/components/ui/alert';
 import { HttpError } from '@/lib/http-error';
-import {
-  createMatchFlagFn,
-  deleteMatchFlagFn,
-  updateMatchFlagFn,
-} from '@/lib/match-flag-actions';
 import {
   WEEK_MS,
   bestRatingDay,
@@ -36,12 +23,12 @@ import {
   ratingChangeSince,
 } from '@/lib/player-stats';
 import { createRouteGuard } from '@/lib/server/http-error';
+import { PLAYER_SEASON_MATCH_LIMIT } from '@/lib/server/player-matches';
 import { loadPlayerProfileOnce } from '@/lib/server/profile';
 import { loadShellDataOnce } from '@/lib/server/shell';
 import { getPlayerDisplayName } from '@/lib/utils';
 import { useLocaleFormatters } from '@/hooks/use-locale-formatters';
 import { resolveLeague } from '../route';
-import type { FlagActionResult } from '@/lib/match-flag-actions';
 import type { PlayerProfileData } from '@/lib/server/profile';
 
 interface ProfileInput {
@@ -133,7 +120,7 @@ export const Route = createFileRoute(
     season: typeof search.season === 'string' ? search.season : undefined,
   }),
   // `season` is a loader dep, so switching seasons refetches everything —
-  // including `now`, which re-pins the match-history date boundaries.
+  // including `now`, which re-pins the activity grid.
   loaderDeps: ({ search: { season } }) => ({ season }),
   loader: async ({ params, deps }) => {
     const result = await getPlayerProfileFn({
@@ -162,144 +149,15 @@ function PlayerProfileRoute() {
 }
 
 function PlayerProfilePage() {
-  const { groupMatchesByDate, formatDate } = useLocaleFormatters();
+  const { formatDate } = useLocaleFormatters();
   const data = Route.useLoaderData();
   const { season } = Route.useSearch();
   const navigate = Route.useNavigate();
-  const router = useRouter();
-
-  const [flagResult, setFlagResult] = useState<FlagActionResult | null>(null);
-  const [flagDialogOpen, setFlagDialogOpen] = useState(false);
-  const [flagMatchId, setFlagMatchId] = useState('');
-  // Only the value the textarea STARTS with. The live value lives inside
-  // `FlagDialogs`, so typing a reason never re-renders this page.
-  const [flagReasonSeed, setFlagReasonSeed] = useState('');
-  const [editingFlagId, setEditingFlagId] = useState<string | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [filteredPlayers, setFilteredPlayers] = useState<string[]>([]);
 
   const stats = data.stats;
 
-  // Memoised so unrelated page state (the flag dialog, the player filter's
-  // typing) doesn't re-filter up to 1000 matches or re-group them by date.
-
-  // AND semantics: a match must contain EVERY selected player, on either team.
-  // Client state only — never mirrored into the URL, and reset on navigation.
-  const matches = useMemo(
-    () =>
-      (data.matches ?? []).filter((match) => {
-        if (filteredPlayers.length === 0) return true;
-        return filteredPlayers.every((id) =>
-          match.teams.some((t) =>
-            t.players.some((p) => p.leaguePlayerId === id)
-          )
-        );
-      }),
-    [data.matches, filteredPlayers]
-  );
-
-  // Grouped AFTER filtering, and with the server's `now` — never `Date.now()`,
-  // which would disagree between SSR and hydration across local midnight.
-  const matchGroups = useMemo(
-    () => groupMatchesByDate(matches, data.now),
-    [matches, data.now, groupMatchesByDate]
-  );
-
-  const myFlags = data.myFlags;
-  const myFlagForMatch = useCallback(
-    (matchId: string) => myFlags?.find((f) => f.matchId === matchId),
-    [myFlags]
-  );
-
-  const openFlagDialog = useCallback(
-    (matchId: string) => {
-      const existing = myFlagForMatch(matchId);
-      setFlagMatchId(matchId);
-      if (existing) {
-        setEditingFlagId(existing.id);
-        setFlagReasonSeed(existing.reason);
-      } else {
-        setEditingFlagId(null);
-        setFlagReasonSeed('');
-      }
-      setFlagDialogOpen(true);
-    },
-    [myFlagForMatch]
-  );
-
-  const closeFlagDialog = () => {
-    setFlagDialogOpen(false);
-    setFlagMatchId('');
-    setFlagReasonSeed('');
-    setEditingFlagId(null);
-  };
-
-  // Every flag action re-runs the loader first (the `await update()` of the
-  // Svelte `use:enhance`) and only then closes the dialog, and only on success.
-  const settle = async (result: FlagActionResult) => {
-    setFlagResult(result);
-    await router.invalidate({ sync: true });
-    return result;
-  };
-
-  const flagMatch = useMutation({
-    mutationFn: (input: { matchId: string; reason: string }) =>
-      createMatchFlagFn({
-        data: {
-          orgId: data.orgId,
-          leagueId: data.leagueId,
-          ...input,
-        },
-      }),
-    onSuccess: async (result) => {
-      await settle(result);
-      if (result.success) closeFlagDialog();
-    },
-    onError: () =>
-      setFlagResult({ success: false, message: 'Failed to create flag' }),
-  });
-
-  const updateFlag = useMutation({
-    mutationFn: (input: { flagId: string; reason: string }) =>
-      updateMatchFlagFn({
-        data: {
-          orgId: data.orgId,
-          leagueId: data.leagueId,
-          ...input,
-        },
-      }),
-    onSuccess: async (result) => {
-      await settle(result);
-      if (result.success) closeFlagDialog();
-    },
-    onError: () =>
-      setFlagResult({ success: false, message: 'Failed to update flag' }),
-  });
-
-  const deleteFlag = useMutation({
-    mutationFn: (input: { flagId: string }) =>
-      deleteMatchFlagFn({
-        data: {
-          orgId: data.orgId,
-          leagueId: data.leagueId,
-          ...input,
-        },
-      }),
-    onSuccess: async (result) => {
-      await settle(result);
-      if (result.success) {
-        setDeleteConfirmOpen(false);
-        closeFlagDialog();
-      }
-    },
-    onError: () =>
-      setFlagResult({ success: false, message: 'Failed to delete flag' }),
-  });
-
   const playerHref = (leaguePlayerId: string) =>
     `/${data.orgSlug}/${data.leagueSlug}/player/${leaguePlayerId}`;
-
-  const findPlayer = (id: string) => data.players.find((p) => p.id === id);
 
   const playerId = data.player.id;
   const records = useMemo(
@@ -339,7 +197,6 @@ function PlayerProfilePage() {
         currentSeason={data.currentSeason}
         selectedSeasonId={season}
         onSeasonChange={(next) => {
-          setFlagResult(null);
           void navigate({
             search: (prev) => ({
               ...prev,
@@ -372,22 +229,6 @@ function PlayerProfilePage() {
         weekDelta={weekDelta}
         actions={seasonPicker}
       />
-
-      {flagResult?.success && flagResult.message ? (
-        <Alert variant="default">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" />
-            <span className="font-medium">{flagResult.message}</span>
-          </div>
-        </Alert>
-      ) : flagResult?.success === false ? (
-        <Alert variant="destructive">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4" />
-            <span className="font-medium">{flagResult.message}</span>
-          </div>
-        </Alert>
-      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
         {history.length > 0 ? (
@@ -436,110 +277,23 @@ function PlayerProfilePage() {
 
       <ActivityCard matches={data.matches} now={data.now} />
 
-      {data.matches.length > 0 ? (
-        <section
-          aria-labelledby="profile-matches-heading"
-          className="flex flex-col gap-3"
+      {stats.totalMatches > 0 ? (
+        <AppLink
+          to={`/${data.orgSlug}/${data.leagueSlug}/matches`}
+          search={{
+            // Your own matches are the list's default view.
+            player: data.isCurrentUser ? undefined : playerId,
+            season,
+          }}
+          className="flex min-h-12 items-center justify-center gap-1 rounded-lg border bg-card px-4 py-3 font-semibold transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
-          <h2 id="profile-matches-heading" className="text-2xl">
-            Matches
-          </h2>
-          <div className="flex flex-col gap-2 lg:max-w-md">
-            <PlayerFilter
-              players={data.players ?? []}
-              // Deduped on select: the Svelte version pushed a duplicate id and
-              // crashed its keyed loop.
-              onSelected={(id) =>
-                setFilteredPlayers((prev) =>
-                  prev.includes(id) ? prev : [...prev, id]
-                )
-              }
-            />
-            <div className="flex flex-wrap gap-1.5">
-              {filteredPlayers.map((id) => {
-                const p = findPlayer(id);
-                if (p == null) return null;
-                const name = p.displayName ?? p.username ?? 'Unknown';
-                return (
-                  <div
-                    key={id}
-                    className="flex items-center gap-1 rounded-full bg-secondary py-1 pr-1 pl-3 text-sm text-secondary-foreground"
-                  >
-                    <span>{name}</span>
-                    <button
-                      type="button"
-                      aria-label={`Remove ${name} from the filter`}
-                      className="rounded-full p-1 hover:bg-background/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                      onClick={() =>
-                        setFilteredPlayers((prev) =>
-                          prev.filter((pid) => pid !== id)
-                        )
-                      }
-                    >
-                      <X aria-hidden="true" className="h-4 w-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div className="flex flex-1 flex-col items-stretch gap-2">
-            {matches.length === 0 ? (
-              <p className="rounded-lg border bg-card p-6 text-center text-muted-foreground">
-                No matches found
-              </p>
-            ) : null}
-            {/* Date headers are flex SIBLINGS of the rows, not wrappers — a
-                wrapper element would change the vertical rhythm. */}
-            {matchGroups.map((group) => {
-              const existingFlag = myFlagForMatch(group.match.id);
-              return (
-                <Fragment key={group.match.id}>
-                  {group.label ? <MatchDateHeader label={group.label} /> : null}
-                  <div
-                    className={`rounded-lg ${existingFlag ? 'ring-1 ring-red-400' : ''}`}
-                  >
-                    <div className="flex items-stretch gap-1">
-                      <div className="min-w-0 flex-1">
-                        {/* No `playerHref`: names inside a profile's match
-                            cards are plain text. */}
-                        <MatchCard
-                          match={group.match}
-                          showMmr
-                          viewerId={playerId}
-                        />
-                      </div>
-                      <MatchFlagButton
-                        flagged={existingFlag != null}
-                        onClick={() => openFlagDialog(group.match.id)}
-                      />
-                    </div>
-                  </div>
-                </Fragment>
-              );
-            })}
-          </div>
-        </section>
+          {stats.totalMatches >= PLAYER_SEASON_MATCH_LIMIT
+            ? // The profile counts at most this many; /matches has them all.
+              `All ${PLAYER_SEASON_MATCH_LIMIT}+ matches`
+            : `All ${stats.totalMatches} ${stats.totalMatches === 1 ? 'match' : 'matches'}`}
+          <ChevronRight aria-hidden="true" className="size-4" />
+        </AppLink>
       ) : null}
-
-      <FlagDialogs
-        open={flagDialogOpen}
-        editingFlagId={editingFlagId}
-        initialReason={flagReasonSeed}
-        onClose={closeFlagDialog}
-        onSubmit={(reason) => {
-          if (editingFlagId) {
-            updateFlag.mutate({ flagId: editingFlagId, reason });
-          } else {
-            flagMatch.mutate({ matchId: flagMatchId, reason });
-          }
-        }}
-        deleteConfirmOpen={deleteConfirmOpen}
-        onDeleteConfirmChange={setDeleteConfirmOpen}
-        onDelete={() => {
-          if (editingFlagId) deleteFlag.mutate({ flagId: editingFlagId });
-        }}
-      />
     </div>
   );
 }

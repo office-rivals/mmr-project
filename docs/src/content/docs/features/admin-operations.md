@@ -101,7 +101,7 @@ API (`/api/v3/organizations/{orgId}/leagues/{leagueId}/matches`):
 
 ## Match flags
 
-League players flag a match they think is wrong with **Report match** on the league page, or with the flag button next to a match on a player's profile. Each person can have one open flag per match, and can edit or delete it until it's resolved. Open flags are counted in the account menu and the admin navigation.
+League players flag a match they think is wrong with **Report match** on the league page, or with the flag button next to a match on the Matches page. Each person can have one open flag per match, and can edit or delete it until it's resolved. Open flags are counted in the account menu and the admin navigation.
 
 At `/admin/<org>/leagues/<league>/match-flags` you can filter flags by status and look at the flagged match between the matches played just before and just after it in the same season. A neighbour is marked **Likely duplicate** when it was played within 15 minutes and each side has the same score and players, even if the teams were entered the other way round. In a 2v2 league one player may differ; in 1v1 both must match. You can edit, recalculate or delete the match on the same page, then resolve the flag as **Resolved** or **Dismissed** with an optional note. Deleting the match deletes the flag with it, under the same rules as on the matches page.
 
