@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test as setup, expect } from '@playwright/test';
@@ -52,5 +53,12 @@ setup('apply seed and sign in', async ({ page }) => {
     timeout: 15_000,
   });
 
-  await page.context().storageState({ path: authFile });
+  // Clerk's session token lives for 60s and is accepted for a few seconds past
+  // expiry. A spec that loaded its first page in that grace window rendered
+  // with the token and then had its own requests rejected a moment later.
+  // Without the token, every spec's first page load goes through Clerk's
+  // handshake and starts with a fresh one.
+  const state = await page.context().storageState();
+  state.cookies = state.cookies.filter((c) => !c.name.startsWith('__session'));
+  writeFileSync(authFile, JSON.stringify(state));
 });

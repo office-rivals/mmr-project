@@ -280,6 +280,11 @@ export interface MatchTeamPlayerResponse {
   ratingDelta?: number;
 }
 
+export interface MatchNeighboursResponse {
+  before?: MatchResponse | null;
+  after?: MatchResponse | null;
+}
+
 export interface RecalculateMatchesResponse {
   matchCount: number;
   fromMatchId?: string;

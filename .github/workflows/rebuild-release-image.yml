@@ -12,7 +12,7 @@ on:
         type: choice
         options:
           - frontend
-          - frontend-beta
+          - frontend-legacy
           - api
           - mmr-api
       version:
