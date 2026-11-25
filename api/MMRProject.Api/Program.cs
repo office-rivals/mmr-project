@@ -22,6 +22,10 @@ using MMRProject.Api.UserContext;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Kestrel binds only Endpoints/Certificates from config on its own; bind Limits too (e.g. the long
+// KeepAliveTimeout that keeps the table devices' connections warm, see docs/hardware-api.md).
+builder.WebHost.ConfigureKestrel(o => builder.Configuration.GetSection("Kestrel:Limits").Bind(o.Limits));
+
 builder.AddObservability();
 
 // Add services to the container.
@@ -60,6 +64,9 @@ builder.Services.AddAuthorization(options =>
         policy.Requirements.Add(new PatScopeRequirement(PatScopes.Write)));
     options.AddPolicy(V3AuthorizationPolicies.DenyPatAuthentication, policy =>
         policy.Requirements.Add(new DenyPatAuthenticationRequirement()));
+    options.AddPolicy(V3AuthorizationPolicies.RequireDevice, policy =>
+        policy.AddAuthenticationSchemes(DeviceAuthenticationHandler.SchemeName)
+            .RequireClaim(DeviceAuthenticationHandler.DevicePkClaim));
 });
 
 builder.Services.AddSingleton<IAuthorizationHandler, OrganizationRoleAuthorizationHandler>();
@@ -126,8 +133,16 @@ builder.Services.AddScoped<IV3PersonalAccessTokenService, V3PersonalAccessTokenS
 builder.Services.AddScoped<IV3MatchFlagService, V3MatchFlagService>();
 builder.Services.AddScoped<IInviteLinkService, InviteLinkService>();
 builder.Services.AddScoped<IMembershipClaimService, MembershipClaimService>();
+builder.Services.AddScoped<ITableMatchService, TableMatchService>();
+builder.Services.AddScoped<IHardwareAdminService, HardwareAdminService>();
+builder.Services.AddScoped<ITableStatsService, TableStatsService>();
+builder.Services.AddScoped<ICardService, CardService>();
+builder.Services.AddSingleton<CardUidHasher>();
+builder.Services.AddSingleton<TableStateNotifier>();
 
 builder.Services.AddHostedService<V3MatchMakingBackgroundService>();
+builder.Services.AddHostedService<TableMatchTimeoutBackgroundService>();
+builder.Services.AddHostedService<TableAutoSubmitBackgroundService>();
 
 // External APIs
 builder.Services.AddHttpClient<IMMRCalculationApiClient, MMRCalculationApiClient>(client =>
@@ -162,6 +177,12 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+// Fail fast on a malformed card key; without one, card scans are unavailable.
+if (!app.Services.GetRequiredService<CardUidHasher>().IsConfigured)
+{
+    app.Logger.LogWarning("{Key} is not set: scoreboard card scans are unavailable", CardUidHasher.ConfigKey);
+}
 
 app.UseHttpLogging();
 

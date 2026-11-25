@@ -19,8 +19,22 @@ public interface IV3MatchMakingService
     Task DeclinePendingMatchAsync(Guid orgId, Guid leagueId, Guid pendingMatchId);
     Task<IEnumerable<ActiveMatchResponse>> GetActiveMatchesAsync(Guid orgId, Guid leagueId);
     Task CancelActiveMatchAsync(Guid orgId, Guid leagueId, Guid activeMatchId);
+    /// <param name="submittedByMembershipId">
+    /// Set when no user is calling (a scoreboard confirming the result): skips the participant check and
+    /// records this membership as the creator. The caller is responsible for authorising it.
+    /// </param>
+    /// <param name="source">Table when a foosball table recorded the score.</param>
     Task<MatchResponse> SubmitActiveMatchResultAsync(Guid orgId, Guid leagueId, Guid activeMatchId,
-        SubmitActiveMatchResultRequest request);
+        SubmitActiveMatchResultRequest request, Guid? submittedByMembershipId = null,
+        MatchSource source = MatchSource.Matchmaking);
+    /// <summary>
+    /// Starts an active match for players who are already together at a table: nobody has to accept, and the
+    /// players leave the queue. <paramref name="teams"/> are league player ids by team index (balance them
+    /// with <see cref="TeamBalancer.Split"/>). Saves.
+    /// </summary>
+    Task<V3ActiveMatch> CreateActiveMatchAsync(Guid orgId, Guid leagueId, List<List<Guid>> teams);
+    /// <summary>Deletes an active match without a result and without a user (the table's own matches). Doesn't save.</summary>
+    Task DeleteActiveMatchAsync(Guid activeMatchId);
 }
 
 public class V3MatchMakingService(
@@ -315,7 +329,8 @@ public class V3MatchMakingService(
     }
 
     public async Task<MatchResponse> SubmitActiveMatchResultAsync(Guid orgId, Guid leagueId, Guid activeMatchId,
-        SubmitActiveMatchResultRequest request)
+        SubmitActiveMatchResultRequest request, Guid? submittedByMembershipId = null,
+        MatchSource source = MatchSource.Matchmaking)
     {
         var activeMatch = await dbContext.V3ActiveMatches
             .Where(am => am.Id == activeMatchId && am.LeagueId == leagueId)
@@ -331,7 +346,10 @@ public class V3MatchMakingService(
             throw new NotFoundException("Active match not found");
         }
 
-        await EnsureCanMutateActiveMatchAsync(orgId, leagueId, activeMatch);
+        if (submittedByMembershipId is null)
+        {
+            await EnsureCanMutateActiveMatchAsync(orgId, leagueId, activeMatch);
+        }
 
         var submitRequest = new SubmitMatchRequest
         {
@@ -357,7 +375,7 @@ public class V3MatchMakingService(
         };
 
         var matchResponse = await matchesService.SubmitMatchAsync(orgId, leagueId, submitRequest,
-            MatchSource.Matchmaking);
+            source, submittedByMembershipId);
 
         RemoveActiveMatch(activeMatch);
         await dbContext.SaveChangesAsync();
@@ -365,7 +383,43 @@ public class V3MatchMakingService(
         return matchResponse;
     }
 
-    private async Task PromotePendingMatchToActiveMatch(Guid orgId, V3PendingMatch pendingMatch)
+    public async Task<V3ActiveMatch> CreateActiveMatchAsync(Guid orgId, Guid leagueId, List<List<Guid>> teams)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var pendingMatch = new V3PendingMatch
+        {
+            OrganizationId = orgId,
+            LeagueId = leagueId,
+            Status = AcceptanceStatus.Accepted,
+            ExpiresAt = now,
+            Teams = TeamBalancer.ToPendingMatchTeams(teams, orgId, leagueId),
+            Acceptances = teams.SelectMany(t => t).Select(leaguePlayerId => new PendingMatchAcceptance
+            {
+                LeaguePlayerId = leaguePlayerId,
+                Status = AcceptanceStatus.Accepted,
+                AcceptedAt = now,
+            }).ToList()
+        };
+
+        dbContext.V3PendingMatches.Add(pendingMatch);
+        var activeMatch = await PromotePendingMatchToActiveMatch(orgId, pendingMatch);
+        await dbContext.SaveChangesAsync();
+        return activeMatch;
+    }
+
+    public async Task DeleteActiveMatchAsync(Guid activeMatchId)
+    {
+        var activeMatch = await dbContext.V3ActiveMatches
+            .Include(am => am.PendingMatch).ThenInclude(pm => pm.Teams).ThenInclude(t => t.Players)
+            .Include(am => am.PendingMatch).ThenInclude(pm => pm.Acceptances)
+            .FirstOrDefaultAsync(am => am.Id == activeMatchId);
+        if (activeMatch is not null)
+        {
+            RemoveActiveMatch(activeMatch);
+        }
+    }
+
+    private async Task<V3ActiveMatch> PromotePendingMatchToActiveMatch(Guid orgId, V3PendingMatch pendingMatch)
     {
         var activeMatch = new V3ActiveMatch
         {
@@ -387,6 +441,7 @@ public class V3MatchMakingService(
             .ToListAsync();
 
         dbContext.QueueEntries.RemoveRange(queueEntries);
+        return activeMatch;
     }
 
     private async Task<V3PendingMatch?> GetPendingMatchForUpdateAsync(

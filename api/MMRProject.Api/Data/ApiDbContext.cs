@@ -76,6 +76,21 @@ public partial class ApiDbContext : DbContext
     public virtual DbSet<OrganizationInviteLink> OrganizationInviteLinks { get; set; }
 
     public virtual DbSet<MembershipClaimRequest> MembershipClaimRequests { get; set; }
+    public virtual DbSet<FoosballTable> FoosballTables { get; set; }
+
+    public virtual DbSet<Device> Devices { get; set; }
+
+    public virtual DbSet<TableMatch> TableMatches { get; set; }
+
+    public virtual DbSet<TableGoal> TableGoals { get; set; }
+
+    public virtual DbSet<PlayerCard> PlayerCards { get; set; }
+
+    public virtual DbSet<CardLinkRequest> CardLinkRequests { get; set; }
+
+    public virtual DbSet<TableRosterEntry> TableRosterEntries { get; set; }
+
+    public virtual DbSet<DeviceWake> DeviceWakes { get; set; }
 
 //     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 // #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -274,5 +289,6 @@ public partial class ApiDbContext : DbContext
         });
 
         ConfigureV3Entities(modelBuilder);
+        ConfigureHardwareEntities(modelBuilder);
     }
 }
