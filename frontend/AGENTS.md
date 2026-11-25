@@ -16,8 +16,6 @@ app's earlier per-control code broke on iOS.
 
 ## Server functions and server routes
 
-Screen-specific data belongs here, not in the API: a server function or server
-route calls the API's general endpoints, then joins and shapes the answers for
-one screen. If a screen needs something the API can't answer, add a general
-resource to the API and shape it here. See "General API, screen-specific
-endpoints" in the root [AGENTS.md](../AGENTS.md).
+These are the frontend's BFF. Before adding or changing one, or an API
+endpoint it calls, read "General API and BFF" in the root
+[AGENTS.md](../AGENTS.md).

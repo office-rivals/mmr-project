@@ -74,31 +74,29 @@ Postgres resource in the Aspire dashboard.
 
 ## Architecture
 
-### General API, screen-specific endpoints
+### General API and BFF
 
-The API (`api/`) is a general API: other people should be able to build their
-own apps on it with a personal access token. Keep it as general as possible;
-the frontend is one such app.
+The API (`api/`) is a **general API**: other people build their own apps on it
+with a personal access token, and the frontend is one such app. The TanStack
+Start backend (`frontend/`: server functions and server routes) is the
+frontend's **BFF** (backend for frontend).
 
-- **An API endpoint is a resource, not a screen.** It returns one thing, asked
-  for by its own ids and inputs: a leaderboard, a match, a player's rating
-  history. Don't add a field to a response because a screen shows it there,
-  and don't shape or key an endpoint on what one page holds.
-- **Screen-specific endpoints live in the TanStack Start backend**
-  (`frontend/`), as server functions or server routes. They call the API, then
-  join and shape the answers for one screen. They are not a contract for
-  anyone else and can change with the screen.
-- **Rules about data hold in the API**, where every app meets them: access
-  checks, validation, and what is withheld from whom. Never rely on a Start
-  endpoint to hide something.
-- **A batch in the API is general** ("these N items"), never "what this page
-  needs".
-- **The MMR API stays internal**: rating maths only, called by the API alone.
+Place each new endpoint by what it returns:
 
-Example: the standings page needs the seasons, the leaderboard and recent
-matches. The API has one endpoint for each, and `getStandingsFn`
-(`frontend/src/lib/league-data.ts`) calls the three and returns what the page
-renders. The API has no standings-page endpoint.
+- **A resource goes in the API**: one thing any app could ask for by its own
+  ids and inputs, such as a leaderboard, a match or a player's rating history.
+  A batch takes a list of those ("these N items").
+- **A screen's data goes in the BFF**: it calls the API's resources, then joins
+  and shapes them for that screen. Only the frontend depends on it, so it
+  changes with the screen.
+- **Data rules go in the API**, where every app meets them: access checks,
+  validation, and what is withheld from whom.
+- **The MMR API is internal**: rating maths, called by the API alone.
+
+When a screen needs something the API can't answer, add the general resource
+to the API and shape it in the BFF. Example: `getStandingsFn`
+(`frontend/src/lib/league-data.ts`) builds the standings page from three
+resources: seasons, leaderboard and matches.
 
 ### Authentication
 
