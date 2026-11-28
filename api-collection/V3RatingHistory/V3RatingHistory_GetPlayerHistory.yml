@@ -1,0 +1,154 @@
+info:
+  name: V3RatingHistory_GetPlayerHistory
+  type: http
+  seq: 1
+  tags:
+    - V3RatingHistory
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/rating-history/:leaguePlayerId"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+    - name: leaguePlayerId
+      value: ""
+      type: path
+    - name: seasonId
+      value: ""
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/rating-history/:leaguePlayerId"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: leaguePlayerId
+          value: ""
+          type: path
+        - name: seasonId
+          value: ""
+          type: query
+          disabled: true
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          {
+            "entries": [
+              {
+                "matchId": "",
+                "mmr": 0,
+                "mu": 0,
+                "sigma": 0,
+                "delta": 0,
+                "recordedAt": ""
+              }
+            ]
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/rating-history/:leaguePlayerId"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: leaguePlayerId
+          value: ""
+          type: path
+        - name: seasonId
+          value: ""
+          type: query
+          disabled: true
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "entries": [
+              {
+                "matchId": "",
+                "mmr": 0,
+                "mu": 0,
+                "sigma": 0,
+                "delta": 0,
+                "recordedAt": ""
+              }
+            ]
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/rating-history/:leaguePlayerId"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: leaguePlayerId
+          value: ""
+          type: path
+        - name: seasonId
+          value: ""
+          type: query
+          disabled: true
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          {
+            "entries": [
+              {
+                "matchId": "",
+                "mmr": 0,
+                "mu": 0,
+                "sigma": 0,
+                "delta": 0,
+                "recordedAt": ""
+              }
+            ]
+          }

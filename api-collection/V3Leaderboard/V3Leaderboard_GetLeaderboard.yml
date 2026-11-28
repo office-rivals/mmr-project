@@ -1,0 +1,157 @@
+info:
+  name: V3Leaderboard_GetLeaderboard
+  type: http
+  seq: 1
+  tags:
+    - V3Leaderboard
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/leaderboard"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+    - name: seasonId
+      value: ""
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/leaderboard"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: seasonId
+          value: ""
+          type: query
+          disabled: true
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          {
+            "entries": [
+              {
+                "leaguePlayerId": "",
+                "displayName": "",
+                "username": "",
+                "mmr": 0,
+                "mu": 0,
+                "sigma": 0,
+                "rank": 0,
+                "wins": 0,
+                "losses": 0,
+                "winningStreak": 0,
+                "losingStreak": 0
+              }
+            ]
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/leaderboard"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: seasonId
+          value: ""
+          type: query
+          disabled: true
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "entries": [
+              {
+                "leaguePlayerId": "",
+                "displayName": "",
+                "username": "",
+                "mmr": 0,
+                "mu": 0,
+                "sigma": 0,
+                "rank": 0,
+                "wins": 0,
+                "losses": 0,
+                "winningStreak": 0,
+                "losingStreak": 0
+              }
+            ]
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/leaderboard"
+      method: GET
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: seasonId
+          value: ""
+          type: query
+          disabled: true
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          {
+            "entries": [
+              {
+                "leaguePlayerId": "",
+                "displayName": "",
+                "username": "",
+                "mmr": 0,
+                "mu": 0,
+                "sigma": 0,
+                "rank": 0,
+                "wins": 0,
+                "losses": 0,
+                "winningStreak": 0,
+                "losingStreak": 0
+              }
+            ]
+          }

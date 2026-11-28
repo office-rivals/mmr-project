@@ -1,0 +1,39 @@
+info:
+  name: Pairing_UnlinkTag
+  type: http
+  seq: 3
+  tags:
+    - Pairing
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/v3/pairing/tags/:tagId"
+  params:
+    - name: tagId
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/pairing/tags/:tagId"
+      method: DELETE
+      params:
+        - name: tagId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: ""

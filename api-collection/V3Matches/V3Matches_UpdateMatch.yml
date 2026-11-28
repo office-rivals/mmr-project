@@ -1,0 +1,267 @@
+info:
+  name: V3Matches_UpdateMatch
+  type: http
+  seq: 4
+  tags:
+    - V3Matches
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/matches/:matchId"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+    - name: matchId
+      value: ""
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "teams": [
+          {
+            "players": [
+              {
+                "leaguePlayerId": "",
+                "organizationMembershipId": "",
+                "newPlayer": {
+                  "displayName": "",
+                  "username": "",
+                  "email": ""
+                }
+              }
+            ],
+            "score": 0
+          }
+        ]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/matches/:matchId"
+      method: PATCH
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: matchId
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "teams": [
+              {
+                "players": [
+                  {
+                    "leaguePlayerId": "",
+                    "organizationMembershipId": "",
+                    "newPlayer": {
+                      "displayName": "",
+                      "username": "",
+                      "email": ""
+                    }
+                  }
+                ],
+                "score": 0
+              }
+            ]
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/plain
+      body:
+        type: text
+        data: |-
+          {
+            "id": "",
+            "leagueId": "",
+            "seasonId": "",
+            "source": "Manual",
+            "playedAt": "",
+            "recordedAt": "",
+            "teams": [
+              {
+                "id": "",
+                "index": 0,
+                "score": 0,
+                "isWinner": false,
+                "players": [
+                  {
+                    "id": "",
+                    "leaguePlayerId": "",
+                    "displayName": "",
+                    "username": "",
+                    "index": 0,
+                    "ratingDelta": 0
+                  }
+                ]
+              }
+            ],
+            "createdAt": ""
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/matches/:matchId"
+      method: PATCH
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: matchId
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "teams": [
+              {
+                "players": [
+                  {
+                    "leaguePlayerId": "",
+                    "organizationMembershipId": "",
+                    "newPlayer": {
+                      "displayName": "",
+                      "username": "",
+                      "email": ""
+                    }
+                  }
+                ],
+                "score": 0
+              }
+            ]
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "leagueId": "",
+            "seasonId": "",
+            "source": "Manual",
+            "playedAt": "",
+            "recordedAt": "",
+            "teams": [
+              {
+                "id": "",
+                "index": 0,
+                "score": 0,
+                "isWinner": false,
+                "players": [
+                  {
+                    "id": "",
+                    "leaguePlayerId": "",
+                    "displayName": "",
+                    "username": "",
+                    "index": 0,
+                    "ratingDelta": 0
+                  }
+                ]
+              }
+            ],
+            "createdAt": ""
+          }
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/matches/:matchId"
+      method: PATCH
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: matchId
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "teams": [
+              {
+                "players": [
+                  {
+                    "leaguePlayerId": "",
+                    "organizationMembershipId": "",
+                    "newPlayer": {
+                      "displayName": "",
+                      "username": "",
+                      "email": ""
+                    }
+                  }
+                ],
+                "score": 0
+              }
+            ]
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: text/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "leagueId": "",
+            "seasonId": "",
+            "source": "Manual",
+            "playedAt": "",
+            "recordedAt": "",
+            "teams": [
+              {
+                "id": "",
+                "index": 0,
+                "score": 0,
+                "isWinner": false,
+                "players": [
+                  {
+                    "id": "",
+                    "leaguePlayerId": "",
+                    "displayName": "",
+                    "username": "",
+                    "index": 0,
+                    "ratingDelta": 0
+                  }
+                ]
+              }
+            ],
+            "createdAt": ""
+          }

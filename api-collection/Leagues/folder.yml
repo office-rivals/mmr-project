@@ -1,0 +1,6 @@
+info:
+  name: Leagues
+  type: folder
+
+request:
+  auth: inherit

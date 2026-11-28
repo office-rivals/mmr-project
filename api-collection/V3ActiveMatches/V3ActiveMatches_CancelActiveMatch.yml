@@ -1,0 +1,51 @@
+info:
+  name: V3ActiveMatches_CancelActiveMatch
+  type: http
+  seq: 2
+  tags:
+    - V3ActiveMatches
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/active-matches/:activeMatchId"
+  params:
+    - name: orgId
+      value: ""
+      type: path
+    - name: leagueId
+      value: ""
+      type: path
+    - name: activeMatchId
+      value: ""
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/api/v3/organizations/:orgId/leagues/:leagueId/active-matches/:activeMatchId"
+      method: DELETE
+      params:
+        - name: orgId
+          value: ""
+          type: path
+        - name: leagueId
+          value: ""
+          type: path
+        - name: activeMatchId
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: ""

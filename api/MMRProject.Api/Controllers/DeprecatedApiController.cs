@@ -5,6 +5,7 @@ namespace MMRProject.Api.Controllers;
 
 [ApiController]
 [AllowAnonymous]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class DeprecatedApiController : ControllerBase
 {
     [HttpGet("api/v1/{**path}")]
